@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "svm_fs_batch": {
+      "commandName": "Project",
+      "commandLineArgs": "test1 0 5"
+    }
+  }
+}
