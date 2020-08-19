@@ -323,7 +323,7 @@ namespace svm_fs_batch
             var loaded_state = get_missing(instance_index, iteration_cm_all, indexes_whole);
 
             // if all indexes loaded, return
-            if (!loaded_state.indexes_loaded_whole.Any()) return loaded_state;
+            if (!loaded_state.indexes_missing_whole.Any()) return loaded_state;
 
 
             var iteration_folder = program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, iteration_index);
@@ -348,7 +348,7 @@ namespace svm_fs_batch
                     }
 
                     // load cache, if exists (z, x, m)
-                    var cache_files = Directory.GetFiles(iteration_folder, $"{cache_level}_*.cm.csv", SearchOption.TopDirectoryOnly).ToList();
+                    var cache_files = Directory.GetFiles(iteration_folder, $"{cache_level}_*.cm.csv", string.Equals(cache_level, "m", StringComparison.InvariantCultureIgnoreCase) ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).ToList();
 
                     // don't load any files already previously loaded...
                     cache_files = cache_files.Except(cache_files_already_loaded).Distinct().ToList();
@@ -357,7 +357,8 @@ namespace svm_fs_batch
                     if (string.Equals(cache_level, cache_levels.Last(), StringComparison.InvariantCultureIgnoreCase))
                     {
                         // only load m* for the partition... pt2
-                        var merge_files = indexes_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
+                        //var merge_files = indexes_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
+                        var merge_files = loaded_state.indexes_missing_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
 
                         cache_files = cache_files.Intersect(merge_files).ToList();
                     }
@@ -403,7 +404,7 @@ namespace svm_fs_batch
 
                                 loaded_state = get_missing(instance_index, iteration_cm_all, indexes_whole);
 
-                                io_proxy.WriteLine($@"Loaded cache: {cm_file}. cm_append: {cm_append.Count}. iteration_cm_all: {iteration_cm_all.Count}. indexes_loaded_whole: {loaded_state.indexes_loaded_whole.Count}. indexes_loaded_partition: {loaded_state.indexes_loaded_partition.Count}. indexes_missing_whole: {loaded_state.indexes_missing_whole.Count}. indexes_missing_partition: {loaded_state.indexes_missing_partition.Count}.", module_name, method_name);
+                                io_proxy.WriteLine($@"Loaded {cache_level} cache: {cm_file}. cm_append: {cm_append.Count}. iteration_cm_all: {iteration_cm_all.Count}. indexes_loaded_whole: {loaded_state.indexes_loaded_whole.Count}. indexes_loaded_partition: {loaded_state.indexes_loaded_partition.Count}. indexes_missing_whole: {loaded_state.indexes_missing_whole.Count}. indexes_missing_partition: {loaded_state.indexes_missing_partition.Count}.", module_name, method_name);
                             }
                         }
                     }

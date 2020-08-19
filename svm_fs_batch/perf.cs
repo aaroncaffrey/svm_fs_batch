@@ -23,7 +23,7 @@ namespace svm_fs_batch
             internal static List<( string line, confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> load(string filename, int column_offset = -1)
             {
                 var lines = io_proxy.ReadAllLines(filename).ToList();
-                var ret = load(lines, column_offset, filename);
+                var ret = load(lines, column_offset);//, filename);
                 return ret;
             }
 
@@ -33,7 +33,7 @@ namespace svm_fs_batch
                 confusion_matrix cm, 
                 List<(string key, string value_str, int? value_int, double? value_double)> key_value_list,
                 List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> 
-                load(IList<string> lines, int column_offset = -1, string cm_fn = null)
+                load(IList<string> lines, int column_offset = -1)//, string cm_fn = null)
             {
                 
                 

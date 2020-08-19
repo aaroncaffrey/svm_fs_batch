@@ -855,7 +855,7 @@ namespace svm_fs_batch
 
                                 var merge_cm_lines = new List<string>() { cm_header };
                                 merge_cm_lines.AddRange(prediction_file_data.cm_list.Select(a => $"{string.Join(",", exp_data.Select(c => c.value).ToList())},{a}").ToList());
-                                var lcs = perf.confusion_matrix.load(merge_cm_lines, -1, group_merged_cm_fn);
+                                var lcs = perf.confusion_matrix.load(merge_cm_lines, -1);//, group_merged_cm_fn);
 
                                 if (lcs != null && lcs.Count > 1) { iteration_all_cm.AddRange(lcs.Skip(iteration_all_cm.Count == 0 ? 0 : 1)); }
 
