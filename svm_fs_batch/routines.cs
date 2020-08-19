@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace svm_fs_batch
 {
@@ -60,8 +61,11 @@ namespace svm_fs_batch
             // if (program.write_console_log) program.WriteLine(string.Join(",",k_list));
         }
 
-        internal static List<(int randomisation_cv_index, int outer_cv_index, List<int> indexes)> folds(int examples, int outer_cv_folds, int randomisation_cv_folds, int? size_limit = null)
+        internal static List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds(int examples, int repetitions, int outer_cv_folds, int? size_limit = null)
         {
+            if (repetitions <= 0) throw new Exception();
+            if (outer_cv_folds <= 0) throw new Exception();
+
             //var module_name = nameof(svm_ctl);
             //var method_name = nameof(folds);
 
@@ -80,19 +84,23 @@ namespace svm_fs_batch
 
             if (size_limit != null) { fold_sizes = fold_sizes.Select(a => a > size_limit ? size_limit.Value : a).ToArray(); }
 
+            // use same seed to ensure all calls to fold() are deterministic
             var rand = new Random(1);
 
             var indexes_pool = Enumerable.Range(0, examples).ToList();
 
             var x = new List<(int randomisation, int fold, List<int> indexes)>();
 
-            var rdm = randomisation_cv_folds == 0 ? 1 : randomisation_cv_folds;
+            // if repetitions is =0, then no shuffle, data will be in default order
+            // if repetitions is >0, will be shuffled
+
+            var rdm = repetitions == 0 ? 1 : repetitions;
 
             for (var r = 0; r < rdm; r++)
             {
-                if (randomisation_cv_folds != 0) indexes_pool.shuffle(rand);
+                if (repetitions != 0) indexes_pool.shuffle(rand);
 
-                var y = fold_sizes.Select((fold_size, fold_index) => (randomisation_cv_index: r, outer_cv_index: fold_index, indexes: indexes_pool.Skip(fold_sizes.Where((b, j) => fold_index < j).Sum()).Take(fold_size).OrderBy(b => b).ToList())).ToList();
+                var y = fold_sizes.Select((fold_size, fold_index) => (repetitions_index: r, outer_cv_index: fold_index, indexes: indexes_pool.Skip(fold_sizes.Where((b, j) => fold_index < j).Sum()).Take(fold_size).OrderBy(b => b).ToList())).ToList();
 
                 x.AddRange(y);
             }
@@ -197,5 +205,28 @@ namespace svm_fs_batch
             return v;
         }
 
+
+        internal static void wait_any<T>(IList<Task<T>> tasks, int max_tasks = -1)
+        {
+            wait_any(tasks.ToArray<Task>(), max_tasks);
+        }
+
+        internal static void wait_any(IList<Task> tasks, int max_tasks = -1)
+        {
+            if (max_tasks == -1)
+            {
+                max_tasks = Environment.ProcessorCount * 4;
+            }
+
+            Task[] incomplete_tasks = null;
+
+            do
+            {
+                incomplete_tasks = tasks.Where(a => !a.IsCompleted).ToArray<Task>();
+
+                if (incomplete_tasks.Length > 0 && incomplete_tasks.Length > max_tasks) { Task.WaitAny(incomplete_tasks); }
+
+            } while (incomplete_tasks.Length >= max_tasks);
+        }
     }
 }

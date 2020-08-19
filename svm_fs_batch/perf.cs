@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Net.Http.Headers;
 
 namespace svm_fs_batch
 {
@@ -24,7 +23,7 @@ namespace svm_fs_batch
             internal static List<( string line, confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> load(string filename, int column_offset = -1)
             {
                 var lines = io_proxy.ReadAllLines(filename).ToList();
-                var ret = load(lines, column_offset);
+                var ret = load(lines, column_offset, filename);
                 return ret;
             }
 
@@ -34,7 +33,7 @@ namespace svm_fs_batch
                 confusion_matrix cm, 
                 List<(string key, string value_str, int? value_int, double? value_double)> key_value_list,
                 List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> 
-                load(IList<string> lines, int column_offset = -1)
+                load(IList<string> lines, int column_offset = -1, string cm_fn = null)
             {
                 
                 
@@ -84,16 +83,19 @@ namespace svm_fs_batch
 
                     var x_d = new double[s.Count];
                     var x_i = new int[s.Count];
+                    var x_b = new bool[s.Count];
 
                     var k = 0;// column_offset;
 
                     var cm = new confusion_matrix()
                     {
                         x_experiment_name = s[k++],
+                        x_id = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
 
-                        x_iteration_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_group_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_total_groups = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
+                        x_iteration_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
+                        x_group_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
+                        x_total_groups = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
+                        x_output_threshold_adjustment_performance = bool.TryParse(s[k++], out x_b[k]) ? x_b[k]: (bool?)null,
 
                         x_key_alphabet = s[k++],
                         x_key_dimension = s[k++],
@@ -106,7 +108,7 @@ namespace svm_fs_batch
                         x_duration_grid_search = s[k++],
                         x_duration_training = s[k++],
                         x_duration_testing = s[k++],
-                        x_scaling_function = s[k++],
+                        x_scale_function = Enum.TryParse(s[k++], out routines.scale_function scale_function) ? scale_function : (routines.scale_function)0,
                         x_libsvm_cv = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
                         x_prediction_threshold = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
                         x_prediction_threshold_class = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
@@ -116,12 +118,13 @@ namespace svm_fs_batch
                         x_new_group_count = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
                         x_features_included = s[k++],
                         x_inner_cv_folds = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_randomisation_cv_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_randomisation_cv_folds = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
+                        x_repetitions_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
+                        x_repetitions_total = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
                         x_outer_cv_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
                         x_outer_cv_folds = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_svm_type = s[k++],
-                        x_svm_kernel = s[k++],
+                        x_svm_type = Enum.TryParse(s[k++], out routines.libsvm_svm_type svm_type) ? svm_type : (routines.libsvm_svm_type)0,
+                        x_svm_kernel = Enum.TryParse(s[k++], out routines.libsvm_kernel_type svm_kernel) ? svm_kernel : (routines.libsvm_kernel_type)0,
+
                         x_cost = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
                         x_gamma = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
                         x_epsilon = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
@@ -340,9 +343,12 @@ namespace svm_fs_batch
             //internal double testing_size_pct;
             //internal string kernel_parameter_search_method;
 
+            internal int? x_id;
+
             internal int? x_iteration_index;
             internal int? x_group_index;
             internal int? x_total_groups;
+            internal bool? x_output_threshold_adjustment_performance;
 
             internal string x_key_alphabet;
             internal string x_key_dimension;
@@ -358,7 +364,7 @@ namespace svm_fs_batch
             internal string x_duration_training;
             internal string x_duration_testing;
             internal string x_experiment_name;
-            internal string x_scaling_function;
+            internal routines.scale_function x_scale_function;
             internal double x_libsvm_cv;
             internal double? x_prediction_threshold = -1;
             internal double? x_prediction_threshold_class;
@@ -368,12 +374,12 @@ namespace svm_fs_batch
             internal int x_new_group_count;
             internal string x_features_included;
             internal int x_inner_cv_folds;
-            internal int x_randomisation_cv_index;
-            internal int x_randomisation_cv_folds;
+            internal int x_repetitions_index;
+            internal int x_repetitions_total;
             internal int x_outer_cv_index;
             internal int x_outer_cv_folds;
-            internal string x_svm_type;
-            internal string x_svm_kernel;
+            internal routines.libsvm_svm_type x_svm_type;
+            internal routines.libsvm_kernel_type x_svm_kernel;
             internal double? x_cost;
             internal double? x_gamma;
             internal double? x_epsilon;
@@ -1483,7 +1489,7 @@ namespace svm_fs_batch
 
 
                     features_included = String.Join(";", cm.Select(a => a.features_included).Distinct().ToList()),
-                    kernel = String.Join(";", cm.Select(a => a.kernel).Distinct().ToList()),
+                    svm_kernel = String.Join(";", cm.Select(a => a.svm_kernel).Distinct().ToList()),
 
 
                     libsvm_cv = cm.Select(a => a.libsvm_cv).Average(),
@@ -1577,8 +1583,8 @@ namespace svm_fs_batch
                     LRN = cm.Select(a => a.LRN).Average(),
                     LRP = cm.Select(a => a.LRP).Average(),
 
-                    randomisation_cv_index = cm.Select(a => a.randomisation_cv_index).Average(),
-                    randomisation_cv_folds = cm.Select(a => a.randomisation_cv_folds).Average(),
+                    repetitions_index = cm.Select(a => a.repetitions_index).Average(),
+                    repetitions = cm.Select(a => a.repetitions).Average(),
 
 
                     outer_cv_folds = cm.Select(a => a.outer_cv_folds).Average(),
@@ -1628,9 +1634,9 @@ namespace svm_fs_batch
                     (
 
                         a.svm_type,
-                        a.kernel,
+                        a.svm_kernel,
                         //a.training_resampling_method,
-                        a.randomisation_cv_folds,
+                        a.repetitions,
                         a.outer_cv_folds,
                         a.inner_cv_folds,
                         //a.kernel_parameter_search_method,
@@ -1686,7 +1692,7 @@ namespace svm_fs_batch
 
 
                                 features_included = String.Join(";", cm.Select(a => a.features_included).Distinct().ToList()),
-                                kernel = String.Join(";", cm.Select(a => a.kernel).Distinct().ToList()),
+                                svm_kernel = String.Join(";", cm.Select(a => a.svm_kernel).Distinct().ToList()),
 
 
                                 libsvm_cv = cm.Select(a => a.libsvm_cv).Average(),
@@ -1780,8 +1786,8 @@ namespace svm_fs_batch
                                 LRN = cm.Select(a => a.LRN).Average(),
                                 LRP = cm.Select(a => a.LRP).Average(),
 
-                                randomisation_cv_index = cm.Select(a => a.randomisation_cv_index).Average(),
-                                randomisation_cv_folds = cm.Select(a => a.randomisation_cv_folds).Average(),
+                                repetitions_index = cm.Select(a => a.repetitions_index).Average(),
+                                repetitions = cm.Select(a => a.repetitions).Average(),
 
 
                                 outer_cv_folds = cm.Select(a => a.outer_cv_folds).Average(),
@@ -1821,12 +1827,14 @@ namespace svm_fs_batch
             {
                 nameof(x_experiment_name),
 
-                
+
+                nameof(x_id),
 
                 nameof(x_iteration_index),
                 nameof(x_group_index),
                 nameof(x_total_groups),
-                
+                nameof(x_output_threshold_adjustment_performance),
+
                 nameof(x_key_alphabet),
                 nameof(x_key_dimension),
                 nameof(x_key_category),
@@ -1852,7 +1860,7 @@ namespace svm_fs_batch
                 nameof(x_duration_training),
                 nameof(x_duration_testing),
                 
-                nameof(x_scaling_function),
+                nameof(x_scale_function),
 
                 nameof(x_libsvm_cv),
                 //nameof(libsvm_cv_accuracy),
@@ -1875,8 +1883,8 @@ namespace svm_fs_batch
                 //nameof(unused_size_pct),
                 //nameof(testing_size_pct),
                 nameof(x_inner_cv_folds),
-                nameof(x_randomisation_cv_index),
-                nameof(x_randomisation_cv_folds),
+                nameof(x_repetitions_index),
+                nameof(x_repetitions_total),
                 nameof(x_outer_cv_index),
                 nameof(x_outer_cv_folds),
                 nameof(x_svm_type),
@@ -2087,10 +2095,12 @@ namespace svm_fs_batch
                 {
                     x_experiment_name,
 
+                    x_id?.ToString(CultureInfo.InvariantCulture),
 
                     x_iteration_index?.ToString(CultureInfo.InvariantCulture),
                     x_group_index?.ToString(CultureInfo.InvariantCulture),
                     x_total_groups?.ToString(CultureInfo.InvariantCulture),
+                    x_output_threshold_adjustment_performance?.ToString(CultureInfo.InvariantCulture),
 
                     x_key_alphabet ,
                     x_key_dimension ,
@@ -2103,7 +2113,7 @@ namespace svm_fs_batch
                     x_duration_grid_search,
                     x_duration_training,
                     x_duration_testing,
-                    x_scaling_function,
+                    x_scale_function.ToString(),
                     x_libsvm_cv.ToString("G17", CultureInfo.InvariantCulture),
                     x_prediction_threshold?.ToString("G17", CultureInfo.InvariantCulture),
                     x_prediction_threshold_class?.ToString("G17", CultureInfo.InvariantCulture),
@@ -2113,12 +2123,12 @@ namespace svm_fs_batch
                     x_new_group_count.ToString(CultureInfo.InvariantCulture),
                     x_features_included,
                     x_inner_cv_folds.ToString(CultureInfo.InvariantCulture),
-                    x_randomisation_cv_index.ToString(CultureInfo.InvariantCulture),
-                    x_randomisation_cv_folds.ToString(CultureInfo.InvariantCulture),
+                    x_repetitions_index.ToString(CultureInfo.InvariantCulture),
+                    x_repetitions_total.ToString(CultureInfo.InvariantCulture),
                     x_outer_cv_index.ToString(CultureInfo.InvariantCulture),
                     x_outer_cv_folds.ToString(CultureInfo.InvariantCulture),
-                    x_svm_type ?? "",
-                    x_svm_kernel ?? "",
+                    x_svm_type.ToString() ?? "",
+                    x_svm_kernel.ToString() ?? "",
                     x_cost?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",
                     x_gamma?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",
                     x_epsilon?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",

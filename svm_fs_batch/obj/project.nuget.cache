@@ -1,10 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "lZv3E/bfPuQoUH3rWBCKymgcl7aTSekfHnGanctRIeCOpyH1oEihJbmSlkqHvOzCPjeLuSt+UNaXGOn6Tqh4pg==",
+  "dgSpecHash": "EfSQ5oXdvi76nMWLutIWDPYH2rmwaIx2tC0SSfcLZ6FQFtEJ4aPH2JwqhjUUlAJ0kZpYUwqv03bh2J7IaP1DKw==",
   "success": true,
   "projectFilePath": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\svm_fs_batch.csproj",
-  "expectedPackageFiles": [
-    "C:\\Users\\Aaron\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\3.1.2\\microsoft.aspnetcore.app.ref.3.1.2.nupkg.sha512"
-  ],
+  "expectedPackageFiles": [],
   "logs": []
 }

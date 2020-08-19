@@ -13,15 +13,15 @@ namespace svm_fs_batch
         //private readonly object _rate_lock = new object();
 
 
-        internal static List<(routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int randomisation_cv_folds, int randomisation_cv_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> read_cache(string cache_train_grid_csv)
+        internal static List<(routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> read_cache(string cache_train_grid_csv)
         {
             var module_name = nameof(grid);
             var method_name = nameof(read_cache);
 
             var cache = new List<(
                 routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type kernel,
-                int randomisation_cv_folds, int randomisation_cv_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)>();
+                routines.libsvm_kernel_type svm_kernel,
+                int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)>();
 
             //cache_train_grid_csv = (cache_train_grid_csv);
 
@@ -42,8 +42,8 @@ namespace svm_fs_batch
                         (
                             svm_type: (routines.libsvm_svm_type)Enum.Parse(typeof(routines.libsvm_svm_type), line[k++]),
                             svm_kernel: (routines.libsvm_kernel_type)Enum.Parse(typeof(routines.libsvm_kernel_type), line[k++]),
-                            randomisation_cv_folds: int.Parse(line[k++], CultureInfo.InvariantCulture),
-                            randomisation_cv_index: int.Parse(line[k++], CultureInfo.InvariantCulture),
+                            repetitions: int.Parse(line[k++], CultureInfo.InvariantCulture),
+                            repetitions_index: int.Parse(line[k++], CultureInfo.InvariantCulture),
                             outer_cv_folds: int.Parse(line[k++], CultureInfo.InvariantCulture),
                             outer_cv_index: int.Parse(line[k++], CultureInfo.InvariantCulture),
                             inner_cv_folds: int.Parse(line[k++], CultureInfo.InvariantCulture),
@@ -70,14 +70,14 @@ namespace svm_fs_batch
             return cache;
         }
 
-        internal static void write_cache_file(string cache_file, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type kernel, int randomisation_cv_folds, int randomisation_cv_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, List<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> res)
+        internal static void write_cache_file(string cache_file, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, List<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> res)
         {
             var module_name = nameof(grid);
             var method_name = nameof(write_cache_file);
 
             var lines = new List<string>();
-            lines.Add(string.Join(",", new string[] { nameof(svm_type), nameof(kernel), nameof(randomisation_cv_folds), nameof(randomisation_cv_index), nameof(outer_cv_folds), nameof(outer_cv_index), nameof(inner_cv_folds), nameof(probability_estimates), nameof(shrinking_heuristics), "cost", "gamma", "epsilon", "coef0", "degree", "rate", }));
-            lines.AddRange(res.Select(a => string.Join(",", new string[] { svm_type.ToString(), kernel.ToString(), randomisation_cv_folds.ToString(CultureInfo.InvariantCulture), randomisation_cv_index.ToString(CultureInfo.InvariantCulture), outer_cv_folds.ToString(CultureInfo.InvariantCulture), outer_cv_index.ToString(CultureInfo.InvariantCulture), inner_cv_folds.ToString(CultureInfo.InvariantCulture), probability_estimates.ToString(CultureInfo.InvariantCulture), shrinking_heuristics.ToString(CultureInfo.InvariantCulture),
+            lines.Add(string.Join(",", new string[] { nameof(svm_type), nameof(svm_kernel), nameof(repetitions), nameof(repetitions_index), nameof(outer_cv_folds), nameof(outer_cv_index), nameof(inner_cv_folds), nameof(probability_estimates), nameof(shrinking_heuristics), "cost", "gamma", "epsilon", "coef0", "degree", "rate", }));
+            lines.AddRange(res.Select(a => string.Join(",", new string[] { svm_type.ToString(), svm_kernel.ToString(), repetitions.ToString(CultureInfo.InvariantCulture), repetitions_index.ToString(CultureInfo.InvariantCulture), outer_cv_folds.ToString(CultureInfo.InvariantCulture), outer_cv_index.ToString(CultureInfo.InvariantCulture), inner_cv_folds.ToString(CultureInfo.InvariantCulture), probability_estimates.ToString(CultureInfo.InvariantCulture), shrinking_heuristics.ToString(CultureInfo.InvariantCulture),
 
                 a.point.cost?.ToString("G17", CultureInfo.InvariantCulture),
                 a.point.gamma?.ToString("G17", CultureInfo.InvariantCulture),
@@ -159,13 +159,13 @@ namespace svm_fs_batch
                 string train_stderr_file,
 
 
-                List<(int class_id, double weight)> weights = null,
+                List<(int class_id, double weight)> class_weights = null,
 
                 routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc,
                 routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf,
 
-                int randomisation_cv_folds = -1,
-                int randomisation_cv_index = -1,
+                int repetitions = -1,
+                int repetitions_index = -1,
 
                 int outer_cv_folds = -1,
                 int outer_cv_index = -1,
@@ -266,7 +266,7 @@ namespace svm_fs_batch
                 }
             }
 
-            // search gamma only if kernel isn't linear
+            // search gamma only if svm_kernel isn't linear
             if (svm_kernel != routines.libsvm_kernel_type.linear && gamma_exp_begin != null && gamma_exp_end != null && gamma_exp_step != null)
             {
                 for (var g_exp = gamma_exp_begin; (g_exp <= gamma_exp_end && g_exp >= gamma_exp_begin) || (g_exp >= gamma_exp_end && g_exp <= gamma_exp_begin); g_exp += gamma_exp_step)
@@ -375,7 +375,7 @@ namespace svm_fs_batch
                     point.epsilon,
                     point.coef0,
                     point.degree,
-                    weights,
+                    class_weights,
                     svm_type,
                     svm_kernel,
                     inner_cv_folds,
@@ -428,7 +428,7 @@ namespace svm_fs_batch
 
             if (search_grid_points.Count > 0)
             {
-                write_cache_file(cache_train_grid_csv, svm_type, svm_kernel, randomisation_cv_folds, randomisation_cv_index, outer_cv_folds, outer_cv_index, inner_cv_folds, probability_estimates, shrinking_heuristics, results);
+                write_cache_file(cache_train_grid_csv, svm_type, svm_kernel, repetitions, repetitions_index, outer_cv_folds, outer_cv_index, inner_cv_folds, probability_estimates, shrinking_heuristics, results);
             }
 
             var xr = get_best_rate(results);

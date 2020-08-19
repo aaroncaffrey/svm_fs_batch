@@ -2,7 +2,7 @@
   "profiles": {
     "svm_fs_batch": {
       "commandName": "Project",
-      "commandLineArgs": "test1 0 5"
+      "commandLineArgs": "-experiment_name test2 -array_start 0 -array_end 4 -array_index 0 -array_step 5 -array_instances 1 -array_last_index -1"
     }
   }
 }

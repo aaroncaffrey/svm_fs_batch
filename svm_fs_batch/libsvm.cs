@@ -11,15 +11,15 @@ namespace svm_fs_batch
     {
         private static readonly Random random = new Random();
 
-        internal static (string cmd_line, string stdout, string stderr) train(string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
+        internal static (string cmd_line, string stdout, string stderr) train(string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
         {
-            List<(string key, string value)> get_params()//string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
+            List<(string key, string value)> get_params()//string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
             {
                 try
                 {
                     return new List<(string key, string value)>()
                 {
-                    (nameof(libsvm_train_exe_file), libsvm_train_exe_file), (nameof(train_file), train_file), (nameof(model_out_file), model_out_file), (nameof(stdout_file), stdout_file), (nameof(stderr_file), stderr_file), (nameof(cost), cost?.ToString() ?? ""), (nameof(gamma), gamma?.ToString() ?? ""), (nameof(epsilon), epsilon?.ToString() ?? ""), (nameof(coef0), coef0?.ToString() ?? ""), (nameof(degree), degree?.ToString() ?? ""), (nameof(weights), weights != null ? string.Join(";", weights.Select(a => $@"{a.class_id}={a.weight}").ToList()) : ""), (nameof(svm_type), svm_type.ToString()), (nameof(kernel), kernel.ToString()), (nameof(inner_cv_folds), inner_cv_folds?.ToString() ?? ""), (nameof(probability_estimates), probability_estimates.ToString()), (nameof(shrinking_heuristics), shrinking_heuristics.ToString()), (nameof(process_max_time), process_max_time?.ToString() ?? ""), (nameof(quiet_mode), quiet_mode.ToString()), (nameof(memory_limit_mb), memory_limit_mb.ToString()), (nameof(log), log.ToString())
+                    (nameof(libsvm_train_exe_file), libsvm_train_exe_file), (nameof(train_file), train_file), (nameof(model_out_file), model_out_file), (nameof(stdout_file), stdout_file), (nameof(stderr_file), stderr_file), (nameof(cost), cost?.ToString() ?? ""), (nameof(gamma), gamma?.ToString() ?? ""), (nameof(epsilon), epsilon?.ToString() ?? ""), (nameof(coef0), coef0?.ToString() ?? ""), (nameof(degree), degree?.ToString() ?? ""), (nameof(class_weights), class_weights != null ? string.Join(";", class_weights.Select(a => $@"{a.class_id}={a.weight}").ToList()) : ""), (nameof(svm_type), svm_type.ToString()), (nameof(svm_kernel), svm_kernel.ToString()), (nameof(inner_cv_folds), inner_cv_folds?.ToString() ?? ""), (nameof(probability_estimates), probability_estimates.ToString()), (nameof(shrinking_heuristics), shrinking_heuristics.ToString()), (nameof(process_max_time), process_max_time?.ToString() ?? ""), (nameof(quiet_mode), quiet_mode.ToString()), (nameof(memory_limit_mb), memory_limit_mb.ToString()), (nameof(log), log.ToString())
                 };
                 }
                 catch (Exception) { }
@@ -27,9 +27,9 @@ namespace svm_fs_batch
                 return new List<(string key, string value)>();
             }
 
-            string get_params_str()//string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
+            string get_params_str()//string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
             {
-                //try { return string.Join(", ", get_params(libsvm_train_exe_file, train_file, model_out_file, stdout_file, stderr_file, cost, gamma, epsilon, coef0, degree, weights, svm_type, kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, process_max_time, quiet_mode, memory_limit_mb, log).Select(a => $@"{a.key}=""{a.value}""").ToList()); } catch (Exception) { }
+                //try { return string.Join(", ", get_params(libsvm_train_exe_file, train_file, model_out_file, stdout_file, stderr_file, cost, gamma, epsilon, coef0, degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, process_max_time, quiet_mode, memory_limit_mb, log).Select(a => $@"{a.key}=""{a.value}""").ToList()); } catch (Exception) { }
                 try { return string.Join(", ", get_params().Select(a => $@"{a.key}=""{a.value}""").ToList()); } catch (Exception) { }
 
                 return "";
@@ -57,24 +57,24 @@ namespace svm_fs_batch
             if (svm_type != routines.libsvm_svm_type.c_svc) { libsvm_params.Add($@"-s {(int)svm_type}"); }
 
 
-            if (kernel != routines.libsvm_kernel_type.rbf) { libsvm_params.Add($@"-t {(int)kernel}"); }
+            if (svm_kernel != routines.libsvm_kernel_type.rbf) { libsvm_params.Add($@"-t {(int)svm_kernel}"); }
 
 
             if (inner_cv_folds != null && inner_cv_folds >= 2) { libsvm_params.Add($@"-v {inner_cv_folds}"); }
 
             if (cost != null) { libsvm_params.Add($@"-c {cost.Value}"); }
 
-            if (gamma != null && kernel != routines.libsvm_kernel_type.linear) { libsvm_params.Add($@"-g {gamma.Value}"); }
+            if (gamma != null && svm_kernel != routines.libsvm_kernel_type.linear) { libsvm_params.Add($@"-g {gamma.Value}"); }
 
             if (epsilon != null && (svm_type == routines.libsvm_svm_type.epsilon_svr || svm_type == routines.libsvm_svm_type.nu_svr)) { libsvm_params.Add($@"-p {epsilon.Value}"); }
 
-            if (coef0 != null && (kernel == routines.libsvm_kernel_type.sigmoid || kernel == routines.libsvm_kernel_type.polynomial)) { libsvm_params.Add($@"-r {coef0.Value}"); }
+            if (coef0 != null && (svm_kernel == routines.libsvm_kernel_type.sigmoid || svm_kernel == routines.libsvm_kernel_type.polynomial)) { libsvm_params.Add($@"-r {coef0.Value}"); }
 
-            if (degree != null && kernel == routines.libsvm_kernel_type.polynomial) { libsvm_params.Add($@"-d {degree.Value}"); }
+            if (degree != null && svm_kernel == routines.libsvm_kernel_type.polynomial) { libsvm_params.Add($@"-d {degree.Value}"); }
 
-            if (weights != null && weights.Count > 0)
+            if (class_weights != null && class_weights.Count > 0)
             {
-                foreach (var weight in weights.OrderBy(a => a).ToList()) { libsvm_params.Add($@"-w{weight.class_id} {weight.weight}"); }
+                foreach (var weight in class_weights.OrderBy(a => a).ToList()) { libsvm_params.Add($@"-w{weight.class_id} {weight.weight}"); }
             }
 
             if (!shrinking_heuristics) { libsvm_params.Add($@"-h {(shrinking_heuristics ? "1" : "0")}"); }

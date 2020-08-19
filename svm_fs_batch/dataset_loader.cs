@@ -80,7 +80,7 @@ namespace svm_fs_batch
            int negative_class_id,
            int positive_class_id,
            List<(int class_id, string class_name)> class_names,
-           bool use_parallel = true,
+           //bool use_parallel = true,
            bool perform_integrity_checks = false,
            //bool fix_double = true,
            bool required_default = true,
@@ -141,7 +141,8 @@ namespace svm_fs_batch
 
 
 
-            var header_data = io_proxy.ReadAllLines(dataset_header_csv_files.First()).Skip(1)/*.AsParallel().AsOrdered()*/.Select((a, i) =>
+            //var header_data = io_proxy.ReadAllLines(dataset_header_csv_files.First()).Skip(1)/*.AsParallel().AsOrdered()*/.Select((a, i) =>
+            var header_data = io_proxy.ReadAllLines(dataset_header_csv_files.First()).Skip(1).AsParallel().AsOrdered().Select((a, i) =>
             {
                 var b = a.Split(',');
                 var fid = int.Parse(b[0], NumberStyles.Integer, CultureInfo.InvariantCulture);
@@ -215,7 +216,7 @@ namespace svm_fs_batch
                 {
                     var rm = required_matches[index];
 
-                    var matching_fids = header_data.Where(a =>
+                    var matching_fids = header_data.AsParallel().AsOrdered().Where(a =>
                         matches(a.alphabet, rm.alphabet) &&
                         matches(a.category, rm.category) &&
                         matches(a.dimension, rm.dimension) &&
@@ -265,8 +266,8 @@ namespace svm_fs_batch
                 // data comments: load comment lines as key-value pairs.  note: these are variables associated with each example instance rather than specific features.
                 io_proxy.WriteLine($@"Reading data comments...", module_name, method_name);
 
-                if (use_parallel)
-                {
+                //if (use_parallel)
+                //{
                     dataset_comment_row_values = dataset_comment_csv_files.AsParallel()
                         .AsOrdered()
                         .SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
@@ -285,24 +286,24 @@ namespace svm_fs_batch
                             })
                             .ToList())
                         .ToList();
-                }
-                else
-                {
-                    dataset_comment_row_values = dataset_comment_csv_files.SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
-                            .Skip(1 /*header line*/)
-                            .Select((line, line_index) =>
-                            {
+                //}
+                //else
+                //{
+                //    dataset_comment_row_values = dataset_comment_csv_files.SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
+                //            .Skip(1 /*header line*/)
+                //            .Select((line, line_index) =>
+                //            {
 
-                                var comment_columns = line.Split(',').Select((col, col_index) => (comment_header: data_comments_header[col_index], comment_value: col)).ToList();
-                                comment_columns = comment_columns.Where(d => d.comment_header.FirstOrDefault() != '#').ToList();
+                //                var comment_columns = line.Split(',').Select((col, col_index) => (comment_header: data_comments_header[col_index], comment_value: col)).ToList();
+                //                comment_columns = comment_columns.Where(d => d.comment_header.FirstOrDefault() != '#').ToList();
 
-                                //var comment_columns_hash = hash.calc_hash(string.Join(" ", comment_columns.Select(c => c.comment_header + ":" + c.comment_value).ToList()));
-                                return (filename_index: filename_index, line_index: line_index, comment_columns: comment_columns /*, comment_columns_hash: comment_columns_hash*/);
+                //                //var comment_columns_hash = hash.calc_hash(string.Join(" ", comment_columns.Select(c => c.comment_header + ":" + c.comment_value).ToList()));
+                //                return (filename_index: filename_index, line_index: line_index, comment_columns: comment_columns /*, comment_columns_hash: comment_columns_hash*/);
 
-                            })
-                            .ToList())
-                        .ToList();
-                }
+                //            })
+                //            .ToList())
+                //        .ToList();
+                //}
 
                 //// data comments: filter out any '#' commented out key-value pairs 
                 //svm_manager.WriteLine($@"Removing data comments which are commented out...");
@@ -318,8 +319,8 @@ namespace svm_fs_batch
 
                 // data set: load data
                 io_proxy.WriteLine($@"Reading data...", module_name, method_name);
-                if (use_parallel)
-                {
+                //if (use_parallel)
+                //{
                     dataset_instance_list = dataset_csv_files.AsParallel()
                         .AsOrdered()
                         .SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
@@ -345,31 +346,31 @@ namespace svm_fs_batch
                             })
                             .ToList())
                         .ToList();
-                }
-                else
-                {
-                    dataset_instance_list = dataset_csv_files.SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
-                            .Skip(1 /*skip header*/)
-                            . /*Take(20).*/Select((line, line_index) =>
-                            {
-                                var class_id = int.Parse(line.Substring(0, line.IndexOf(',', StringComparison.InvariantCulture)), CultureInfo.InvariantCulture);
-                                var feature_data = parse_csv_line_doubles(line, required);
-                                //var feature_data_hash = hash.calc_hash(string.Join(" ", feature_data.Select(d => $"{d.fid}:{d.value}").ToList()));
+                //}
+                //else
+                //{
+                //    dataset_instance_list = dataset_csv_files.SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
+                //            .Skip(1 /*skip header*/)
+                //            . /*Take(20).*/Select((line, line_index) =>
+                //            {
+                //                var class_id = int.Parse(line.Substring(0, line.IndexOf(',', StringComparison.InvariantCulture)), CultureInfo.InvariantCulture);
+                //                var feature_data = parse_csv_line_doubles(line, required);
+                //                //var feature_data_hash = hash.calc_hash(string.Join(" ", feature_data.Select(d => $"{d.fid}:{d.value}").ToList()));
 
-                                var comment_row = dataset_comment_row_values.First(b => b.filename_index == filename_index && b.line_index == line_index);
-                                var comment_columns = comment_row.comment_columns;
-                                //var comment_columns_hash = comment_row.comment_columns_hash;
+                //                var comment_row = dataset_comment_row_values.First(b => b.filename_index == filename_index && b.line_index == line_index);
+                //                var comment_columns = comment_row.comment_columns;
+                //                //var comment_columns_hash = comment_row.comment_columns_hash;
 
-                                return (class_id: class_id, example_id: 0, class_example_id: 0, comment_columns: comment_columns,
-                                        //comment_columns_hash: comment_columns_hash,
-                                        feature_data: feature_data //,
-                                                                   //feature_data_hash: feature_data_hash
-                                    );
+                //                return (class_id: class_id, example_id: 0, class_example_id: 0, comment_columns: comment_columns,
+                //                        //comment_columns_hash: comment_columns_hash,
+                //                        feature_data: feature_data //,
+                //                                                   //feature_data_hash: feature_data_hash
+                //                    );
 
-                            })
-                            .ToList())
-                        .ToList();
-                }
+                //            })
+                //            .ToList())
+                //        .ToList();
+                //}
 
                 if (dataset_comment_row_values.Count != dataset_instance_list.Count) { throw new Exception(); }
 
