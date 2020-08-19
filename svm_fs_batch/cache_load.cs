@@ -338,8 +338,14 @@ namespace svm_fs_batch
                 
                 foreach (var cache_level in cache_levels)
                 {
-                    // don't load if already loaded
+                    // don't load if already loaded..
                     if (!loaded_state.indexes_missing_whole.Any()) break;
+
+                    if (string.Equals(cache_level, cache_levels.Last(), StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        // only load m* for the partition... pt1
+                        if (!loaded_state.indexes_missing_partition.Any()) continue;
+                    }
 
                     // load cache, if exists (z, x, m)
                     var cache_files = Directory.GetFiles(iteration_folder, $"{cache_level}_*.cm.csv", SearchOption.TopDirectoryOnly).ToList();
@@ -348,11 +354,9 @@ namespace svm_fs_batch
                     cache_files = cache_files.Except(cache_files_already_loaded).Distinct().ToList();
 
                     // don't load if 'm' and not in partition
-                    if (string.Equals(cache_level, "m", StringComparison.InvariantCultureIgnoreCase))
+                    if (string.Equals(cache_level, cache_levels.Last(), StringComparison.InvariantCultureIgnoreCase))
                     {
-                        // only load m* for the partition...
-                        if (!loaded_state.indexes_missing_partition.Any()) continue;
-
+                        // only load m* for the partition... pt2
                         var merge_files = indexes_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
 
                         cache_files = cache_files.Intersect(merge_files).ToList();
@@ -510,7 +514,7 @@ namespace svm_fs_batch
             // check iteration_cm_all to see what is already loaded and what is missing
 
             var loaded_whole = indexes_whole.Where(a =>
-                iteration_cm_all.Any(b => a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.output_threshold_adjustment_performance == b.cm.x_output_threshold_adjustment_performance && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds)).ToList();
+                iteration_cm_all.Any(b => a!= default && b!=default && b.cm!=default&&a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.output_threshold_adjustment_performance == b.cm.x_output_threshold_adjustment_performance && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds)).ToList();
 
             var loaded_partition = instance_index > -1 ? loaded_whole.Where(a => a.unrolled_instance_index == instance_index).ToList() : loaded_whole;
 

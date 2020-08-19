@@ -521,28 +521,37 @@ namespace svm_fs_batch
         //    return (indexes, indexes_loaded, indexes_missing_whole, indexes_missing_partition);
         //}
 
-
-
-
-        public static List<(int from, int to)> get_ranges(List<int> ids)
+        public static List<(int from, int to, int step)> get_ranges(List<int> ids)
         {
+            if (ids == null || ids.Count == 0) return new List<(int @from, int to, int step)>();
+
             ids = ids.OrderBy(a => a).Distinct().ToList();
 
-            var ranges = new List<(int from, int to)>();
+            if (ids.Count == 1) return new List<(int @from, int to, int step)>() { (ids[0], ids[0], 0) };
 
-            var start = 0;
-            while (start < ids.Count)
+            var ranges = new List<(int @from, int to, int step)>();
+
+            var step = ids[1] - ids[0];
+            var step_start_index = 0;
+
+            for (var i = 1; i < ids.Count; i++)
             {
-                var end = start + 1;
-
-                while (end < ids.Count && ids[end - 1] + 1 == ids[end])
+                // if step has changed, save last
+                if (ids[i] - ids[i - 1] != step)
                 {
-                    end++;
+                    ranges.Add((ids[step_start_index], ids[step_start_index] + (step * (i - step_start_index - 1)), step));
+
+                    step = ids[i] - ids[i - 1];
+                    step_start_index = i - 1;
+                    i--;
+                    continue;
                 }
 
-                ranges.Add((ids[start], ids[end - 1]));
-
-                start = end;
+                if (i == ids.Count - 1)
+                {
+                    step = step_start_index == i ? 1 : step;
+                    ranges.Add((ids[step_start_index], ids[step_start_index] + (step * (i - step_start_index)), step));
+                }
             }
 
             return ranges;
@@ -552,9 +561,10 @@ namespace svm_fs_batch
         {
             var ranges = get_ranges(ids);
 
-            return string.Join("_", ranges.Select(a => $"{a.from}-{a.to}").ToList());
+            return string.Join("_", ranges.Select(range => $@"{range.@from}" + (range.from != range.to ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1 ? $@":{range.step}" : $@"") : $@"")).ToList());
         }
 
+  
         internal static void worker(string experiment_name, int instance_index, int total_instances, int array_index_start, int array_step, int array_index_last, int repetitions, int outer_folds, int inner_folds)
         {
 
@@ -572,12 +582,12 @@ namespace svm_fs_batch
             var make_outer_cv_confusion_matrices = false;
 
 
-            var idr = init_dataset();
+            var caller_idr = init_dataset();
 
-            idr.groups = idr.groups.Take(5).ToList();
+            caller_idr.groups = caller_idr.groups.Take(5).ToList();
 
 
-            var total_groups = idr.groups.Count;
+            var total_groups = caller_idr.groups.Count;
 
             io_proxy.WriteLine($@"{experiment_name}: Groups: {(array_index_start + 1)} to {(array_index_last + 1)}. Total groups: {total_groups}. (This instance #{(instance_index + 1)}/#{total_instances} indexes: [{array_index_start}..{array_index_last}]. All indexes: [0..{(total_groups - 1)}].)", module_name, method_name);
 
@@ -613,7 +623,7 @@ namespace svm_fs_batch
 
             while (!finished)
             {
-                var unrolled_indexes = cache_load.get_unrolled_indexes(idr, iteration_index, total_groups, instance_index, total_instances);
+                var unrolled_indexes = cache_load.get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances);
 
                 var iteration_folder = get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, iteration_index);
                 var iteration_all_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
@@ -633,7 +643,9 @@ namespace svm_fs_batch
 
                         // when loaded whole cache, partition cache, and partition item cache, and still partition items missing... 
 
-                        var merge_cache2 = unrolled_indexes_state.indexes_missing_partition.AsParallel()
+                        var merge_cache2 = unrolled_indexes_state
+                            .indexes_missing_partition
+                            .AsParallel()
                             .AsOrdered()
                             .Select(unrolled_index =>
                             {
@@ -641,7 +653,7 @@ namespace svm_fs_batch
                                 io_proxy.WriteLine($@"{experiment_name}: Starting: iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} (groups {(array_index_start + 1)} to {(array_index_last + 1)}).");
 
                                 var group_folder = get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, unrolled_index.iteration_index, unrolled_index.group_index);
-                                var group_key = idr.groups[unrolled_index.group_index].key;
+                                var group_key = unrolled_index.idr.groups[unrolled_index.group_index].key;
                                 var group_merged_cm_fn = $@"{Path.Combine(group_folder, $@"m_{get_iteration_filename(new[] { unrolled_index })}")}.cm.csv";
 
 
@@ -670,14 +682,14 @@ namespace svm_fs_batch
                                     {
                                         dir = direction.backwards;
                                         test_selected_groups.Remove(unrolled_index.group_index);
-                                        test_selected_columns = test_selected_columns.Except(idr.groups[unrolled_index.group_index].columns).ToList();
+                                        test_selected_columns = test_selected_columns.Except(unrolled_index.idr.groups[unrolled_index.group_index].columns).ToList();
                                     }
                                 }
                                 else
                                 {
                                     dir = direction.forwards;
                                     test_selected_groups.Add(unrolled_index.group_index);
-                                    test_selected_columns = test_selected_columns.Union(idr.groups[unrolled_index.group_index].columns).OrderBy(a => a).ToList();
+                                    test_selected_columns = test_selected_columns.Union(unrolled_index.idr.groups[unrolled_index.group_index].columns).OrderBy(a => a).ToList();
                                 }
 
                                 if (dir != direction.neutral)
@@ -687,7 +699,7 @@ namespace svm_fs_batch
                                     test_selected_columns = test_selected_columns.OrderBy(a => a).Distinct().ToList();
                                 }
 
-                                remove_duplicate_columns(idr, test_selected_columns);
+                                remove_duplicate_columns(unrolled_index.idr, test_selected_columns);
 
                                 var num_columns_added_from_last_iteration = test_selected_columns.Count - previous_selected_columns.Count;
                                 var num_groups_added_from_last_iteration = test_selected_groups.Count - previous_selected_groups.Count;
@@ -700,7 +712,7 @@ namespace svm_fs_batch
 
                                 // 1. make outer-cv files
 
-                                var outer_cv_inputs = make_outer_cv_inputs(test_selected_columns, idr, group_folder, unrolled_index);
+                                var outer_cv_inputs = make_outer_cv_inputs(test_selected_columns, unrolled_index.idr, group_folder, unrolled_index);
                                 var merged_cv_input = outer_cv_inputs.First(a => a.ocvi == -1);
 
                                 // 2. run libsvm
@@ -711,7 +723,7 @@ namespace svm_fs_batch
                                 {
                                     if (outer_cv_input.ocvi == -1 || outer_cv_input.rcvi == -1) continue; // -1 is the index for the merged text
 
-                                    var prediction_data = inner_cross_validation(idr, unrolled_index, outer_cv_input);
+                                    var prediction_data = inner_cross_validation(unrolled_index.idr, unrolled_index, outer_cv_input);
 
                                     prediction_data_list.Add(prediction_data);
 
@@ -749,7 +761,7 @@ namespace svm_fs_batch
                                             ocv_cm.x_svm_kernel = unrolled_index.svm_kernel;
                                             ocv_cm.x_class_weight = unrolled_index.class_weights?.FirstOrDefault(b => ocv_cm.class_id == b.class_id).class_weight;
                                             ocv_cm.x_class_name = init_dataset_ret.class_names?.FirstOrDefault(b => ocv_cm.class_id == b.class_id).class_name;
-                                            ocv_cm.x_class_size = idr.class_sizes?.First(b => b.class_id == ocv_cm.class_id).class_size ?? -1;
+                                            ocv_cm.x_class_size = unrolled_index.idr.class_sizes?.First(b => b.class_id == ocv_cm.class_id).class_size ?? -1;
                                             ocv_cm.x_class_training_size = outer_cv_input.training_sizes?.First(b => b.class_id == ocv_cm.class_id).training_size ?? -1;
                                             ocv_cm.x_class_testing_size = outer_cv_input.testing_sizes?.First(b => b.class_id == ocv_cm.class_id).testing_size ?? -1;
                                             ocv_cm.x_cost = prediction_data.grid.point.cost;
@@ -821,7 +833,7 @@ namespace svm_fs_batch
                                     cm.x_svm_kernel = unrolled_index.svm_kernel;
                                     cm.x_class_weight = unrolled_index.class_weights?.FirstOrDefault(b => cm.class_id == b.class_id).class_weight;
                                     cm.x_class_name = init_dataset_ret.class_names?.FirstOrDefault(b => cm.class_id == b.class_id).class_name;
-                                    cm.x_class_size = idr.class_sizes?.First(b => b.class_id == cm.class_id).class_size ?? -1;
+                                    cm.x_class_size = unrolled_index.idr.class_sizes?.First(b => b.class_id == cm.class_id).class_size ?? -1;
                                     cm.x_class_training_size = merged_cv_input.training_sizes?.First(b => b.class_id == cm.class_id).training_size ?? -1;
                                     cm.x_class_testing_size = merged_cv_input.testing_sizes?.First(b => b.class_id == cm.class_id).testing_size ?? -1;
 
@@ -920,7 +932,7 @@ namespace svm_fs_batch
                 while (scoring_cm[scores_winner_index].cm.x_group_index == previous_winner_group_index && scores_winner_index < total_groups - 1) { scores_winner_index++; }
 
                 var winner_group_index = (int)scoring_cm[scores_winner_index].cm.x_group_index;
-                var winner_group = idr.groups[winner_group_index];
+                var winner_group = caller_idr.groups[winner_group_index];
                 var winner_group_key = winner_group.key;
                 var winner_score = scoring_cm[scores_winner_index].cm.get_value_by_name(scoring_args.score1_metric);
                 var winner_direction = (direction)Enum.Parse(typeof(direction), scoring_cm[scores_winner_index].unknown_key_value_list.FirstOrDefault(a => a.key == "dir").value_str, true);
@@ -944,12 +956,12 @@ namespace svm_fs_batch
                 if (winner_direction == direction.forwards)
                 {
                     selected_groups.Add(winner_group_index);
-                    selected_columns.AddRange(idr.groups[winner_group_index].columns);
+                    selected_columns.AddRange(caller_idr.groups[winner_group_index].columns);
                 }
                 else if (winner_direction == direction.backwards)
                 {
                     selected_groups.Remove(winner_group_index);
-                    selected_columns = selected_columns.Except(idr.groups[winner_group_index].columns).ToList();
+                    selected_columns = selected_columns.Except(caller_idr.groups[winner_group_index].columns).ToList();
                 }
 
                 if (winner_direction != direction.neutral)
@@ -1229,6 +1241,11 @@ namespace svm_fs_batch
             program.init_dataset_ret idr
             )> indexes)
         {
+            string get_initials(string name)
+            {
+                var initials = string.Join("", name.Replace("_", " ").Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
+                return initials.Length > 2 ? initials.Substring(0,2) : initials;
+            }
 
             var iteration_index = get_ranges_str(indexes.Select(a => a.iteration_index).ToList());
             var group_index = get_ranges_str(indexes.Select(a => a.group_index).ToList());
@@ -1249,19 +1266,20 @@ namespace svm_fs_batch
             var inner_cv_folds = get_ranges_str(indexes.Select(a => a.inner_cv_folds).ToList());
 
             var p = new List<(string name, string value)>();
-            p.Add(("it", iteration_index));
-            p.Add(("gi", group_index));
-            p.Add(("tg", total_groups));
-            p.Add(("ta", output_threshold_adjustment_performance));
-            p.Add(("rp", repetitions));
-            p.Add(("oc", outer_cv_folds));
-            p.Add(("cw", class_weights));
-            p.Add(("st", svm_type));
-            p.Add(("sk", svm_kernel));
-            p.Add(("sf", scale_function));
-            p.Add(("ic", inner_cv_folds));
+            p.Add((get_initials(nameof(iteration_index)), iteration_index));//it
+            p.Add((get_initials(nameof(group_index)), group_index));//gi
+            p.Add((get_initials(nameof(total_groups)), total_groups));//tg
+            p.Add((get_initials(nameof(output_threshold_adjustment_performance)), output_threshold_adjustment_performance));//ot
+            p.Add((get_initials(nameof(repetitions)), repetitions));//r
+            p.Add((get_initials(nameof(outer_cv_folds)), outer_cv_folds));//oc
+            p.Add((get_initials(nameof(class_weights)), class_weights));//cw
+            p.Add((get_initials(nameof(svm_type)), svm_type));//st
+            p.Add((get_initials(nameof(svm_kernel)), svm_kernel));//sk
+            p.Add((get_initials(nameof(scale_function)), scale_function));//sf
+            p.Add((get_initials(nameof(inner_cv_folds)), inner_cv_folds));//ic
 
-            var iter_fn = string.Join("_", p.Select(a => $@"{a.name}[{a.value}]").ToList());
+
+            var iter_fn = string.Join("_", p.Select(a => $@"{a.name}[{a.value ?? ""}]").ToList());
 
             return iter_fn;
         }
