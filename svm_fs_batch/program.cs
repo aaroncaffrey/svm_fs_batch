@@ -564,20 +564,17 @@ namespace svm_fs_batch
             return string.Join("_", ranges.Select(range => $@"{range.@from}" + (range.from != range.to ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1 ? $@":{range.step}" : $@"") : $@"")).ToList());
         }
 
-  
+
         internal static void worker(string experiment_name, int instance_index, int total_instances, int array_index_start, int array_step, int array_index_last, int repetitions, int outer_folds, int inner_folds)
         {
-
-
-
 
             var module_name = nameof(program);
             var method_name = nameof(worker);
 
             //var is_primary_instance = array_index_start == 0;
 
-            int limit_iteration_not_better_than_all = 10;
-            int limit_iteration_not_better_than_last = 5;
+            var limit_iteration_not_better_than_all = 10;
+            var limit_iteration_not_better_than_last = 5;
 
             var make_outer_cv_confusion_matrices = false;
 
@@ -619,30 +616,50 @@ namespace svm_fs_batch
             var winners_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
 
             var cache_files_loaded = new List<string>();
+            
+            var test_final_best = true;
 
 
-            while (!finished)
+            while (!finished || test_final_best)
             {
-                var unrolled_indexes = cache_load.get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances);
+                // get list of work to do this iteration
+                (List<(int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool output_threshold_adjustment_performance, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr)> indexes_whole, List<(int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool output_threshold_adjustment_performance, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr)> indexes_partition) unrolled_indexes = default;
 
+                if (!finished)
+                {
+                    unrolled_indexes = cache_load.get_unrolled_indexes_basic(caller_idr, iteration_index, total_groups, instance_index, total_instances);
+                } 
+                else if (finished && test_final_best)
+                {
+                    test_final_best = false;
+                    unrolled_indexes = cache_load.get_unrolled_indexes_deeper_search(caller_idr, iteration_index, total_groups, instance_index, total_instances);
+                } else
+                {
+                    throw new Exception();
+                }
+               
+                    
+
+                // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
                 var iteration_folder = get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, iteration_index);
-                var iteration_all_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
-
-
                 var iteration_whole_cm_filename = Path.Combine(iteration_folder, $@"z_{get_iteration_filename(unrolled_indexes.indexes_whole)}.cm.csv");
                 var iteration_partition_cm_filename = Path.Combine(iteration_folder, $@"x_{get_iteration_filename(unrolled_indexes.indexes_partition)}.cm.csv");
 
+                // iteration_all_cm is a list of all merged results (i.e. the individual outer-cross-validation partitions merged)
+                var iteration_all_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
 
-
+                // load cache (first try whole iteration, then try partition, then try individual work items)
                 var unrolled_indexes_state = cache_load.load_cache(instance_index, iteration_index, experiment_name, false, cache_files_loaded, iteration_all_cm, unrolled_indexes.indexes_whole, unrolled_indexes.indexes_partition);
 
+                // check if all partitions are loaded....
                 if (unrolled_indexes_state.indexes_missing_whole.Any())
                 {
+                    // check if this partition is loaded....
                     if (unrolled_indexes_state.indexes_missing_partition.Any())
                     {
 
-                        // when loaded whole cache, partition cache, and partition item cache, and still partition items missing... 
-
+                        // after loading the whole iteration cache, all partitions cache, and partition individual merged items cache, and if there are still partition items missing... 
+                        // use parallel to split the missing items into cpu bound partitions
                         var merge_cache2 = unrolled_indexes_state
                             .indexes_missing_partition
                             .AsParallel()
@@ -656,11 +673,11 @@ namespace svm_fs_batch
                                 var group_key = unrolled_index.idr.groups[unrolled_index.group_index].key;
                                 var group_merged_cm_fn = $@"{Path.Combine(group_folder, $@"m_{get_iteration_filename(new[] { unrolled_index })}")}.cm.csv";
 
-
+                                // hide outside scope iteration_all_cm
                                 var iteration_all_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
 
 
-                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). File: {group_merged_cm_fn}.");
+                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). File: {group_merged_cm_fn}.");
 
                                 var test_selected_groups = selected_groups.ToList();
                                 var test_selected_columns = selected_columns.ToList();
@@ -711,70 +728,31 @@ namespace svm_fs_batch
                                 var cm_header = $"{string.Join(",", exp_data.Select(a => a.key).ToList())},{string.Join(",", perf.confusion_matrix.csv_header)}";
 
                                 // 1. make outer-cv files
-
                                 var outer_cv_inputs = make_outer_cv_inputs(test_selected_columns, unrolled_index.idr, group_folder, unrolled_index);
+
+                                // 1a. the ocvi index -1 is merged data
                                 var merged_cv_input = outer_cv_inputs.First(a => a.ocvi == -1);
 
                                 // 2. run libsvm
                                 var prediction_data_list = new List<((long grid_dur, long train_dur, long predict_dur) dur, ((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double? cv_rate) grid, string[] predict_text)>();
 
-
                                 foreach (var outer_cv_input in outer_cv_inputs)
                                 {
                                     if (outer_cv_input.ocvi == -1 || outer_cv_input.rcvi == -1) continue; // -1 is the index for the merged text
 
-                                    var prediction_data = inner_cross_validation(unrolled_index.idr, unrolled_index, outer_cv_input);
+                                    // call libvm
+                                    var prediction_data = inner_cross_validation(unrolled_index, outer_cv_input);
 
+                                    // add results from libsvm to list
                                     prediction_data_list.Add(prediction_data);
 
+                                    // optional: make_outer_cv_confusion_matrices: this will output the individual outer-cross-validation confusion matrices (i.e. if outer-cv-folds = 5, then 5 respective confusion-matrices will be created, as well as the merged data confusion-matrix).
                                     if (make_outer_cv_confusion_matrices)
                                     {
                                         var ocv_prediction_file_data = perf.load_prediction_file(outer_cv_input.testing_text, null, prediction_data.predict_text, unrolled_index.output_threshold_adjustment_performance);
 
-                                        foreach (var ocv_cm in ocv_prediction_file_data.cm_list)
-                                        {
-                                            ocv_cm.x_iteration_index = unrolled_index.iteration_index;
-                                            ocv_cm.x_group_index = unrolled_index.group_index;
-                                            ocv_cm.x_total_groups = unrolled_index.total_groups;
-                                            ocv_cm.x_output_threshold_adjustment_performance = unrolled_index.output_threshold_adjustment_performance;
-
-                                            ocv_cm.x_key_alphabet = group_key.alphabet;
-                                            ocv_cm.x_key_dimension = group_key.dimension;
-                                            ocv_cm.x_key_category = group_key.category;
-                                            ocv_cm.x_key_source = group_key.source;
-                                            ocv_cm.x_key_group = group_key.group;
-                                            ocv_cm.x_key_member = group_key.member;
-                                            ocv_cm.x_key_perspective = group_key.perspective;
-
-                                            ocv_cm.x_experiment_name = experiment_name;
-                                            ocv_cm.x_scale_function = unrolled_index.scale_function;
-                                            ocv_cm.x_old_feature_count = previous_selected_columns.Count;
-                                            ocv_cm.x_new_feature_count = test_selected_columns.Count;
-                                            ocv_cm.x_old_group_count = previous_selected_groups.Count;
-                                            ocv_cm.x_new_group_count = test_selected_groups.Count;
-                                            ocv_cm.x_inner_cv_folds = unrolled_index.inner_cv_folds;
-                                            ocv_cm.x_repetitions_index = outer_cv_input.rcvi;
-                                            ocv_cm.x_repetitions_total = unrolled_index.repetitions;
-                                            ocv_cm.x_outer_cv_index = outer_cv_input.ocvi;
-                                            ocv_cm.x_outer_cv_folds = unrolled_index.outer_cv_folds;
-                                            ocv_cm.x_svm_type = unrolled_index.svm_type;
-                                            ocv_cm.x_svm_kernel = unrolled_index.svm_kernel;
-                                            ocv_cm.x_class_weight = unrolled_index.class_weights?.FirstOrDefault(b => ocv_cm.class_id == b.class_id).class_weight;
-                                            ocv_cm.x_class_name = init_dataset_ret.class_names?.FirstOrDefault(b => ocv_cm.class_id == b.class_id).class_name;
-                                            ocv_cm.x_class_size = unrolled_index.idr.class_sizes?.First(b => b.class_id == ocv_cm.class_id).class_size ?? -1;
-                                            ocv_cm.x_class_training_size = outer_cv_input.training_sizes?.First(b => b.class_id == ocv_cm.class_id).training_size ?? -1;
-                                            ocv_cm.x_class_testing_size = outer_cv_input.testing_sizes?.First(b => b.class_id == ocv_cm.class_id).testing_size ?? -1;
-                                            ocv_cm.x_cost = prediction_data.grid.point.cost;
-                                            ocv_cm.x_gamma = prediction_data.grid.point.gamma;
-                                            ocv_cm.x_coef0 = prediction_data.grid.point.coef0;
-                                            ocv_cm.x_epsilon = prediction_data.grid.point.epsilon;
-                                            ocv_cm.x_degree = prediction_data.grid.point.degree;
-                                            ocv_cm.x_libsvm_cv = prediction_data.grid.cv_rate.GetValueOrDefault();
-                                            ocv_cm.x_duration_grid_search = prediction_data.dur.grid_dur.ToString(CultureInfo.InvariantCulture);
-                                            ocv_cm.x_duration_training = prediction_data.dur.train_dur.ToString(CultureInfo.InvariantCulture);
-                                            ocv_cm.x_duration_testing = prediction_data.dur.predict_dur.ToString(CultureInfo.InvariantCulture);
-                                            ocv_cm.calculate_ppf();
-                                        }
+                                        // add any missing details to the confusion-matrix
+                                        update_ocv_cm(experiment_name, ocv_prediction_file_data, unrolled_index, group_key, previous_selected_columns, test_selected_columns, previous_selected_groups, test_selected_groups, outer_cv_input, prediction_data);
 
 
                                         var ocv_cm_lines = new List<string>() { cm_header };
@@ -783,18 +761,18 @@ namespace svm_fs_batch
 
                                         if (ocv_lcs != null && ocv_lcs.Count > 1) { iteration_all_cm.AddRange(ocv_lcs.Skip(iteration_all_cm.Count == 0 ? 0 : 1)); }
 
-                                        // save OCV CM for group
+                                        // save outer-cross-validation confusion-matrix CM for group
                                         io_proxy.WriteAllLines(outer_cv_input.cm_fn, ocv_cm_lines);
                                         io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Saved for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} (groups {(array_index_start + 1)} to {(array_index_last + 1)}) OCV R({outer_cv_input.rcvi}/{unrolled_index.repetitions}) O({outer_cv_input.ocvi}/{unrolled_index.outer_cv_folds}). File: {outer_cv_input.cm_fn}.");
-
                                     }
 
+                                    // delete temporary files
                                     io_proxy.Delete(outer_cv_input.training_fn);
                                     io_proxy.Delete(outer_cv_input.grid_fn);
                                     io_proxy.Delete(outer_cv_input.model_fn);
                                     io_proxy.Delete(outer_cv_input.testing_fn);
                                     io_proxy.Delete(outer_cv_input.predict_fn);
-                                    //io_proxy.Delete(outer_cv_input.cm_fn);
+                                    // do not delete the confusion-matrix: io_proxy.Delete(outer_cv_input.cm_fn);
                                 }
 
                                 // 3. make confusion matrix from the merged prediction results
@@ -802,54 +780,8 @@ namespace svm_fs_batch
 
                                 var prediction_file_data = perf.load_prediction_file(merged_cv_input.testing_text, null, merged_prediction_text, unrolled_index.output_threshold_adjustment_performance);
 
-                                foreach (var cm in prediction_file_data.cm_list)
-                                {
-                                    cm.x_experiment_name = experiment_name;
-
-                                    cm.x_iteration_index = unrolled_index.iteration_index;
-                                    cm.x_group_index = unrolled_index.group_index;
-                                    cm.x_total_groups = unrolled_index.total_groups;
-                                    cm.x_output_threshold_adjustment_performance = unrolled_index.output_threshold_adjustment_performance;
-
-                                    cm.x_key_alphabet = group_key.alphabet;
-                                    cm.x_key_dimension = group_key.dimension;
-                                    cm.x_key_category = group_key.category;
-                                    cm.x_key_source = group_key.source;
-                                    cm.x_key_group = group_key.group;
-                                    cm.x_key_member = group_key.member;
-                                    cm.x_key_perspective = group_key.perspective;
-
-                                    cm.x_scale_function = unrolled_index.scale_function;
-                                    cm.x_old_feature_count = previous_selected_columns.Count;
-                                    cm.x_new_feature_count = test_selected_columns.Count;
-                                    cm.x_old_group_count = previous_selected_groups.Count;
-                                    cm.x_new_group_count = test_selected_groups.Count;
-                                    cm.x_inner_cv_folds = unrolled_index.inner_cv_folds;
-                                    cm.x_repetitions_index = -1; //input.rcvi;
-                                    cm.x_repetitions_total = unrolled_index.repetitions;
-                                    cm.x_outer_cv_index = -1; //input.ocvi;
-                                    cm.x_outer_cv_folds = unrolled_index.outer_cv_folds;
-                                    cm.x_svm_type = unrolled_index.svm_type;
-                                    cm.x_svm_kernel = unrolled_index.svm_kernel;
-                                    cm.x_class_weight = unrolled_index.class_weights?.FirstOrDefault(b => cm.class_id == b.class_id).class_weight;
-                                    cm.x_class_name = init_dataset_ret.class_names?.FirstOrDefault(b => cm.class_id == b.class_id).class_name;
-                                    cm.x_class_size = unrolled_index.idr.class_sizes?.First(b => b.class_id == cm.class_id).class_size ?? -1;
-                                    cm.x_class_training_size = merged_cv_input.training_sizes?.First(b => b.class_id == cm.class_id).training_size ?? -1;
-                                    cm.x_class_testing_size = merged_cv_input.testing_sizes?.First(b => b.class_id == cm.class_id).testing_size ?? -1;
-
-                                    cm.x_cost = prediction_data_list.Where(a => a.grid.point.cost != null).Select(a => a.grid.point.cost).DefaultIfEmpty(0).Average();
-                                    cm.x_gamma = prediction_data_list.Where(a => a.grid.point.gamma != null).Select(a => a.grid.point.gamma).DefaultIfEmpty(0).Average();
-                                    cm.x_coef0 = prediction_data_list.Where(a => a.grid.point.coef0 != null).Select(a => a.grid.point.coef0).DefaultIfEmpty(0).Average();
-                                    cm.x_epsilon = prediction_data_list.Where(a => a.grid.point.epsilon != null).Select(a => a.grid.point.epsilon).DefaultIfEmpty(0).Average();
-                                    cm.x_degree = prediction_data_list.Where(a => a.grid.point.degree != null).Select(a => a.grid.point.degree).DefaultIfEmpty(0).Average();
-                                    cm.x_libsvm_cv = prediction_data_list.Where(a => a.grid.cv_rate != null).Select(a => (double)a.grid.cv_rate).DefaultIfEmpty(0).Average();
-
-                                    cm.x_duration_grid_search = prediction_data_list.Select(a => a.dur.grid_dur).Sum().ToString(CultureInfo.InvariantCulture);
-                                    cm.x_duration_training = prediction_data_list.Select(a => a.dur.train_dur).Sum().ToString(CultureInfo.InvariantCulture);
-                                    cm.x_duration_testing = prediction_data_list.Select(a => a.dur.predict_dur).Sum().ToString(CultureInfo.InvariantCulture);
-
-                                    cm.calculate_ppf();
-                                }
+                                // add any missing details to the confusion-matrix
+                                update_merged_cm(experiment_name, prediction_file_data, unrolled_index, group_key, previous_selected_columns, test_selected_columns, previous_selected_groups, test_selected_groups, merged_cv_input, prediction_data_list);
 
 
 
@@ -1013,7 +945,10 @@ namespace svm_fs_batch
                     }
                 }
 
-                finished = !((score_better_than_last || (iterations_not_better_than_last < limit_iteration_not_better_than_last && iterations_not_better_than_all < limit_iteration_not_better_than_all)) && (selected_groups.Count < total_groups));
+                if (!finished)
+                {
+                    finished = !((score_better_than_last || (iterations_not_better_than_last < limit_iteration_not_better_than_last && iterations_not_better_than_all < limit_iteration_not_better_than_all)) && (selected_groups.Count < total_groups));
+                }
 
 
                 io_proxy.WriteLine($"{experiment_name}: Finished: iteration {(iteration_index + 1)} for {(array_index_start + 1)} to {(array_index_last + 1)}.  {(finished ? "finished" : "not finished")}.");
@@ -1024,6 +959,7 @@ namespace svm_fs_batch
                 previous_selected_columns = selected_columns.ToList();
                 iteration_index++;
 
+
             }
 
             //test_group_kernel_scaling_perf(instance_id, total_instances, experiment_name, unrolled_index.total_groups, selected_groups.ToList(), selected_columns.ToList(), ida, idr, oca);
@@ -1031,6 +967,123 @@ namespace svm_fs_batch
             io_proxy.WriteLine($"{experiment_name}: Finished: all iterations for groups {(array_index_start + 1)} to {(array_index_last + 1)}.");
         }
 
+        private static void update_merged_cm
+        (
+            string experiment_name,
+            (List<perf.prediction> prediction_list, List<perf.confusion_matrix> cm_list) prediction_file_data, 
+            (int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool output_threshold_adjustment_performance, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index, 
+            (string alphabet, string dimension, string category, string source, string @group, string member, string perspective) group_key,
+            List<int> previous_selected_columns,
+            List<int> test_selected_columns,
+            List<int> previous_selected_groups, 
+            List<int> test_selected_groups, 
+            (int rcvi, int ocvi, string training_fn, string grid_fn, string model_fn, string testing_fn, string predict_fn, string cm_fn, List<string> training_text, List<string> testing_text, List<(int class_id, int training_size)> training_sizes, List<(int class_id, int testing_size)> testing_sizes) merged_cv_input,
+            List<((long grid_dur, long train_dur, long predict_dur) dur, ((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double? cv_rate) grid, string[] predict_text)> prediction_data_list
+        )
+        {
+            foreach (var cm in prediction_file_data.cm_list)
+            {
+                cm.x_class_name = init_dataset_ret.class_names?.FirstOrDefault(b => cm.class_id == b.class_id).class_name;
+                cm.x_class_size = unrolled_index.idr.class_sizes?.First(b => b.class_id == cm.class_id).class_size ?? -1;
+                cm.x_class_testing_size = merged_cv_input.testing_sizes?.First(b => b.class_id == cm.class_id).testing_size ?? -1;
+                cm.x_class_training_size = merged_cv_input.training_sizes?.First(b => b.class_id == cm.class_id).training_size ?? -1;
+                cm.x_class_weight = unrolled_index.class_weights?.FirstOrDefault(b => cm.class_id == b.class_id).class_weight;
+                cm.x_coef0 = prediction_data_list.Where(a => a.grid.point.coef0 != null).Select(a => a.grid.point.coef0).DefaultIfEmpty(0).Average();
+                cm.x_cost = prediction_data_list.Where(a => a.grid.point.cost != null).Select(a => a.grid.point.cost).DefaultIfEmpty(0).Average();
+                cm.x_degree = prediction_data_list.Where(a => a.grid.point.degree != null).Select(a => a.grid.point.degree).DefaultIfEmpty(0).Average();
+                cm.x_duration_grid_search = prediction_data_list.Select(a => a.dur.grid_dur).Sum().ToString(CultureInfo.InvariantCulture);
+                cm.x_duration_testing = prediction_data_list.Select(a => a.dur.predict_dur).Sum().ToString(CultureInfo.InvariantCulture);
+                cm.x_duration_training = prediction_data_list.Select(a => a.dur.train_dur).Sum().ToString(CultureInfo.InvariantCulture);
+                cm.x_epsilon = prediction_data_list.Where(a => a.grid.point.epsilon != null).Select(a => a.grid.point.epsilon).DefaultIfEmpty(0).Average();
+                cm.x_experiment_name = experiment_name;
+                cm.x_gamma = prediction_data_list.Where(a => a.grid.point.gamma != null).Select(a => a.grid.point.gamma).DefaultIfEmpty(0).Average();
+                cm.x_group_index = unrolled_index.group_index;
+                cm.x_inner_cv_folds = unrolled_index.inner_cv_folds;
+                cm.x_iteration_index = unrolled_index.iteration_index;
+                cm.x_key_alphabet = group_key.alphabet;
+                cm.x_key_category = group_key.category;
+                cm.x_key_dimension = group_key.dimension;
+                cm.x_key_group = group_key.@group;
+                cm.x_key_member = group_key.member;
+                cm.x_key_perspective = group_key.perspective;
+                cm.x_key_source = group_key.source;
+                cm.x_libsvm_cv = prediction_data_list.Where(a => a.grid.cv_rate != null).Select(a => (double)a.grid.cv_rate).DefaultIfEmpty(0).Average();
+                cm.x_new_feature_count = test_selected_columns.Count;
+                cm.x_new_group_count = test_selected_groups.Count;
+                cm.x_old_feature_count = previous_selected_columns.Count;
+                cm.x_old_group_count = previous_selected_groups.Count;
+                cm.x_outer_cv_folds = unrolled_index.outer_cv_folds;
+                cm.x_outer_cv_index = -1; //input.ocvi;
+                cm.x_output_threshold_adjustment_performance = unrolled_index.output_threshold_adjustment_performance;
+                cm.x_repetitions_index = -1; //input.rcvi;
+                cm.x_repetitions_total = unrolled_index.repetitions;
+                cm.x_scale_function = unrolled_index.scale_function;
+                cm.x_svm_kernel = unrolled_index.svm_kernel;
+                cm.x_svm_type = unrolled_index.svm_type;
+                cm.x_total_groups = unrolled_index.total_groups;
+
+                cm.calculate_ppf();
+            }
+        }
+
+        private static void update_ocv_cm
+        (
+            string experiment_name, 
+            (List<perf.prediction> prediction_list, List<perf.confusion_matrix> cm_list) prediction_file_data, 
+            (int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool output_threshold_adjustment_performance, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index,
+            (string alphabet, string dimension, string category, string source, string @group, string member, string perspective) group_key,
+            List<int> previous_selected_columns, 
+            List<int> test_selected_columns, 
+            List<int> previous_selected_groups,
+            List<int> test_selected_groups, 
+            (int rcvi, int ocvi, string training_fn, string grid_fn, string model_fn, string testing_fn, string predict_fn, string cm_fn, List<string> training_text, List<string> testing_text, List<(int class_id, int training_size)> training_sizes, List<(int class_id, int testing_size)> testing_sizes) outer_cv_input,
+            ((long grid_dur, long train_dur, long predict_dur) dur, ((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double? cv_rate) grid, string[] predict_text) prediction_data
+        )
+        {
+            foreach (var cm in prediction_file_data.cm_list)
+            {
+                cm.x_class_name = init_dataset_ret.class_names?.FirstOrDefault(b => cm.class_id == b.class_id).class_name;
+                cm.x_class_size = unrolled_index.idr.class_sizes?.First(b => b.class_id == cm.class_id).class_size ?? -1;
+                cm.x_class_testing_size = outer_cv_input.testing_sizes?.First(b => b.class_id == cm.class_id).testing_size ?? -1;
+                cm.x_class_training_size = outer_cv_input.training_sizes?.First(b => b.class_id == cm.class_id).training_size ?? -1;
+                cm.x_class_weight = unrolled_index.class_weights?.FirstOrDefault(b => cm.class_id == b.class_id).class_weight;
+                cm.x_coef0 = prediction_data.grid.point.coef0;
+                cm.x_cost = prediction_data.grid.point.cost;
+                cm.x_degree = prediction_data.grid.point.degree;
+                cm.x_duration_grid_search = prediction_data.dur.grid_dur.ToString(CultureInfo.InvariantCulture);
+                cm.x_duration_testing = prediction_data.dur.predict_dur.ToString(CultureInfo.InvariantCulture);
+                cm.x_duration_training = prediction_data.dur.train_dur.ToString(CultureInfo.InvariantCulture);
+                cm.x_epsilon = prediction_data.grid.point.epsilon;
+                cm.x_experiment_name = experiment_name;
+                cm.x_gamma = prediction_data.grid.point.gamma;
+                cm.x_group_index = unrolled_index.group_index;
+                cm.x_inner_cv_folds = unrolled_index.inner_cv_folds;
+                cm.x_iteration_index = unrolled_index.iteration_index;
+                cm.x_key_alphabet = group_key.alphabet;
+                cm.x_key_category = group_key.category;
+                cm.x_key_dimension = group_key.dimension;
+                cm.x_key_group = group_key.@group;
+                cm.x_key_member = group_key.member;
+                cm.x_key_perspective = group_key.perspective;
+                cm.x_key_source = group_key.source;
+                cm.x_libsvm_cv = prediction_data.grid.cv_rate.GetValueOrDefault();
+                cm.x_new_feature_count = test_selected_columns.Count;
+                cm.x_new_group_count = test_selected_groups.Count;
+                cm.x_old_feature_count = previous_selected_columns.Count;
+                cm.x_old_group_count = previous_selected_groups.Count;
+                cm.x_outer_cv_folds = unrolled_index.outer_cv_folds;
+                cm.x_outer_cv_index = outer_cv_input.ocvi;
+                cm.x_output_threshold_adjustment_performance = unrolled_index.output_threshold_adjustment_performance;
+                cm.x_repetitions_index = outer_cv_input.rcvi;
+                cm.x_repetitions_total = unrolled_index.repetitions;
+                cm.x_scale_function = unrolled_index.scale_function;
+                cm.x_svm_kernel = unrolled_index.svm_kernel;
+                cm.x_svm_type = unrolled_index.svm_type;
+                cm.x_total_groups = unrolled_index.total_groups;
+
+                cm.calculate_ppf();
+            }
+        }
 
 
         internal static void remove_duplicate_columns(init_dataset_ret idr, List<int> query_cols)
@@ -1244,7 +1297,7 @@ namespace svm_fs_batch
             string get_initials(string name)
             {
                 var initials = string.Join("", name.Replace("_", " ").Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
-                return initials.Length > 2 ? initials.Substring(0,2) : initials;
+                return initials.Length > 2 ? initials.Substring(0, 2) : initials;
             }
 
             var iteration_index = get_ranges_str(indexes.Select(a => a.iteration_index).ToList());
@@ -1337,7 +1390,7 @@ namespace svm_fs_batch
         //}
 
         internal static ((long grid_dur, long train_dur, long predict_dur) dur, ((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double? cv_rate) grid, string[] predict_text)
-            inner_cross_validation(init_dataset_ret idr,
+            inner_cross_validation(/*init_dataset_ret idr,*/
 
                 (int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool output_threshold_adjustment_performance, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index,
 
