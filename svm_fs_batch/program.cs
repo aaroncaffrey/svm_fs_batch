@@ -627,8 +627,11 @@ namespace svm_fs_batch
                 {
                     unrolled_indexes = cache_load.get_unrolled_indexes_basic(caller_idr, iteration_index, total_groups, instance_index, total_instances);
                 } 
-                else// if (/*finished && */test_final_best)
+                else if (test_final_best)
                 {
+                    selected_groups = all_time_highest_score_selected_groups.ToList();
+                    selected_columns = all_time_highest_score_selected_columns.ToList();
+
                     deep_search_index++;
 
                     io_proxy.WriteLine($"{experiment_name}: feature selection finished; statistical tests on best set of features, index: {deep_search_index}.");
@@ -641,10 +644,10 @@ namespace svm_fs_batch
                         break;
                     }
                 } 
-                //else
-                //{
-                //    throw new Exception();
-                //}
+                else
+                {
+                    throw new Exception();
+                }
                
                     
 

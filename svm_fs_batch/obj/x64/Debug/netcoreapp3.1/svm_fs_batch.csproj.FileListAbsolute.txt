@@ -10,4 +10,3 @@ C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\netcoreapp3.1\svm
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.pdb
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.genruntimeconfig.cache
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.csprojAssemblyReference.cache
