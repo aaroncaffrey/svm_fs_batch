@@ -95,7 +95,7 @@ namespace svm_fs_batch
                         x_iteration_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
                         x_group_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
                         x_total_groups = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
-                        x_output_threshold_adjustment_performance = bool.TryParse(s[k++], out x_b[k]) ? x_b[k]: (bool?)null,
+                        x_calc_11p_thresholds = bool.TryParse(s[k++], out x_b[k]) ? x_b[k]: (bool?)null,
 
                         x_key_alphabet = s[k++],
                         x_key_dimension = s[k++],
@@ -348,7 +348,7 @@ namespace svm_fs_batch
             internal int? x_iteration_index;
             internal int? x_group_index;
             internal int? x_total_groups;
-            internal bool? x_output_threshold_adjustment_performance;
+            internal bool? x_calc_11p_thresholds;
 
             internal string x_key_alphabet;
             internal string x_key_dimension;
@@ -1833,7 +1833,7 @@ namespace svm_fs_batch
                 nameof(x_iteration_index),
                 nameof(x_group_index),
                 nameof(x_total_groups),
-                nameof(x_output_threshold_adjustment_performance),
+                nameof(x_calc_11p_thresholds),
 
                 nameof(x_key_alphabet),
                 nameof(x_key_dimension),
@@ -2100,7 +2100,7 @@ namespace svm_fs_batch
                     x_iteration_index?.ToString(CultureInfo.InvariantCulture),
                     x_group_index?.ToString(CultureInfo.InvariantCulture),
                     x_total_groups?.ToString(CultureInfo.InvariantCulture),
-                    x_output_threshold_adjustment_performance?.ToString(CultureInfo.InvariantCulture),
+                    x_calc_11p_thresholds?.ToString(CultureInfo.InvariantCulture),
 
                     x_key_alphabet ,
                     x_key_dimension ,
@@ -2651,62 +2651,62 @@ namespace svm_fs_batch
             return prediction_list;
         }
 
-        //internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(List<(string test_file, string test_comments_file, string prediction_file)> files, bool output_threshold_adjustment_performance)
+        //internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(List<(string test_file, string test_comments_file, string prediction_file)> files, bool calc_11p_thresholds)
         //{
 
 
         //    var prediction_list = load_prediction_file_regression_values(test_file, test_comments_file, prediction_file);
-        //    var cm_list = load_prediction_file(prediction_list, output_threshold_adjustment_performance);
+        //    var cm_list = load_prediction_file(prediction_list, calc_11p_thresholds);
 
         //    return (prediction_list, cm_list);
 
         //}
 
-        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(string test_file, string test_comments_file, string prediction_file, bool output_threshold_adjustment_performance)
+        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(string test_file, string test_comments_file, string prediction_file, bool calc_11p_thresholds)
         {
 
             //var param_list = new List<(string key, string value)>()
             //{
             //    (nameof(test_file),test_io_proxy.ToString()),
             //    (nameof(prediction_file),prediction_io_proxy.ToString()),
-            //    (nameof(output_threshold_adjustment_performance),output_threshold_adjustment_performance.ToString()),
+            //    (nameof(calc_11p_thresholds),calc_11p_thresholds.ToString()),
             //};
 
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
             var prediction_list = load_prediction_file_regression_values(test_file, test_comments_file, prediction_file);
-            var cm_list = load_prediction_file(prediction_list, output_threshold_adjustment_performance);
+            var cm_list = load_prediction_file(prediction_list, calc_11p_thresholds);
 
             return (prediction_list, cm_list);
         }
 
-        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool output_threshold_adjustment_performance)
+        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds)
         {
 
             //var param_list = new List<(string key, string value)>()
             //{
             //    (nameof(test_file),test_io_proxy.ToString()),
             //    (nameof(prediction_file),prediction_io_proxy.ToString()),
-            //    (nameof(output_threshold_adjustment_performance),output_threshold_adjustment_performance.ToString()),
+            //    (nameof(calc_11p_thresholds),calc_11p_thresholds.ToString()),
             //};
 
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
             var prediction_list = load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines);
-            var cm_list = load_prediction_file(prediction_list, output_threshold_adjustment_performance);
+            var cm_list = load_prediction_file(prediction_list, calc_11p_thresholds);
 
             return (prediction_list, cm_list);
         }
 
-        internal static List<confusion_matrix> load_prediction_file(List<prediction> prediction_list, bool output_threshold_adjustment_performance)
+        internal static List<confusion_matrix> load_prediction_file(List<prediction> prediction_list, bool calc_11p_thresholds)
         {
 
             //var param_list = new List<(string key, string value)>()
             //{
             //    (nameof(prediction_list),prediction_list.ToString()),
-            //    (nameof(output_threshold_adjustment_performance),output_threshold_adjustment_performance.ToString()),
+            //    (nameof(calc_11p_thresholds),calc_11p_thresholds.ToString()),
             //};
 
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
@@ -2719,7 +2719,7 @@ namespace svm_fs_batch
             var confusion_matrix_list = new List<confusion_matrix>();
             confusion_matrix_list.AddRange(default_confusion_matrix_list);
 
-            if (class_id_list.Count >= 2 && output_threshold_adjustment_performance)
+            if (class_id_list.Count >= 2 && calc_11p_thresholds)
             {
                 var positive_id = class_id_list.Max();
                 var negative_id = class_id_list.Min();

@@ -11,7 +11,7 @@ namespace svm_fs_batch
     {
         internal class get_unrolled_indexes_parameters
         {
-            internal bool output_threshold_adjustment_performance = false;
+            internal bool calc_11p_thresholds = false;
             
             internal List<routines.libsvm_svm_type> svm_types = new List<routines.libsvm_svm_type>() { routines.libsvm_svm_type.c_svc };
             internal List<routines.scale_function> scales = new List<routines.scale_function>() { routines.scale_function.rescale };
@@ -43,7 +43,7 @@ namespace svm_fs_batch
               int iteration_index,
               int group_index,
               int total_groups,
-              bool output_threshold_adjustment_performance,
+              bool calc_11p_thresholds,
               int repetitions,
               int outer_cv_folds,
               List<(int class_id, double class_weight)> class_weights,
@@ -60,7 +60,7 @@ namespace svm_fs_batch
               int iteration_index,
               int group_index,
               int total_groups,
-              bool output_threshold_adjustment_performance,
+              bool calc_11p_thresholds,
               int repetitions,
               int outer_cv_folds,
               List<(int class_id, double class_weight)> class_weights,
@@ -80,7 +80,7 @@ namespace svm_fs_batch
               int total_instances
               )
         {
-            //bool output_threshold_adjustment_performance = false;
+            //bool calc_11p_thresholds = false;
 
             //var svm_types = new List<routines.libsvm_svm_type>() { routines.libsvm_svm_type.c_svc };
             //var scales = new List<routines.scale_function>() { routines.scale_function.rescale };
@@ -106,7 +106,7 @@ namespace svm_fs_batch
 
             var p = new get_unrolled_indexes_parameters();
 
-            return get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p);//output_threshold_adjustment_performance, svm_types, kernels, scales, class_weights, r_cv_start, r_cv_end, r_cv_step, o_cv_start, o_cv_end, o_cv_step, i_cv_start, i_cv_end, i_cv_step);
+            return get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p);//calc_11p_thresholds, svm_types, kernels, scales, class_weights, r_cv_start, r_cv_end, r_cv_step, o_cv_start, o_cv_end, o_cv_step, i_cv_start, i_cv_end, i_cv_step);
         }
 
         internal static
@@ -117,7 +117,7 @@ namespace svm_fs_batch
              int iteration_index,
              int group_index,
              int total_groups,
-             bool output_threshold_adjustment_performance,
+             bool calc_11p_thresholds,
              int repetitions,
              int outer_cv_folds,
              List<(int class_id, double class_weight)> class_weights,
@@ -134,7 +134,7 @@ namespace svm_fs_batch
              int iteration_index,
              int group_index,
              int total_groups,
-             bool output_threshold_adjustment_performance,
+             bool calc_11p_thresholds,
              int repetitions,
              int outer_cv_folds,
              List<(int class_id, double class_weight)> class_weights,
@@ -145,105 +145,138 @@ namespace svm_fs_batch
              program.init_dataset_ret idr
              )> indexes_partition)
 
-         get_unrolled_indexes_deeper_search(
-
+         get_unrolled_indexes_deeper_search
+         (
+             int search_type,
              program.init_dataset_ret caller_idr,
              int iteration_index,
              int total_groups,
              int instance_index,
              int total_instances
-             )
+         )
         {
             // for a specific set of features (i.e. the final result from feature selection):
 
             // what happens if we vary the scale & kernel
-            var p1 = new get_unrolled_indexes_parameters
-            {
-                output_threshold_adjustment_performance = true,
 
-                scales = new List<routines.scale_function>()
+            if (search_type == 0)
+            {
+                var p1 = new get_unrolled_indexes_parameters
                 {
-                    routines.scale_function.none, routines.scale_function.normalisation, routines.scale_function.rescale, routines.scale_function.standardisation, routines.scale_function.L0_norm, routines.scale_function.L1_norm, routines.scale_function.L2_norm,
-                },
+                    calc_11p_thresholds = true,
 
-                kernels = new List<routines.libsvm_kernel_type>()
-                {
-                    routines.libsvm_kernel_type.linear, routines.libsvm_kernel_type.polynomial, routines.libsvm_kernel_type.sigmoid, routines.libsvm_kernel_type.rbf
-                },
-
-                
-            };
-
-            // what happens if we vary the repetitions, outer-cv, inner-cv
-            var p2 = new get_unrolled_indexes_parameters
-            {
-                output_threshold_adjustment_performance = true,
-
-                // repetitions: (10 - (1 - 1)) / 1 = 10
-
-                r_cv_start = 1,
-                r_cv_end = 10,
-                r_cv_step = 1,
-
-                // outer-cv: (10 - (2 - 1)) / 1 = 9
-
-                o_cv_start = 2,
-                o_cv_end = 10,
-                o_cv_step = 1,
-
-                // inner-cv: (10 - (2 - 1)) / 1 = 9
-
-                i_cv_start = 1, // start at 1 to test skipping inner-cv, to show what performance increase is obtained through inner-cv
-                i_cv_end = 10,
-                i_cv_step = 1
-            };
-
-
-
-            // what happens if we vary the weights 
-            var weight_values = new List<double>() { 200, 100, 50, 10, 5, 2, 1, 0.75, 0.5, 0.25, 0, -0.25, -0.5, -0.75, -1, -2, -5, -10, -50, -100, -200 }; // default: 1 // 21 values
-
-            var p3 = new get_unrolled_indexes_parameters
-            {
-                output_threshold_adjustment_performance = true, 
-                class_weight_sets = new List<List<(int class_id, double class_weight)>>()
-            };
-
-            foreach (var wi in weight_values)
-            {
-                foreach (var wj in weight_values)
-                {
-                    p2.class_weight_sets.Add(new List<(int class_id, double class_weight)>()
+                    scales = new List<routines.scale_function>()
                     {
-                        (+1, wi),
-                        (-1, wj)
-                    });
-                }
-            }
-            
+                        routines.scale_function.none, 
+                        routines.scale_function.normalisation,
+                        routines.scale_function.rescale, 
+                        routines.scale_function.standardisation,
+                        routines.scale_function.L0_norm, 
+                        routines.scale_function.L1_norm,
+                        routines.scale_function.L2_norm,
+                    },
 
+                    kernels = new List<routines.libsvm_kernel_type>()
+                    {
+                        routines.libsvm_kernel_type.linear,
+                        routines.libsvm_kernel_type.polynomial, 
+                        routines.libsvm_kernel_type.sigmoid,
+                        routines.libsvm_kernel_type.rbf
+                    }
+                };
+
+                var variations_1 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p1);
+                return variations_1;
+            }
+            else if (search_type == 1)
+            {
+
+                // what happens if we vary the repetitions, outer-cv, inner-cv
+                var p2 = new get_unrolled_indexes_parameters
+                {
+                    calc_11p_thresholds = true,
+
+                    // repetitions: (10 - (1 - 1)) / 1 = 10
+
+                    r_cv_start = 1,
+                    r_cv_end = 10,
+                    r_cv_step = 1,
+
+                    // outer-cv: (10 - (2 - 1)) / 1 = 9
+
+                    o_cv_start = 2,
+                    o_cv_end = 10,
+                    o_cv_step = 1,
+
+                    // inner-cv: (10 - (2 - 1)) / 1 = 9
+
+                    i_cv_start = 1, // start at 1 to test skipping inner-cv, to show what performance increase is obtained through inner-cv
+                    i_cv_end = 10,
+                    i_cv_step = 1
+                };
+
+                var variations_2 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p2);
+
+                return variations_2;
+            }
+            else if (search_type == 2)
+            {
+
+                // what happens if we vary the weights 
+                var weight_values = new List<double>()
+                {
+                    200,
+                    100,
+                    50,
+                    10,
+                    5,
+                    2,
+                    1,
+                    0.75,
+                    0.5,
+                    0.25,
+                    0,
+                    -0.25,
+                    -0.5,
+                    -0.75,
+                    -1,
+                    -2,
+                    -5,
+                    -10,
+                    -50,
+                    -100,
+                    -200
+                }; // default: 1 // 21 values
+
+                var p3 = new get_unrolled_indexes_parameters {calc_11p_thresholds = true, class_weight_sets = new List<List<(int class_id, double class_weight)>>()};
+
+                foreach (var wi in weight_values)
+                {
+                    foreach (var wj in weight_values)
+                    {
+                        p3.class_weight_sets.Add(new List<(int class_id, double class_weight)>() {(+1, wi), (-1, wj)});
+                    }
+                }
+
+                var variations_3 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p3);
+
+                return variations_3;
+            } else
+            {
+                // return null when no tests are left
+                return (null, null);
+            }
 
             // 
-            var variations_1 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p1);
-
-            //
-            var variations_2 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p2);
-            
-            //
-            var variations_3 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p3);
-
-
-
+            // 
+            // 
             // join variations 1 & 2 & 3
-            var indexes_whole = variations_1.indexes_whole.ToList();
-            indexes_whole.AddRange(variations_2.indexes_whole.ToList());
-            indexes_whole.AddRange(variations_3.indexes_whole.ToList());
+            // indexes_whole.AddRange(variations_2.indexes_whole.ToList());
+            // indexes_whole.AddRange(variations_3.indexes_whole.ToList());
+            // indexes_partition.AddRange(variations_2.indexes_partition.ToList());
+            // indexes_partition.AddRange(variations_3.indexes_partition.ToList());
 
-            var indexes_partition = variations_1.indexes_partition.ToList();
-            indexes_partition.AddRange(variations_2.indexes_partition.ToList());
-            indexes_partition.AddRange(variations_3.indexes_partition.ToList());
 
-            return (indexes_whole, indexes_partition);
         }
 
         public static int for_iterations(int start, int end, int step)
@@ -262,7 +295,7 @@ namespace svm_fs_batch
             int iteration_index,
             int group_index,
             int total_groups,
-            bool output_threshold_adjustment_performance,
+            bool calc_11p_thresholds,
             int repetitions,
             int outer_cv_folds,
             List<(int class_id, double class_weight)> class_weights,
@@ -279,7 +312,7 @@ namespace svm_fs_batch
             int iteration_index,
             int group_index,
             int total_groups,
-            bool output_threshold_adjustment_performance,
+            bool calc_11p_thresholds,
             int repetitions,
             int outer_cv_folds,
             List<(int class_id, double class_weight)> class_weights,
@@ -299,7 +332,7 @@ namespace svm_fs_batch
             int total_instances,
 
             get_unrolled_indexes_parameters p
-            //bool output_threshold_adjustment_performance = false,
+            //bool calc_11p_thresholds = false,
 
             //List<routines.libsvm_svm_type> svm_types = null,
             //List<routines.libsvm_kernel_type> kernels = null,
@@ -381,7 +414,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -432,7 +465,7 @@ namespace svm_fs_batch
 
                                         foreach (var class_weights in p.class_weight_sets)
                                         {
-                                            indexes_whole.Add((unrolled_index, unrolled_instance_index, iteration_index, group_index, total_groups, p.output_threshold_adjustment_performance, repetitions, outer_folds, class_weights, svm_type, svm_kernel, scale_function, inner_folds, idr));
+                                            indexes_whole.Add((unrolled_index, unrolled_instance_index, iteration_index, group_index, total_groups, p.calc_11p_thresholds, repetitions, outer_folds, class_weights, svm_type, svm_kernel, scale_function, inner_folds, idr));
 
                                             unrolled_index++;
 
@@ -462,7 +495,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -479,7 +512,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -496,7 +529,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -513,7 +546,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -554,7 +587,7 @@ namespace svm_fs_batch
                     int iteration_index,
                     int group_index,
                     int total_groups,
-                    bool output_threshold_adjustment_performance,
+                    bool calc_11p_thresholds,
                     int repetitions,
                     int outer_cv_folds,
                     List<(int class_id, double class_weight)> class_weights,
@@ -571,7 +604,7 @@ namespace svm_fs_batch
                     int iteration_index,
                     int group_index,
                     int total_groups,
-                    bool output_threshold_adjustment_performance,
+                    bool calc_11p_thresholds,
                     int repetitions,
                     int outer_cv_folds,
                     List<(int class_id, double class_weight)> class_weights,
@@ -669,7 +702,7 @@ namespace svm_fs_batch
                         lock (iteration_cm_all)
                         {
                             // limit cm to those indexes not already loaded
-                            var cm_append = cm.Where((b, i) => (i == 0 && iteration_cm_all.Count == 0 && b != default) || (b != default && b.cm != default && loaded_state.indexes_missing_whole.Any(a => a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.output_threshold_adjustment_performance == b.cm.x_output_threshold_adjustment_performance && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_type == b.cm.x_svm_type && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds))).ToList();
+                            var cm_append = cm.Where((b, i) => (i == 0 && iteration_cm_all.Count == 0 && b != default) || (b != default && b.cm != default && loaded_state.indexes_missing_whole.Any(a => a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.calc_11p_thresholds == b.cm.x_calc_11p_thresholds && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_type == b.cm.x_svm_type && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds))).ToList();
 
                             // maybe: cm_append = cm_append.Where(a => iteration_cm_all.All(b => b.line != a.line)).ToList();
 
@@ -700,7 +733,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -717,7 +750,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -734,7 +767,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -751,7 +784,7 @@ namespace svm_fs_batch
                 int iteration_index,
                 int group_index,
                 int total_groups,
-                bool output_threshold_adjustment_performance,
+                bool calc_11p_thresholds,
                 int repetitions,
                 int outer_cv_folds,
                 List<(int class_id, double class_weight)> class_weights,
@@ -775,7 +808,7 @@ namespace svm_fs_batch
                     int iteration_index,
                     int group_index,
                     int total_groups,
-                    bool output_threshold_adjustment_performance,
+                    bool calc_11p_thresholds,
                     int repetitions,
                     int outer_cv_folds,
                     List<(int class_id, double class_weight)> class_weights,
@@ -790,7 +823,7 @@ namespace svm_fs_batch
             // check iteration_cm_all to see what is already loaded and what is missing
 
             var loaded_whole = indexes_whole.Where(a =>
-                iteration_cm_all.Any(b => a != default && b != default && b.cm != default && a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.output_threshold_adjustment_performance == b.cm.x_output_threshold_adjustment_performance && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds)).ToList();
+                iteration_cm_all.Any(b => a != default && b != default && b.cm != default && a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.calc_11p_thresholds == b.cm.x_calc_11p_thresholds && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds)).ToList();
 
             var loaded_partition = instance_index > -1 ? loaded_whole.Where(a => a.unrolled_instance_index == instance_index).ToList() : loaded_whole;
 
