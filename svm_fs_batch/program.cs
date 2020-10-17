@@ -621,7 +621,10 @@ namespace svm_fs_batch
             while (!finished || test_final_best)
             {
                 // get list of work to do this iteration
-                (List<(int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr)> indexes_whole, List<(int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr)> indexes_partition) unrolled_indexes = default;
+                (
+                    List<(int unrolled_whole_index, int unrolled_partition_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr)> indexes_whole, 
+                    List<(int unrolled_whole_index, int unrolled_partition_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr)> indexes_partition
+                ) unrolled_indexes = default;
 
                 if (!finished)
                 {
@@ -634,7 +637,7 @@ namespace svm_fs_batch
 
                     deep_search_index++;
 
-                    io_proxy.WriteLine($"{experiment_name}: feature selection finished; statistical tests on best set of features, index: {deep_search_index}.");
+                    io_proxy.WriteLine($"{experiment_name}: iteration: {iteration_index}: feature selection finished; statistical tests on best set of features, index: {deep_search_index}.");
 
                     unrolled_indexes = cache_load.get_unrolled_indexes_deeper_search(deep_search_index, caller_idr, iteration_index, total_groups, instance_index, total_instances);
 
@@ -648,10 +651,13 @@ namespace svm_fs_batch
                 {
                     throw new Exception();
                 }
-               
-                    
 
-                // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
+                var total_whole_indexes = unrolled_indexes.indexes_whole.Count;
+                var total_partition_indexes = unrolled_indexes.indexes_partition.Count; 
+                io_proxy.WriteLine($"{experiment_name}: iteration: {iteration_index}, instance_index = {instance_index}/{total_instances}, total_whole_indexes = {total_whole_indexes}, total_partition_indexes = {total_partition_indexes}.");
+
+
+                    // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
                 var iteration_folder = get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, iteration_index);
                 var iteration_whole_cm_filename = Path.Combine(iteration_folder, $@"z_{get_iteration_filename(unrolled_indexes.indexes_whole)}.cm.csv");
                 var iteration_partition_cm_filename = Path.Combine(iteration_folder, $@"x_{get_iteration_filename(unrolled_indexes.indexes_partition)}.cm.csv");
@@ -678,7 +684,7 @@ namespace svm_fs_batch
                             .Select(unrolled_index =>
                             {
 
-                                io_proxy.WriteLine($@"{experiment_name}: Starting: iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). [{nameof(unrolled_index.unrolled_index).Substring(10)}: {unrolled_index.unrolled_index}, {nameof(unrolled_index.unrolled_instance_index).Substring(10)}: {unrolled_index.unrolled_instance_index}, {nameof(unrolled_index.iteration_index).Substring(10)}: {unrolled_index.iteration_index}, {nameof(unrolled_index.group_index).Substring(10)}: {unrolled_index.group_index}, {nameof(unrolled_index.total_groups).Substring(10)}: {unrolled_index.total_groups}, {nameof(unrolled_index.calc_11p_thresholds).Substring(10)}:{unrolled_index.calc_11p_thresholds}, {nameof(unrolled_index.repetitions).Substring(10)}: {unrolled_index.repetitions}, {nameof(unrolled_index.outer_cv_folds).Substring(10)}:{unrolled_index.outer_cv_folds}, {nameof(unrolled_index.class_weights).Substring(10)}: {unrolled_index.class_weights}, {nameof(unrolled_index.svm_type).Substring(10)}: {unrolled_index.svm_type}, {nameof(unrolled_index.svm_kernel).Substring(10)}:{unrolled_index.svm_kernel}, {nameof(unrolled_index.scale_function).Substring(10)}: {unrolled_index.scale_function}, {nameof(unrolled_index.inner_cv_folds).Substring(10)}: {unrolled_index.inner_cv_folds}]");
+                                io_proxy.WriteLine($@"{experiment_name}: Starting: iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)}/{total_groups} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). [{nameof(unrolled_index.unrolled_whole_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_whole_index}/{total_whole_indexes}, {nameof(unrolled_index.unrolled_partition_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_partition_index}/{total_partition_indexes}, {nameof(unrolled_index.unrolled_instance_index).PadRight(10).Substring(0,10)}: {unrolled_index.unrolled_instance_index}/{total_instances}, {nameof(unrolled_index.iteration_index).PadRight(10).Substring(0,10)}: {unrolled_index.iteration_index}, {nameof(unrolled_index.group_index).PadRight(10).Substring(0,10)}: {unrolled_index.group_index}/{total_groups}, {nameof(unrolled_index.total_groups).PadRight(10).Substring(0,10)}: {unrolled_index.total_groups}, {nameof(unrolled_index.calc_11p_thresholds).PadRight(10).Substring(0,10)}:{unrolled_index.calc_11p_thresholds}, {nameof(unrolled_index.repetitions).PadRight(10).Substring(0,10)}: {unrolled_index.repetitions}, {nameof(unrolled_index.outer_cv_folds).PadRight(10).Substring(0,10)}:{unrolled_index.outer_cv_folds}, {nameof(unrolled_index.class_weights).PadRight(10).Substring(0,10)}: {string.Join("; ", unrolled_index.class_weights.Select(a => $"{a.class_id}={a.class_weight}").ToList())}, {nameof(unrolled_index.svm_type).PadRight(10).Substring(0,10)}: {unrolled_index.svm_type}, {nameof(unrolled_index.svm_kernel).PadRight(10).Substring(0,10)}:{unrolled_index.svm_kernel}, {nameof(unrolled_index.scale_function).PadRight(10).Substring(0,10)}: {unrolled_index.scale_function}, {nameof(unrolled_index.inner_cv_folds).PadRight(10).Substring(0,10)}: {unrolled_index.inner_cv_folds}]");
                                 //{nameof(unrolled_index.idr)}:{unrolled_index.idr}
 
                                 var group_folder = get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, unrolled_index.iteration_index, unrolled_index.group_index);
@@ -689,7 +695,7 @@ namespace svm_fs_batch
                                 var iteration_all_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
 
 
-                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). File: {group_merged_cm_fn}.");
+                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)}/{total_groups} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). File: {group_merged_cm_fn}.");
 
                                 var test_selected_groups = selected_groups.ToList();
                                 var test_selected_columns = selected_columns.ToList();
@@ -775,7 +781,7 @@ namespace svm_fs_batch
 
                                         // save outer-cross-validation confusion-matrix CM for group
                                         io_proxy.WriteAllLines(outer_cv_input.cm_fn, ocv_cm_lines);
-                                        io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Saved for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} (groups {(array_index_start + 1)} to {(array_index_last + 1)}) OCV R({outer_cv_input.rcvi}/{unrolled_index.repetitions}) O({outer_cv_input.ocvi}/{unrolled_index.outer_cv_folds}). File: {outer_cv_input.cm_fn}.");
+                                        io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Saved for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)}/{total_groups} (groups {(array_index_start + 1)} to {(array_index_last + 1)}) OCV R({outer_cv_input.rcvi}/{unrolled_index.repetitions}) O({outer_cv_input.ocvi}/{unrolled_index.outer_cv_folds}). File: {outer_cv_input.cm_fn}.");
                                     }
 
                                     // delete temporary files
@@ -803,14 +809,13 @@ namespace svm_fs_batch
 
                                 if (lcs != null && lcs.Count > 1) { iteration_all_cm.AddRange(lcs.Skip(iteration_all_cm.Count == 0 ? 0 : 1)); }
 
-
+                                
                                 // save CM for group
                                 io_proxy.WriteAllLines( /*merged_cv_input.cm_fn*/group_merged_cm_fn, merge_cm_lines);
-                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Saved for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} ({(array_index_start + 1)} to {(array_index_last + 1)}). File: {group_merged_cm_fn}.");
+                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Saved for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)}/{total_groups} ({(array_index_start + 1)} to {(array_index_last + 1)}). File: {group_merged_cm_fn}.");
 
-
-                                io_proxy.WriteLine($@"{experiment_name}: Finished: iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)} ({(array_index_start + 1)} to {(array_index_last + 1)}). [{nameof(unrolled_index.unrolled_index).Substring(10)}: {unrolled_index.unrolled_index}, {nameof(unrolled_index.unrolled_instance_index).Substring(10)}: {unrolled_index.unrolled_instance_index}, {nameof(unrolled_index.iteration_index).Substring(10)}: {unrolled_index.iteration_index}, {nameof(unrolled_index.group_index).Substring(10)}: {unrolled_index.group_index}, {nameof(unrolled_index.total_groups).Substring(10)}: {unrolled_index.total_groups}, {nameof(unrolled_index.calc_11p_thresholds).Substring(10)}:{unrolled_index.calc_11p_thresholds}, {nameof(unrolled_index.repetitions).Substring(10)}: {unrolled_index.repetitions}, {nameof(unrolled_index.outer_cv_folds).Substring(10)}:{unrolled_index.outer_cv_folds}, {nameof(unrolled_index.class_weights).Substring(10)}: {unrolled_index.class_weights}, {nameof(unrolled_index.svm_type).Substring(10)}: {unrolled_index.svm_type}, {nameof(unrolled_index.svm_kernel).Substring(10)}:{unrolled_index.svm_kernel}, {nameof(unrolled_index.scale_function).Substring(10)}: {unrolled_index.scale_function}, {nameof(unrolled_index.inner_cv_folds).Substring(10)}: {unrolled_index.inner_cv_folds}]");
-
+                                io_proxy.WriteLine($@"{experiment_name}: Finished: iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)}/{total_groups} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). [{nameof(unrolled_index.unrolled_whole_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_whole_index}/{total_whole_indexes}, {nameof(unrolled_index.unrolled_partition_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_partition_index}/{total_partition_indexes}, {nameof(unrolled_index.unrolled_instance_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_instance_index}/{total_instances}, {nameof(unrolled_index.iteration_index).PadRight(10).Substring(0, 10)}: {unrolled_index.iteration_index}, {nameof(unrolled_index.group_index).PadRight(10).Substring(0, 10)}: {unrolled_index.group_index}/{total_groups}, {nameof(unrolled_index.total_groups).PadRight(10).Substring(0, 10)}: {unrolled_index.total_groups}, {nameof(unrolled_index.calc_11p_thresholds).PadRight(10).Substring(0, 10)}:{unrolled_index.calc_11p_thresholds}, {nameof(unrolled_index.repetitions).PadRight(10).Substring(0, 10)}: {unrolled_index.repetitions}, {nameof(unrolled_index.outer_cv_folds).PadRight(10).Substring(0, 10)}:{unrolled_index.outer_cv_folds}, {nameof(unrolled_index.class_weights).PadRight(10).Substring(0, 10)}: {string.Join("; ", unrolled_index.class_weights.Select(a => $"{a.class_id}={a.class_weight}").ToList())}, {nameof(unrolled_index.svm_type).PadRight(10).Substring(0, 10)}: {unrolled_index.svm_type}, {nameof(unrolled_index.svm_kernel).PadRight(10).Substring(0, 10)}:{unrolled_index.svm_kernel}, {nameof(unrolled_index.scale_function).PadRight(10).Substring(0, 10)}: {unrolled_index.scale_function}, {nameof(unrolled_index.inner_cv_folds).PadRight(10).Substring(0, 10)}: {unrolled_index.inner_cv_folds}]");
+                                
                                 return iteration_all_cm;
                             }
 
@@ -980,7 +985,7 @@ namespace svm_fs_batch
         (
             string experiment_name,
             (List<perf.prediction> prediction_list, List<perf.confusion_matrix> cm_list) prediction_file_data, 
-            (int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index, 
+            (int unrolled_whole_index, int unrolled_partition_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index, 
             (string alphabet, string dimension, string category, string source, string @group, string member, string perspective) group_key,
             List<int> previous_selected_columns,
             List<int> test_selected_columns,
@@ -1039,7 +1044,10 @@ namespace svm_fs_batch
         (
             string experiment_name, 
             (List<perf.prediction> prediction_list, List<perf.confusion_matrix> cm_list) prediction_file_data, 
-            (int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index,
+            (int unrolled_whole_index,
+                int unrolled_partition_index,
+                int unrolled_instance_index,
+                int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index,
             (string alphabet, string dimension, string category, string source, string @group, string member, string perspective) group_key,
             List<int> previous_selected_columns, 
             List<int> test_selected_columns, 
@@ -1139,7 +1147,10 @@ namespace svm_fs_batch
         internal static List<(int rcvi, int ocvi, string training_fn, string grid_fn, string model_fn, string testing_fn, string predict_fn, string cm_fn, List<string> training_text, List<string> testing_text, List<(int class_id, int training_size)> training_sizes, List<(int class_id, int testing_size)> testing_sizes)>
 
             make_outer_cv_inputs(List<int> column_indexes, init_dataset_ret idr, string group_folder,
-                (int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index)
+                (int unrolled_whole_index,
+                    int unrolled_partition_index,
+                    int unrolled_instance_index,
+                    int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index)
 
         {
             column_indexes = column_indexes.ToList();
@@ -1266,7 +1277,8 @@ namespace svm_fs_batch
         }
 
         internal static string get_item_filename((
-            int unrolled_index,
+            int unrolled_whole_index,
+            int unrolled_partition_index,
             int unrolled_instance_index,
             int iteration_index,
             int group_index,
@@ -1287,9 +1299,10 @@ namespace svm_fs_batch
 
         internal static string get_iteration_filename(
             IList<(
-            int unrolled_index,
-            int unrolled_instance_index,
-            int iteration_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
+                int unrolled_instance_index,
+                int iteration_index,
             int group_index,
             int total_groups,
             bool calc_11p_thresholds,
@@ -1401,7 +1414,10 @@ namespace svm_fs_batch
         internal static ((long grid_dur, long train_dur, long predict_dur) dur, ((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double? cv_rate) grid, string[] predict_text)
             inner_cross_validation(/*init_dataset_ret idr,*/
 
-                (int unrolled_index, int unrolled_instance_index, int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index,
+                (int unrolled_whole_index,
+                    int unrolled_partition_index,
+                    int unrolled_instance_index,
+                    int iteration_index, int group_index, int total_groups, bool calc_11p_thresholds, int repetitions, int outer_cv_folds, List<(int class_id, double class_weight)> class_weights, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, routines.scale_function scale_function, int inner_cv_folds, init_dataset_ret idr) unrolled_index,
 
                 (int rcvi, int ocvi, string training_fn, string grid_fn, string model_fn, string testing_fn, string predict_fn, string cm_fn, List<string> training_text, List<string> testing_text, List<(int class_id, int training_size)> training_sizes, List<(int class_id, int testing_size)> testing_sizes) input)
         {

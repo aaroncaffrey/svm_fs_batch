@@ -93,6 +93,7 @@ namespace svm_fs_batch
 
             // if repetitions is =0, then no shuffle, data will be in default order
             // if repetitions is >0, will be shuffled
+            // (currently the option to specify 0 is disabled above)
 
             var rdm = repetitions == 0 ? 1 : repetitions;
 

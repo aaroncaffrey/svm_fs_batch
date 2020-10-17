@@ -38,7 +38,8 @@ namespace svm_fs_batch
         internal static
 
           (List<(
-              int unrolled_index,
+              int unrolled_whole_index,
+              int unrolled_partition_index,
               int unrolled_instance_index,
               int iteration_index,
               int group_index,
@@ -55,7 +56,8 @@ namespace svm_fs_batch
               )> indexes_whole,
 
           List<(
-              int unrolled_index,
+              int unrolled_whole_index,
+              int unrolled_partition_index,
               int unrolled_instance_index,
               int iteration_index,
               int group_index,
@@ -112,7 +114,8 @@ namespace svm_fs_batch
         internal static
 
          (List<(
-             int unrolled_index,
+             int unrolled_whole_index,
+             int unrolled_partition_index,
              int unrolled_instance_index,
              int iteration_index,
              int group_index,
@@ -129,7 +132,8 @@ namespace svm_fs_batch
              )> indexes_whole,
 
          List<(
-             int unrolled_index,
+             int unrolled_whole_index,
+             int unrolled_partition_index,
              int unrolled_instance_index,
              int iteration_index,
              int group_index,
@@ -290,7 +294,8 @@ namespace svm_fs_batch
         internal static
 
         (List<(
-            int unrolled_index,
+            int unrolled_whole_index,
+            int unrolled_partition_index,
             int unrolled_instance_index,
             int iteration_index,
             int group_index,
@@ -307,7 +312,8 @@ namespace svm_fs_batch
             )> indexes_whole,
 
         List<(
-            int unrolled_index,
+            int unrolled_whole_index,
+            int unrolled_partition_index,
             int unrolled_instance_index,
             int iteration_index,
             int group_index,
@@ -403,13 +409,16 @@ namespace svm_fs_batch
             //var _i_end = 1; // 20
             //var _i_step = 2;
 
-            var unrolled_index = 0;
+            var unrolled_whole_index = 0;
+            var unrolled_partition_indexes = new int[total_instances];
+
             var unrolled_instance_index = 0;
 
             
 
             var indexes_whole = new List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -465,12 +474,13 @@ namespace svm_fs_batch
 
                                         foreach (var class_weights in p.class_weight_sets)
                                         {
-                                            indexes_whole.Add((unrolled_index, unrolled_instance_index, iteration_index, group_index, total_groups, p.calc_11p_thresholds, repetitions, outer_folds, class_weights, svm_type, svm_kernel, scale_function, inner_folds, idr));
+                                            indexes_whole.Add((unrolled_whole_index, unrolled_partition_indexes[unrolled_instance_index], unrolled_instance_index, iteration_index, group_index, total_groups, p.calc_11p_thresholds, repetitions, outer_folds, class_weights, svm_type, svm_kernel, scale_function, inner_folds, idr));
 
-                                            unrolled_index++;
+                                            unrolled_partition_indexes[unrolled_instance_index]++;
+
+                                            unrolled_whole_index++;
 
                                             unrolled_instance_index++;
-
                                             if (unrolled_instance_index >= total_instances) unrolled_instance_index = 0;
                                         }
                                     }
@@ -490,7 +500,8 @@ namespace svm_fs_batch
         internal static
              (
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -507,7 +518,8 @@ namespace svm_fs_batch
                 )> indexes_loaded_whole,
 
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -524,7 +536,8 @@ namespace svm_fs_batch
                 )> indexes_loaded_partition,
 
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -541,7 +554,8 @@ namespace svm_fs_batch
                 )> indexes_missing_whole,
 
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -582,7 +596,8 @@ namespace svm_fs_batch
                 //int group_index_last
 
                 List<(
-                    int unrolled_index,
+                    int unrolled_whole_index,
+                    int unrolled_partition_index,
                     int unrolled_instance_index,
                     int iteration_index,
                     int group_index,
@@ -599,7 +614,8 @@ namespace svm_fs_batch
                     )> indexes_whole,
 
                 List<(
-                    int unrolled_index,
+                    int unrolled_whole_index,
+                    int unrolled_partition_index,
                     int unrolled_instance_index,
                     int iteration_index,
                     int group_index,
@@ -728,7 +744,8 @@ namespace svm_fs_batch
         internal static
             (
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -745,7 +762,8 @@ namespace svm_fs_batch
                 )> indexes_loaded_whole,
 
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -762,7 +780,8 @@ namespace svm_fs_batch
                 )> indexes_loaded_partition,
 
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -779,7 +798,8 @@ namespace svm_fs_batch
                 )> indexes_missing_whole,
 
             List<(
-                int unrolled_index,
+                int unrolled_whole_index,
+                int unrolled_partition_index,
                 int unrolled_instance_index,
                 int iteration_index,
                 int group_index,
@@ -803,7 +823,8 @@ namespace svm_fs_batch
                 List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> iteration_cm_all,
 
                 List<(
-                    int unrolled_index,
+                    int unrolled_whole_index,
+                    int unrolled_partition_index,
                     int unrolled_instance_index,
                     int iteration_index,
                     int group_index,
