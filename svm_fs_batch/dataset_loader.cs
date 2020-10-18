@@ -49,19 +49,19 @@ namespace svm_fs_batch
             }
             else if (search_pattern.StartsWith("*", StringComparison.InvariantCulture) && search_pattern.EndsWith("*", StringComparison.InvariantCulture))
             {
-                search_pattern = search_pattern.Substring(1, search_pattern.Length - 2);
+                search_pattern = search_pattern[1..^1];
 
                 return text.Contains(search_pattern, StringComparison.InvariantCultureIgnoreCase);
             }
             else if (search_pattern.StartsWith("*", StringComparison.InvariantCulture))
             {
-                search_pattern = search_pattern.Substring(1);
+                search_pattern = search_pattern[1..];
 
                 return text.EndsWith(search_pattern, StringComparison.InvariantCultureIgnoreCase);
             }
             else if (search_pattern.EndsWith("*", StringComparison.InvariantCulture))
             {
-                search_pattern = search_pattern.Substring(0, search_pattern.Length - 1);
+                search_pattern = search_pattern[0..^1];
 
                 return text.StartsWith(search_pattern, StringComparison.InvariantCultureIgnoreCase);
             }
@@ -554,15 +554,15 @@ namespace svm_fs_batch
                             var x_i = groups_this_size_columns_data[i];
                             var x_j = groups_this_size_columns_data[j];
 
-                            if (x_i.All(a => x_j.Any(b => a.SequenceEqual(b))))
+                            if (x_i.All(a => x_j.Any(a.SequenceEqual)))
                             {
 
                                 var c_i = clusters.FirstOrDefault(a => a.Contains(i));
                                 var c_j = clusters.FirstOrDefault(a => a.Contains(j));
 
                                 var cluster = new List<int>();
-                                cluster.AddRange(c_i != null ? c_i : new List<int>() { i });
-                                cluster.AddRange(c_j != null ? c_j : new List<int>() { j });
+                                cluster.AddRange(c_i ?? new List<int>() { i });
+                                cluster.AddRange(c_j ?? new List<int>() { j });
                                 cluster = cluster.Distinct().OrderBy(a => a).ToList();
                                 if (c_i != null) clusters.Remove(c_i);
                                 if (c_j != null) clusters.Remove(c_j);

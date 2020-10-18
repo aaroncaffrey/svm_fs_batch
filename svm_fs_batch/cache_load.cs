@@ -18,7 +18,10 @@ namespace svm_fs_batch
             internal List<routines.libsvm_kernel_type> kernels = new List<routines.libsvm_kernel_type>() { routines.libsvm_kernel_type.rbf };
             
             internal List<List<(int class_id, double class_weight)>> class_weight_sets = new List<List<(int class_id, double class_weight)>>();
-            
+
+            internal int group_start = 0;
+            internal int group_end = -1;
+
             // number of times to run tests (repeats) (default: 1 [0 would be none] ... 1 to 1 at step 1)
             internal int r_cv_start = 1;
             internal int r_cv_end = 1;
@@ -167,6 +170,9 @@ namespace svm_fs_batch
             {
                 var p1 = new get_unrolled_indexes_parameters
                 {
+                    group_start = -1,
+                    group_end = -1,
+
                     calc_11p_thresholds = true,
 
                     scales = new List<routines.scale_function>()
@@ -198,6 +204,9 @@ namespace svm_fs_batch
                 // what happens if we vary the repetitions, outer-cv, inner-cv
                 var p2 = new get_unrolled_indexes_parameters
                 {
+                    group_start = -1,
+                    group_end = -1,
+
                     calc_11p_thresholds = true,
 
                     // repetitions: (10 - (1 - 1)) / 1 = 10
@@ -252,7 +261,14 @@ namespace svm_fs_batch
                     -200
                 }; // default: 1 // 21 values
 
-                var p3 = new get_unrolled_indexes_parameters {calc_11p_thresholds = true, class_weight_sets = new List<List<(int class_id, double class_weight)>>()};
+                var p3 = new get_unrolled_indexes_parameters
+                {
+                    group_start = -1,
+                    group_end = -1,
+
+                    calc_11p_thresholds = true, 
+                    class_weight_sets = new List<List<(int class_id, double class_weight)>>()
+                };
 
                 foreach (var wi in weight_values)
                 {
@@ -388,9 +404,24 @@ namespace svm_fs_batch
             
 
             // should group series be the loop group index or the mixture of groups?
+            
             var group_series_index = -1;
             var group_series = new int[total_groups]; // this is currently only the group_index , could also add the selected_group_indexes
-            for (var g_series = 0; g_series < total_groups; g_series++) group_series[++group_series_index]=g_series; //group_series.Add(g_series);
+
+            if (p.group_start == -1 && p.group_end == -1) group_series = new int[1];
+            
+            var group_end= p.group_start >= 0 && p.group_end == -1 ? total_groups - 1 : p.group_end;
+
+            for (var g_series = p.group_start; g_series <= group_end; g_series++)
+            {
+                group_series[++group_series_index]=g_series; //group_series.Add(g_series);
+            }
+
+            //if (total_groups <= 0)
+            //{
+            //    //total_groups
+            //    group_series=new int[] { -1 };
+            //}
 
             if (r_cv_series == null || r_cv_series.Length == 0) throw new Exception();
             if (o_cv_series == null || o_cv_series.Length == 0) throw new Exception();

@@ -453,7 +453,7 @@ namespace svm_fs_batch
             if (v_libsvm_default_cross_validation_index >= 0 && !string.IsNullOrWhiteSpace(v_libsvm_default_cross_validation_str))
             {
                 return v_libsvm_default_cross_validation_str.Last() == '%' ?
-                    double.Parse(v_libsvm_default_cross_validation_str.Substring(0, v_libsvm_default_cross_validation_str.Length - 1), NumberStyles.Float, CultureInfo.InvariantCulture) / (double)100
+                    double.Parse(v_libsvm_default_cross_validation_str[0..^1], NumberStyles.Float, CultureInfo.InvariantCulture) / (double)100
                     : double.Parse(v_libsvm_default_cross_validation_str, NumberStyles.Float, CultureInfo.InvariantCulture);
             }
 

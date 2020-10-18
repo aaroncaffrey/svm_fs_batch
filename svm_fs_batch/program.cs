@@ -329,9 +329,16 @@ namespace svm_fs_batch
         {
             internal static int scoring_class_id = +1;
 
-            internal static string score1_metric = nameof(perf.confusion_matrix.F1S);
-            internal static string score2_metric = nameof(perf.confusion_matrix.MCC);
-            internal static string score3_metric = nameof(perf.confusion_matrix.API_All);
+            internal static string[] scoring_metrics = new string[]
+            {
+                nameof(perf.confusion_matrix.F1S),
+                nameof(perf.confusion_matrix.MCC),
+                nameof(perf.confusion_matrix.API_All)
+            };
+
+            //internal static string score1_metric = nameof(perf.confusion_matrix.F1S);
+            //internal static string score2_metric = nameof(perf.confusion_matrix.MCC);
+            //internal static string score3_metric = nameof(perf.confusion_matrix.API_All);
 
             //internal scoring_args()
             // {
@@ -632,9 +639,11 @@ namespace svm_fs_batch
                 } 
                 else if (test_final_best)
                 {
+                    // todo: fix problem: 5 groups still being processed, rather than 1...
+
                     selected_groups = all_time_highest_score_selected_groups.ToList();
                     selected_columns = all_time_highest_score_selected_columns.ToList();
-
+                    
                     deep_search_index++;
 
                     io_proxy.WriteLine($"{experiment_name}: iteration: {iteration_index}: feature selection finished; statistical tests on best set of features, index: {deep_search_index}.");
@@ -674,6 +683,13 @@ namespace svm_fs_batch
                     // check if this partition is loaded....
                     if (unrolled_indexes_state.indexes_missing_partition.Any())
                     {
+                        var p_selected_groups = selected_groups.ToList();
+                        var p_selected_columns = selected_columns.ToList();
+                        var p_previous_winner_group_index = previous_winner_group_index;
+                        var p_previous_selected_columns = previous_selected_columns.ToList();
+                        var p_previous_selected_groups = previous_selected_groups.ToList();
+                        var p_all_time_highest_score_selected_columns = all_time_highest_score_selected_columns.ToList();
+                        var p_all_time_highest_score_selected_groups = all_time_highest_score_selected_groups.ToList();
 
                         // after loading the whole iteration cache, all partitions cache, and partition individual merged items cache, and if there are still partition items missing... 
                         // use parallel to split the missing items into cpu bound partitions
@@ -688,21 +704,22 @@ namespace svm_fs_batch
                                 //{nameof(unrolled_index.idr)}:{unrolled_index.idr}
 
                                 var group_folder = get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, unrolled_index.iteration_index, unrolled_index.group_index);
-                                var group_key = unrolled_index.idr.groups[unrolled_index.group_index].key;
+                                var group_key = unrolled_index.group_index > -1 ? unrolled_index.idr.groups[unrolled_index.group_index].key : default;
+
                                 var group_merged_cm_fn = $@"{Path.Combine(group_folder, $@"m_{get_iteration_filename(new[] { unrolled_index })}")}.cm.csv";
 
                                 // hide outside scope iteration_all_cm
-                                var iteration_all_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
+                                var p_iteration_all_cm = new List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
 
 
                                 io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)}/{total_groups} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). File: {group_merged_cm_fn}.");
 
-                                var test_selected_groups = selected_groups.ToList();
-                                var test_selected_columns = selected_columns.ToList();
+                                var test_selected_groups = p_selected_groups.ToList();
+                                var test_selected_columns = p_selected_columns.ToList();
 
                                 var is_group_selected = test_selected_groups.Contains(unrolled_index.group_index);
                                 var is_only_selection = is_group_selected && test_selected_groups.Count == 1;
-                                var is_last_winner = unrolled_index.group_index == previous_winner_group_index;
+                                var is_last_winner = unrolled_index.group_index == p_previous_winner_group_index;
 
                                 // if selected, remove
                                 // if not selected, add
@@ -711,35 +728,37 @@ namespace svm_fs_batch
 
                                 var dir = direction.neutral;
 
-                                if (is_group_selected)
+                                if (unrolled_index.group_index > -1)
                                 {
-                                    if (!is_only_selection && !is_last_winner)
+                                    if (is_group_selected)
                                     {
-                                        dir = direction.backwards;
-                                        test_selected_groups.Remove(unrolled_index.group_index);
-                                        test_selected_columns = test_selected_columns.Except(unrolled_index.idr.groups[unrolled_index.group_index].columns).ToList();
+                                        if (!is_only_selection && !is_last_winner)
+                                        {
+                                            dir = direction.backwards;
+                                            test_selected_groups.Remove(unrolled_index.group_index);
+                                            test_selected_columns = test_selected_columns.Except(unrolled_index.idr.groups[unrolled_index.group_index].columns).ToList();
+                                        }
+                                    } else
+                                    {
+                                        dir = direction.forwards;
+                                        test_selected_groups.Add(unrolled_index.group_index);
+                                        test_selected_columns = test_selected_columns.Union(unrolled_index.idr.groups[unrolled_index.group_index].columns).OrderBy(a => a).ToList();
                                     }
-                                }
-                                else
-                                {
-                                    dir = direction.forwards;
-                                    test_selected_groups.Add(unrolled_index.group_index);
-                                    test_selected_columns = test_selected_columns.Union(unrolled_index.idr.groups[unrolled_index.group_index].columns).OrderBy(a => a).ToList();
-                                }
 
-                                if (dir != direction.neutral)
-                                {
-                                    // ensure lists are consistent between instances
-                                    test_selected_groups = test_selected_groups.OrderBy(a => a).Distinct().ToList();
-                                    test_selected_columns = test_selected_columns.OrderBy(a => a).Distinct().ToList();
+                                    if (dir != direction.neutral)
+                                    {
+                                        // ensure lists are consistent between instances
+                                        test_selected_groups = test_selected_groups.OrderBy(a => a).Distinct().ToList();
+                                        test_selected_columns = test_selected_columns.OrderBy(a => a).Distinct().ToList();
+                                    }
                                 }
 
                                 remove_duplicate_columns(unrolled_index.idr, test_selected_columns);
 
-                                var num_columns_added_from_last_iteration = test_selected_columns.Count - previous_selected_columns.Count;
-                                var num_groups_added_from_last_iteration = test_selected_groups.Count - previous_selected_groups.Count;
-                                var num_columns_added_from_highest_score_iteration = test_selected_columns.Count - all_time_highest_score_selected_columns.Count;
-                                var num_groups_added_from_highest_score_iteration = test_selected_groups.Count - all_time_highest_score_selected_groups.Count;
+                                var num_columns_added_from_last_iteration = test_selected_columns.Count - p_previous_selected_columns.Count;
+                                var num_groups_added_from_last_iteration = test_selected_groups.Count - p_previous_selected_groups.Count;
+                                var num_columns_added_from_highest_score_iteration = test_selected_columns.Count - p_all_time_highest_score_selected_columns.Count;
+                                var num_groups_added_from_highest_score_iteration = test_selected_groups.Count - p_all_time_highest_score_selected_groups.Count;
 
                                 var exp_data = new List<(string key, string value)>() { ($@"{nameof(is_group_selected)}", $@"{is_group_selected}"), ($@"{nameof(is_only_selection)}", $@"{is_only_selection}"), ($@"{nameof(is_last_winner)}", $@"{is_last_winner}"), ($@"{nameof(num_columns_added_from_last_iteration)}", $@"{num_columns_added_from_last_iteration}"), ($@"{nameof(num_groups_added_from_last_iteration)}", $@"{num_groups_added_from_last_iteration}"), ($@"{nameof(num_columns_added_from_highest_score_iteration)}", $@"{num_columns_added_from_highest_score_iteration}"), ($@"{nameof(num_groups_added_from_highest_score_iteration)}", $@"{num_groups_added_from_highest_score_iteration}"), ($@"{nameof(dir)}", $@"{dir}"), ($@"{nameof(previous_selected_groups)}", $@"{string.Join(";", previous_selected_groups)}"), ($@"{nameof(previous_selected_columns)}", $@"{string.Join(";", previous_selected_columns)}"), ($@"{nameof(selected_groups)}", $@"{string.Join(";", selected_groups)}"), ($@"{nameof(selected_columns)}", $@"{string.Join(";", selected_columns)}"), ($@"{nameof(test_selected_groups)}", $@"{string.Join(";", test_selected_groups)}"), ($@"{nameof(test_selected_columns)}", $@"{string.Join(";", test_selected_columns)}"), };
 
@@ -770,14 +789,14 @@ namespace svm_fs_batch
                                         var ocv_prediction_file_data = perf.load_prediction_file(outer_cv_input.testing_text, null, prediction_data.predict_text, unrolled_index.calc_11p_thresholds);
 
                                         // add any missing details to the confusion-matrix
-                                        update_ocv_cm(experiment_name, ocv_prediction_file_data, unrolled_index, group_key, previous_selected_columns, test_selected_columns, previous_selected_groups, test_selected_groups, outer_cv_input, prediction_data);
+                                        update_ocv_cm(experiment_name, ocv_prediction_file_data, unrolled_index, group_key, p_previous_selected_columns, test_selected_columns, p_previous_selected_groups, test_selected_groups, outer_cv_input, prediction_data);
 
 
                                         var ocv_cm_lines = new List<string>() { cm_header };
                                         ocv_cm_lines.AddRange(ocv_prediction_file_data.cm_list.Select(a => $"{string.Join(",", exp_data.Select(c => c.value).ToList())},{a}").ToList());
                                         var ocv_lcs = perf.confusion_matrix.load(ocv_cm_lines);
 
-                                        if (ocv_lcs != null && ocv_lcs.Count > 1) { iteration_all_cm.AddRange(ocv_lcs.Skip(iteration_all_cm.Count == 0 ? 0 : 1)); }
+                                        if (ocv_lcs != null && ocv_lcs.Count > 1) { p_iteration_all_cm.AddRange(ocv_lcs.Skip(p_iteration_all_cm.Count == 0 ? 0 : 1)); }
 
                                         // save outer-cross-validation confusion-matrix CM for group
                                         io_proxy.WriteAllLines(outer_cv_input.cm_fn, ocv_cm_lines);
@@ -799,7 +818,7 @@ namespace svm_fs_batch
                                 var prediction_file_data = perf.load_prediction_file(merged_cv_input.testing_text, null, merged_prediction_text, unrolled_index.calc_11p_thresholds);
 
                                 // add any missing details to the confusion-matrix
-                                update_merged_cm(experiment_name, prediction_file_data, unrolled_index, group_key, previous_selected_columns, test_selected_columns, previous_selected_groups, test_selected_groups, merged_cv_input, prediction_data_list);
+                                update_merged_cm(experiment_name, prediction_file_data, unrolled_index, group_key, p_previous_selected_columns, test_selected_columns, p_previous_selected_groups, test_selected_groups, merged_cv_input, prediction_data_list);
 
 
 
@@ -807,7 +826,7 @@ namespace svm_fs_batch
                                 merge_cm_lines.AddRange(prediction_file_data.cm_list.Select(a => $"{string.Join(",", exp_data.Select(c => c.value).ToList())},{a}").ToList());
                                 var lcs = perf.confusion_matrix.load(merge_cm_lines, -1);//, group_merged_cm_fn);
 
-                                if (lcs != null && lcs.Count > 1) { iteration_all_cm.AddRange(lcs.Skip(iteration_all_cm.Count == 0 ? 0 : 1)); }
+                                if (lcs != null && lcs.Count > 1) { p_iteration_all_cm.AddRange(lcs.Skip(p_iteration_all_cm.Count == 0 ? 0 : 1)); }
 
                                 
                                 // save CM for group
@@ -816,7 +835,7 @@ namespace svm_fs_batch
 
                                 io_proxy.WriteLine($@"{experiment_name}: Finished: iteration {(unrolled_index.iteration_index + 1)} group {(unrolled_index.group_index + 1)}/{total_groups} (groups {(array_index_start + 1)} to {(array_index_last + 1)}). [{nameof(unrolled_index.unrolled_whole_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_whole_index}/{total_whole_indexes}, {nameof(unrolled_index.unrolled_partition_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_partition_index}/{total_partition_indexes}, {nameof(unrolled_index.unrolled_instance_index).PadRight(10).Substring(0, 10)}: {unrolled_index.unrolled_instance_index}/{total_instances}, {nameof(unrolled_index.iteration_index).PadRight(10).Substring(0, 10)}: {unrolled_index.iteration_index}, {nameof(unrolled_index.group_index).PadRight(10).Substring(0, 10)}: {unrolled_index.group_index}/{total_groups}, {nameof(unrolled_index.total_groups).PadRight(10).Substring(0, 10)}: {unrolled_index.total_groups}, {nameof(unrolled_index.calc_11p_thresholds).PadRight(10).Substring(0, 10)}:{unrolled_index.calc_11p_thresholds}, {nameof(unrolled_index.repetitions).PadRight(10).Substring(0, 10)}: {unrolled_index.repetitions}, {nameof(unrolled_index.outer_cv_folds).PadRight(10).Substring(0, 10)}:{unrolled_index.outer_cv_folds}, {nameof(unrolled_index.class_weights).PadRight(10).Substring(0, 10)}: {string.Join("; ", unrolled_index.class_weights.Select(a => $"{a.class_id}={a.class_weight}").ToList())}, {nameof(unrolled_index.svm_type).PadRight(10).Substring(0, 10)}: {unrolled_index.svm_type}, {nameof(unrolled_index.svm_kernel).PadRight(10).Substring(0, 10)}:{unrolled_index.svm_kernel}, {nameof(unrolled_index.scale_function).PadRight(10).Substring(0, 10)}: {unrolled_index.scale_function}, {nameof(unrolled_index.inner_cv_folds).PadRight(10).Substring(0, 10)}: {unrolled_index.inner_cv_folds}]");
                                 
-                                return iteration_all_cm;
+                                return p_iteration_all_cm;
                             }
 
                             )
@@ -874,16 +893,26 @@ namespace svm_fs_batch
 
                 //scoring_cm = scoring_cm.OrderBy(a => a.unknown_key_value_list.First(b => b.key == "iteration_index").value_int).ToList();
                 scoring_cm = scoring_cm.OrderBy(a => a.cm.x_group_index).ToList();
-                scoring_cm = scoring_cm.OrderByDescending(a => a.cm.get_value_by_name(scoring_args.score1_metric)).ThenByDescending(a => a.cm.get_value_by_name(scoring_args.score2_metric)).ThenByDescending(a => a.cm.get_value_by_name(scoring_args.score3_metric)).ToList();
+
+                var scoring_cm_query = scoring_cm.OrderByDescending(a => a.cm.get_value_by_name(scoring_args.scoring_metrics[0]));
+
+                for (var si = 1; si < scoring_args.scoring_metrics.Length; si++)
+                {
+                    var six = si;
+                    scoring_cm_query = scoring_cm_query.ThenByDescending(a => a.cm.get_value_by_name(scoring_args.scoring_metrics[six]));
+                }
+
+                //scoring_cm = scoring_cm.OrderByDescending(a => a.cm.get_value_by_name(scoring_args.score1_metric)).ThenByDescending(a => a.cm.get_value_by_name(scoring_args.score2_metric)).ThenByDescending(a => a.cm.get_value_by_name(scoring_args.score3_metric)).ToList();
+                scoring_cm = scoring_cm_query.ToList();
 
 
                 var scores_winner_index = 0;
                 while (scoring_cm[scores_winner_index].cm.x_group_index == previous_winner_group_index && scores_winner_index < total_groups - 1) { scores_winner_index++; }
 
-                var winner_group_index = (int)scoring_cm[scores_winner_index].cm.x_group_index;
+                var winner_group_index = (int)(scoring_cm[scores_winner_index].cm.x_group_index ?? -1);
                 var winner_group = caller_idr.groups[winner_group_index];
                 var winner_group_key = winner_group.key;
-                var winner_score = scoring_cm[scores_winner_index].cm.get_value_by_name(scoring_args.score1_metric);
+                var winner_score = scoring_cm[scores_winner_index].cm.get_value_by_name(scoring_args.scoring_metrics[0]);
                 var winner_direction = (direction)Enum.Parse(typeof(direction), scoring_cm[scores_winner_index].unknown_key_value_list.FirstOrDefault(a => a.key == "dir").value_str, true);
 
 
@@ -1316,7 +1345,7 @@ namespace svm_fs_batch
             program.init_dataset_ret idr
             )> indexes)
         {
-            string get_initials(string name)
+            static string get_initials(string name)
             {
                 var initials = string.Join("", name.Replace("_", " ").Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
                 return initials.Length > 2 ? initials.Substring(0, 2) : initials;
