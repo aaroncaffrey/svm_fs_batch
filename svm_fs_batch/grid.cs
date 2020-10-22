@@ -13,7 +13,7 @@ namespace svm_fs_batch
         //private readonly object _rate_lock = new object();
 
 
-        internal static List<(routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> read_cache(string cache_train_grid_csv)
+        internal static List<(routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_folds_to_run, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> read_cache(string cache_train_grid_csv)
         {
             var module_name = nameof(grid);
             var method_name = nameof(read_cache);
@@ -21,7 +21,7 @@ namespace svm_fs_batch
             var cache = new List<(
                 routines.libsvm_svm_type svm_type,
                 routines.libsvm_kernel_type svm_kernel,
-                int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)>();
+                int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_folds_to_run, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)>();
 
             //cache_train_grid_csv = (cache_train_grid_csv);
 
@@ -70,7 +70,7 @@ namespace svm_fs_batch
             return cache;
         }
 
-        internal static void write_cache_file(string cache_file, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, List<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> res)
+        internal static void write_cache_file(string cache_file, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_folds_to_run, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, List<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> res)
         {
             var module_name = nameof(grid);
             var method_name = nameof(write_cache_file);

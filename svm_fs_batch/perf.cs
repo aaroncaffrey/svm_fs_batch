@@ -18,9 +18,17 @@ namespace svm_fs_batch
             internal List<(string comment_header, string comment_value)> comment;
         }
 
+        internal class confusion_matrix_data
+        {
+            internal string line = null;
+            internal confusion_matrix cm = null;
+            internal List<(string key, string value_str, int? value_int, double? value_double)> key_value_list = new List<(string key, string value_str, int? value_int, double? value_double)>();
+            internal List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list = new List<(string key, string value_str, int? value_int, double? value_double)>();
+        }
+
         internal class confusion_matrix
         {
-            internal static List<( string line, confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> load(string filename, int column_offset = -1)
+            internal static List<confusion_matrix_data> load(string filename, int column_offset = -1)
             {
                 var lines = io_proxy.ReadAllLines(filename).ToList();
                 var ret = load(lines, column_offset);//, filename);
@@ -28,11 +36,7 @@ namespace svm_fs_batch
             }
 
         
-            internal static List<(
-                string line, 
-                confusion_matrix cm, 
-                List<(string key, string value_str, int? value_int, double? value_double)> key_value_list,
-                List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> 
+            internal static List<confusion_matrix_data> 
                 load(IList<string> lines, int column_offset = -1)//, string cm_fn = null)
             {
                 
@@ -54,7 +58,7 @@ namespace svm_fs_batch
                     if (column_offset == -1) { throw new Exception(); }
                 }
 
-                var cms = new List<(string line, confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)>();
+                var cms = new List<confusion_matrix_data>();
 
                 for (var line_index = 0; line_index < lines.Count; line_index++)// in lines.Where(a => !string.IsNullOrWhiteSpace(a)))
                 {
@@ -73,7 +77,13 @@ namespace svm_fs_batch
 
                     if (line_index == 0 || string.IsNullOrWhiteSpace(line))
                     {
-                        cms.Add((line,(confusion_matrix)null, key_value_list, unknown_key_value_list));
+                        cms.Add(new confusion_matrix_data()
+                        {
+                            line=line,
+                            cm= (confusion_matrix) null,
+                            key_value_list = key_value_list,
+                            unknown_key_value_list = unknown_key_value_list
+                        });
                         continue;
                     }
                     
@@ -122,6 +132,7 @@ namespace svm_fs_batch
                         x_repetitions_total = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
                         x_outer_cv_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
                         x_outer_cv_folds = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
+                        x_outer_cv_folds_to_run = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
                         x_svm_type = Enum.TryParse(s[k++], out routines.libsvm_svm_type svm_type) ? svm_type : (routines.libsvm_svm_type)0,
                         x_svm_kernel = Enum.TryParse(s[k++], out routines.libsvm_kernel_type svm_kernel) ? svm_kernel : (routines.libsvm_kernel_type)0,
 
@@ -323,7 +334,13 @@ namespace svm_fs_batch
                         pri_xy_str_11p = s[k++],
                     };
 
-                    cms.Add((line, cm, key_value_list, unknown_key_value_list));
+                    cms.Add(new confusion_matrix_data()
+                    {
+                        line=line,
+                        cm=cm,
+                        key_value_list = key_value_list,
+                        unknown_key_value_list = unknown_key_value_list,
+                    });
                 }
 
                 return cms;
@@ -378,6 +395,7 @@ namespace svm_fs_batch
             internal int x_repetitions_total;
             internal int x_outer_cv_index;
             internal int x_outer_cv_folds;
+            internal int x_outer_cv_folds_to_run;
             internal routines.libsvm_svm_type x_svm_type;
             internal routines.libsvm_kernel_type x_svm_kernel;
             internal double? x_cost;
@@ -1887,6 +1905,7 @@ namespace svm_fs_batch
                 nameof(x_repetitions_total),
                 nameof(x_outer_cv_index),
                 nameof(x_outer_cv_folds),
+                nameof(x_outer_cv_folds_to_run),
                 nameof(x_svm_type),
                 nameof(x_svm_kernel),
                 //nameof(kernel_parameter_search_method),
@@ -2127,6 +2146,7 @@ namespace svm_fs_batch
                     x_repetitions_total.ToString(CultureInfo.InvariantCulture),
                     x_outer_cv_index.ToString(CultureInfo.InvariantCulture),
                     x_outer_cv_folds.ToString(CultureInfo.InvariantCulture),
+                    x_outer_cv_folds_to_run.ToString(CultureInfo.InvariantCulture),
                     x_svm_type.ToString() ?? "",
                     x_svm_kernel.ToString() ?? "",
                     x_cost?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",

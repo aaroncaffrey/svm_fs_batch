@@ -9,158 +9,29 @@ namespace svm_fs_batch
 {
     internal class cache_load
     {
-        internal class get_unrolled_indexes_parameters
+        
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_basic(program.init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances,
+             int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds)
         {
-            internal bool calc_11p_thresholds = false;
-            
-            internal List<routines.libsvm_svm_type> svm_types = new List<routines.libsvm_svm_type>() { routines.libsvm_svm_type.c_svc };
-            internal List<routines.scale_function> scales = new List<routines.scale_function>() { routines.scale_function.rescale };
-            internal List<routines.libsvm_kernel_type> kernels = new List<routines.libsvm_kernel_type>() { routines.libsvm_kernel_type.rbf };
-            
-            internal List<List<(int class_id, double class_weight)>> class_weight_sets = new List<List<(int class_id, double class_weight)>>();
+            var p = new unrolled_indexes_parameters()
+            {
+                r_cv_start = repetitions,
+                r_cv_end = repetitions,
+                r_cv_step = 1,
+                
+                o_cv_start = outer_cv_folds,
+                o_cv_end = outer_cv_folds,
+                o_cv_step = 1,
 
-            internal int group_start = 0;
-            internal int group_end = -1;
+                i_cv_start = inner_folds,
+                i_cv_end = inner_folds,
+                i_cv_step = 1
+            };
 
-            // number of times to run tests (repeats) (default: 1 [0 would be none] ... 1 to 1 at step 1)
-            internal int r_cv_start = 1;
-            internal int r_cv_end = 1;
-            internal int r_cv_step = 1;
-            
-            // number of outer-cross-validations (default: 5 ... 5 to 5 at step 1)
-            internal int o_cv_start = 5;
-            internal int o_cv_end = 5;
-            internal int o_cv_step = 1;
-            
-            // number of inner-cross-validations (default: 5 ... 5 to 5 at step 1)
-            internal int i_cv_start = 5;
-            internal int i_cv_end = 5;
-            internal int i_cv_step = 1;
+            return get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p, outer_cv_folds_to_run);//calc_11p_thresholds, svm_types, kernels, scales, class_weights, r_cv_start, r_cv_end, r_cv_step, o_cv_start, o_cv_end, o_cv_step, i_cv_start, i_cv_end, i_cv_step);
         }
 
-        internal static
-
-          (List<(
-              int unrolled_whole_index,
-              int unrolled_partition_index,
-              int unrolled_instance_index,
-              int iteration_index,
-              int group_index,
-              int total_groups,
-              bool calc_11p_thresholds,
-              int repetitions,
-              int outer_cv_folds,
-              List<(int class_id, double class_weight)> class_weights,
-              routines.libsvm_svm_type svm_type,
-              routines.libsvm_kernel_type svm_kernel,
-              routines.scale_function scale_function,
-              int inner_cv_folds,
-              program.init_dataset_ret idr
-              )> indexes_whole,
-
-          List<(
-              int unrolled_whole_index,
-              int unrolled_partition_index,
-              int unrolled_instance_index,
-              int iteration_index,
-              int group_index,
-              int total_groups,
-              bool calc_11p_thresholds,
-              int repetitions,
-              int outer_cv_folds,
-              List<(int class_id, double class_weight)> class_weights,
-              routines.libsvm_svm_type svm_type,
-              routines.libsvm_kernel_type svm_kernel,
-              routines.scale_function scale_function,
-              int inner_cv_folds,
-              program.init_dataset_ret idr
-              )> indexes_partition)
-
-          get_unrolled_indexes_basic(
-
-              program.init_dataset_ret caller_idr,
-              int iteration_index,
-              int total_groups,
-              int instance_index,
-              int total_instances
-              )
-        {
-            //bool calc_11p_thresholds = false;
-
-            //var svm_types = new List<routines.libsvm_svm_type>() { routines.libsvm_svm_type.c_svc };
-            //var scales = new List<routines.scale_function>() { routines.scale_function.rescale };
-            //var kernels = new List<routines.libsvm_kernel_type>() { routines.libsvm_kernel_type.rbf };
-
-            //var class_weights = new List<List<(int class_id, double class_weight)>>();
-
-            //// number of times to run tests (repeats) (default: 1 [0 would be none] ... 1 to 1 at step 1)
-            //int r_cv_start = 1;
-            //int r_cv_end = 1;
-            //int r_cv_step = 1;
-
-            //// number of outer-cross-validations (default: 5 ... 5 to 5 at step 1)
-            //int o_cv_start = 5;
-            //int o_cv_end = 5;
-            //int o_cv_step = 1;
-
-            //// number of inner-cross-validations (default: 5 ... 5 to 5 at step 1)
-            //int i_cv_start = 5;
-            //int i_cv_end = 5;
-            //int i_cv_step = 1;
-
-
-            var p = new get_unrolled_indexes_parameters();
-
-            return get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p);//calc_11p_thresholds, svm_types, kernels, scales, class_weights, r_cv_start, r_cv_end, r_cv_step, o_cv_start, o_cv_end, o_cv_step, i_cv_start, i_cv_end, i_cv_step);
-        }
-
-        internal static
-
-         (List<(
-             int unrolled_whole_index,
-             int unrolled_partition_index,
-             int unrolled_instance_index,
-             int iteration_index,
-             int group_index,
-             int total_groups,
-             bool calc_11p_thresholds,
-             int repetitions,
-             int outer_cv_folds,
-             List<(int class_id, double class_weight)> class_weights,
-             routines.libsvm_svm_type svm_type,
-             routines.libsvm_kernel_type svm_kernel,
-             routines.scale_function scale_function,
-             int inner_cv_folds,
-             program.init_dataset_ret idr
-             )> indexes_whole,
-
-         List<(
-             int unrolled_whole_index,
-             int unrolled_partition_index,
-             int unrolled_instance_index,
-             int iteration_index,
-             int group_index,
-             int total_groups,
-             bool calc_11p_thresholds,
-             int repetitions,
-             int outer_cv_folds,
-             List<(int class_id, double class_weight)> class_weights,
-             routines.libsvm_svm_type svm_type,
-             routines.libsvm_kernel_type svm_kernel,
-             routines.scale_function scale_function,
-             int inner_cv_folds,
-             program.init_dataset_ret idr
-             )> indexes_partition)
-
-         get_unrolled_indexes_deeper_search
-         (
-             int search_type,
-             program.init_dataset_ret caller_idr,
-             int iteration_index,
-             int total_groups,
-             int instance_index,
-             int total_instances
-         )
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_check_bias(int search_type, program.init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances)
         {
             // for a specific set of features (i.e. the final result from feature selection):
 
@@ -168,7 +39,7 @@ namespace svm_fs_batch
 
             if (search_type == 0)
             {
-                var p1 = new get_unrolled_indexes_parameters
+                var p1 = new unrolled_indexes_parameters
                 {
                     group_start = -1,
                     group_end = -1,
@@ -177,11 +48,11 @@ namespace svm_fs_batch
 
                     scales = new List<routines.scale_function>()
                     {
-                        routines.scale_function.none, 
+                        routines.scale_function.none,
                         routines.scale_function.normalisation,
-                        routines.scale_function.rescale, 
+                        routines.scale_function.rescale,
                         routines.scale_function.standardisation,
-                        routines.scale_function.L0_norm, 
+                        routines.scale_function.L0_norm,
                         routines.scale_function.L1_norm,
                         routines.scale_function.L2_norm,
                     },
@@ -189,7 +60,7 @@ namespace svm_fs_batch
                     kernels = new List<routines.libsvm_kernel_type>()
                     {
                         routines.libsvm_kernel_type.linear,
-                        routines.libsvm_kernel_type.polynomial, 
+                        routines.libsvm_kernel_type.polynomial,
                         routines.libsvm_kernel_type.sigmoid,
                         routines.libsvm_kernel_type.rbf
                     }
@@ -202,7 +73,7 @@ namespace svm_fs_batch
             {
 
                 // what happens if we vary the repetitions, outer-cv, inner-cv
-                var p2 = new get_unrolled_indexes_parameters
+                var p2 = new unrolled_indexes_parameters
                 {
                     group_start = -1,
                     group_end = -1,
@@ -261,12 +132,12 @@ namespace svm_fs_batch
                     -200
                 }; // default: 1 // 21 values
 
-                var p3 = new get_unrolled_indexes_parameters
+                var p3 = new unrolled_indexes_parameters
                 {
                     group_start = -1,
                     group_end = -1,
 
-                    calc_11p_thresholds = true, 
+                    calc_11p_thresholds = true,
                     class_weight_sets = new List<List<(int class_id, double class_weight)>>()
                 };
 
@@ -274,29 +145,19 @@ namespace svm_fs_batch
                 {
                     foreach (var wj in weight_values)
                     {
-                        p3.class_weight_sets.Add(new List<(int class_id, double class_weight)>() {(+1, wi), (-1, wj)});
+                        p3.class_weight_sets.Add(new List<(int class_id, double class_weight)>() { (+1, wi), (-1, wj) });
                     }
                 }
 
                 var variations_3 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p3);
 
                 return variations_3;
-            } else
+            }
+            else
             {
                 // return null when no tests are left
                 return (null, null);
             }
-
-            // 
-            // 
-            // 
-            // join variations 1 & 2 & 3
-            // indexes_whole.AddRange(variations_2.indexes_whole.ToList());
-            // indexes_whole.AddRange(variations_3.indexes_whole.ToList());
-            // indexes_partition.AddRange(variations_2.indexes_partition.ToList());
-            // indexes_partition.AddRange(variations_3.indexes_partition.ToList());
-
-
         }
 
         public static int for_iterations(int start, int end, int step)
@@ -307,64 +168,8 @@ namespace svm_fs_batch
             return end >= start ? ((end - start) / step) + 1 : 0;
         }
 
-        internal static
-
-        (List<(
-            int unrolled_whole_index,
-            int unrolled_partition_index,
-            int unrolled_instance_index,
-            int iteration_index,
-            int group_index,
-            int total_groups,
-            bool calc_11p_thresholds,
-            int repetitions,
-            int outer_cv_folds,
-            List<(int class_id, double class_weight)> class_weights,
-            routines.libsvm_svm_type svm_type,
-            routines.libsvm_kernel_type svm_kernel,
-            routines.scale_function scale_function,
-            int inner_cv_folds,
-            program.init_dataset_ret idr
-            )> indexes_whole,
-
-        List<(
-            int unrolled_whole_index,
-            int unrolled_partition_index,
-            int unrolled_instance_index,
-            int iteration_index,
-            int group_index,
-            int total_groups,
-            bool calc_11p_thresholds,
-            int repetitions,
-            int outer_cv_folds,
-            List<(int class_id, double class_weight)> class_weights,
-            routines.libsvm_svm_type svm_type,
-            routines.libsvm_kernel_type svm_kernel,
-            routines.scale_function scale_function,
-            int inner_cv_folds,
-            program.init_dataset_ret idr
-            )> indexes_partition)
-
-        get_unrolled_indexes(
-
-            program.init_dataset_ret caller_idr,
-            int iteration_index,
-            int total_groups,
-            int instance_index,
-            int total_instances,
-
-            get_unrolled_indexes_parameters p
-            //bool calc_11p_thresholds = false,
-
-            //List<routines.libsvm_svm_type> svm_types = null,
-            //List<routines.libsvm_kernel_type> kernels = null,
-            //List<routines.scale_function> scales = null,
-            //List<List<(int class_id, double class_weight)>> class_weight_sets = null,
-
-            //int r_cv_start = 1, int r_cv_end = 1, int r_cv_step = 1, 
-            //int o_cv_start = 5, int o_cv_end = 5, int o_cv_step = 1, 
-            //int i_cv_start = 5, int i_cv_end = 5, int i_cv_step = 1
-            )
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes(program.init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances, unrolled_indexes_parameters p,
+            int outer_cv_folds_to_run = 0)
         {
             // set default scales functions and svm_kernel types
             //if (kernels == null) kernels = ((routines.libsvm_kernel_type[])Enum.GetValues(typeof(routines.libsvm_kernel_type))).Where(a => a != routines.libsvm_kernel_type.precomputed).ToList();
@@ -372,9 +177,10 @@ namespace svm_fs_batch
 
             // limit the scale_function functions and svm_kernel types to reduce compute load
             //if (class_weights == null) class_weights = new List<(int class_id, double class_weight)>();
+
             if (p.class_weight_sets == null || p.class_weight_sets.Count == 0)
             {
-                p.class_weight_sets = new List<List<(int class_id, double class_weight)>> {new List<(int class_id, double class_weight)>()};
+                p.class_weight_sets = new List<List<(int class_id, double class_weight)>> { new List<(int class_id, double class_weight)>() };
             }
             else
             {
@@ -391,90 +197,54 @@ namespace svm_fs_batch
 
             var r_cv_series_index = -1;
             var r_cv_series = new int[for_iterations(p.r_cv_start, p.r_cv_end, p.r_cv_step)];
-            for (var _repetitions_cv_folds = p.r_cv_start; _repetitions_cv_folds <= p.r_cv_end; _repetitions_cv_folds += p.r_cv_step) r_cv_series[++r_cv_series_index]=_repetitions_cv_folds;
+            for (var _repetitions_cv_folds = p.r_cv_start; _repetitions_cv_folds <= p.r_cv_end && r_cv_series_index < r_cv_series.Length - 1; _repetitions_cv_folds += p.r_cv_step) r_cv_series[++r_cv_series_index] = _repetitions_cv_folds;
 
+            // todo: outer_cv_folds_to_run
             var o_cv_series_index = -1;
-            var o_cv_series = new int[for_iterations(p.o_cv_start, p.o_cv_end, p.o_cv_step)];
-            for (var _outer_cv_folds = p.o_cv_start; _outer_cv_folds <= p.o_cv_end; _outer_cv_folds += p.o_cv_step) o_cv_series[++o_cv_series_index]=_outer_cv_folds;
+
+            var o_cv_series_count = for_iterations(p.o_cv_start, p.o_cv_end, p.o_cv_step);
+            var o_cv_series = new int[o_cv_series_count];
+            for (var _outer_cv_folds = p.o_cv_start; _outer_cv_folds <= p.o_cv_end && o_cv_series_index < o_cv_series.Length - 1; _outer_cv_folds += p.o_cv_step) o_cv_series[++o_cv_series_index] = _outer_cv_folds;
 
             var i_cv_series_index = -1;
             var i_cv_series = new int[for_iterations(p.i_cv_start, p.i_cv_end, p.i_cv_step)];
-            for (var inner_cv_folds = p.i_cv_start; inner_cv_folds <= p.i_cv_end; inner_cv_folds += p.i_cv_step) i_cv_series[++i_cv_series_index] = inner_cv_folds;
+            for (var inner_cv_folds = p.i_cv_start; inner_cv_folds <= p.i_cv_end && i_cv_series_index < i_cv_series.Length - 1; inner_cv_folds += p.i_cv_step) i_cv_series[++i_cv_series_index] = inner_cv_folds;
 
-            
+
 
             // should group series be the loop group index or the mixture of groups?
-            
+
             var group_series_index = -1;
             var group_series = new int[total_groups]; // this is currently only the group_index , could also add the selected_group_indexes
 
             if (p.group_start == -1 && p.group_end == -1) group_series = new int[1];
-            
-            var group_end= p.group_start >= 0 && p.group_end == -1 ? total_groups - 1 : p.group_end;
+
+            var group_end = p.group_start >= 0 && p.group_end == -1 ? total_groups - 1 : p.group_end;
 
             for (var g_series = p.group_start; g_series <= group_end; g_series++)
             {
-                group_series[++group_series_index]=g_series; //group_series.Add(g_series);
+                group_series[++group_series_index] = g_series; //group_series.Add(g_series);
             }
-
-            //if (total_groups <= 0)
-            //{
-            //    //total_groups
-            //    group_series=new int[] { -1 };
-            //}
 
             if (r_cv_series == null || r_cv_series.Length == 0) throw new Exception();
             if (o_cv_series == null || o_cv_series.Length == 0) throw new Exception();
             if (i_cv_series == null || i_cv_series.Length == 0) throw new Exception();
             if (group_series == null || group_series.Length == 0) throw new Exception();
 
-            //var _r_start = 1;
-            //var _r_end = 1; // 5
-            //var _r_step = 1;
-
-            //var _o_start = 2;
-            //var _o_end = 2; // 20
-            //var _o_step = 2;
-
-            //var _i_start = 1;
-            //var _i_end = 1; // 20
-            //var _i_step = 2;
-
             var unrolled_whole_index = 0;
             var unrolled_partition_indexes = new int[total_instances];
-
             var unrolled_instance_index = 0;
-
-            
-
-            var indexes_whole = new List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )>();
-
+            var indexes_whole = new List<index_data>();
 
             foreach (var repetitions in r_cv_series) // e.g. 1 or 5, or 1,2,3,4,5,...
             {
-                foreach (var outer_folds in o_cv_series) // e.g. 5 or 10, or 1,2,3,4,5,...
+                foreach (var outer_cv_folds in o_cv_series) // e.g. 5 or 10, or 1,2,3,4,5,...
                 {
                     //var ida = (init_dataset_ret)null;
                     var idr = (program.init_dataset_ret)null;
 
                     idr = new program.init_dataset_ret(caller_idr);
-                    idr.set_folds(repetitions, outer_folds);
+                    idr.set_folds(repetitions, outer_cv_folds, outer_cv_folds_to_run);
 
                     //idr.class_folds = idr.class_sizes.Select(a => (class_id: a.class_id, size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_folds))).ToList();
                     //
@@ -505,7 +275,27 @@ namespace svm_fs_batch
 
                                         foreach (var class_weights in p.class_weight_sets)
                                         {
-                                            indexes_whole.Add((unrolled_whole_index, unrolled_partition_indexes[unrolled_instance_index], unrolled_instance_index, iteration_index, group_index, total_groups, p.calc_11p_thresholds, repetitions, outer_folds, class_weights, svm_type, svm_kernel, scale_function, inner_folds, idr));
+                                            var index_data = new index_data()
+                                            {
+                                                unrolled_whole_index = unrolled_whole_index,
+                                                unrolled_partition_index = unrolled_partition_indexes[unrolled_instance_index],
+                                                unrolled_instance_index = unrolled_instance_index,
+                                                iteration_index = iteration_index,
+                                                group_index = group_index,
+                                                total_groups = total_groups,
+                                                calc_11p_thresholds = p.calc_11p_thresholds,
+                                                repetitions = repetitions,
+                                                outer_cv_folds = outer_cv_folds,
+                                                outer_cv_folds_to_run = outer_cv_folds_to_run,
+                                                class_weights = class_weights,
+                                                svm_type = svm_type,
+                                                svm_kernel = svm_kernel,
+                                                scale_function = scale_function,
+                                                inner_cv_folds = inner_folds,
+                                                idr = idr
+                                            };
+
+                                            indexes_whole.Add(index_data);
 
                                             unrolled_partition_indexes[unrolled_instance_index]++;
 
@@ -528,141 +318,17 @@ namespace svm_fs_batch
         }
 
 
-        internal static
-             (
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_loaded_whole,
-
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_loaded_partition,
-
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_missing_whole,
-
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_missing_partition
-            )
-
+        internal static (List<index_data> indexes_loaded_whole, List<index_data> indexes_loaded_partition, List<index_data> indexes_missing_whole, List<index_data> indexes_missing_partition)
             load_cache
             (
                 int instance_index,
                 int iteration_index,
                 string experiment_name,
-                //bool load_z,
-                //bool load_x,
-                //bool load_m,
                 bool wait_for_cache,
-                //init_dataset_ret ida,
-                //outer_cv_args oca,
-                //int iteration_index,
-                //string experiment_name,
-                //string full_iteration_fn,
-                //string partition_iteration_fn,
-                //int total_groups,
-                //int total_ids,
-                ///*List<string> extra_cache_files,*/
                 List<string> cache_files_already_loaded,
-                List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> iteration_cm_all,
-                //int group_index_start,
-                //int group_index_last
-
-                List<(
-                    int unrolled_whole_index,
-                    int unrolled_partition_index,
-                    int unrolled_instance_index,
-                    int iteration_index,
-                    int group_index,
-                    int total_groups,
-                    bool calc_11p_thresholds,
-                    int repetitions,
-                    int outer_cv_folds,
-                    List<(int class_id, double class_weight)> class_weights,
-                    routines.libsvm_svm_type svm_type,
-                    routines.libsvm_kernel_type svm_kernel,
-                    routines.scale_function scale_function,
-                    int inner_cv_folds,
-                    program.init_dataset_ret idr
-                    )> indexes_whole,
-
-                List<(
-                    int unrolled_whole_index,
-                    int unrolled_partition_index,
-                    int unrolled_instance_index,
-                    int iteration_index,
-                    int group_index,
-                    int total_groups,
-                    bool calc_11p_thresholds,
-                    int repetitions,
-                    int outer_cv_folds,
-                    List<(int class_id, double class_weight)> class_weights,
-                    routines.libsvm_svm_type svm_type,
-                    routines.libsvm_kernel_type svm_kernel,
-                    routines.scale_function scale_function,
-                    int inner_cv_folds,
-                    program.init_dataset_ret idr
-                    )> indexes_partition
-            //,
-            //bool output_threshold_adjustement_performance
+                List<perf.confusion_matrix_data> iteration_cm_all,
+                List<index_data> indexes_whole,
+                List<index_data> indexes_partition
             )
         {
             // a single group may have multiple tests... e.g. different number of inner-cv, outer-cv, class_weights, etc...
@@ -772,104 +438,10 @@ namespace svm_fs_batch
             return loaded_state;
         }
 
-        internal static
-            (
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_loaded_whole,
-
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_loaded_partition,
-
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_missing_whole,
-
-            List<(
-                int unrolled_whole_index,
-                int unrolled_partition_index,
-                int unrolled_instance_index,
-                int iteration_index,
-                int group_index,
-                int total_groups,
-                bool calc_11p_thresholds,
-                int repetitions,
-                int outer_cv_folds,
-                List<(int class_id, double class_weight)> class_weights,
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                routines.scale_function scale_function,
-                int inner_cv_folds,
-                program.init_dataset_ret idr
-                )> indexes_missing_partition
-            )
-
-            get_missing(
-
-                int instance_index,
-
-                List<(string line, perf.confusion_matrix cm, List<(string key, string value_str, int? value_int, double? value_double)> key_value_list, List<(string key, string value_str, int? value_int, double? value_double)> unknown_key_value_list)> iteration_cm_all,
-
-                List<(
-                    int unrolled_whole_index,
-                    int unrolled_partition_index,
-                    int unrolled_instance_index,
-                    int iteration_index,
-                    int group_index,
-                    int total_groups,
-                    bool calc_11p_thresholds,
-                    int repetitions,
-                    int outer_cv_folds,
-                    List<(int class_id, double class_weight)> class_weights,
-                    routines.libsvm_svm_type svm_type,
-                    routines.libsvm_kernel_type svm_kernel,
-                    routines.scale_function scale_function,
-                    int inner_cv_folds,
-                    program.init_dataset_ret idr
-                    )> indexes_whole
+        internal static (List<index_data> indexes_loaded_whole, List<index_data> indexes_loaded_partition, List<index_data> indexes_missing_whole, List<index_data> indexes_missing_partition) get_missing(
+            int instance_index,
+                List<perf.confusion_matrix_data> iteration_cm_all,
+                List<index_data> indexes_whole
             )
         {
             // check iteration_cm_all to see what is already loaded and what is missing

@@ -61,28 +61,34 @@ namespace svm_fs_batch
             // if (program.write_console_log) program.WriteLine(string.Join(",",k_list));
         }
 
-        internal static List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds(int examples, int repetitions, int outer_cv_folds, int? size_limit = null)
+        internal static List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds(int examples, int repetitions, int outer_cv_folds, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
+            // folds: returns a list of folds (including the indexes at each fold)... number folds = repetitions (!<1) * outer_cv_folds_to_run (!<1)
+
+            // outer_cv_folds_to_run is the total number of outer_cv_folds to actually run/process... whereas, outer_cv_folds describes the data partitioning (i.e. 5 would be 5 tests of 80% train & 20% test, where as outer_cv_folds_to_run would reduce the 5 tests to given number).
+            if (examples <= 0) throw new Exception();
             if (repetitions <= 0) throw new Exception();
             if (outer_cv_folds <= 0) throw new Exception();
+            if (outer_cv_folds_to_run < 0 || outer_cv_folds_to_run > outer_cv_folds) throw new Exception();
+            if (fold_size_limit < 0) throw new Exception();
 
             //var module_name = nameof(svm_ctl);
             //var method_name = nameof(folds);
-
             /*int first_index, int last_index, int num_items,*/
+            
+            if (outer_cv_folds_to_run == 0) outer_cv_folds_to_run = outer_cv_folds;
+            var fold_sizes = new int[outer_cv_folds_to_run];
 
-            var fold_sizes = new int[outer_cv_folds];
-
-            if (examples > 0 && outer_cv_folds > 0)
+            if (examples > 0 && outer_cv_folds_to_run > 0)
             {
                 var n = examples / outer_cv_folds;
 
-                for (var i = 0; i < outer_cv_folds; i++) { fold_sizes[i] = n; }
+                for (var i = 0; i < outer_cv_folds_to_run; i++) { fold_sizes[i] = n; }
 
                 for (var i = 0; i < (examples % outer_cv_folds); i++) { fold_sizes[i]++; }
             }
 
-            if (size_limit != null) { fold_sizes = fold_sizes.Select(a => a > size_limit ? size_limit.Value : a).ToArray(); }
+            if (fold_size_limit > 0) { fold_sizes = fold_sizes.Select(a => a > fold_size_limit ? fold_size_limit : a).ToArray(); }
 
             // use same seed to ensure all calls to fold() are deterministic
             var rand = new Random(1);
