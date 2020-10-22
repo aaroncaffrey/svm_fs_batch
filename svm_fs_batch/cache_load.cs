@@ -10,7 +10,7 @@ namespace svm_fs_batch
     internal class cache_load
     {
         
-        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_basic(program.init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances,
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_basic(init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances,
              int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds)
         {
             var p = new unrolled_indexes_parameters()
@@ -31,7 +31,7 @@ namespace svm_fs_batch
             return get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p, outer_cv_folds_to_run);//calc_11p_thresholds, svm_types, kernels, scales, class_weights, r_cv_start, r_cv_end, r_cv_step, o_cv_start, o_cv_end, o_cv_step, i_cv_start, i_cv_end, i_cv_step);
         }
 
-        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_check_bias(int search_type, program.init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances)
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_check_bias(int search_type, init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances)
         {
             // for a specific set of features (i.e. the final result from feature selection):
 
@@ -168,7 +168,7 @@ namespace svm_fs_batch
             return end >= start ? ((end - start) / step) + 1 : 0;
         }
 
-        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes(program.init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances, unrolled_indexes_parameters p,
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes(init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances, unrolled_indexes_parameters p,
             int outer_cv_folds_to_run = 0)
         {
             // set default scales functions and svm_kernel types
@@ -241,9 +241,9 @@ namespace svm_fs_batch
                 foreach (var outer_cv_folds in o_cv_series) // e.g. 5 or 10, or 1,2,3,4,5,...
                 {
                     //var ida = (init_dataset_ret)null;
-                    var idr = (program.init_dataset_ret)null;
+                    var idr = (init_dataset_ret)null;
 
-                    idr = new program.init_dataset_ret(caller_idr);
+                    idr = new init_dataset_ret(caller_idr);
                     idr.set_folds(repetitions, outer_cv_folds, outer_cv_folds_to_run);
 
                     //idr.class_folds = idr.class_sizes.Select(a => (class_id: a.class_id, size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_folds))).ToList();
@@ -347,7 +347,7 @@ namespace svm_fs_batch
             if (!loaded_state.indexes_missing_whole.Any()) return loaded_state;
 
 
-            var iteration_folder = program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, iteration_index);
+            var iteration_folder = program.get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, iteration_index);
 
             do
             {
@@ -378,8 +378,8 @@ namespace svm_fs_batch
                     if (string.Equals(cache_level, cache_levels.Last(), StringComparison.InvariantCultureIgnoreCase))
                     {
                         // only load m* for the partition... pt2
-                        //var merge_files = indexes_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
-                        var merge_files = loaded_state.indexes_missing_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(program.init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
+                        //var merge_files = indexes_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
+                        var merge_files = loaded_state.indexes_missing_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
 
                         cache_files = cache_files.Intersect(merge_files).ToList();
                     }

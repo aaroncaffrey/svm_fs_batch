@@ -7,89 +7,6 @@ namespace svm_fs_batch
 {
     internal static class grid
     {
-        //internal class best_rate_container
-        //{
-        //private static readonly object _file_lock = new object();
-        //private readonly object _rate_lock = new object();
-
-
-        internal static List<(routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_folds_to_run, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> read_cache(string cache_train_grid_csv)
-        {
-            var module_name = nameof(grid);
-            var method_name = nameof(read_cache);
-
-            var cache = new List<(
-                routines.libsvm_svm_type svm_type,
-                routines.libsvm_kernel_type svm_kernel,
-                int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_folds_to_run, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, (double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)>();
-
-            //cache_train_grid_csv = (cache_train_grid_csv);
-
-            //*!string.IsNullOrWhiteSpace(cache_train_grid_csv) && io_proxy.Exists(cache_train_grid_csv) && new FileInfo(cache_train_grid_csv).Length > 0 && */
-
-            if (io_proxy.is_file_available(cache_train_grid_csv, module_name, method_name))
-            {
-                //var grid = new List<(double cost, double gamma, double epsilon, double coef0, double degree, double rate)>();
-
-                cache = io_proxy.ReadAllLines(cache_train_grid_csv, module_name, method_name).Skip(1).Select(a =>
-                {
-                    try
-                    {
-                        var line = a.Split(',').ToList();
-
-                        var k = 0;
-                        return
-                        (
-                            svm_type: (routines.libsvm_svm_type)Enum.Parse(typeof(routines.libsvm_svm_type), line[k++]),
-                            svm_kernel: (routines.libsvm_kernel_type)Enum.Parse(typeof(routines.libsvm_kernel_type), line[k++]),
-                            repetitions: int.Parse(line[k++], CultureInfo.InvariantCulture),
-                            repetitions_index: int.Parse(line[k++], CultureInfo.InvariantCulture),
-                            outer_cv_folds: int.Parse(line[k++], CultureInfo.InvariantCulture),
-                            outer_cv_index: int.Parse(line[k++], CultureInfo.InvariantCulture),
-                            inner_cv_folds: int.Parse(line[k++], CultureInfo.InvariantCulture),
-                            probability_estimates: bool.Parse(line[k++]),
-                            shrinking_heuristics: bool.Parse(line[k++]),
-                            point: (cost: double.TryParse(line[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out var p_cost) ? p_cost : (double?)null,
-                            gamma: double.TryParse(line[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out var p_gamma) ? p_gamma : (double?)null,
-                            epsilon: double.TryParse(line[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out var p_epsilon) ? p_epsilon : (double?)null,
-                            coef0: double.TryParse(line[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out var p_coef0) ? p_coef0 : (double?)null,
-                            degree: double.TryParse(line[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out var p_degree) ? p_degree : (double?)null),
-                            rate: double.TryParse(line[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out var p_rate) ? p_rate : 0d
-                        );
-                    }
-                    catch (Exception e)
-                    {
-                        io_proxy.log_exception(e, "", module_name, method_name);
-                        return default;
-                    }
-                }).ToList();
-            }
-
-            cache = cache.Where(a => a.rate > 0).ToList();
-
-            return cache;
-        }
-
-        internal static void write_cache_file(string cache_file, routines.libsvm_svm_type svm_type, routines.libsvm_kernel_type svm_kernel, int repetitions, int repetitions_index, int outer_cv_folds, int outer_cv_folds_to_run, int outer_cv_index, int inner_cv_folds, bool probability_estimates, bool shrinking_heuristics, List<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> res)
-        {
-            var module_name = nameof(grid);
-            var method_name = nameof(write_cache_file);
-
-            var lines = new List<string>();
-            lines.Add(string.Join(",", new string[] { nameof(svm_type), nameof(svm_kernel), nameof(repetitions), nameof(repetitions_index), nameof(outer_cv_folds), nameof(outer_cv_index), nameof(inner_cv_folds), nameof(probability_estimates), nameof(shrinking_heuristics), "cost", "gamma", "epsilon", "coef0", "degree", "rate", }));
-            lines.AddRange(res.Select(a => string.Join(",", new string[] { svm_type.ToString(), svm_kernel.ToString(), repetitions.ToString(CultureInfo.InvariantCulture), repetitions_index.ToString(CultureInfo.InvariantCulture), outer_cv_folds.ToString(CultureInfo.InvariantCulture), outer_cv_index.ToString(CultureInfo.InvariantCulture), inner_cv_folds.ToString(CultureInfo.InvariantCulture), probability_estimates.ToString(CultureInfo.InvariantCulture), shrinking_heuristics.ToString(CultureInfo.InvariantCulture),
-
-                a.point.cost?.ToString("G17", CultureInfo.InvariantCulture),
-                a.point.gamma?.ToString("G17", CultureInfo.InvariantCulture),
-                a.point.epsilon?.ToString("G17", CultureInfo.InvariantCulture),
-                a.point.coef0?.ToString("G17", CultureInfo.InvariantCulture),
-                a.point.degree?.ToString("G17", CultureInfo.InvariantCulture),
-                a.rate.ToString("G17", CultureInfo.InvariantCulture) })).ToList());
-
-            io_proxy.WriteAllLines((cache_file), lines, module_name, method_name);
-        }
-
-
         internal static ((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double? rate) get_best_rate(List<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double rate)> res)
         {
             //var module_name = nameof(grid);
@@ -205,7 +122,7 @@ namespace svm_fs_batch
             //var module_name = nameof(grid);
             //var method_name = nameof(grid_parameter_search);
 
-            var cache = read_cache(cache_train_grid_csv);
+            var cache = grid_cache_data.read_cache_file(cache_train_grid_csv);
 
             if (inner_cv_folds <= 1) throw new Exception();
 
@@ -341,7 +258,7 @@ namespace svm_fs_batch
                                                                               a.coef0 == b.point.coef0 &&
                                                                               a.degree == b.point.degree
                                                                              )).ToList();
-
+            /*
             var cached_search = cache.Where(b => cached_search_grid_points.Any(a => svm_type == b.svm_type && svm_kernel == b.svm_kernel && inner_cv_folds == b.inner_cv_folds && probability_estimates == b.probability_estimates && shrinking_heuristics == b.shrinking_heuristics &&
                                                                              a.cost == b.point.cost &&
                                                                              a.gamma == b.point.gamma &&
@@ -349,13 +266,14 @@ namespace svm_fs_batch
                                                                              a.coef0 == b.point.coef0 &&
                                                                              a.degree == b.point.degree
             )).ToList();
+            */
 
             search_grid_points = search_grid_points.Except(cached_search_grid_points).ToList();
 
             //var tasks = new List<Task<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double cv_rate)>>();
 
 
-          
+
             var results = Enumerable.Range(0, search_grid_points.Count).AsParallel().AsOrdered().Select(index =>
             {
                 var point = search_grid_points[index];
@@ -428,7 +346,27 @@ namespace svm_fs_batch
 
             if (search_grid_points.Count > 0)
             {
-                write_cache_file(cache_train_grid_csv, svm_type, svm_kernel, repetitions, repetitions_index, outer_cv_folds, outer_cv_index, inner_cv_folds, probability_estimates, shrinking_heuristics, results);
+                var results_cache_format = results.Select(a =>
+                    new grid_cache_data()
+                    {
+                        svm_type = svm_type,
+                        svm_kernel = svm_kernel,
+                        repetitions = repetitions,
+                        repetitions_index = repetitions_index,
+                        outer_cv_folds = outer_cv_folds,
+                        //outer_cv_folds_to_run = outer_cv_folds_to_run,
+                        outer_cv_index = outer_cv_index,
+                        inner_cv_folds = inner_cv_folds,
+                        probability_estimates = probability_estimates,
+                        shrinking_heuristics = shrinking_heuristics,
+                        point = a.point,
+                        rate = a.cv_rate
+                    }
+                ).ToList();
+
+                grid_cache_data.write_cache_file(cache_train_grid_csv, results_cache_format);
+
+                //svm_type, svm_kernel, repetitions, repetitions_index, outer_cv_folds, outer_cv_index, inner_cv_folds, probability_estimates, shrinking_heuristics, results);
             }
 
             var xr = get_best_rate(results);
@@ -459,6 +397,5 @@ namespace svm_fs_batch
 
             return -1;
         }
-
     }
 }

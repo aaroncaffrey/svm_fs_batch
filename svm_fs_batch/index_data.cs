@@ -22,22 +22,27 @@ namespace svm_fs_batch
         internal routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf;
         internal routines.scale_function scale_function = routines.scale_function.rescale;
         internal int inner_cv_folds = 5;
-        internal program.init_dataset_ret idr = new program.init_dataset_ret();
+        internal init_dataset_ret idr = new init_dataset_ret();
+
+        internal int total_whole_indexes = -1;
+        internal int total_partition_indexes = -1;
+        internal int total_instances = -1;
+
 
         internal string id_index_str()
         {
             var list = new List<(string name, string value, string value_max)>();
 
-            list.Add((nameof(this.iteration_index), $"{this.iteration_index}", ""));
-            list.Add((nameof(this.group_index), $"{this.group_index}", $"{this.total_groups}"));
+            list.Add((nameof(this.iteration_index), $@"{this.iteration_index}", $@""));
+            list.Add((nameof(this.group_index), $@"{this.group_index}", this.total_groups > -1 ? $@"/{this.total_groups}" : $@""));
 
-            list.Add((nameof(this.unrolled_instance_index), $"{this.unrolled_instance_index}", ""));
+            list.Add((nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"/{this.total_instances}" : $@""));
 
-            list.Add((nameof(this.unrolled_whole_index), $"{this.unrolled_whole_index}", ""));
-            list.Add((nameof(this.unrolled_partition_index), $"{this.unrolled_partition_index}", ""));
+            list.Add((nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $"/{this.total_whole_indexes}" : $""));
+            list.Add((nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $"/{this.total_partition_indexes}" : $""));
 
 
-            return "[" + string.Join(", ", list.Select(a => $"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $"/{a.value_max}" : "")).ToList()) + "]";
+            return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : $@"")).ToList()) + $@"]";
         }
 
         internal string id_ml_str()
@@ -87,7 +92,11 @@ namespace svm_fs_batch
             svm_kernel = index_data.svm_kernel;
             scale_function = index_data.scale_function;
             inner_cv_folds = index_data.inner_cv_folds;
-            idr = new program.init_dataset_ret(index_data.idr);
+            idr = new init_dataset_ret(index_data.idr);
+
+            total_whole_indexes = index_data.total_whole_indexes;
+            total_partition_indexes = index_data.total_partition_indexes;
+            total_instances = index_data.total_instances;
         }
     }
 }
