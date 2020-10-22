@@ -38,8 +38,8 @@ namespace svm_fs_batch
 
             list.Add((nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"/{this.total_instances}" : $@""));
 
-            list.Add((nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $"/{this.total_whole_indexes}" : $""));
-            list.Add((nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $"/{this.total_partition_indexes}" : $""));
+            list.Add((nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $@"/{this.total_whole_indexes}" : $@""));
+            list.Add((nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $@"/{this.total_partition_indexes}" : $@""));
 
 
             return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : $@"")).ToList()) + $@"]";
@@ -49,25 +49,25 @@ namespace svm_fs_batch
         {
             var list = new List<(string name, string value, string value_max)>();
 
-            list.Add((nameof(this.svm_type), $"{this.svm_type}", ""));
-            list.Add((nameof(this.svm_kernel), $"{this.svm_kernel}", ""));
-            list.Add((nameof(this.scale_function), $"{this.scale_function}", ""));
-            list.Add((nameof(this.class_weights), $"{(this.class_weights != null ? string.Join("; ", class_weights.Select(a => $"w{(a.class_id>0?"+":"")} {a.class_weight}").ToList()) : "")}", ""));
-            list.Add((nameof(this.calc_11p_thresholds), $"{this.calc_11p_thresholds}", ""));
+            list.Add((nameof(this.svm_type), $@"{this.svm_type}", $@""));
+            list.Add((nameof(this.svm_kernel), $@"{this.svm_kernel}", $@""));
+            list.Add((nameof(this.scale_function), $@"{this.scale_function}", $@""));
+            list.Add((nameof(this.class_weights), $@"{(this.class_weights != null ? string.Join($@"; ", class_weights.Select(a => $@"w{(a.class_id>0? $@"+": $@"")} {a.class_weight}").ToList()) : "")}", ""));
+            list.Add((nameof(this.calc_11p_thresholds), $@"{this.calc_11p_thresholds}", ""));
 
-            return "[" + string.Join(", ", list.Select(a => $"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $"/{a.value_max}" : "")).ToList()) + "]";
+            return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : "")).ToList()) + $@"]";
         }
 
         internal string id_fold_str()
         {
             var list = new List<(string name, string value, string value_max)>();
 
-            list.Add((nameof(this.repetitions), $"{this.repetitions}", ""));
-            list.Add((nameof(this.outer_cv_folds), $"{this.outer_cv_folds}", ""));
-            list.Add((nameof(this.outer_cv_folds_to_run), $"{this.outer_cv_folds_to_run}", ""));
-            list.Add((nameof(this.inner_cv_folds), $"{this.inner_cv_folds}", ""));
+            list.Add((nameof(this.repetitions), $@"{this.repetitions}", ""));
+            list.Add((nameof(this.outer_cv_folds), $@"{this.outer_cv_folds}", ""));
+            list.Add((nameof(this.outer_cv_folds_to_run), $@"{this.outer_cv_folds_to_run}", ""));
+            list.Add((nameof(this.inner_cv_folds), $@"{this.inner_cv_folds}", ""));
 
-            return "[" + string.Join(", ", list.Select(a => $"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $"/{a.value_max}" : "")).ToList()) + "]";
+            return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : "")).ToList()) + $@"]";
         }
 
         public index_data()

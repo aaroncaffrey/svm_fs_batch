@@ -292,7 +292,10 @@ namespace svm_fs_batch
                                                 svm_kernel = svm_kernel,
                                                 scale_function = scale_function,
                                                 inner_cv_folds = inner_folds,
-                                                idr = idr
+                                                idr = idr,
+                                                total_instances = total_instances,
+                                                total_whole_indexes = -1,
+                                                total_partition_indexes = -1
                                             };
 
                                             indexes_whole.Add(index_data);
@@ -313,6 +316,15 @@ namespace svm_fs_batch
             }
 
             var indexes_partition = indexes_whole.Where(a => a.unrolled_instance_index == instance_index).ToList();
+
+            //var total_whole_indexes = indexes_whole.Count;
+            
+            for (var index = 0; index < indexes_whole.Count; index++)
+            {
+                indexes_whole[index].total_whole_indexes = unrolled_whole_index;
+                indexes_whole[index].total_partition_indexes = unrolled_partition_indexes[indexes_whole[index].unrolled_instance_index];
+            }
+
 
             return (indexes_whole, indexes_partition);
         }
