@@ -16,6 +16,9 @@ namespace svm_fs_batch
         internal static void Main(string[] args)
         {
             //var x=perf.confusion_matrix.load($@"C:\mmfs1\data\scratch\k1040015\svm_fs_batch\results\test\it_5\x_it-5_gr-5_sv-1_kr-3_sc-2_rn-1_oc-10_ic-10_ix-1-5.cm.csv");
+            
+            // debug cmd line parameters: -experiment_name test2 -array_start 0 -array_end 4 -array_index 0 -array_step 5 -array_instances 1 -array_last_index -1
+
 
             io_proxy.WriteLine($@"cmd line: {Environment.CommandLine}");
             io_proxy.WriteLine($@"processor count: {Environment.ProcessorCount}");
@@ -458,10 +461,10 @@ namespace svm_fs_batch
 
             var cache_files_loaded = new List<string>();
 
-            var test_final_best = true;
+            var test_final_best_bias = true;
             var deep_search_index = -1;
 
-            while (!finished || test_final_best)
+            while (!finished || test_final_best_bias)
             {
                 // get list of work to do this iteration
                 (List<index_data> indexes_whole, List<index_data> indexes_partition) unrolled_indexes = default;
@@ -471,7 +474,7 @@ namespace svm_fs_batch
                     unrolled_indexes = cache_load.get_unrolled_indexes_basic(caller_idr, iteration_index, total_groups, instance_index, total_instances, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds);
                     //(string experiment_name, int instance_index, int total_instances, int array_index_start, int array_step, int array_index_last, int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds)
                 }
-                else if (test_final_best)
+                else if (test_final_best_bias)
                 {
                     // todo: fix problem: 5 groups still being processed, rather than 1...
 
@@ -480,13 +483,13 @@ namespace svm_fs_batch
 
                     deep_search_index++;
 
-                    io_proxy.WriteLine($"{experiment_name}: iteration: {iteration_index}: feature selection finished; statistical tests on best set of features, index: {deep_search_index}.");
+                    io_proxy.WriteLine($"{experiment_name}: iteration: {iteration_index}: feature selection finished; statistical tests on best set of features, bias test index: {deep_search_index}.");
 
                     unrolled_indexes = cache_load.get_unrolled_indexes_check_bias(deep_search_index, caller_idr, iteration_index, total_groups, instance_index, total_instances);
 
                     if ((unrolled_indexes.indexes_whole == null || unrolled_indexes.indexes_whole.Count == 0) || (unrolled_indexes.indexes_partition == null || unrolled_indexes.indexes_partition.Count == 0))
                     {
-                        test_final_best = false;
+                        test_final_best_bias = false;
                         break;
                     }
                 }

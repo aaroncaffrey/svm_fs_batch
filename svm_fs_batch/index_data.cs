@@ -34,12 +34,12 @@ namespace svm_fs_batch
             var list = new List<(string name, string value, string value_max)>();
 
             list.Add((nameof(this.iteration_index), $@"{this.iteration_index}", $@""));
-            list.Add((nameof(this.group_index), $@"{this.group_index}", this.total_groups > -1 ? $@"/{this.total_groups}" : $@""));
+            list.Add((nameof(this.group_index), $@"{this.group_index}", this.total_groups > -1 ? $@"{this.total_groups}" : $@""));
 
-            list.Add((nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"/{this.total_instances}" : $@""));
+            list.Add((nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"{this.total_instances}" : $@""));
 
-            list.Add((nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $@"/{this.total_whole_indexes}" : $@""));
-            list.Add((nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $@"/{this.total_partition_indexes}" : $@""));
+            list.Add((nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $@"{this.total_whole_indexes}" : $@""));
+            list.Add((nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $@"{this.total_partition_indexes}" : $@""));
 
 
             return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : $@"")).ToList()) + $@"]";
