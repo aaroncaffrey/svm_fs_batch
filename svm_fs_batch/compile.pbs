@@ -1,4 +1,4 @@
-﻿﻿#PBS -l nodes=1:ppn=64
+#PBS -l nodes=1:ppn=64
 rm -rf ~/svm_fs_batch/svm_fs_batch/obj
 rm -rf ~/svm_fs_batch/svm_fs_batch/bin
 md /mmfs1/data/scratch/k1040015/svm_fs_batch
