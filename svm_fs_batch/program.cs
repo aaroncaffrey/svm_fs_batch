@@ -201,7 +201,7 @@ namespace svm_fs_batch
             var env_arraycount = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"_" : @"${MOAB_JOBARRAYRANGE}";
 
             TimeSpan pbs_walltime = TimeSpan.FromHours(240);
-            string pbs_execution_directory = $@"{init_dataset_ret.svm_fs_home}{Path.DirectorySeparatorChar}pbs{Path.DirectorySeparatorChar}{experiment_name}{Path.DirectorySeparatorChar}";
+            string pbs_execution_directory = $@"{init_dataset_ret.svm_fs_batch_home}{Path.DirectorySeparatorChar}pbs{Path.DirectorySeparatorChar}{experiment_name}{Path.DirectorySeparatorChar}";
             string pbs_jobname = $@"{experiment_name}_{nameof(svm_fs_batch)}";
             string pbs_mail_addr = "";
             string pbs_mail_opt = "n";

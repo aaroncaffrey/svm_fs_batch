@@ -9,8 +9,8 @@ namespace svm_fs_batch
     internal class init_dataset_ret
     {
         internal static readonly string user_home = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\home\k1040015" : @"/home/k1040015";
-        internal static readonly string svm_fs_home = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"C:\mmfs1\data\scratch\k1040015\{nameof(svm_fs_batch)}" : $@"/mmfs1/data/scratch/k1040015/{nameof(svm_fs_batch)}";
-        internal static readonly string results_root_folder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"{svm_fs_home}\results\" : $@"{svm_fs_home}/results/";
+        internal static readonly string svm_fs_batch_home = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"C:\mmfs1\data\scratch\k1040015\{nameof(svm_fs_batch)}" : $@"/mmfs1/data/scratch/k1040015/{nameof(svm_fs_batch)}";
+        internal static readonly string results_root_folder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"{svm_fs_batch_home}\results\" : $@"{svm_fs_batch_home}/results/";
         internal static readonly string libsvm_predict_runtime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"C:\libsvm\windows\svm-predict.exe" : $@"{user_home}/libsvm/svm-predict";
         internal static readonly string libsvm_train_runtime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"C:\libsvm\windows\svm-train.exe" : $@"{user_home}/libsvm/svm-train";
 

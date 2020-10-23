@@ -4,7 +4,6 @@ C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Release\netcoreapp3.1\s
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Release\netcoreapp3.1\svm_fs_batch.runtimeconfig.dev.json
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Release\netcoreapp3.1\svm_fs_batch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Release\netcoreapp3.1\svm_fs_batch.pdb
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\netcoreapp3.1\svm_fs_batch.csprojAssemblyReference.cache
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\netcoreapp3.1\svm_fs_batch.AssemblyInfoInputs.cache
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\netcoreapp3.1\svm_fs_batch.AssemblyInfo.cs
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\netcoreapp3.1\svm_fs_batch.csproj.CoreCompileInputs.cache
