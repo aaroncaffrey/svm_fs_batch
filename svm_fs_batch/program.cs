@@ -12,6 +12,146 @@ namespace svm_fs_batch
 {
     internal class program
     {
+        internal class program_args
+        {
+            internal int? folds = (int?)null;
+            internal int repetitions = 1;
+            internal int outer_cv_folds = 5;
+            internal int outer_cv_folds_to_run = 0;
+            internal int inner_folds = 5;
+            internal bool setup = false;
+            internal bool run_local = false;
+            internal string experiment_name = "";
+            internal string job_id = "";
+            internal string job_name = "";
+
+            internal int instance_array_index_start = -1; // start index for current instance
+            internal int instance_array_index_end = -1; // end index for current instance 
+
+            internal int array_instances = 0;
+            internal int array_step = 0;
+            internal int array_start = -1; // start index of whole array
+            internal int array_end = -1; // end index of whole array
+
+            internal int setup_total_vcpus = -1;
+            internal int setup_instance_vcpus = -1;
+
+            internal List<(string key, int int_value, string str_value)> args = new List<(string key, int int_value, string str_value)>();
+
+
+            
+            public program_args()
+            {
+                
+            }
+
+            public program_args(string[] args)
+            {
+                var arg_list = new string[]
+                {
+                    nameof(folds), nameof(repetitions), nameof(outer_cv_folds), nameof(outer_cv_folds_to_run), nameof(inner_folds), nameof(setup), nameof(run_local), nameof(experiment_name), nameof(job_id), nameof(job_name), 
+                    nameof(instance_array_index_start), nameof(instance_array_index_end), nameof(array_instances), nameof(array_step), nameof(array_start), nameof(array_end), nameof(setup_total_vcpus), nameof(setup_instance_vcpus),
+                };
+
+                var args_given = args.Where(a => a.StartsWith('-')).Select(a => a.Substring(1)).ToList();
+                
+                if (args_given.Any(a=>!arg_list.Contains(a))) throw new Exception();
+
+                if (args_given.Any(a=> args_given.Count(b=> a==b) > 1)) throw new Exception();
+
+                //var arg_list_indexes = arg_list.Select(name => args.ToList().FindIndex(arg => string.Equals(arg, $"-{name}", StringComparison.InvariantCultureIgnoreCase))).ToList();
+                var arg_list_indexes = arg_list.Select(name => (arg_name: name, arg_index: args.ToList().FindIndex(arg => string.Equals(arg, $"-{name}", StringComparison.InvariantCultureIgnoreCase)))).Where(a=> a.arg_index != -1 ).OrderBy(a=>a.arg_index).ToList();
+
+
+                for (var i = 0; i < arg_list_indexes.Count; i++)
+                {
+                    var arg = arg_list_indexes[i];
+                    
+                    
+                    var arg_given = arg.arg_index > -1;
+
+                    var next_arg_index = arg_list_indexes.FindIndex(a => a.arg_index > arg.arg_index);
+                    var value_str = arg_given ? string.Join(" ", args.Where((a, k) => k > arg.arg_index && (next_arg_index == -1 || k < arg_list_indexes[next_arg_index].arg_index)).ToList()) : "";
+                    var value_given = !string.IsNullOrWhiteSpace(value_str);
+
+                    if ((arg_given && !value_given) || (!arg_given && value_given)) throw new Exception();
+
+                    if (arg_given && value_given)
+                    {
+                        var value_int = int.TryParse(value_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_value_int) ? out_value_int : -1;
+                        //var value_double = double.TryParse(value_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_value_double) ? out_value_double : -1;
+                        //var value_bool = bool.TryParse(value_str, out var out_value_bool) ? out_value_bool : false;
+
+                        if (this.args.Any(a=>a.key== arg.arg_name)) throw new Exception();
+
+                        this.args.Add((arg.arg_name, value_int, value_str));
+
+                        switch (arg.arg_name)
+                        {
+                            case nameof(experiment_name):
+                                experiment_name = value_str;
+                                break;
+                            case nameof(job_id):
+                                job_id = value_str;
+                                break;
+                            case nameof(job_name):
+                                job_name = value_str;
+                                break;
+                            case nameof(run_local):
+                                run_local = value_int == 1;
+                                break;
+                            case nameof(setup):
+                                setup = value_int == 1;
+                                break;
+                            case nameof(folds):
+                                folds = value_int;
+                                inner_folds = value_int;
+                                outer_cv_folds = value_int;
+                                outer_cv_folds_to_run = value_int;
+                                repetitions = value_int;
+                                break;
+                            case nameof(repetitions):
+                                repetitions = value_int;
+                                break;
+                            case nameof(outer_cv_folds):
+                                outer_cv_folds = value_int;
+                                break;
+                            case nameof(outer_cv_folds_to_run):
+                                outer_cv_folds_to_run = value_int;
+                                break;
+                            case nameof(inner_folds):
+                                inner_folds = value_int;
+                                break;
+                            case nameof(instance_array_index_start):
+                                instance_array_index_start = value_int;
+                                break;
+                            case nameof(instance_array_index_end):
+                                instance_array_index_end = value_int;
+                                break;
+                            case nameof(array_instances):
+                                array_instances = value_int;
+                                break;
+                            case nameof(array_step):
+                                array_step = value_int;
+                                break;
+                            case nameof(array_start):
+                                array_start = value_int;
+                                break;
+                            case nameof(array_end):
+                                array_end = value_int;
+                                break;
+                            case nameof(setup_total_vcpus):
+                                setup_total_vcpus = value_int;
+                                break;
+                            case nameof(setup_instance_vcpus):
+                                setup_instance_vcpus = value_int;
+                                break;
+                            default: break;
+                        }
+                    }
+                }
+            }
+        }
 
         internal static void Main(string[] args)
         {
@@ -20,8 +160,8 @@ namespace svm_fs_batch
             // debug cmd line parameters: -experiment_name test2 -array_start 0 -array_end 4 -array_index 0 -array_step 5 -array_instances 1 -array_last_index -1
 
 
-            io_proxy.WriteLine($@"cmd line: {Environment.CommandLine}");
-            io_proxy.WriteLine($@"processor count: {Environment.ProcessorCount}");
+            io_proxy.WriteLine($@"cmd line: {Environment.CommandLine}", nameof(program), nameof(Main));
+            io_proxy.WriteLine($@"processor count: {Environment.ProcessorCount}", nameof(program), nameof(Main));
 
             var main_cts = new CancellationTokenSource();
             init.close_notifications(main_cts);
@@ -29,119 +169,91 @@ namespace svm_fs_batch
             init.set_gc_mode();
             init.set_thread_counts();
 
+            var program_args = new program_args(args);
 
+            //-experiment_name test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
 
-            var setup = false;
-            var experiment_name = "";
-            var job_id = "";
-            var job_name = "";
-            var array_index = -1; // start index for current instance
-            var array_instances = 0;
-            var array_step = 0;
-            var array_start = -1; // start index of whole array
-            var array_end = -1; // end index of whole array
-            var array_index_last = -1; // end index for current instance 
-
-            var setup_total_vcpus = -1;
-            var setup_instance_vcpus = -1;
-
-            var arg_index_setup = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(setup)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_setup_total_vcpus = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(setup_total_vcpus)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_setup_instance_vcpus = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(setup_instance_vcpus)}", StringComparison.InvariantCultureIgnoreCase));
-
-
-            var folds = (int?)null;
-            var repetitions = 1;
-            var outer_cv_folds = 5;
-            var outer_cv_folds_to_run = 0;
-            var inner_folds = 5;
-
-            var arg_index_experiment_name = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(experiment_name)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_job_id = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(job_id)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_job_name = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(job_name)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_array_index = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(array_index)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_array_index_last = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(array_index_last)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_array_instances = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(array_instances)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_array_step = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(array_step)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_array_start = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(array_start)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_array_end = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(array_end)}", StringComparison.InvariantCultureIgnoreCase));
-
-            var arg_index_repetitions = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(repetitions)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_outer_folds = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(outer_cv_folds)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_outer_folds_to_run = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(outer_cv_folds_to_run)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_inner_folds = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(inner_folds)}", StringComparison.InvariantCultureIgnoreCase));
-            var arg_index_folds = args.ToList().FindIndex(a => string.Equals(a, $"-{nameof(folds)}", StringComparison.InvariantCultureIgnoreCase));
-
-
-            var arg_indexes = new int[]
+            if (program_args.run_local)
             {
-                arg_index_setup,
-                arg_index_setup_total_vcpus,
-                arg_index_setup_instance_vcpus,
-
-                arg_index_experiment_name    ,
-                arg_index_job_id             ,
-                arg_index_job_name           ,
-                arg_index_array_index        ,
-                arg_index_array_index_last   ,
-                arg_index_array_instances        ,
-                arg_index_array_step         ,
-                arg_index_array_start        ,
-                arg_index_array_end          ,
-
-                arg_index_repetitions,
-                arg_index_outer_folds,
-                arg_index_outer_folds_to_run,
-                arg_index_inner_folds,
-                arg_index_folds,
-            };
-
-            if (arg_index_setup > -1) setup = true;
-            if (arg_index_setup_total_vcpus > -1 && args.Length - 1 >= arg_index_setup_total_vcpus + 1 && !arg_indexes.Contains(arg_index_setup_total_vcpus + 1)) setup_total_vcpus = int.TryParse(args[arg_index_setup_total_vcpus + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var setup_total_vcpus2) ? setup_total_vcpus2 : -1;
-            if (arg_index_setup_instance_vcpus > -1 && args.Length - 1 >= arg_index_setup_instance_vcpus + 1 && !arg_indexes.Contains(arg_index_setup_instance_vcpus + 1)) setup_instance_vcpus = int.TryParse(args[arg_index_setup_instance_vcpus + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var setup_instance_vcpus2) ? setup_instance_vcpus2 : -1;
-
-            if (arg_index_experiment_name > -1 && args.Length - 1 >= arg_index_experiment_name + 1 && !arg_indexes.Contains(arg_index_experiment_name + 1)) experiment_name = args[arg_index_experiment_name + 1];
-            if (arg_index_job_id > -1 && args.Length - 1 >= arg_index_job_id + 1 && !arg_indexes.Contains(arg_index_job_id + 1)) job_id = args[arg_index_job_id + 1];
-            if (arg_index_job_name > -1 && args.Length - 1 >= arg_index_job_name + 1 && !arg_indexes.Contains(arg_index_job_name + 1)) job_name = args[arg_index_job_name + 1];
-            if (arg_index_array_index > -1 && args.Length - 1 >= arg_index_array_index + 1 && !arg_indexes.Contains(arg_index_array_index + 1)) array_index = int.TryParse(args[arg_index_array_index + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var array_index2) ? array_index2 : -1;
-            if (arg_index_array_index_last > -1 && args.Length - 1 >= arg_index_array_index_last + 1 && !arg_indexes.Contains(arg_index_array_index_last + 1)) array_index_last = int.TryParse(args[arg_index_array_index_last + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var array_index_last2) ? array_index_last2 : -1;
-            if (arg_index_array_instances > -1 && args.Length - 1 >= arg_index_array_instances + 1 && !arg_indexes.Contains(arg_index_array_instances + 1)) array_instances = int.TryParse(args[arg_index_array_instances + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var array_instances2) ? array_instances2 : -1;
-            if (arg_index_array_step > -1 && args.Length - 1 >= arg_index_array_step + 1 && !arg_indexes.Contains(arg_index_array_step + 1)) array_step = int.TryParse(args[arg_index_array_step + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var array_step2) ? array_step2 : -1;
-            if (arg_index_array_start > -1 && args.Length - 1 >= arg_index_array_start + 1 && !arg_indexes.Contains(arg_index_array_start + 1)) array_start = int.TryParse(args[arg_index_array_start + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var array_start2) ? array_start2 : -1;
-            if (arg_index_array_end > -1 && args.Length - 1 >= arg_index_array_end + 1 && !arg_indexes.Contains(arg_index_array_end + 1)) array_end = int.TryParse(args[arg_index_array_end + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var array_end2) ? array_end2 : -1;
+                program_args.experiment_name += $@"_{DateTime.Now:yyyyMMddHHmmssfff}";
 
 
-            if (arg_index_repetitions > -1 && args.Length - 1 >= arg_index_repetitions + 1 && !arg_indexes.Contains(arg_index_repetitions + 1)) repetitions = int.TryParse(args[arg_index_repetitions + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var repetitions2) ? repetitions2 : -1;
-            if (arg_index_outer_folds > -1 && args.Length - 1 >= arg_index_outer_folds + 1 && !arg_indexes.Contains(arg_index_outer_folds + 1)) outer_cv_folds = int.TryParse(args[arg_index_outer_folds + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var outer_folds2) ? outer_folds2 : -1;
-            if (arg_index_outer_folds_to_run > -1 && args.Length - 1 >= arg_index_outer_folds_to_run + 1 && !arg_indexes.Contains(arg_index_outer_folds_to_run + 1)) outer_cv_folds_to_run = int.TryParse(args[arg_index_outer_folds_to_run + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var outer_folds_to_run2) ? outer_folds_to_run2 : -1;
-            if (arg_index_inner_folds > -1 && args.Length - 1 >= arg_index_inner_folds + 1 && !arg_indexes.Contains(arg_index_inner_folds + 1)) inner_folds = int.TryParse(args[arg_index_inner_folds + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var inner_folds2) ? inner_folds2 : -1;
-            if (arg_index_folds > -1 && args.Length - 1 >= arg_index_folds + 1 && !arg_indexes.Contains(arg_index_folds + 1)) folds = int.TryParse(args[arg_index_folds + 1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var folds2) ? folds2 : -1;
+                program_args.run_local = false;
+                program_args.args.RemoveAll(a => a.key == nameof(program_args.run_local));
 
-            if (folds != null)
-            {
-                // folds is a shortcut to set all
+                // set other vars
 
-                repetitions = (int)folds;
-                outer_cv_folds = (int)folds;
-                outer_cv_folds_to_run = 0;//(int)folds;
-                inner_folds = (int)folds;
-            }
+                if (program_args.args.All(a => a.key != nameof(program_args.inner_folds)))
+                {
+                    program_args.inner_folds = 1;
+                    program_args.args.Add((nameof(program_args.inner_folds), program_args.inner_folds, $"{program_args.inner_folds}"));
+                }
 
-            if (setup)
-            {
-                experiment_name += $@"_{DateTime.Now:yyyyMMddHHmmssfff}";
+                if (program_args.args.All(a => a.key != nameof(program_args.outer_cv_folds)))
+                {
+                    program_args.outer_cv_folds = 5;
+                    program_args.args.Add((nameof(program_args.outer_cv_folds), program_args.outer_cv_folds, $"{program_args.outer_cv_folds}"));
+                }
+
+                if (program_args.args.All(a => a.key != nameof(program_args.outer_cv_folds_to_run)))
+                {
+                    program_args.outer_cv_folds_to_run = 1;
+                    program_args.args.Add((nameof(program_args.outer_cv_folds_to_run), program_args.outer_cv_folds_to_run, $"{program_args.outer_cv_folds_to_run}"));
+                }
+
+                if (program_args.args.All(a => a.key != nameof(program_args.repetitions)))
+                {
+                    program_args.repetitions = 1;
+                    program_args.args.Add((nameof(program_args.repetitions), program_args.repetitions, $"{program_args.repetitions}"));
+                }
+
+                //if (program_args.args.All(a => a.key != nameof(program_args.instance_array_index_start)))
+                //{
+                //    program_args.instance_array_index_start = 0;
+                //    program_args.args.Add((nameof(program_args.instance_array_index_start), program_args.instance_array_index_start, $"{program_args.instance_array_index_start}"));
+                //}
+
+                //if (program_args.args.All(a => a.key != nameof(program_args.array_instances)))
+                //{
+                //    program_args.array_instances = 1;
+                //    program_args.args.Add((nameof(program_args.array_instances), program_args.array_instances, $"{program_args.array_instances}"));
+                //}
+
+
 
                 // set default vcpu amounts if not specified
-                if (setup_total_vcpus <= 0) setup_total_vcpus = 1504 - 320;
-                if (setup_instance_vcpus <= 0) setup_instance_vcpus = 64;
+                program_args.setup_total_vcpus = Environment.ProcessorCount;
+                program_args.setup_instance_vcpus = Environment.ProcessorCount;
 
                 // calculate array size (get total number of groups)
-
                 var idr = init_dataset_ret.init_dataset(group_related_columns: true);
                 var setup_array_instances = idr.groups.Count;
 
                 // calculate total number of instanced and array step
-                var setup_total_instances = (int)Math.Floor((double)setup_total_vcpus / (double)setup_instance_vcpus);
+                var setup_total_instances = (int)Math.Floor((double)program_args.setup_total_vcpus / (double)program_args.setup_instance_vcpus);
+                var setup_array_step = (int)Math.Ceiling((double)setup_array_instances / (double)setup_total_instances);
+
+                var ps = make_pbs_script(program_args, program_args.setup_instance_vcpus, true, 0, setup_array_instances - 1, setup_array_step, true);
+
+                Console.WriteLine(ps.run_line);
+
+                return;
+            }
+
+            if (program_args.setup)
+            {
+                program_args.experiment_name += $@"_{DateTime.Now:yyyyMMddHHmmssfff}";
+
+                // set default vcpu amounts if not specified
+                if (program_args.setup_total_vcpus <= 0) program_args.setup_total_vcpus = 1504 - 320;
+                if (program_args.setup_instance_vcpus <= 0) program_args.setup_instance_vcpus = 64;
+
+                // calculate array size (get total number of groups)
+                var idr = init_dataset_ret.init_dataset(group_related_columns: true);
+                var setup_array_instances = idr.groups.Count;
+
+                // calculate total number of instanced and array step
+                var setup_total_instances = (int)Math.Floor((double)program_args.setup_total_vcpus / (double)program_args.setup_instance_vcpus);
                 var setup_array_step = (int)Math.Ceiling((double)setup_array_instances / (double)setup_total_instances);
 
                 // calculate list of expected indexes
@@ -153,71 +265,90 @@ namespace svm_fs_batch
                 //    group_index_pairs.Add((instance_id, a, a + setup_array_step - 1));
                 //}
 
-                io_proxy.WriteLine($@"{experiment_name}: {nameof(setup_array_instances)}: {setup_array_instances}");
-                io_proxy.WriteLine($@"{experiment_name}: {nameof(setup_total_vcpus)}: {setup_total_vcpus}");
-                io_proxy.WriteLine($@"{experiment_name}: {nameof(setup_instance_vcpus)}: {setup_instance_vcpus}");
-                io_proxy.WriteLine($@"{experiment_name}: {nameof(setup_total_instances)}: {setup_total_instances}");
-                io_proxy.WriteLine($@"{experiment_name}: {nameof(setup_array_step)}: {setup_array_step}");
+                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_array_instances)}: {setup_array_instances}");
+                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(program_args.setup_total_vcpus)}: {program_args.setup_total_vcpus}");
+                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(program_args.setup_instance_vcpus)}: {program_args.setup_instance_vcpus}");
+                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_total_instances)}: {setup_total_instances}");
+                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_array_step)}: {setup_array_step}");
                 io_proxy.WriteLine("");
 
-                var ps = make_pbs_script(experiment_name, setup_instance_vcpus, true, 0, setup_array_instances - 1, setup_array_step, true);
+                var ps = make_pbs_script(program_args, program_args.setup_instance_vcpus, true, 0, setup_array_instances - 1, setup_array_step, true);
 
-                ps.ForEach(a => io_proxy.WriteLine(a));
+                for (var index = 0; index < ps.pbs_script_lines.Count; index++)
+                {
+                    io_proxy.WriteLine((index ).ToString().PadLeft(3) + ": " + ps.pbs_script_lines[index]);
+                }
+
                 io_proxy.WriteLine("");
                 return;
             }
 
 
 
-            if (string.IsNullOrWhiteSpace(experiment_name)) { throw new ArgumentOutOfRangeException(nameof(experiment_name), "must specify experiment name"); }
+            if (string.IsNullOrWhiteSpace(program_args.experiment_name)) { throw new ArgumentOutOfRangeException(nameof(program_args.experiment_name), "must specify experiment name"); }
 
-            if (array_start <= -1) { throw new ArgumentOutOfRangeException(nameof(array_start)); }
-            if (array_end <= -1) { throw new ArgumentOutOfRangeException(nameof(array_end)); }
-            if (array_index <= -1) { throw new ArgumentOutOfRangeException(nameof(array_index)); }
-            if (array_step <= 0) { throw new ArgumentOutOfRangeException(nameof(array_step)); }
-            if (array_instances <= 0) { throw new ArgumentOutOfRangeException(nameof(array_instances)); }
-            if (array_index_last <= -1) { array_index_last = array_index + (array_step - 1); }
+            if (program_args.array_start <= -1) { throw new ArgumentOutOfRangeException(nameof(program_args.array_start)); }
+            if (program_args.array_end <= -1) { throw new ArgumentOutOfRangeException(nameof(program_args.array_end)); }
+            if (program_args.instance_array_index_start <= -1) { throw new ArgumentOutOfRangeException(nameof(program_args.instance_array_index_start)); }
+            if (program_args.array_step <= 0) { throw new ArgumentOutOfRangeException(nameof(program_args.array_step)); }
+            if (program_args.array_instances <= 0) { throw new ArgumentOutOfRangeException(nameof(program_args.array_instances)); }
+            if (program_args.instance_array_index_end <= -1) { program_args.instance_array_index_end = program_args.instance_array_index_start + (program_args.array_step - 1); }
 
             var instance_id = -1;
-            for (var i = array_start; i <= array_index; i += array_step) { instance_id++; }
+            for (var i = program_args.array_start; i <= program_args.instance_array_index_start; i += program_args.array_step) { instance_id++; } // is this correct?
 
-            worker(experiment_name, instance_id, array_instances, array_index, array_step, array_index_last, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds);
+            worker(program_args.experiment_name, instance_id, program_args.array_instances, program_args.instance_array_index_start, program_args.array_step, program_args.instance_array_index_end, program_args.repetitions, program_args.outer_cv_folds, program_args.outer_cv_folds_to_run, program_args.inner_folds);
         }
 
-        internal static List<string> make_pbs_script(string experiment_name, int pbs_ppn = 1, bool array = false, int array_start = 0, int array_end = 0, int array_step = 1, bool rerunnable = true)
+        internal static (List<string> pbs_script_lines, string run_line) make_pbs_script(program_args program_args, int pbs_ppn = 1, bool is_job_array = false, int job_array_start = 0, int job_array_end = 0, int job_array_step = 1, bool rerunnable = true)
         {
 
             //var module_name = nameof(program);
-            //var method_name = nameof(make_pbs_script);
+            //var method_name = nameof(make_pbs_script); 
 
             var pbs_script_lines = new List<string>();
 
-            var program_runtime = Process.GetCurrentProcess().MainModule.FileName;
+            var program_runtime = Process.GetCurrentProcess().MainModule?.FileName;
 
-            var env_pbs_array = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"_" : @"%J_%I";
-            var env_jobid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"_" : @"${PBS_JOBID}${MOAB_JOBID}";
-            var env_jobname = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"_" : @"${PBS_JOBNAME}${MOAB_JOBNAME}";
-            var env_arrayindex = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"_" : @"${PBS_ARRAYID}${MOAB_JOBARRAYINDEX}";
-            var env_arraycount = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"_" : @"${MOAB_JOBARRAYRANGE}";
+            if (string.IsNullOrWhiteSpace(program_runtime)) throw new Exception();
+
+            var is_win = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+            
+
+            var env_pbs_array =  is_win ? @"_" : @"%J_%I";
+            var env_jobid =      is_win ? (program_args.args.Any(a => a.key == nameof(program_args.job_id)) ? $"{program_args.job_id}" : "_") : @"${PBS_JOBID}${MOAB_JOBID}";
+            var env_jobname =    is_win ? (program_args.args.Any(a => a.key == nameof(program_args.job_name)) ? $"{program_args.job_name}" : "_") : @"${PBS_JOBNAME}${MOAB_JOBNAME}";
+            var env_arrayindex = is_win ? (program_args.args.Any(a => a.key == nameof(program_args.instance_array_index_start)) ? $"{program_args.instance_array_index_start}" : "0") : @"${PBS_ARRAYID}${MOAB_JOBARRAYINDEX}";
+            var env_arraycount = is_win ? (program_args.args.Any(a => a.key == nameof(program_args.array_instances)) ? $"{program_args.array_instances}" : "1") : @"${MOAB_JOBARRAYRANGE}";
+            
+
+            var pbs_args = new program_args();
+            
+
 
             TimeSpan pbs_walltime = TimeSpan.FromHours(240);
-            string pbs_execution_directory = $@"{init_dataset_ret.svm_fs_batch_home}{Path.DirectorySeparatorChar}pbs{Path.DirectorySeparatorChar}{experiment_name}{Path.DirectorySeparatorChar}";
-            string pbs_jobname = $@"{experiment_name}_{nameof(svm_fs_batch)}";
+            string pbs_execution_directory = $@"{init_dataset_ret.svm_fs_batch_home}{Path.DirectorySeparatorChar}pbs{Path.DirectorySeparatorChar}{program_args.experiment_name}{Path.DirectorySeparatorChar}";
+            string pbs_jobname = $@"{program_args.experiment_name}_{nameof(svm_fs_batch)}";
             string pbs_mail_addr = "";
             string pbs_mail_opt = "n";
             string pbs_mem = null;
-            string pbs_stdout_filename = $@"{experiment_name}_{nameof(svm_fs_batch)}_{(array ? env_pbs_array : "")}.pbs.stdout";
-            string pbs_stderr_filename = $@"{experiment_name}_{nameof(svm_fs_batch)}_{(array ? env_pbs_array : "")}.pbs.stderr";
+            
+            // for each job, request 1 node with 64 vcpu, by default, if ppn not specified
             int pbs_nodes = 1;
             if (pbs_ppn <= 0) pbs_ppn = 64;
-            string program_stdout_filename = $@"{experiment_name}_{nameof(svm_fs_batch)}_{env_jobid}_{env_jobname}_{env_arrayindex}.program.stdout";
-            string program_stderr_filename = $@"{experiment_name}_{nameof(svm_fs_batch)}_{env_jobid}_{env_jobname}_{env_arrayindex}.program.stderr";
+            
+            string pbs_stdout_filename = $@"{string.Join("_", new string[] { program_args.experiment_name, nameof(svm_fs_batch), (is_job_array ? env_pbs_array : "") }.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.pbs.stdout";
+            string pbs_stderr_filename = $@"{string.Join("_", new string[] { program_args.experiment_name, nameof(svm_fs_batch), (is_job_array ? env_pbs_array : "") }.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.pbs.stderr";
+            
+            string program_stdout_filename = $@"{string.Join("_", new string[] { program_args.experiment_name, nameof(svm_fs_batch), env_jobid, env_jobname, env_arrayindex}.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.program.stdout";
+            string program_stderr_filename = $@"{string.Join("_", new string[] { program_args.experiment_name, nameof(svm_fs_batch), env_jobid, env_jobname, env_arrayindex}.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.program.stderr";
 
 
 
 
             // pbs directives
-            if (array) pbs_script_lines.Add($@"#PBS -t {array_start}-{array_end}:{array_step}");
+            if (is_job_array) pbs_script_lines.Add($@"#PBS -t {job_array_start}-{job_array_end}:{job_array_step}");
             if (pbs_walltime != null && pbs_walltime.TotalSeconds > 0) pbs_script_lines.Add($@"#PBS -l walltime={Math.Floor(pbs_walltime.TotalHours):00}:{pbs_walltime.Minutes:00}:{pbs_walltime.Seconds:00}");
             if (pbs_nodes > 0) pbs_script_lines.Add($@"#PBS -l nodes={pbs_nodes}{(pbs_ppn > 0 ? $@":ppn={pbs_ppn}" : "")}");
             if (!string.IsNullOrWhiteSpace(pbs_mem)) pbs_script_lines.Add($@"#PBS -l mem={pbs_mem}");
@@ -232,33 +363,47 @@ namespace svm_fs_batch
             // program directives
             var p = new List<(string key, string value)>();
 
-            if (!string.IsNullOrWhiteSpace(experiment_name)) p.Add(("-experiment_name", experiment_name));
+            if (!string.IsNullOrWhiteSpace(program_args.experiment_name)) p.Add(($@"-{nameof(program_args.experiment_name)}", program_args.experiment_name));
 
-            p.Add(("-job_id", env_jobid));
-            p.Add(("-job_name", env_jobname));
+            //program_args.job_id = env_jobid;
+            //program_args.job_name = env_jobname;
+            ////program_args.instance_array_index_start = env_arrayindex;
+            ////program_args.array_instances = env_arraycount;
+            //program_args.array_start = job_array_start;
+            //program_args.array_end = job_array_end;
+            //program_args.array_step = job_array_step;
 
-            if (array && array_step != 0) p.Add(("-array_index", env_arrayindex));
-            if (array && array_step != 0) p.Add(("-array_instances", env_arraycount));
 
-            if (array && array_step != 0) p.Add(("-array_start", array_start.ToString()));
-            if (array && array_step != 0) p.Add(("-array_end", array_end.ToString()));
-            if (array && array_step != 0) p.Add(("-array_step", array_step.ToString()));
+            p.Add(($@"-{nameof(program_args.job_id)}", env_jobid));
+            p.Add(($@"-{nameof(program_args.job_name)}", env_jobname));
 
-            if (!string.IsNullOrEmpty(program_stdout_filename)) p.Add(("1>", program_stdout_filename));
-            if (!string.IsNullOrEmpty(program_stderr_filename)) p.Add(("2>", program_stderr_filename));
+            if (is_job_array && job_array_step != 0) p.Add(($@"-{nameof(program_args.instance_array_index_start)}", env_arrayindex));
+            if (is_job_array && job_array_step != 0) p.Add(($@"-{nameof(program_args.array_instances)}", env_arraycount));
 
-            var run_line = $@"{program_runtime} {string.Join(" ", p.Where(a => !string.IsNullOrWhiteSpace(a.key) || !string.IsNullOrWhiteSpace(a.value)).Select(a => $@"{a.key}{(!string.IsNullOrWhiteSpace(a.key) ? " " : "")}{a.value}").ToList())}";
+            if (is_job_array && job_array_step != 0) p.Add(($@"-{nameof(program_args.array_start)}", job_array_start.ToString()));
+            if (is_job_array && job_array_step != 0) p.Add(($@"-{nameof(program_args.array_end)}", job_array_end.ToString()));
+            if (is_job_array && job_array_step != 0) p.Add(($@"-{nameof(program_args.array_step)}", job_array_step.ToString()));
+
+            foreach (var arg in program_args.args)
+            {
+                p.Add(($@"-{arg.key}", $@"{arg.str_value}"));
+            }
+
+            if (!string.IsNullOrEmpty(program_stdout_filename)) p.Add(($@"1>", program_stdout_filename));
+            if (!string.IsNullOrEmpty(program_stderr_filename)) p.Add(($@"2>", program_stderr_filename));
+
+            var run_line = $@"{program_runtime} {string.Join(" ", p.Select(a => string.Join(" ", new[] {a.key, a.value}.Where(c => !string.IsNullOrWhiteSpace(c)).ToList())).Where(b=>!string.IsNullOrWhiteSpace(b)).ToList())}";
 
             if (!string.IsNullOrWhiteSpace(pbs_execution_directory)) pbs_script_lines.Add($@"cd {pbs_execution_directory}");
             pbs_script_lines.Add($@"module load GCCcore");
             pbs_script_lines.Add(run_line);
 
-            var pbs_fn = Path.Combine(pbs_execution_directory, $"{pbs_jobname}.pbs");
+            var pbs_fn = Path.Combine(pbs_execution_directory, $@"{pbs_jobname}.pbs");
 
             io_proxy.WriteAllLines(pbs_fn, pbs_script_lines);
-            io_proxy.WriteLine($@"{experiment_name}: Saved PBS script. File: {pbs_fn}.");
+            io_proxy.WriteLine($@"{program_args.experiment_name}: Saved PBS script. File: {pbs_fn}.");
 
-            return pbs_script_lines;
+            return (pbs_script_lines, run_line);
         }
 
 
@@ -425,12 +570,12 @@ namespace svm_fs_batch
 
             var caller_idr = init_dataset_ret.init_dataset();
 
-            caller_idr.groups = caller_idr.groups.Take(5).ToList();
+            //caller_idr.groups = caller_idr.groups.Take(5).ToList();
 
 
             var total_groups = caller_idr.groups.Count;
 
-            io_proxy.WriteLine($@"{experiment_name}: Groups: {(array_index_start + 1)} to {(array_index_last + 1)}. Total groups: {total_groups}. (This instance #{(instance_index + 1)}/#{total_instances} indexes: [{array_index_start}..{array_index_last}]. All indexes: [0..{(total_groups - 1)}].)", module_name, method_name);
+            io_proxy.WriteLine($@"{experiment_name}: Groups: {(array_index_start )} to {(array_index_last )}. Total groups: {total_groups}. (This instance #{(instance_index )}/#{total_instances} indexes: [{array_index_start}..{array_index_last}]. All indexes: [0..{(total_groups - 1)}].)", module_name, method_name);
 
 
 
@@ -514,6 +659,11 @@ namespace svm_fs_batch
                 // load cache (first try whole iteration, then try partition, then try individual work items)
                 var unrolled_indexes_state = cache_load.load_cache(instance_index, iteration_index, experiment_name, false, cache_files_loaded, iteration_all_cm, unrolled_indexes.indexes_whole, unrolled_indexes.indexes_partition);
 
+                if (iteration_index == 11)
+                {
+                    Console.WriteLine();
+                }
+
                 // check if all partitions are loaded....
                 if (unrolled_indexes_state.indexes_missing_whole.Any())
                 {
@@ -536,7 +686,7 @@ namespace svm_fs_batch
                             .AsOrdered()
                             .Select(unrolled_index_data =>
                             {
-                                io_proxy.WriteLine($@"{experiment_name}: Start parallel index: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()} (groups {(array_index_start + 1)} to {(array_index_last + 1)}).");
+                                io_proxy.WriteLine($@"{experiment_name}: Start parallel index: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()} (groups {(array_index_start )} to {(array_index_last )}).");
 
                                 //{nameof(unrolled_index.idr)}:{unrolled_index.idr}
 
@@ -546,7 +696,7 @@ namespace svm_fs_batch
                                 // hide outside scope iteration_all_cm
                                 //var p_iteration_all_cm = new List<perf.confusion_matrix_data>();
 
-                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index_data.iteration_index + 1)} group {(unrolled_index_data.group_index + 1)}/{total_groups} (groups {(array_index_start + 1)} to {(array_index_last + 1)}).");// File: {group_merged_cm_fn}.");
+                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index_data.iteration_index )} group {(unrolled_index_data.group_index )}/{total_groups} (groups {(array_index_start )} to {(array_index_last )}).");// File: {group_merged_cm_fn}.");
 
                                 var test_selected_groups = p_selected_groups.ToList();
                                 var test_selected_columns = p_selected_columns.ToList();
@@ -608,7 +758,7 @@ namespace svm_fs_batch
                                 //if (lcs != null && lcs.Count > 1) { p_iteration_all_cm.AddRange(lcs.Skip(p_iteration_all_cm.Count == 0 ? 0 : 1)); }
 
                                 //total_whole_indexes total_partition_indexes total_instances
-                                io_proxy.WriteLine($@"{experiment_name}: Finished parallel index: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()} (groups {(array_index_start + 1)} to {(array_index_last + 1)}).");
+                                io_proxy.WriteLine($@"{experiment_name}: Finished parallel index: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()} (groups {(array_index_start )} to {(array_index_last )}).");
 
                                 return ocv_result.mcv_cm;
                                 //return p_iteration_all_cm;
@@ -635,7 +785,7 @@ namespace svm_fs_batch
                         var iteration_instance_all_groups_cm_lines = iteration_all_cm.Where((a, i) => i == 0 || (a.cm.x_iteration_index == iteration_index && a.cm.x_group_index >= array_index_start && a.cm.x_group_index <= array_index_last));
 
                         io_proxy.WriteAllLines(iteration_partition_cm_filename, iteration_instance_all_groups_cm_lines.Select(a => a.line));
-                        io_proxy.WriteLine($"{experiment_name}: Part cache: Saved for iteration {(iteration_index + 1)} group {(array_index_start + 1)} to {(array_index_last + 1)}. File: {iteration_partition_cm_filename}.");
+                        io_proxy.WriteLine($"{experiment_name}: Part cache: Saved for iteration {(iteration_index )} group {(array_index_start )} to {(array_index_last )}. File: {iteration_partition_cm_filename}.");
                     }
 
                     // 5. load results from other instances
@@ -648,7 +798,7 @@ namespace svm_fs_batch
                     {
                         // save CM with results from all instances
                         io_proxy.WriteAllLines(iteration_whole_cm_filename, iteration_all_cm.Select(a => a.line));
-                        io_proxy.WriteLine($"{experiment_name}: Full cache: Saved for iteration {(iteration_index + 1)}. File: {iteration_whole_cm_filename}.");
+                        io_proxy.WriteLine($"{experiment_name}: Full cache: Saved for iteration {(iteration_index )}. File: {iteration_whole_cm_filename}.");
                     }
 
                     // todo: change which class/metrics are used.  e.g. highest_score_this_iteration = winner.cms.cm_list.Where(b => p.feature_selection_classes == null || p.feature_selection_classes.Count == 0 || p.feature_selection_classes.Contains(b.class_id.Value)).Average(b => b.get_perf_value_strings().Where(c => p.feature_selection_metrics.Any(d => string.Equals(c.name, d, StringComparison.InvariantCultureIgnoreCase))).Average(c => c.value));
@@ -754,12 +904,12 @@ namespace svm_fs_batch
 
                     if (io_proxy.is_file_available(winner_fn))
                     {
-                        io_proxy.WriteLine($@"{experiment_name}: Winner cache: Already saved for iteration {(iteration_index + 1)}. File: {winner_fn}.");
+                        io_proxy.WriteLine($@"{experiment_name}: Winner cache: Already saved for iteration {(iteration_index )}. File: {winner_fn}.");
                     }
                     else
                     {
 
-                        io_proxy.WriteLine($@"{experiment_name}: Winner cache: Unavailable for iteration {(iteration_index + 1)}. File: {winner_fn}.");
+                        io_proxy.WriteLine($@"{experiment_name}: Winner cache: Unavailable for iteration {(iteration_index )}. File: {winner_fn}.");
 
 
                         var cm_winner = iteration_all_cm.Where((a, i) => i == 0 || a.cm.x_iteration_index == iteration_index && a.cm.x_group_index == winner_group_index).Select((a, i) =>
@@ -772,26 +922,27 @@ namespace svm_fs_batch
 
 
                         io_proxy.WriteAllLines(winner_fn, winners_cm.Select(a => a.line));
-                        io_proxy.WriteLine($@"{experiment_name}: Winner cache: Saved for iteration {(iteration_index + 1)}. File: {winner_fn}.");
+                        io_proxy.WriteLine($@"{experiment_name}: Winner cache: Saved for iteration {(iteration_index )}. File: {winner_fn}.");
 
                     }
                 }
 
 
-                io_proxy.WriteLine($"{experiment_name}: Finished: iteration {(iteration_index + 1)} for {(array_index_start + 1)} to {(array_index_last + 1)}.  {(finished ? "Finished" : "Not finished")}.");
+                io_proxy.WriteLine($"{experiment_name}: Finished: iteration {(iteration_index )} for {(array_index_start )} to {(array_index_last )}.  {(finished ? "Finished" : "Not finished")}.");
 
                 iteration_index++;
             }
 
             //test_group_kernel_scaling_perf(instance_id, total_instances, experiment_name, unrolled_index.total_groups, selected_groups.ToList(), selected_columns.ToList(), ida, idr, oca);
 
-            io_proxy.WriteLine($"{experiment_name}: Finished: all iterations for groups {(array_index_start + 1)} to {(array_index_last + 1)}.");
+            io_proxy.WriteLine($"{experiment_name}: Finished: all iterations for groups {(array_index_start )} to {(array_index_last )}.");
         }
 
         private static (List<String> ocv_cm_lines, List<perf.confusion_matrix_data> ocv_cm, List<String> mcv_cm_lines, List<perf.confusion_matrix_data> mcv_cm) outer_cross_validation
         (
             string experiment_name,
-            List<(string key, string value)> exp_data, List<int> test_selected_columns,
+            List<(string key, string value)> exp_data, 
+            List<int> test_selected_columns,
             index_data unrolled_index_data,
             string group_folder,
             bool make_outer_cv_confusion_matrices,
@@ -1056,7 +1207,7 @@ namespace svm_fs_batch
             var indexes = new List<(int r, int o)>();
             for (var _repetitions_cv_index = 0; _repetitions_cv_index < unrolled_index.repetitions; _repetitions_cv_index++)
             {
-                for (var _outer_cv_index = 0; _outer_cv_index < unrolled_index.outer_cv_folds; _outer_cv_index++)
+                for (var _outer_cv_index = 0; _outer_cv_index < (unrolled_index.outer_cv_folds_to_run == 0 ? unrolled_index.outer_cv_folds : unrolled_index.outer_cv_folds_to_run); _outer_cv_index++)
                 {
                     indexes.Add((_repetitions_cv_index, _outer_cv_index));
                 }
@@ -1497,7 +1648,7 @@ namespace svm_fs_batch
         //            .AsOrdered()
         //            .Select(qq =>
         //            {
-        //                var note = $@"Index: {qq.unrolled_index}/{indexes.Count}. Iteration: {(iteration_index + 1)} group: {(group_index + 1)}. K({(int)qq.unrolled_index.svm_kernel}: {qq.unrolled_index.svm_kernel}) S({(int)qq.unrolled_index.scale_function}: {qq.unrolled_index.scale_function}) R({qq.unrolled_index.repetitions}) O({qq.unrolled_index.outer_cv_folds}) I({qq.unrolled_index.inner_cv_folds}) W({string.Join(", ", qq.unrolled_index.class_weights ?? new List<(int class_id, double class_weight)>())})";
+        //                var note = $@"Index: {qq.unrolled_index}/{indexes.Count}. Iteration: {(iteration_index )} group: {(group_index )}. K({(int)qq.unrolled_index.svm_kernel}: {qq.unrolled_index.svm_kernel}) S({(int)qq.unrolled_index.scale_function}: {qq.unrolled_index.scale_function}) R({qq.unrolled_index.repetitions}) O({qq.unrolled_index.outer_cv_folds}) I({qq.unrolled_index.inner_cv_folds}) W({string.Join(", ", qq.unrolled_index.class_weights ?? new List<(int class_id, double class_weight)>())})";
 
         //                io_proxy.WriteLine($@"{experiment_name}: Starting: {note}", module_name, method_name);
 
@@ -1526,7 +1677,7 @@ namespace svm_fs_batch
         //            .AsOrdered()
         //            .Select(qq =>
         //            {
-        //                var note = $@"Index: {qq.unrolled_index}/{indexes.Count}. Iteration: {(iteration_index + 1)} group: {(group_index + 1)}. K({(int)qq.unrolled_index.svm_kernel}: {qq.unrolled_index.svm_kernel}) S({(int)qq.unrolled_index.scale_function}: {qq.unrolled_index.scale_function}) R({qq.unrolled_index.repetitions}) O({qq.unrolled_index.outer_cv_folds}) I({qq.unrolled_index.inner_cv_folds}) W({string.Join(", ", qq.unrolled_index.class_weights ?? new List<(int class_id, double class_weight)>())})";
+        //                var note = $@"Index: {qq.unrolled_index}/{indexes.Count}. Iteration: {(iteration_index )} group: {(group_index )}. K({(int)qq.unrolled_index.svm_kernel}: {qq.unrolled_index.svm_kernel}) S({(int)qq.unrolled_index.scale_function}: {qq.unrolled_index.scale_function}) R({qq.unrolled_index.repetitions}) O({qq.unrolled_index.outer_cv_folds}) I({qq.unrolled_index.inner_cv_folds}) W({string.Join(", ", qq.unrolled_index.class_weights ?? new List<(int class_id, double class_weight)>())})";
 
         //                io_proxy.WriteLine($@"{experiment_name}: Starting: {note}", module_name, method_name);
 
@@ -1639,7 +1790,7 @@ namespace svm_fs_batch
 
         //                            // save OCV CM for group
         //                            io_proxy.WriteAllLines(outer_cv_input.cm_fn, ocv_cm_lines);
-        //                            io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Saved for iteration {(iteration_index + 1)} group {(group_index + 1)} OCV R({outer_cv_input.rcvi}/{unrolled_index.repetitions}) O({outer_cv_input.ocvi}/{unrolled_index.outer_cv_folds}) {note}. File: {outer_cv_input.cm_fn}.", module_name, method_name);
+        //                            io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Saved for iteration {(iteration_index )} group {(group_index )} OCV R({outer_cv_input.rcvi}/{unrolled_index.repetitions}) O({outer_cv_input.ocvi}/{unrolled_index.outer_cv_folds}) {note}. File: {outer_cv_input.cm_fn}.", module_name, method_name);
 
         //                        }
 
@@ -1776,7 +1927,7 @@ namespace svm_fs_batch
 
         //        // save CM with results from all instances
         //        io_proxy.WriteAllLines(iteration_all_group_cm_filename, iteration_all_cm.Select(a => a.line));
-        //        io_proxy.WriteLine($"{experiment_name}: Full cache: Saved for iteration {(iteration_index + 1)}. File: {iteration_all_group_cm_filename}.", module_name, method_name);
+        //        io_proxy.WriteLine($"{experiment_name}: Full cache: Saved for iteration {(iteration_index )}. File: {iteration_all_group_cm_filename}.", module_name, method_name);
         //    }
 
         //}

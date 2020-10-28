@@ -3,7 +3,5 @@ rm -rf ~/svm_fs_batch/svm_fs_batch/obj
 rm -rf ~/svm_fs_batch/svm_fs_batch/bin
 md /mmfs1/data/scratch/k1040015/svm_fs_batch
 cd ~/svm_fs_batch
-rm compile.pbs.*
 git pull
 ~/.dotnet/dotnet publish --self-contained -r linux-x64 -c Release
-cat compile.pbs.*

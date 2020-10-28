@@ -1,0 +1,13 @@
+10/28/2020 07:45:11 program.Main -> cmd line: C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\netcoreapp3.1\svm_fs_batch.dll -experiment_name _20201027093456416 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930
+10/28/2020 07:45:11 program.Main -> processor count: 16
+10/28/2020 07:45:11 dataset_loader.read_binary_dataset -> positive_class_id = +1
+10/28/2020 07:45:11 dataset_loader.read_binary_dataset -> negative_class_id = -1
+10/28/2020 07:45:11 dataset_loader.read_binary_dataset -> class_names = (-1, standard_coil), (1, dimorphic_coil)
+10/28/2020 07:45:11 dataset_loader.read_binary_dataset -> dataset_csv_files: E:\caddy\input\f_2i_(+1)_(dimorphic_coil).csv, E:\caddy\input\f_2i_(-1)_(standard_coil).csv
+10/28/2020 07:45:11 dataset_loader.read_binary_dataset -> dataset_header_csv_files: E:\caddy\input\h_2i_(+1)_(dimorphic_coil).csv, E:\caddy\input\h_2i_(-1)_(standard_coil).csv
+10/28/2020 07:45:11 dataset_loader.read_binary_dataset -> dataset_comment_csv_files: E:\caddy\input\c_2i_(+1)_(dimorphic_coil).csv, E:\caddy\input\c_2i_(-1)_(standard_coil).csv
+10/28/2020 07:45:11 dataset_loader.read_binary_dataset -> Reading non-novel dataset headers...
+10/28/2020 07:45:18 dataset_loader.read_binary_dataset -> Reading data comments...
+10/28/2020 07:45:18 dataset_loader.read_binary_dataset -> Reading data...
+10/28/2020 07:45:27 program.worker -> _20201027093456416: Groups: 1 to 6930. Total groups: 6930. (This instance #1/#1 indexes: [0..6929]. All indexes: [0..6929].)
+10/28/2020 07:45:27 . -> _20201027093456416: iteration: 0, instance_index = 0/1, total_whole_indexes = 6930, total_partition_indexes = 6930.

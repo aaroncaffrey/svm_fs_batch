@@ -77,15 +77,15 @@ namespace svm_fs_batch
             /*int first_index, int last_index, int num_items,*/
             
             if (outer_cv_folds_to_run == 0) outer_cv_folds_to_run = outer_cv_folds;
-            var fold_sizes = new int[outer_cv_folds_to_run];
+            var fold_sizes = new int[outer_cv_folds/*_to_run*/];
 
-            if (examples > 0 && outer_cv_folds_to_run > 0)
+            if (examples > 0 && outer_cv_folds/*_to_run*/ > 0)
             {
                 var n = examples / outer_cv_folds;
 
-                for (var i = 0; i < outer_cv_folds_to_run; i++) { fold_sizes[i] = n; }
+                for (var i = 0; i < outer_cv_folds/*_to_run*/; i++) { fold_sizes[i] = n; }
 
-                for (var i = 0; i < (examples % outer_cv_folds); i++) { fold_sizes[i]++; }
+                for (var i = 0; i < (examples % outer_cv_folds) && i < outer_cv_folds/*_to_run*/; i++) { fold_sizes[i]++; }
             }
 
             if (fold_size_limit > 0) { fold_sizes = fold_sizes.Select(a => a > fold_size_limit ? fold_size_limit : a).ToArray(); }
