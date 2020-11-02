@@ -1,7 +1,7 @@
 #PBS -l nodes=1:ppn=64
+mkdir /mmfs1/data/scratch/k1040015/svm_fs_batch
 rm -rf ~/svm_fs_batch/svm_fs_batch/obj
 rm -rf ~/svm_fs_batch/svm_fs_batch/bin
-md /mmfs1/data/scratch/k1040015/svm_fs_batch
 cd ~/svm_fs_batch
 git pull
 ~/.dotnet/dotnet publish --self-contained -r linux-x64 -c Release

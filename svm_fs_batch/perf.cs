@@ -91,21 +91,26 @@ namespace svm_fs_batch
 
                     if (s.Count != csv_header.Count) continue;
 
-                    var x_d = new double[s.Count];
-                    var x_i = new int[s.Count];
-                    var x_b = new bool[s.Count];
+
+                    //var x_d = new double[s.Count];
+                    //var x_i = new int[s.Count];
+                    //var x_b = new bool[s.Count];
 
                     var k = 0;// column_offset;
+
+                    var x_double = s.Select(a => double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var out_double) ? out_double : (double?) null).ToList();
+                    var x_int = s.Select(a => int.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out var out_int) ? out_int : (int?) null).ToList();
+                    var x_bool = s.Select(a => bool.TryParse(a, out var out_bool) ? out_bool : (bool?) null).ToList();
 
                     var cm = new confusion_matrix()
                     {
                         x_experiment_name = s[k++],
-                        x_id = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
+                        x_id = x_int[k++],
 
-                        x_iteration_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
-                        x_group_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
-                        x_total_groups = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
-                        x_calc_11p_thresholds = bool.TryParse(s[k++], out x_b[k]) ? x_b[k]: (bool?)null,
+                        x_iteration_index = x_int[k++],
+                        x_group_index = x_int[k++],
+                        x_total_groups = x_int[k++],
+                        x_calc_11p_thresholds = x_bool[k++],
 
                         x_key_alphabet = s[k++],
                         x_key_dimension = s[k++],
@@ -118,213 +123,213 @@ namespace svm_fs_batch
                         x_duration_grid_search = s[k++],
                         x_duration_training = s[k++],
                         x_duration_testing = s[k++],
-                        x_scale_function = Enum.TryParse(s[k++], out routines.scale_function scale_function) ? scale_function : (routines.scale_function)0,
-                        x_libsvm_cv = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        x_prediction_threshold = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
-                        x_prediction_threshold_class = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
-                        x_old_feature_count = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_new_feature_count = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_old_group_count = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_new_group_count = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
+                        x_scale_function = Enum.TryParse(s[k++], out routines.scale_function out_scale_function) ? out_scale_function : (routines.scale_function)0,
+                        x_libsvm_cv = x_double[k++] ?? 0,
+                        x_prediction_threshold = x_double[k++],
+                        x_prediction_threshold_class = x_double[k++],
+                        x_old_feature_count = x_int[k++] ??  0,
+                        x_new_feature_count = x_int[k++] ??  0,
+                        x_old_group_count = x_int[k++] ??  0,
+                        x_new_group_count = x_int[k++] ??  0,
                         x_features_included = s[k++],
-                        x_inner_cv_folds = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_repetitions_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_repetitions_total = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_outer_cv_index = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_outer_cv_folds = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_outer_cv_folds_to_run = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : 0,
-                        x_svm_type = Enum.TryParse(s[k++], out routines.libsvm_svm_type svm_type) ? svm_type : (routines.libsvm_svm_type)0,
-                        x_svm_kernel = Enum.TryParse(s[k++], out routines.libsvm_kernel_type svm_kernel) ? svm_kernel : (routines.libsvm_kernel_type)0,
+                        x_inner_cv_folds = x_int[k++] ??  0,
+                        x_repetitions_index = x_int[k++] ??  0,
+                        x_repetitions_total = x_int[k++] ??  0,
+                        x_outer_cv_index = x_int[k++] ??  0,
+                        x_outer_cv_folds = x_int[k++] ??  0,
+                        x_outer_cv_folds_to_run = x_int[k++] ??  0,
+                        x_svm_type = Enum.TryParse(s[k++], out routines.libsvm_svm_type out_svm_type) ? out_svm_type : (routines.libsvm_svm_type)0,
+                        x_svm_kernel = Enum.TryParse(s[k++], out routines.libsvm_kernel_type out_svm_kernel) ? out_svm_kernel : (routines.libsvm_kernel_type)0,
 
-                        x_cost = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
-                        x_gamma = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
-                        x_epsilon = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
-                        x_coef0 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
-                        x_degree = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : (double?)null,
+                        x_cost = x_double[k++],
+                        x_gamma = x_double[k++],
+                        x_epsilon = x_double[k++],
+                        x_coef0 = x_double[k++],
+                        x_degree = x_double[k++],
 
-                        class_id = int.TryParse(s[k++], NumberStyles.Integer, CultureInfo.InvariantCulture, out x_i[k]) ? x_i[k] : (int?)null,
+                        class_id = x_int[k++],
+                        x_class_weight = x_double[k++],
                         x_class_name = s[k++],
-                        x_class_size = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        x_class_training_size = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        x_class_testing_size = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
+                        x_class_size = x_double[k++] ?? 0,
+                        x_class_training_size = x_double[k++] ?? 0,
+                        x_class_testing_size = x_double[k++] ?? 0,
 
-                        P = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        N = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        TP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        FP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        TN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        FN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
+                        P = x_double[k++] ?? 0,
+                        N = x_double[k++] ?? 0,
 
-                        TPR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        TNR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPV = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        Precision = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        Prevalence = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        MCR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        ER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        NER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        CNER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        Kappa = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        Overlap = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        RND_ACC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        Support = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        BaseRate = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        Youden = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        NPV = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        FNR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        FPR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        FDR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        FOR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        ACC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        GM = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1S = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        G1S = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        MCC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        BM_ = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        MK_ = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        BAC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        ROC_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        ROC_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        ROC_AUC_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PR_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PR_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PRI_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PRI_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        AP_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        AP_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        API_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        API_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        Brier_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        LRP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        LRN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
+                        TP = x_double[k++] ?? 0,
+                        FP = x_double[k++] ?? 0,
+                        TN = x_double[k++] ?? 0,
+                        FN = x_double[k++] ?? 0,
+                        TPR = x_double[k++] ?? 0,
+                        TNR = x_double[k++] ?? 0,
+                        PPV = x_double[k++] ?? 0,
+                        Precision = x_double[k++] ?? 0,
+                        Prevalence = x_double[k++] ?? 0,
+                        MCR = x_double[k++] ?? 0,
+                        ER = x_double[k++] ?? 0,
+                        NER = x_double[k++] ?? 0,
+                        CNER = x_double[k++] ?? 0,
+                        Kappa = x_double[k++] ?? 0,
+                        Overlap = x_double[k++] ?? 0,
+                        RND_ACC = x_double[k++] ?? 0,
+                        Support = x_double[k++] ?? 0,
+                        BaseRate = x_double[k++] ?? 0,
+                        Youden = x_double[k++] ?? 0,
+                        NPV = x_double[k++] ?? 0,
+                        FNR = x_double[k++] ?? 0,
+                        FPR = x_double[k++] ?? 0,
+                        FDR = x_double[k++] ?? 0,
+                        FOR = x_double[k++] ?? 0,
+                        ACC = x_double[k++] ?? 0,
+                        GM = x_double[k++] ?? 0,
+                        F1S = x_double[k++] ?? 0,
+                        G1S = x_double[k++] ?? 0,
+                        MCC = x_double[k++] ?? 0,
+                        BM_ = x_double[k++] ?? 0,
+                        MK_ = x_double[k++] ?? 0,
+                        BAC = x_double[k++] ?? 0,
+                        ROC_AUC_Approx_All = x_double[k++] ?? 0,
+                        ROC_AUC_Approx_11p = x_double[k++] ?? 0,
+                        ROC_AUC_All = x_double[k++] ?? 0,
+                        PR_AUC_Approx_All = x_double[k++] ?? 0,
+                        PR_AUC_Approx_11p = x_double[k++] ?? 0,
+                        PRI_AUC_Approx_All = x_double[k++] ?? 0,
+                        PRI_AUC_Approx_11p = x_double[k++] ?? 0,
+                        AP_All = x_double[k++] ?? 0,
+                        AP_11p = x_double[k++] ?? 0,
+                        API_All = x_double[k++] ?? 0,
+                        API_11p = x_double[k++] ?? 0,
+                        Brier_All = x_double[k++] ?? 0,
+                        LRP = x_double[k++] ?? 0,
+                        LRN = x_double[k++] ?? 0,
+                        F1B_00 = x_double[k++] ?? 0,
+                        F1B_01 = x_double[k++] ?? 0,
+                        F1B_02 = x_double[k++] ?? 0,
+                        F1B_03 = x_double[k++] ?? 0,
+                        F1B_04 = x_double[k++] ?? 0,
+                        F1B_05 = x_double[k++] ?? 0,
+                        F1B_06 = x_double[k++] ?? 0,
+                        F1B_07 = x_double[k++] ?? 0,
+                        F1B_08 = x_double[k++] ?? 0,
+                        F1B_09 = x_double[k++] ?? 0,
+                        F1B_10 = x_double[k++] ?? 0,
 
-                        F1B_00 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_01 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_02 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_03 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_04 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_05 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_06 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_07 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_08 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_09 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        F1B_10 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
+                        PPF_TP = x_double[k++] ?? 0,
+                        PPF_FP = x_double[k++] ?? 0,
+                        PPF_TN = x_double[k++] ?? 0,
+                        PPF_FN = x_double[k++] ?? 0,
+                        PPF_TPR = x_double[k++] ?? 0,
+                        PPF_TNR = x_double[k++] ?? 0,
+                        PPF_PPV = x_double[k++] ?? 0,
+                        PPF_Precision = x_double[k++] ?? 0,
+                        PPF_Prevalence = x_double[k++] ?? 0,
+                        PPF_MCR = x_double[k++] ?? 0,
+                        PPF_ER = x_double[k++] ?? 0,
+                        PPF_NER = x_double[k++] ?? 0,
+                        PPF_CNER = x_double[k++] ?? 0,
+                        PPF_Kappa = x_double[k++] ?? 0,
+                        PPF_Overlap = x_double[k++] ?? 0,
+                        PPF_RND_ACC = x_double[k++] ?? 0,
+                        PPF_Support = x_double[k++] ?? 0,
+                        PPF_BaseRate = x_double[k++] ?? 0,
+                        PPF_Youden = x_double[k++] ?? 0,
+                        PPF_NPV = x_double[k++] ?? 0,
+                        PPF_FNR = x_double[k++] ?? 0,
+                        PPF_FPR = x_double[k++] ?? 0,
+                        PPF_FDR = x_double[k++] ?? 0,
+                        PPF_FOR = x_double[k++] ?? 0,
+                        PPF_ACC = x_double[k++] ?? 0,
+                        PPF_GM = x_double[k++] ?? 0,
+                        PPF_F1S = x_double[k++] ?? 0,
+                        PPF_G1S = x_double[k++] ?? 0,
+                        PPF_MCC = x_double[k++] ?? 0,
+                        PPF_BM_ = x_double[k++] ?? 0,
+                        PPF_MK_ = x_double[k++] ?? 0,
+                        PPF_BAC = x_double[k++] ?? 0,
+                        PPF_ROC_AUC_Approx_All = x_double[k++] ?? 0,
+                        PPF_ROC_AUC_Approx_11p = x_double[k++] ?? 0,
+                        PPF_ROC_AUC_All = x_double[k++] ?? 0,
+                        PPF_PR_AUC_Approx_All = x_double[k++] ?? 0,
+                        PPF_PR_AUC_Approx_11p = x_double[k++] ?? 0,
+                        PPF_PRI_AUC_Approx_All = x_double[k++] ?? 0,
+                        PPF_PRI_AUC_Approx_11p = x_double[k++] ?? 0,
+                        PPF_AP_All = x_double[k++] ?? 0,
+                        PPF_AP_11p = x_double[k++] ?? 0,
+                        PPF_API_All = x_double[k++] ?? 0,
+                        PPF_API_11p = x_double[k++] ?? 0,
+                        PPF_Brier_All = x_double[k++] ?? 0,
+                        PPF_LRP = x_double[k++] ?? 0,
+                        PPF_LRN = x_double[k++] ?? 0,
+                        PPF_F1B_00 = x_double[k++] ?? 0,
+                        PPF_F1B_01 = x_double[k++] ?? 0,
+                        PPF_F1B_02 = x_double[k++] ?? 0,
+                        PPF_F1B_03 = x_double[k++] ?? 0,
+                        PPF_F1B_04 = x_double[k++] ?? 0,
+                        PPF_F1B_05 = x_double[k++] ?? 0,
+                        PPF_F1B_06 = x_double[k++] ?? 0,
+                        PPF_F1B_07 = x_double[k++] ?? 0,
+                        PPF_F1B_08 = x_double[k++] ?? 0,
+                        PPF_F1B_09 = x_double[k++] ?? 0,
+                        PPF_F1B_10 = x_double[k++] ?? 0,
 
-                        PPF_TP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_FP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_TN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_FN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_TPR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_TNR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_PPV = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_Precision = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_Prevalence = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_MCR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_ER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_NER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_CNER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_Kappa = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_Overlap = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_RND_ACC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_Support = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_BaseRate = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_Youden = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_NPV = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_FNR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_FPR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_FDR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_FOR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_ACC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_GM = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1S = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_G1S = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_MCC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_BM_ = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_MK_ = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_BAC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_ROC_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_ROC_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_ROC_AUC_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_PR_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_PR_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_PRI_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_PRI_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_AP_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_AP_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_API_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_API_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_Brier_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_LRP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_LRN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_00 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_01 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_02 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_03 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_04 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_05 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_06 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_07 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_08 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_09 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPF_F1B_10 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-
-                        PPG_TP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_FP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_TN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_FN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_TPR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_TNR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_PPV = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_Precision = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_Prevalence = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_MCR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_ER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_NER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_CNER = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_Kappa = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_Overlap = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_RND_ACC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_Support = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_BaseRate = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_Youden = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_NPV = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_FNR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_FPR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_FDR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_FOR = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_ACC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_GM = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1S = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_G1S = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_MCC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_BM_ = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_MK_ = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_BAC = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_ROC_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_ROC_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_ROC_AUC_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_PR_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_PR_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_PRI_AUC_Approx_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_PRI_AUC_Approx_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_AP_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_AP_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_API_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_API_11p = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_Brier_All = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_LRP = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_LRN = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_00 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_01 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_02 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_03 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_04 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_05 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_06 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_07 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_08 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_09 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
-                        PPG_F1B_10 = double.TryParse(s[k++], NumberStyles.Float, CultureInfo.InvariantCulture, out x_d[k]) ? x_d[k] : 0,
+                        PPG_TP = x_double[k++] ?? 0,
+                        PPG_FP = x_double[k++] ?? 0,
+                        PPG_TN = x_double[k++] ?? 0,
+                        PPG_FN = x_double[k++] ?? 0,
+                        PPG_TPR = x_double[k++] ?? 0,
+                        PPG_TNR = x_double[k++] ?? 0,
+                        PPG_PPV = x_double[k++] ?? 0,
+                        PPG_Precision = x_double[k++] ?? 0,
+                        PPG_Prevalence = x_double[k++] ?? 0,
+                        PPG_MCR = x_double[k++] ?? 0,
+                        PPG_ER = x_double[k++] ?? 0,
+                        PPG_NER = x_double[k++] ?? 0,
+                        PPG_CNER = x_double[k++] ?? 0,
+                        PPG_Kappa = x_double[k++] ?? 0,
+                        PPG_Overlap = x_double[k++] ?? 0,
+                        PPG_RND_ACC = x_double[k++] ?? 0,
+                        PPG_Support = x_double[k++] ?? 0,
+                        PPG_BaseRate = x_double[k++] ?? 0,
+                        PPG_Youden = x_double[k++] ?? 0,
+                        PPG_NPV = x_double[k++] ?? 0,
+                        PPG_FNR = x_double[k++] ?? 0,
+                        PPG_FPR = x_double[k++] ?? 0,
+                        PPG_FDR = x_double[k++] ?? 0,
+                        PPG_FOR = x_double[k++] ?? 0,
+                        PPG_ACC = x_double[k++] ?? 0,
+                        PPG_GM = x_double[k++] ?? 0,
+                        PPG_F1S = x_double[k++] ?? 0,
+                        PPG_G1S = x_double[k++] ?? 0,
+                        PPG_MCC = x_double[k++] ?? 0,
+                        PPG_BM_ = x_double[k++] ?? 0,
+                        PPG_MK_ = x_double[k++] ?? 0,
+                        PPG_BAC = x_double[k++] ?? 0,
+                        PPG_ROC_AUC_Approx_All = x_double[k++] ?? 0,
+                        PPG_ROC_AUC_Approx_11p = x_double[k++] ?? 0,
+                        PPG_ROC_AUC_All = x_double[k++] ?? 0,
+                        PPG_PR_AUC_Approx_All = x_double[k++] ?? 0,
+                        PPG_PR_AUC_Approx_11p = x_double[k++] ?? 0,
+                        PPG_PRI_AUC_Approx_All = x_double[k++] ?? 0,
+                        PPG_PRI_AUC_Approx_11p = x_double[k++] ?? 0,
+                        PPG_AP_All = x_double[k++] ?? 0,
+                        PPG_AP_11p = x_double[k++] ?? 0,
+                        PPG_API_All = x_double[k++] ?? 0,
+                        PPG_API_11p = x_double[k++] ?? 0,
+                        PPG_Brier_All = x_double[k++] ?? 0,
+                        PPG_LRP = x_double[k++] ?? 0,
+                        PPG_LRN = x_double[k++] ?? 0,
+                        PPG_F1B_00 = x_double[k++] ?? 0,
+                        PPG_F1B_01 = x_double[k++] ?? 0,
+                        PPG_F1B_02 = x_double[k++] ?? 0,
+                        PPG_F1B_03 = x_double[k++] ?? 0,
+                        PPG_F1B_04 = x_double[k++] ?? 0,
+                        PPG_F1B_05 = x_double[k++] ?? 0,
+                        PPG_F1B_06 = x_double[k++] ?? 0,
+                        PPG_F1B_07 = x_double[k++] ?? 0,
+                        PPG_F1B_08 = x_double[k++] ?? 0,
+                        PPG_F1B_09 = x_double[k++] ?? 0,
+                        PPG_F1B_10 = x_double[k++] ?? 0,
 
                         roc_xy_str_all = s[k++],
                         roc_xy_str_11p = s[k++],
@@ -360,13 +365,14 @@ namespace svm_fs_batch
             //internal double testing_size_pct;
             //internal string kernel_parameter_search_method;
 
-            internal int? x_id;
+            internal List<double> thresholds; // thresholds is filled with values, but currently unused... not input/output... for external use.
 
+            internal string x_experiment_name;
+            internal int? x_id;
             internal int? x_iteration_index;
             internal int? x_group_index;
             internal int? x_total_groups;
             internal bool? x_calc_11p_thresholds;
-
             internal string x_key_alphabet;
             internal string x_key_dimension;
             internal string x_key_category;
@@ -374,13 +380,9 @@ namespace svm_fs_batch
             internal string x_key_group;
             internal string x_key_member;
             internal string x_key_perspective;
-
-
-
             internal string x_duration_grid_search;
             internal string x_duration_training;
             internal string x_duration_testing;
-            internal string x_experiment_name;
             internal routines.scale_function x_scale_function;
             internal double x_libsvm_cv;
             internal double? x_prediction_threshold = -1;
@@ -403,22 +405,12 @@ namespace svm_fs_batch
             internal double? x_epsilon;
             internal double? x_coef0;
             internal double? x_degree;
+            internal int? class_id;
             internal double? x_class_weight;
             internal string x_class_name;
             internal double x_class_size;
             internal double x_class_training_size;
             internal double x_class_testing_size;
-
-            internal List<double> thresholds;
-            internal string roc_xy_str_all;
-            internal string roc_xy_str_11p;
-            internal string pr_xy_str_all;
-            internal string pr_xy_str_11p;
-            internal string pri_xy_str_all;
-            internal string pri_xy_str_11p;
-
-            internal int? class_id;
-
             internal double P;
             internal double N;
             internal double TP;
@@ -592,6 +584,12 @@ namespace svm_fs_batch
             internal double PPG_F1B_08;
             internal double PPG_F1B_09;
             internal double PPG_F1B_10;
+            internal string roc_xy_str_all;
+            internal string roc_xy_str_11p;
+            internal string pr_xy_str_all;
+            internal string pr_xy_str_11p;
+            internal string pri_xy_str_all;
+            internal string pri_xy_str_11p;
 
             internal double get_value_by_name(string name)
             {
@@ -1844,15 +1842,11 @@ namespace svm_fs_batch
             internal static List<string> csv_header = new List<string>()
             {
                 nameof(x_experiment_name),
-
-
                 nameof(x_id),
-
                 nameof(x_iteration_index),
                 nameof(x_group_index),
                 nameof(x_total_groups),
                 nameof(x_calc_11p_thresholds),
-
                 nameof(x_key_alphabet),
                 nameof(x_key_dimension),
                 nameof(x_key_category),
@@ -1860,35 +1854,11 @@ namespace svm_fs_batch
                 nameof(x_key_group),
                 nameof(x_key_member),
                 nameof(x_key_perspective),
-
-
-            //nameof(experiment_id1),
-            //nameof(experiment_id2),
-            //nameof(experiment_id3),
-
-            ////nameof(fs_starting_point),
-            //nameof(feature_selection_type),
-            ////nameof(fs_algorithm_direction),
-            //nameof(fs_perf_selection),
-            //nameof(duration_nm_search),
-            //nameof(math_operation),
-
-            nameof(x_duration_grid_search),
-                
-                nameof(x_duration_training),
+                nameof(x_duration_grid_search),
+            nameof(x_duration_training),
                 nameof(x_duration_testing),
-                
                 nameof(x_scale_function),
-
                 nameof(x_libsvm_cv),
-                //nameof(libsvm_cv_accuracy),
-                //nameof(libsvm_cv_bac),
-                //nameof(libsvm_cv_recall),
-                //nameof(libsvm_cv_fscore),
-                //nameof(libsvm_cv_precision),
-                //nameof(libsvm_cv_auc),
-                //nameof(libsvm_cv_ap),
-
                 nameof(x_prediction_threshold),
                 nameof(x_prediction_threshold_class),
                 nameof(x_old_feature_count),
@@ -1896,10 +1866,6 @@ namespace svm_fs_batch
                 nameof(x_old_group_count),
                 nameof(x_new_group_count),
                 nameof(x_features_included),
-                //nameof(training_resampling_method),
-                //nameof(training_size_pct),
-                //nameof(unused_size_pct),
-                //nameof(testing_size_pct),
                 nameof(x_inner_cv_folds),
                 nameof(x_repetitions_index),
                 nameof(x_repetitions_total),
@@ -1908,14 +1874,13 @@ namespace svm_fs_batch
                 nameof(x_outer_cv_folds_to_run),
                 nameof(x_svm_type),
                 nameof(x_svm_kernel),
-                //nameof(kernel_parameter_search_method),
                 nameof(x_cost),
                 nameof(x_gamma),
                 nameof(x_epsilon),
                 nameof(x_coef0),
                 nameof(x_degree),
-
                 nameof(class_id),
+                nameof(x_class_weight),
                 nameof(x_class_name),
                 nameof(x_class_size),
                 nameof(x_class_training_size),
@@ -1957,7 +1922,6 @@ namespace svm_fs_batch
                 nameof(ROC_AUC_Approx_All),
                 nameof(ROC_AUC_Approx_11p),
                 nameof(ROC_AUC_All),
-                //nameof(ROC_AUC_11p),
                 nameof(PR_AUC_Approx_All),
                 nameof(PR_AUC_Approx_11p),
                 nameof(PRI_AUC_Approx_All),
@@ -1980,7 +1944,6 @@ namespace svm_fs_batch
                 nameof(F1B_08),
                 nameof(F1B_09),
                 nameof(F1B_10),
-
                 nameof(PPF_TP),
                 nameof(PPF_FP),
                 nameof(PPF_TN),
@@ -2016,7 +1979,6 @@ namespace svm_fs_batch
                 nameof(PPF_ROC_AUC_Approx_All),
                 nameof(PPF_ROC_AUC_Approx_11p),
                 nameof(PPF_ROC_AUC_All),
-                //nameof(PPF_ROC_AUC_11p),
                 nameof(PPF_PR_AUC_Approx_All),
                 nameof(PPF_PR_AUC_Approx_11p),
                 nameof(PPF_PRI_AUC_Approx_All),
@@ -2039,7 +2001,6 @@ namespace svm_fs_batch
                 nameof(PPF_F1B_08),
                 nameof(PPF_F1B_09),
                 nameof(PPF_F1B_10),
-
                 nameof(PPG_TP),
                 nameof(PPG_FP),
                 nameof(PPG_TN),
@@ -2075,7 +2036,6 @@ namespace svm_fs_batch
                 nameof(PPG_ROC_AUC_Approx_All),
                 nameof(PPG_ROC_AUC_Approx_11p),
                 nameof(PPG_ROC_AUC_All),
-                //nameof(PPG_ROC_AUC_11p),
                 nameof(PPG_PR_AUC_Approx_All),
                 nameof(PPG_PR_AUC_Approx_11p),
                 nameof(PPG_PRI_AUC_Approx_All),
@@ -2098,7 +2058,6 @@ namespace svm_fs_batch
                 nameof(PPG_F1B_08),
                 nameof(PPG_F1B_09),
                 nameof(PPG_F1B_10),
-
                 nameof(roc_xy_str_all),
                 nameof(roc_xy_str_11p),
                 nameof(pr_xy_str_all),
@@ -2113,14 +2072,11 @@ namespace svm_fs_batch
                 var data = new string[]
                 {
                     x_experiment_name,
-
                     x_id?.ToString(CultureInfo.InvariantCulture),
-
                     x_iteration_index?.ToString(CultureInfo.InvariantCulture),
                     x_group_index?.ToString(CultureInfo.InvariantCulture),
                     x_total_groups?.ToString(CultureInfo.InvariantCulture),
                     x_calc_11p_thresholds?.ToString(CultureInfo.InvariantCulture),
-
                     x_key_alphabet ,
                     x_key_dimension ,
                     x_key_category,
@@ -2128,7 +2084,6 @@ namespace svm_fs_batch
                     x_key_group ,
                     x_key_member ,
                     x_key_perspective ,
-
                     x_duration_grid_search,
                     x_duration_training,
                     x_duration_testing,
@@ -2154,20 +2109,18 @@ namespace svm_fs_batch
                     x_epsilon?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",
                     x_coef0?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",
                     x_degree?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",
-
                     class_id?.ToString(CultureInfo.InvariantCulture),
+                    x_class_weight?.ToString("G17", CultureInfo.InvariantCulture).Replace(",",";", StringComparison.InvariantCulture) ?? "",
                     x_class_name,
                     x_class_size.ToString("G17", CultureInfo.InvariantCulture),
                     x_class_training_size.ToString("G17", CultureInfo.InvariantCulture),
                     x_class_testing_size.ToString("G17", CultureInfo.InvariantCulture),
-
                     P.ToString("G17", CultureInfo.InvariantCulture),
                     N.ToString("G17", CultureInfo.InvariantCulture),
                     TP.ToString("G17", CultureInfo.InvariantCulture),
                     FP.ToString("G17", CultureInfo.InvariantCulture),
                     TN.ToString("G17", CultureInfo.InvariantCulture),
                     FN.ToString("G17", CultureInfo.InvariantCulture),
-
                     TPR.ToString("G17", CultureInfo.InvariantCulture),
                     TNR.ToString("G17", CultureInfo.InvariantCulture),
                     PPV.ToString("G17", CultureInfo.InvariantCulture),
@@ -2210,7 +2163,6 @@ namespace svm_fs_batch
                     Brier_All.ToString("G17", CultureInfo.InvariantCulture),
                     LRP.ToString("G17", CultureInfo.InvariantCulture),
                     LRN.ToString("G17", CultureInfo.InvariantCulture),
-
                     F1B_00.ToString("G17", CultureInfo.InvariantCulture),
                     F1B_01.ToString("G17", CultureInfo.InvariantCulture),
                     F1B_02.ToString("G17", CultureInfo.InvariantCulture),
@@ -2222,7 +2174,6 @@ namespace svm_fs_batch
                     F1B_08.ToString("G17", CultureInfo.InvariantCulture),
                     F1B_09.ToString("G17", CultureInfo.InvariantCulture),
                     F1B_10.ToString("G17", CultureInfo.InvariantCulture),
-
                     PPF_TP.ToString("G17", CultureInfo.InvariantCulture),
                     PPF_FP.ToString("G17", CultureInfo.InvariantCulture),
                     PPF_TN.ToString("G17", CultureInfo.InvariantCulture),
@@ -2280,7 +2231,6 @@ namespace svm_fs_batch
                     PPF_F1B_08.ToString("G17", CultureInfo.InvariantCulture),
                     PPF_F1B_09.ToString("G17", CultureInfo.InvariantCulture),
                     PPF_F1B_10.ToString("G17", CultureInfo.InvariantCulture),
-
                     PPG_TP.ToString("G17", CultureInfo.InvariantCulture),
                     PPG_FP.ToString("G17", CultureInfo.InvariantCulture),
                     PPG_TN.ToString("G17", CultureInfo.InvariantCulture),
@@ -2338,7 +2288,6 @@ namespace svm_fs_batch
                     PPG_F1B_08.ToString("G17", CultureInfo.InvariantCulture),
                     PPG_F1B_09.ToString("G17", CultureInfo.InvariantCulture),
                     PPG_F1B_10.ToString("G17", CultureInfo.InvariantCulture),
-
                     roc_xy_str_all,
                     roc_xy_str_11p,
                     pr_xy_str_all,

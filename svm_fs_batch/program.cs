@@ -1205,7 +1205,7 @@ namespace svm_fs_batch
 
 
             var indexes = new List<(int r, int o)>();
-            for (var _repetitions_cv_index = 0; _repetitions_cv_index < unrolled_index.repetitions; _repetitions_cv_index++)
+            for (var _repetitions_cv_index = 0; _repetitions_cv_index < (unrolled_index.repetitions == 0 ? 1 : unrolled_index.repetitions); _repetitions_cv_index++)
             {
                 for (var _outer_cv_index = 0; _outer_cv_index < (unrolled_index.outer_cv_folds_to_run == 0 ? unrolled_index.outer_cv_folds : unrolled_index.outer_cv_folds_to_run); _outer_cv_index++)
                 {
@@ -1335,7 +1335,7 @@ namespace svm_fs_batch
             static string get_initials(string name)
             {
                 var initials = string.Join("", name.Replace("_", " ").Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
-                return initials.Length > 2 ? initials.Substring(0, 2) : initials;
+                return initials.Length > 2 ?/* initials.Substring(0, 2) */ $@"{initials.First()}{initials.Last()}" : initials;
             }
 
             var iteration_index = get_ranges_str(indexes.Select(a => a.iteration_index).ToList());
@@ -1344,6 +1344,7 @@ namespace svm_fs_batch
             var calc_11p_thresholds = get_ranges_str(indexes.Select(a => a.calc_11p_thresholds ? 1 : 0).ToList());
             var repetitions = get_ranges_str(indexes.Select(a => a.repetitions).ToList());
             var outer_cv_folds = get_ranges_str(indexes.Select(a => a.outer_cv_folds).ToList());
+            var outer_cv_folds_to_run = get_ranges_str(indexes.Select(a => a.outer_cv_folds_to_run).ToList());
             var class_weights = string.Join("_",
                 indexes
                     .Where(a => a.class_weights != null)
@@ -1363,6 +1364,7 @@ namespace svm_fs_batch
             p.Add((get_initials(nameof(calc_11p_thresholds)), calc_11p_thresholds));//ot
             p.Add((get_initials(nameof(repetitions)), repetitions));//r
             p.Add((get_initials(nameof(outer_cv_folds)), outer_cv_folds));//oc
+            p.Add((get_initials(nameof(outer_cv_folds_to_run)), outer_cv_folds_to_run));//oc
             p.Add((get_initials(nameof(class_weights)), class_weights));//cw
             p.Add((get_initials(nameof(svm_type)), svm_type));//st
             p.Add((get_initials(nameof(svm_kernel)), svm_kernel));//sk
