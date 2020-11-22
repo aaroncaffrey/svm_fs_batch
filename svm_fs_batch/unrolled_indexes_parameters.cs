@@ -7,7 +7,7 @@ namespace svm_fs_batch
         internal bool calc_11p_thresholds = false;
 
         internal List<routines.libsvm_svm_type> svm_types = new List<routines.libsvm_svm_type>() { routines.libsvm_svm_type.c_svc };
-        internal List<routines.scale_function> scales = new List<routines.scale_function>() { routines.scale_function.rescale };
+        internal List<scaling.scale_function> scales = new List<scaling.scale_function>() { scaling.scale_function.rescale };
         internal List<routines.libsvm_kernel_type> kernels = new List<routines.libsvm_kernel_type>() { routines.libsvm_kernel_type.rbf };
 
         internal List<List<(int class_id, double class_weight)>> class_weight_sets = new List<List<(int class_id, double class_weight)>>();

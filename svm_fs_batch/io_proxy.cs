@@ -9,12 +9,12 @@ namespace svm_fs_batch
     {
         private static readonly Random random = new Random();
 
-        internal static void log_exception(Exception e, string msg, string caller_module_name, string caller_function_name)
+        internal static void log_exception(Exception e, string msg, string caller_module_name, string caller_method_name)
         {
             do
             {
                 io_proxy.WriteLine(
-                    $@"Error: ""{msg}"" ""{e.GetType()}"" ""{e.Source}"" ""{e.Message}"" ""{e.StackTrace}""", caller_module_name, caller_function_name);
+                    $@"Error: ""{msg}"" ""{e.GetType()}"" ""{e.Source}"" ""{e.Message}"" ""{e.StackTrace}""", caller_module_name, caller_method_name);
 
 #if DEBUG
                 if (e.InnerException == null || e == e.InnerException)
@@ -26,10 +26,10 @@ namespace svm_fs_batch
             } while (e != null);
         }
 
-        internal static bool is_file_available(string filename, string caller_module_name = "", string caller_function_name = "")
+        internal static bool is_file_available(string filename, string caller_module_name = "", string caller_method_name = "")
         {
-            var module_name = nameof(io_proxy);
-            var method_name = nameof(is_file_available);
+            const string module_name = nameof(io_proxy);
+            const string method_name = nameof(is_file_available);
 
             try
             {
@@ -51,13 +51,13 @@ namespace svm_fs_batch
             }
             catch (IOException e)
             {
-                log_exception(e, $@"{caller_module_name}.{caller_function_name} -> ( {filename} )", module_name, method_name);
+                log_exception(e, $@"{caller_module_name}.{caller_method_name} -> ( {filename} )", module_name, method_name);
 
                 return false;
             }
             catch (Exception e)
             {
-                log_exception(e, $@"{caller_module_name}.{caller_function_name} -> ( {filename} )", module_name, method_name);
+                log_exception(e, $@"{caller_module_name}.{caller_method_name} -> ( {filename} )", module_name, method_name);
 
                 return false;
             }
@@ -161,7 +161,7 @@ namespace svm_fs_batch
         //private static readonly object _log_lock = new object();
         //private static string log_file = null;
 
-        internal static void WriteLine(string text = "", string module_name = "", string function_name = "")//, bool use_lock = false)
+        internal static void WriteLine(string text = "", string module_name = "", string method_name = "")//, bool use_lock = false)
         {
             //if (!program.verbose) return;
 
@@ -176,9 +176,9 @@ namespace svm_fs_batch
             //var thread_id = Thread.CurrentThread.ManagedThreadId;
             //var task_id = Task.CurrentId ?? 0;
             //Memory usage: 
-            //var s = $@"{DateTime.Now:G} {(e_mem ? $@"{Math.Ceiling(GC.GetTotalMemory(false) / 1_000_000_000d):00}gb" : "")} {pid:000000}.{thread_id:000000}.{task_id:000000} {module_name}.{function_name} -> {text ?? ""}";
+            //var s = $@"{DateTime.Now:G} {(e_mem ? $@"{Math.Ceiling(GC.GetTotalMemory(false) / 1_000_000_000d):00}gb" : "")} {pid:000000}.{thread_id:000000}.{task_id:000000} {module_name}.{method_name} -> {text ?? ""}";
 
-            var s = $@"{DateTime.Now:G} {module_name}.{function_name} -> {text}";
+            var s = $@"{DateTime.Now:G} {module_name}.{method_name} -> {text}";
 
             //if (use_lock)
             //{
@@ -206,31 +206,31 @@ namespace svm_fs_batch
             //}
         }
 
-        //internal static bool is_file_empty(string filename, string module_name = "", string function_name = "")
+        //internal static bool is_file_empty(string filename, string module_name = "", string method_name = "")
         //{
         //    var file_empty = (!File.Exists(filename) || new FileInfo(filename).Length <= 0);
         //  
-        //    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ) = {file_empty}", nameof(io_proxy), nameof(is_file_empty));
+        //    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) = {file_empty}", nameof(io_proxy), nameof(is_file_empty));
         //
         //    return file_empty;
         //}
 
-        internal static bool Exists(string filename, string module_name = "", string function_name = "")
+        internal static bool Exists(string filename, string module_name = "", string method_name = "")
         {
             //filename = /*convert_path*/(filename);
 
             var exists = File.Exists(filename);
 
-            //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ) = {exists}", nameof(io_proxy), nameof(Exists));
+            //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) = {exists}", nameof(io_proxy), nameof(Exists));
 
             return exists;
         }
 
-        internal static void Delete(string filename, string module_name = "", string function_name = "")
+        internal static void Delete(string filename, string module_name = "", string method_name = "")
         {
             //filename = /*convert_path*/(filename);
 
-            //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} )", nameof(io_proxy), nameof(Delete));
+            //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} )", nameof(io_proxy), nameof(Delete));
 
             try
             {
@@ -239,7 +239,7 @@ namespace svm_fs_batch
             }
             catch (Exception e)
             {
-                log_exception(e, $@"{module_name}.{function_name} -> ( {filename} )", nameof(io_proxy), nameof(Delete));
+                log_exception(e, $@"{module_name}.{method_name} -> ( {filename} )", nameof(io_proxy), nameof(Delete));
 
                 return;
             }
@@ -247,7 +247,7 @@ namespace svm_fs_batch
 
 
 
-        internal static void Copy(string source, string dest, bool overwrite = true, string module_name = "", string function_name = "", int max_tries = 1_000_000)
+        internal static void Copy(string source, string dest, bool overwrite = true, string module_name = "", string method_name = "", int max_tries = 1_000_000)
         {
             //source = /*convert_path*/(source);
             //dest = /*convert_path*/(dest);
@@ -258,7 +258,7 @@ namespace svm_fs_batch
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {source} , {dest} , {overwrite} ) {tries}", nameof(io_proxy), nameof(Copy));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {source} , {dest} , {overwrite} ) {tries}", nameof(io_proxy), nameof(Copy));
 
                     tries++;
 
@@ -270,7 +270,7 @@ namespace svm_fs_batch
                 catch (Exception e1)
                 {
 
-                    log_exception(e1, $@"{module_name}.{function_name} -> ( {source}, {dest}, {overwrite} )", nameof(io_proxy), nameof(Copy));
+                    log_exception(e1, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", nameof(io_proxy), nameof(Copy));
 
 
                     if (tries >= max_tries) throw;
@@ -281,7 +281,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{module_name}.{function_name} -> ( {source}, {dest}, {overwrite} )", nameof(io_proxy), nameof(Copy));
+                        log_exception(e2, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", nameof(io_proxy), nameof(Copy));
 
                     }
                 }
@@ -291,7 +291,7 @@ namespace svm_fs_batch
         //private static object dirs_created_lock = new object();
         //private static List<string> dirs_created = new List<string>();
 
-        internal static void CreateDirectory(string filename, string module_name = "", string function_name = "")
+        internal static void CreateDirectory(string filename, string module_name = "", string method_name = "")
         {
             try
             {
@@ -299,7 +299,7 @@ namespace svm_fs_batch
 
                 //filename = /*convert_path*/(filename);
 
-                //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} )", nameof(io_proxy), nameof(CreateDirectory));
+                //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} )", nameof(io_proxy), nameof(CreateDirectory));
 
                 var dir = Path.GetDirectoryName(filename);
 
@@ -336,11 +336,11 @@ namespace svm_fs_batch
             }
             catch (Exception e)
             {
-                log_exception(e, $@"{module_name}.{function_name} -> ( {filename} )", nameof(io_proxy), nameof(CreateDirectory));
+                log_exception(e, $@"{module_name}.{method_name} -> ( {filename} )", nameof(io_proxy), nameof(CreateDirectory));
             }
         }
 
-        internal static string[] ReadAllLines(string filename, string module_name = "", string function_name = "", int max_tries = 1_000_000)
+        internal static string[] ReadAllLines(string filename, string module_name = "", string method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
 
@@ -351,7 +351,7 @@ namespace svm_fs_batch
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
 
                     tries++;
 
@@ -361,7 +361,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{module_name}.{function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
+                    log_exception(e1, $@"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
 
                     if (tries >= max_tries) throw;
 
@@ -371,7 +371,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{module_name}.{function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
+                        log_exception(e2, $@"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
                     }
                 }
             }
@@ -379,7 +379,7 @@ namespace svm_fs_batch
 
 
 
-        internal static string ReadAllText(string filename, string caller_module_name = "", string caller_function_name = "", int max_tries = 1_000_000)
+        internal static string ReadAllText(string filename, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
 
@@ -389,7 +389,7 @@ namespace svm_fs_batch
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
 
                     tries++;
 
@@ -399,7 +399,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
 
                     if (tries >= max_tries) throw;
 
@@ -409,7 +409,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
 
                     }
                 }
@@ -417,11 +417,11 @@ namespace svm_fs_batch
         }
 
 
-        internal static void WriteAllLines(string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_function_name = "", int max_tries = 1_000_000)
+        internal static void WriteAllLines(string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
 
-            CreateDirectory(filename, caller_module_name, caller_function_name);
+            CreateDirectory(filename, caller_module_name, caller_method_name);
 
             var tries = 0;
 
@@ -429,7 +429,7 @@ namespace svm_fs_batch
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllLines));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllLines));
 
                     tries++;
 
@@ -439,7 +439,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_function_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllLines));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllLines));
 
                     if (tries >= max_tries) throw;
 
@@ -449,7 +449,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_function_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllLines));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllLines));
                     }
                 }
             }
@@ -458,18 +458,18 @@ namespace svm_fs_batch
 
   
 
-        internal static void AppendAllLines(string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_function_name = "", int max_tries = 1_000_000)
+        internal static void AppendAllLines(string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
 
-            CreateDirectory(filename, caller_module_name, caller_function_name);
+            CreateDirectory(filename, caller_module_name, caller_method_name);
 
             var tries = 0;
             while (true)
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
 
                     tries++;
                     File.AppendAllLines(filename, lines);
@@ -477,7 +477,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
 
                     if (tries >= max_tries) throw;
 
@@ -487,24 +487,24 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
                     }
                 }
             }
         }
 
-        internal static void AppendAllText(string filename, string text, string caller_module_name = "", string caller_function_name = "", int max_tries = 1_000_000)
+        internal static void AppendAllText(string filename, string text, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
 
-            CreateDirectory(filename, caller_module_name, caller_function_name);
+            CreateDirectory(filename, caller_module_name, caller_method_name);
 
             var tries = 0;
             while (true)
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
 
                     tries++;
                     File.AppendAllText(filename, text);
@@ -512,7 +512,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
 
                     if (tries >= max_tries) throw;
 
@@ -522,24 +522,24 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
                     }
                 }
             }
         }
 
-        internal static void WriteAllText(string filename, string text, string caller_module_name = "", string caller_function_name = "", int max_tries = 1_000_000)
+        internal static void WriteAllText(string filename, string text, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
 
-            CreateDirectory(filename, caller_module_name, caller_function_name);
+            CreateDirectory(filename, caller_module_name, caller_method_name);
 
             var tries = 0;
             while (true)
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{function_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllText));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllText));
 
                     tries++;
                     File.WriteAllText(filename, text);
@@ -548,7 +548,7 @@ namespace svm_fs_batch
                 catch (Exception e1)
                 {
 
-                    log_exception(e1, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllText));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllText));
 
 
                     if (tries >= max_tries) throw;
@@ -559,7 +559,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_function_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllText));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllText));
                     }
                 }
             }

@@ -6,15 +6,560 @@ using System.Linq;
 
 namespace svm_fs_batch
 {
-    internal static class dataset_loader
+    internal class dataset_loader
     {
-        //        [Serializable]
-
-
-
        
 
-        internal static bool matches(string text, string search_pattern)
+        internal List<(int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)> header_list;
+        internal List<(int class_id, string class_name, List<(int row_index, int col_index, string comment_key, string comment_value)[]> cl_comment_list)> comment_list;
+
+        // feature values, grouped by class id, with class name and class size
+        //internal List<(int class_id, string class_name, int class_size, List<((int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) column_header, double fv)[]> val_list)> value_list;
+        internal List<(int class_id, string class_name, int class_size, ((int row_index, int col_index, string comment_key, string comment_value)[] row_comment, (int row_index, int col_index, (int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) column_header, double row_column_val)[] row_columns)[] val_list)> value_list;
+        internal List<(int class_id, int class_size)> class_sizes;
+
+
+        internal double[][] get_row_features(List<(int class_id, List<int> row_indexes)> class_row_indexes, List<int> column_indexes)
+        {
+            if (column_indexes.First() != 0) throw new Exception(); // class id missing
+
+            var class_rows = class_row_indexes.AsParallel().AsOrdered().Select(class_row_index => get_class_row_features(class_row_index.class_id, class_row_index.row_indexes, column_indexes)).ToList();
+            var rows = class_rows.SelectMany(a => a.as_rows).ToArray();
+
+            return rows;
+        }
+
+        internal static scaling[] get_scaling_params(double[][] rows, List<int> column_indexes)
+        {
+            var cols = column_indexes.Select((column_index, x_index) => rows.Select(row => row[x_index /* column_index -> x_index*/]).ToArray()).ToArray();
+            var sp = cols.Select((col, x_index) => x_index == 0 /* do not scale class id */ ? null : new scaling(col)).ToArray();
+
+            return sp;
+        }
+
+        public static double[][] get_scaled_rows(double[][] rows, /*List<int> column_indexes,*/ scaling[] sp, scaling.scale_function sf)
+        {
+            //var cols = column_indexes.Select((column_index, x_index) => rows.Select(row => row[x_index /* column_index -> x_index*/]).ToArray()).ToArray();
+            //var cols_scaled = cols.Select((v, x_index) =)
+
+            var rows_scaled = rows.Select((row, row_index) => row.Select((col_val, col_index) => col_index != 0 ? sp[col_index].scale(col_val, sf) : col_val).ToArray()).ToArray();
+
+            return rows_scaled;
+        }
+
+        internal (double[/*row*/][/*col*/] as_rows, double[/*col*/][/*row*/] as_cols) get_class_row_features(int class_id, List<int> row_indexes, List<int> column_indexes)
+        {
+            if (column_indexes.First() != 0) throw new Exception(); // class id missing
+
+            var as_rows = new double[row_indexes.Count][];
+            var as_cols = new double[column_indexes.Count][];
+
+            var v = value_list.First(a => a.class_id == class_id).val_list;
+
+            for (var y_index = 0; y_index < row_indexes.Count; y_index++)
+            {
+                var row_index = row_indexes[y_index];
+                as_rows[row_index] = new double[column_indexes.Count];
+
+                for (var x_index = 0; x_index < column_indexes.Count; x_index++)
+                {
+                    var col_index = column_indexes[x_index];
+                    as_rows[row_index][col_index] = v[row_index].row_columns[col_index].row_column_val;
+                }
+            }
+
+
+            for (var x_index = 0; x_index < column_indexes.Count; x_index++)
+            {
+                var col_index = column_indexes[x_index];
+                as_cols[col_index] = new double[row_indexes.Count];
+
+                for (var y_index = 0; y_index < row_indexes.Count; y_index++)
+                {
+                    var row_index = row_indexes[y_index];
+                    as_cols[col_index][row_index] = v[row_index].row_columns[col_index].row_column_val;
+                }
+            }
+
+            return (as_rows, as_cols);
+        }
+
+        internal dataset_loader(string dataset_names = "2i,2n")//, bool split_by_file_tag = true, bool split_by_groups = true)
+        {
+            var required_default = false;
+            var required_matches = new List<(bool required, string alphabet, string dimension, string category, string source, string group, string member, string perspective)>();
+            //required_matches.Add((required: true, alphabet: null, dimension: null, category: null, source: null, group: null, member: null, perspective: null));
+
+            // file tags: 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p (1d - linear, 2d - predicted, 3d - actual, interface, neighborhood, protein)
+
+            load_dataset(
+                dataset_folder: settings.dataset_dir,
+                file_tags: dataset_names.Split(',', StringSplitOptions.RemoveEmptyEntries), // "2i"
+                class_names: settings.class_names,
+                perform_integrity_checks: false,
+                required_default: required_default,
+                required_matches: required_matches
+            );
+
+        }
+
+        private void load_dataset
+        (
+            string dataset_folder, 
+            string[] file_tags, 
+            List<(int class_id, string class_name)> class_names, 
+            bool perform_integrity_checks = false, 
+            bool required_default = true, 
+            List<(bool required, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)> required_matches = null
+        )
+        {
+            const string method_name = nameof(load_dataset);
+            const string module_name = nameof(dataset_loader);
+
+            class_names = class_names.OrderBy(a => a.class_id).ToList();
+            file_tags = file_tags.OrderBy(a => a).ToArray();
+
+             var data_filenames = class_names.Select(cl =>
+                {
+                    // (string file_tag, int class_id, string class_name, string filename)
+                    var values_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"f_{file_tag}_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+                    var header_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"h_{file_tag}_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+                    var comment_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"c_{file_tag}_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+
+                    return (cl.class_id, cl.class_name, values_csv_filenames, header_csv_filenames, comment_csv_filenames);
+
+                })
+                .ToList();
+
+            foreach (var cl in class_names) { io_proxy.WriteLine($@"{cl.class_id:+#;-#;+0} = {cl.class_name}", module_name, method_name); }
+
+            foreach (var cl in data_filenames)
+            {
+                io_proxy.WriteLine($@"{nameof(cl.values_csv_filenames)}: {string.Join(", ", cl.values_csv_filenames)}", module_name, method_name);
+                io_proxy.WriteLine($@"{nameof(cl.header_csv_filenames)}: {string.Join(", ", cl.header_csv_filenames)}", module_name, method_name);
+                io_proxy.WriteLine($@"{nameof(cl.comment_csv_filenames)}: {string.Join(", ", cl.comment_csv_filenames)}", module_name, method_name);
+            }
+
+            // don't try to read any data until checking all files exist...
+            if (data_filenames == null || data_filenames.Count == 0) throw new Exception();
+            foreach (var cl in data_filenames)
+            {
+                if (cl.values_csv_filenames == null || cl.values_csv_filenames.Count == 0 || cl.values_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception();
+                if (cl.header_csv_filenames == null || cl.header_csv_filenames.Count == 0 || cl.header_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception();
+                if (cl.comment_csv_filenames == null || cl.comment_csv_filenames.Count == 0 || cl.comment_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception();
+            }
+
+
+
+
+            // 1. headers
+            io_proxy.WriteLine($@"Start: reading headers.", module_name, method_name);
+
+            var header_list = data_filenames.First(/* headers are same for all classes, so only load first class headers */)
+                .header_csv_filenames.AsParallel()
+                .AsOrdered()
+                .SelectMany((file_info, file_index) =>
+                {
+                    return io_proxy.ReadAllLines(file_info.filename, module_name, method_name)
+                        .Skip(file_index == 0 ? 1 : 2 /*skip header, and if not first file, class id rows*/)
+                        .AsParallel()
+                        .AsOrdered()
+                        .Select((b, b_i) =>
+                        {
+                            var row = b.Split(',');
+                            return (internal_column_index: -1, external_column_index: b_i /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/, file_tag: (file_index == 0 && b_i == 0 ? "" : file_info.file_tag), alphabet: row[1], dimension: row[2], category: row[3], source: row[4], group: row[5], member: row[6], perspective: row[7]);
+                        })
+                        .ToArray();
+                })
+                .ToList();
+
+            header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.alphabet, a.dimension, a.category, a.source, a.@group, a.member, a.perspective)).ToList();
+
+            io_proxy.WriteLine($@"Finish: reading headers.", module_name, method_name);
+
+            // 1.a compress headers
+            //var header_str = header_list.AsParallel().AsOrdered().SelectMany(a => new string[] {a.alphabet, a.dimension, a.category, a.source, a.group, a.member, a.perspective}).Distinct().ToList();
+            //header_list = header_list.AsParallel().AsOrdered().Select(a => (
+            //    a.internal_fid,
+            //    a.external_fid,
+            //    alphabet:header_str.First(b => b == a.alphabet),
+            //    dimension:header_str.First(b => b == a.dimension),
+            //    category:header_str.First(b => b == a.category),
+            //    source:header_str.First(b => b == a.source),
+            //    group:header_str.First(b => b == a.group),
+            //    member:header_str.First(b => b == a.member),
+            //    perspective:header_str.First(b => b == a.perspective)
+            //        )).ToList();
+
+
+            // 2. comment files. (same class with same samples = same data)
+            io_proxy.WriteLine($@"Start: reading comments.", module_name, method_name);
+            var comment_list = data_filenames.AsParallel()
+                .AsOrdered()
+                .Select(cl =>
+                {
+
+                    var comment_lines = io_proxy.ReadAllLines(cl.comment_csv_filenames.First().filename, module_name, method_name).AsParallel().AsOrdered().Select(line => line.Split(',')).ToList();
+                    var comment_header = comment_lines.First();
+                    var cl_comment_list = comment_lines.Skip(1 /*skip header*/)
+                        .AsParallel()
+                        .AsOrdered()
+                        .Select((row_split, row_index) =>
+                        {
+                            var key_value_list = row_split.AsParallel().AsOrdered().Select((col_data, col_index) => (
+                                row_index: row_index,
+                                col_index: col_index,
+                                comment_key: comment_header[col_index], 
+                                comment_value: col_data
+                                )).ToArray();
+
+                            return key_value_list;
+                        })
+                        .ToList();
+                    return (cl.class_id, cl.class_name, cl_comment_list);
+                })
+                .ToList();
+            io_proxy.WriteLine($@"Finish: reading comments.", module_name, method_name);
+
+
+            // 3. values
+            io_proxy.WriteLine($@"Start: reading values.", module_name, method_name);
+
+            var value_list = data_filenames
+                    .AsParallel()
+                    .AsOrdered()
+                    .Select((cl, cl_index) =>
+                {
+                    // 3. experimental sample data
+                    var vals_tag = cl.values_csv_filenames.AsParallel().AsOrdered().Select((file_info, file_info_index) => io_proxy.ReadAllLines(file_info.filename, module_name, method_name).Skip(1 /*skip header - col index only*/)
+                        .AsParallel().AsOrdered().Select((row, row_index) => row.Split(',').Skip(file_info_index == 0 ? 0 : 1 /*skip class id*/).AsParallel().AsOrdered().Select((col, col_index) => double.Parse(col, NumberStyles.Float, CultureInfo.InvariantCulture)).ToArray()).ToArray()).ToList();
+                    var vals = new double[vals_tag.First().Length /* number of rows */][ /* columns */];
+                    for (var row_index = 0; row_index < vals.Length; row_index++)
+                    {
+                        //vals[row_index] = new double[vals_tag.Sum(a=> a[row_index].Length)];
+                        vals[row_index] = vals_tag.SelectMany((a_cl, a_cl_index) => a_cl[row_index]).ToArray();
+                    }
+
+                    var val_list = vals.AsParallel()
+                        .AsOrdered()
+                        .Select((row, row_index) =>
+                        {
+                            var comment = comment_list[cl_index].cl_comment_list[row_index];
+
+                            return (row_comment:comment, row_columns: row.Select((col_val, col_index) =>
+                                {
+                                    var column_header = header_list[col_index];
+
+                                    return (
+                                        row_index: row_index, 
+                                        col_index: col_index, 
+                                        column_header: column_header, 
+                                        row_column_val: vals[row_index][col_index]
+                                        );
+                                })
+                                .ToArray());
+                        })
+                        .ToArray();
+
+
+                    return (cl.class_id, cl.class_name, class_size: val_list.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list);
+                })
+                .ToList();
+            io_proxy.WriteLine($@"Finish: reading values.", module_name, method_name);
+
+
+            this.header_list = header_list;
+            this.comment_list = comment_list;
+            this.value_list = value_list;
+            this.class_sizes = value_list.Select(a => (a.class_id, a.class_size)).ToList();
+        }
+    }
+}
+//{
+            //    // all comment headers should be equal
+            //    var comment_headers = file_data.SelectMany(a => a.comment_csv_data.Select(b => b.header_row).ToList()).ToList();
+            //    for (var ci = 0; ci < comment_headers.Count; ci++)
+            //    {
+            //        for (var cj = 0; cj < comment_headers.Count; cj++)
+            //        {
+            //            if (cj <= ci) continue;
+
+            //            if (!comment_headers[ci].SequenceEqual(comment_headers[cj])) throw new Exception();
+            //        }
+            //    }
+            //}
+
+            //{
+            //    // all headers headers should be equal
+            //    var headers_headers = file_data.SelectMany(a => a.header_csv_data.Select(b => b.header_row).ToList()).ToList();
+            //    for (var ci = 0; ci < headers_headers.Count; ci++)
+            //    {
+            //        for (var cj = 0; cj < headers_headers.Count; cj++)
+            //        {
+            //            if (cj <= ci) continue;
+
+            //            if (!headers_headers[ci].SequenceEqual(headers_headers[cj])) throw new Exception();
+            //        }
+            //    }
+            //}
+
+
+
+            // READ HEADER CSV FILE - ALL CLASSES HAVE THE SAME HEADERS/FEATURES within the same file_tag (will change for each one, e.g. 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p)
+            // same file_tag -> same headers... different file_tag -> different headers
+            //file_tags.Select(a=>a.).Select(a => file_data.First(b => b.header_csv_data.First(c => c.file_tag == a));
+            //var all_headers = file_data.SelectMany(a => a.header_csv_data).ToList();
+            //var first_headers = file_tags.Select(a => all_headers.First(b => b.file_tag == a)).ToList();
+
+
+            //var feature_catalog = first_headers.AsParallel().AsOrdered().SelectMany((tag_headers, tag_headers_index) =>
+            //    tag_headers.data_rows.Select((row, row_index) =>
+            //    //.SelectMany((cl, cl_index) => 
+            //    //cl.header_csv_data.First(/* first file - all file_tag header files are the same */).data_rows.AsParallel().AsOrdered().Select((row, row_index) =>
+            //    {
+            //        var internal_fid = row_index;
+            //        for (var i = 0; i < tag_headers_index; i++)
+            //        {
+            //            internal_fid += first_headers[i].data_rows.Count;
+            //        }
+
+            //        //if (file_tag_index != 0 && row_index == 0)
+            //        //{
+            //        //}
+
+
+            //        var external_fid = int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture);
+            //        //if (fid!=i) throw new Exception();
+
+
+            //        var alphabet = row[1];
+            //        var dimension = row[2];
+            //        var category = row[3];
+            //        var source = row[4];
+            //        var group = row[5];
+            //        var member = row[6];
+            //        var perspective = row[7];
+
+
+            //        const string def = "default";
+
+            //        if (string.IsNullOrWhiteSpace(alphabet)) alphabet = def;
+            //        if (string.IsNullOrWhiteSpace(dimension)) dimension = def;
+            //        if (string.IsNullOrWhiteSpace(category)) category = def;
+            //        if (string.IsNullOrWhiteSpace(source)) source = def;
+            //        if (string.IsNullOrWhiteSpace(group)) group = def;
+            //        if (string.IsNullOrWhiteSpace(member)) member = def;
+            //        if (string.IsNullOrWhiteSpace(perspective)) perspective = def;
+
+            //        lock (lock_table)
+            //        {
+            //            if (!table_alphabet.Contains(alphabet)) { table_alphabet.Add(alphabet); }
+            //            if (!table_dimension.Contains(dimension)) { table_dimension.Add(dimension); }
+            //            if (!table_category.Contains(category)) { table_category.Add(category); }
+            //            if (!table_source.Contains(source)) { table_source.Add(source); }
+            //            if (!table_group.Contains(group)) { table_group.Add(group); }
+            //            if (!table_member.Contains(member)) { table_member.Add(member); }
+            //            if (!table_perspective.Contains(perspective)) { table_perspective.Add(perspective); }
+            //        }
+
+            //        var alphabet_id = table_alphabet.LastIndexOf(alphabet);
+            //        var dimension_id = table_dimension.LastIndexOf(dimension);
+            //        var category_id = table_category.LastIndexOf(category);
+            //        var source_id = table_source.LastIndexOf(source);
+            //        var group_id = table_group.LastIndexOf(group);
+            //        var member_id = table_member.LastIndexOf(member);
+            //        var perspective_id = table_perspective.LastIndexOf(perspective);
+
+            //        alphabet = table_alphabet[alphabet_id];
+            //        dimension = table_dimension[dimension_id];
+            //        category = table_category[category_id];
+            //        source = table_source[source_id];
+            //        group = table_group[group_id];
+            //        member = table_member[member_id];
+            //        perspective = table_perspective[perspective_id];
+
+            //        return (
+            //            internal_fid: internal_fid,
+            //            external_fid: external_fid,
+            //            file_tag: tag_headers.file_tag,
+            //            alphabet: alphabet,
+            //            dimension: dimension,
+            //            category: category,
+            //            source: source,
+            //            group: group,
+            //            member: member,
+            //            perspective: perspective
+            //        );
+
+            //        //internal_fid: internal_fid,
+            //        //fid: fid, 
+            //        //, alphabet_id: alphabet_id, dimension_id: dimension_id, category_id: category_id, source_id: source_id, group_id: group_id, member_id: member_id, perspective_id: perspective_id
+            //    }).ToList()).ToList();
+
+            ////var feature_catalog = feature_catalog_data.Select((a,i) => 
+            ////    (internal_fid:i, a.external_fid, a.file_tag, a.alphabet, a.dimension, a.category, a.source, a.group, a.member, a.perspective)
+            ////).ToList();
+
+            ////if (cl.values_csv_data.Select(a => a.data_rows.Select(b => b.Length).ToList()).Distinct().Count() != 1) throw new Exception();
+
+            ////var sample_data = file_data.Select(cl => cl.values_csv_data.SelectMany(tag => tag.data_key_value_list).ToList()).ToList();
+            //var sample_data = file_data.Select(cl =>
+            //{
+            //    // check same number of samples per tag
+            //    if (cl.values_csv_data.Select(a => a.data_key_value_list.Count).Distinct().Count() != 1) throw new Exception();
+
+            //    var header_row = new List<string>();
+            //    var data_rows = new List<List<double>>();
+            //    for (var i = 0; i < )
+            //    var data_row_key_value_list = new List<(string key, double value, List<(string key, string value)> header, List<(string key, string value)> row_comments)>();
+
+            //    for (var tag_index = 0; tag_index < cl.values_csv_data.Count; tag_index++)
+            //    {
+            //        header_row.AddRange(cl.values_csv_data[tag_index].header_row);
+
+            //        if (tag_index == 0) data_rows.AddRange(cl.values_csv_data[tag_index].data_rows);
+            //        else data_rows = data_rows.Select(a => a).ToList();
+
+            //        data_row_key_value_list.AddRange(cl.values_csv_data[tag_index].data_row_key_value_list);
+            //    }
+
+            //    // merge tags
+
+            //    return 0;
+            //    //return cl.values_csv_data.SelectMany(tag => tag.data_key_value_list).ToList();
+            //}).ToList();
+
+            // class [ example id ] [ file_tag , fid ] = fv
+            // class [ ] 
+
+            // limit dataset to required matches...
+            /*
+            bool[][] required = null;
+            if (required_matches != null && required_matches.Count > 0)
+            {
+                required = new bool[header_data.Count][];
+                for (var i = 0; i < header_data.Count; i++)
+                {
+                    required[i] = new bool[header_data[i].headers.Count];
+                    if (required_default != default(bool)) Array.Fill(required[i], required_default);
+                }
+
+                for (var index = 0; index < required_matches.Count; index++)
+                {
+                    var rm = required_matches[index];
+
+                    for (var i = 0; i < header_data.Count; i++)
+                    {
+
+                        var matching_fids = header_data[i].headers.AsParallel().AsOrdered().Where(a =>
+                            matches(a.alphabet, rm.alphabet) &&
+                            matches(a.category, rm.category) &&
+                            matches(a.dimension, rm.dimension) &&
+                            matches(a.source, rm.source) &&
+                            matches(a.@group, rm.@group) &&
+                            matches(a.member, rm.member) &&
+                            matches(a.perspective, rm.perspective)
+                            ).Select(a => a.fid).ToList();
+
+
+                        matching_fids.ForEach(a => required[i][a] = rm.required);
+                        required[i][0] = true;
+
+                        var x = header_data[i].headers.Where((a, i) => required[i][a.fid]).ToList();
+                        header_data[i] = (header_data[i].file_tag, x);
+                    }
+                }
+            }*/
+
+            //bool[] required = null;
+            //if (required_matches != null && required_matches.Count > 0)
+            //{
+            //    required = new bool[feature_catalog.Count];
+            //    if (required_default != default(bool)) Array.Fill(required, required_default);
+
+            //    for (var index = 0; index < required_matches.Count; index++)
+            //    {
+            //        var rm = required_matches[index];
+
+            //        var matching_fids = feature_catalog.AsParallel().AsOrdered().Where(a =>
+            //            matches(a.alphabet, rm.alphabet) &&
+            //            matches(a.category, rm.category) &&
+            //            matches(a.dimension, rm.dimension) &&
+            //            matches(a.source, rm.source) &&
+            //            matches(a.@group, rm.@group) &&
+            //            matches(a.member, rm.member) &&
+            //            matches(a.perspective, rm.perspective)
+            //        ).Select(a => a.internal_fid).ToList();
+
+
+            //        matching_fids.ForEach(a => required[a] = rm.required);
+
+            //    }
+
+            //    required[0] = true;
+
+            //    feature_catalog = feature_catalog.Where((a, i) => required[a.internal_fid]).ToList();
+            //}
+
+
+
+
+            /*
+            if (perform_integrity_checks)
+            {
+                io_proxy.WriteLine($@"Checking all dataset columns are the same length...", module_name, method_name);
+                var dataset_num_diferent_column_length = dataset_instance_list.Select(a => a.feature_data.Count).Distinct().Count();
+                if (dataset_num_diferent_column_length != 1) throw new Exception();
+
+                io_proxy.WriteLine($@"Checking dataset headers and dataset columns are the same length...", module_name, method_name);
+                var header_length = header_data.Count;
+                var dataset_column_length = dataset_instance_list.First().feature_data.Count;
+                if (dataset_column_length != header_length) throw new Exception();
+
+                io_proxy.WriteLine($@"Checking all dataset comment columns are the same length...", module_name, method_name);
+                var comments_num_different_column_length = dataset_instance_list.Select(a => a.comment_columns.Count).Distinct().Count();
+                if (comments_num_different_column_length != 1)
+                {
+                    var distinct_comment_counts = dataset_instance_list.Select(a => a.comment_columns.Count).Distinct().ToList();
+
+                    var cc = distinct_comment_counts.Select(a => (a, dataset_instance_list.Where(b => b.comment_columns.Count == a).Select(b => b.example_id).ToList())).ToList();
+
+                    cc.ForEach(a => Console.WriteLine(a.a + ": " + string.Join(", ", a.Item2)));
+
+                    throw new Exception();
+                }
+            }
+            */
+
+            /*
+             if (fix_dataset)
+             
+            {
+                var num_headers_before = dataset.dataset_headers.Count;
+
+                remove_empty_features(dataset, 2);
+                remove_empty_features_by_class(dataset, 2);//, 2, $@"e:\input\feature_stats.csv");
+                remove_large_groups(dataset, 100);
+                remove_duplicate_groups(dataset);
+                // remove_duplicate_features(); will be done on the feature selection algorithm, otherwise potential feature groups may lack useful information
+
+                var num_headers_after = dataset.dataset_headers.Count;
+
+                if (num_headers_before != num_headers_after)
+                {
+                    save_dataset(dataset, new List<(int class_id, string header_filename, string data_filename)>()
+                {
+                    (+1, Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_header_csv_files[0])}_updated{Path.GetExtension(dataset_header_csv_files[0])}"), Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_csv_files[0])}_updated{Path.GetExtension(dataset_csv_files[0])}")),
+                    (-1, Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_header_csv_files[1])}_updated{Path.GetExtension(dataset_header_csv_files[1])}"), Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_csv_files[1])}_updated{Path.GetExtension(dataset_csv_files[0])}"))
+                }); // Path.Combine(dataset_folder, "updated_headers.csv"), Path.Combine(dataset_folder, "updated_dataset.csv"));
+                }
+            }
+            */
+
+        
+
+
+        /*private static bool matches(string text, string search_pattern)
         {
             if (string.IsNullOrWhiteSpace(search_pattern) || search_pattern == "*")
             {
@@ -42,384 +587,9 @@ namespace svm_fs_batch
             {
                 return string.Equals(text, search_pattern, StringComparison.InvariantCultureIgnoreCase);
             }
-        }
+        }*/
 
-        internal static
-            dataset
-           read_binary_dataset(
-
-           string dataset_folder,
-           string file_tag,
-           int negative_class_id,
-           int positive_class_id,
-           List<(int class_id, string class_name)> class_names,
-           //bool use_parallel = true,
-           bool perform_integrity_checks = false,
-           //bool fix_double = true,
-           bool required_default = true,
-           List<(bool required, string alphabet, string dimension, string category, string source, string group, string member, string perspective)> required_matches = null,
-           bool fix_dataset = false,
-           bool headers_only = false
-           )
-        {
-            var method_name = nameof(read_binary_dataset);
-            var module_name = nameof(dataset_loader);
-
-            var lock_table = new object();
-
-            var table_alphabet = new List<string>();
-            var table_dimension = new List<string>();
-            var table_category = new List<string>();
-            var table_source = new List<string>();
-            var table_group = new List<string>();
-            var table_member = new List<string>();
-            var table_perspective = new List<string>();
-
-            //dataset_folder = (dataset_folder);
-
-            // formatting to always show sign :+#;-#;+0
-
-            var dataset_csv_files = new List<string>()
-            {
-                (Path.Combine(dataset_folder, $@"f_{file_tag}_({class_names.First(a=>a.class_id==positive_class_id).class_id:+#;-#;+0})_({class_names.First(a => a.class_id == positive_class_id).class_name}).csv")),
-                (Path.Combine(dataset_folder, $@"f_{file_tag}_({class_names.First(a=>a.class_id==negative_class_id).class_id:+#;-#;+0})_({class_names.First(a => a.class_id == negative_class_id).class_name}).csv")),
-            };
-
-            var dataset_header_csv_files = new List<string>()
-            {
-                (Path.Combine(dataset_folder, $@"h_{file_tag}_({class_names.First(a=>a.class_id==positive_class_id).class_id:+#;-#;+0})_({class_names.First(a => a.class_id == positive_class_id).class_name}).csv")),
-                (Path.Combine(dataset_folder, $@"h_{file_tag}_({class_names.First(a=>a.class_id==negative_class_id).class_id:+#;-#;+0})_({class_names.First(a => a.class_id == negative_class_id).class_name}).csv")),
-            };
-
-            var dataset_comment_csv_files = new List<string>
-            {
-                (Path.Combine(dataset_folder, $@"c_{file_tag}_({class_names.First(a=>a.class_id==positive_class_id).class_id:+#;-#;+0})_({class_names.First(a => a.class_id == positive_class_id).class_name}).csv")),
-                (Path.Combine(dataset_folder, $@"c_{file_tag}_({class_names.First(a=>a.class_id==negative_class_id).class_id:+#;-#;+0})_({class_names.First(a => a.class_id == negative_class_id).class_name}).csv")),
-            };
-
-
-
-            io_proxy.WriteLine($@"{nameof(positive_class_id)} = {positive_class_id:+#;-#;+0}", module_name, method_name);
-            io_proxy.WriteLine($@"{nameof(negative_class_id)} = {negative_class_id:+#;-#;+0}", module_name, method_name);
-            io_proxy.WriteLine($@"{nameof(class_names)} = {string.Join(", ", class_names)}", module_name, method_name);
-            io_proxy.WriteLine($@"{nameof(dataset_csv_files)}: {string.Join(", ", dataset_csv_files)}", module_name, method_name);
-            io_proxy.WriteLine($@"{nameof(dataset_header_csv_files)}: {string.Join(", ", dataset_header_csv_files)}", module_name, method_name);
-            io_proxy.WriteLine($@"{nameof(dataset_comment_csv_files)}: {string.Join(", ", dataset_comment_csv_files)}", module_name, method_name);
-            io_proxy.WriteLine($@"Reading non-novel dataset headers...", module_name, method_name);
-
-
-            // READ HEADER CSV FILE - ALL CLASSES HAVE THE SAME HEADERS/FEATURES
-
-            //List<(int fid, string alphabet, string dimension, string category, string source, string group, string member, string perspective, int alphabet_id, int dimension_id, int category_id, int source_id, int group_id, int member_id, int perspective_id)> header_data = io_proxy.ReadAllLines(dataset_header_csv_files.First()).Skip(1).Select((a, i) =>
-
-
-
-            //var header_data = io_proxy.ReadAllLines(dataset_header_csv_files.First()).Skip(1)/*.AsParallel().AsOrdered()*/.Select((a, i) =>
-            var header_data = io_proxy.ReadAllLines(dataset_header_csv_files.First()).Skip(1).AsParallel().AsOrdered().Select((a, i) =>
-            {
-                var b = a.Split(',');
-                var fid = int.Parse(b[0], NumberStyles.Integer, CultureInfo.InvariantCulture);
-                //if (fid!=i) throw new Exception();
-
-                var alphabet = b[1];
-                var dimension = b[2];
-                var category = b[3];
-                var source = b[4];
-                var group = b[5];
-                var member = b[6];
-                var perspective = b[7];
-
-                const string def = "default";
-
-                if (string.IsNullOrWhiteSpace(alphabet)) alphabet = def;
-                if (string.IsNullOrWhiteSpace(dimension)) dimension = def;
-                if (string.IsNullOrWhiteSpace(category)) category = def;
-                if (string.IsNullOrWhiteSpace(source)) source = def;
-                if (string.IsNullOrWhiteSpace(group)) group = def;
-                if (string.IsNullOrWhiteSpace(member)) member = def;
-                if (string.IsNullOrWhiteSpace(perspective)) perspective = def;
-
-                lock (lock_table)
-                {
-                    //var duplicate = true;
-                    if (!table_alphabet.Contains(alphabet)) { table_alphabet.Add(alphabet); /*duplicate = false;*/ }
-                    if (!table_dimension.Contains(dimension)) { table_dimension.Add(dimension); /*duplicate = false;*/ }
-                    if (!table_category.Contains(category)) { table_category.Add(category); /*duplicate = false;*/ }
-                    if (!table_source.Contains(source)) { table_source.Add(source); /*duplicate = false;*/ }
-                    if (!table_group.Contains(group)) { table_group.Add(group); /*duplicate = false;*/ }
-                    if (!table_member.Contains(member)) { table_member.Add(member); /*duplicate = false;*/ }
-                    if (!table_perspective.Contains(perspective)) { table_perspective.Add(perspective); /*duplicate = false;*/ }
-
-                    //if (duplicate)
-                    //{
-                    //io_proxy.WriteLine("Duplicate: " + a);
-                    //Console.ReadLine();
-                    //}
-                }
-
-
-                var alphabet_id = table_alphabet.LastIndexOf(alphabet);
-                var dimension_id = table_dimension.LastIndexOf(dimension);
-                var category_id = table_category.LastIndexOf(category);
-                var source_id = table_source.LastIndexOf(source);
-                var group_id = table_group.LastIndexOf(group);
-                var member_id = table_member.LastIndexOf(member);
-                var perspective_id = table_perspective.LastIndexOf(perspective);
-
-                alphabet = table_alphabet[alphabet_id];
-                dimension = table_dimension[dimension_id];
-                category = table_category[category_id];
-                source = table_source[source_id];
-                group = table_group[group_id];
-                member = table_member[member_id];
-                perspective = table_perspective[perspective_id];
-
-                return (fid: fid, alphabet: alphabet, dimension: dimension, category: category, source: source, group: group, member: member, perspective: perspective,
-                                    alphabet_id: alphabet_id, dimension_id: dimension_id, category_id: category_id, source_id: source_id, group_id: group_id, member_id: member_id, perspective_id: perspective_id);
-            }).ToList();
-
-            bool[] required = null;
-
-            if (required_matches != null && required_matches.Count > 0)
-            {
-                required = new bool[header_data.Count];
-                Array.Fill(required, required_default);
-
-                for (var index = 0; index < required_matches.Count; index++)
-                {
-                    var rm = required_matches[index];
-
-                    var matching_fids = header_data.AsParallel().AsOrdered().Where(a =>
-                        matches(a.alphabet, rm.alphabet) &&
-                        matches(a.category, rm.category) &&
-                        matches(a.dimension, rm.dimension) &&
-                        matches(a.source, rm.source) &&
-                        matches(a.@group, rm.@group) &&
-                        matches(a.member, rm.member) &&
-                        matches(a.perspective, rm.perspective)
-                        ).Select(a => a.fid).ToList();
-
-
-                    matching_fids.ForEach(a => required[a] = rm.required);
-
-                }
-
-                required[0] = true;
-
-                header_data = header_data.Where((a, i) => required[a.fid]).ToList();
-            }
-
-            var dataset = new dataset();
-            dataset.dataset_headers = header_data;
-
-
-            if (!headers_only)
-            {
-
-                // READ (DATA) COMMENTS CSV FILE - THESE ARE CLASS AND INSTANCE SPECIFIC
-                var data_comments_header = File.ReadLines(dataset_comment_csv_files.First()).First().Split(',');
-
-                //var total_features = header_data.Count;
-                //Program.WriteLine($@"{nameof(total_features)}: {total_features}");
-                //Program.WriteLine($@"{nameof(table_alphabet)}: {table_alphabet.Count}: {string.Join(", ", table_alphabet)}");
-                //Program.WriteLine($@"{nameof(table_dimension)}: {table_dimension.Count}: {string.Join(", ", table_dimension)}");
-                //Program.WriteLine($@"{nameof(table_category)}: {table_category.Count}: {string.Join(", ", table_category)}");
-                //Program.WriteLine($@"{nameof(table_source)}: {table_source.Count}: {string.Join(", ", table_source)}");
-                //Program.WriteLine($@"{nameof(table_group)}: {table_group.Count}: {string.Join(", ", table_group)}");
-                //Program.WriteLine($@"{nameof(table_member)}: {table_member.Count}: {string.Join(", ", table_member)}");
-                //Program.WriteLine($@"{nameof(table_perspective)}: {table_perspective.Count}: {string.Join(", ", table_perspective)}");
-                //Program.WriteLine($@"");
-
-                List<(int filename_index, int line_index, List<(string comment_header, string comment_value)> comment_columns /*, string comment_columns_hash*/)> dataset_comment_row_values = null;
-                List<(int class_id, int example_id, int class_example_id, List<(string comment_header, string comment_value)> comment_columns, /*string comment_columns_hash,*/ List<(int fid, double fv)> feature_data /*, string feature_data_hash*/)> dataset_instance_list = null;
-
-
-
-
-                // data comments: load comment lines as key-value pairs.  note: these are variables associated with each example instance rather than specific features.
-                io_proxy.WriteLine($@"Reading data comments...", module_name, method_name);
-
-                //if (use_parallel)
-                //{
-                    dataset_comment_row_values = dataset_comment_csv_files.AsParallel()
-                        .AsOrdered()
-                        .SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
-                            .Skip(1 /*header line*/)
-                            .AsParallel()
-                            .AsOrdered()
-                            .Select((line, line_index) =>
-                            {
-
-                                var comment_columns = line.Split(',').Select((col, col_index) => (comment_header: data_comments_header[col_index], comment_value: col)).ToList();
-                                comment_columns = comment_columns.Where(d => d.comment_header.FirstOrDefault() != '#').ToList();
-
-                                //var comment_columns_hash = hash.calc_hash(string.Join(" ", comment_columns.Select(c => c.comment_header + ":" + c.comment_value).ToList()));
-                                return (filename_index: filename_index, line_index: line_index, comment_columns: comment_columns /*, comment_columns_hash: comment_columns_hash*/);
-
-                            })
-                            .ToList())
-                        .ToList();
-                //}
-                //else
-                //{
-                //    dataset_comment_row_values = dataset_comment_csv_files.SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
-                //            .Skip(1 /*header line*/)
-                //            .Select((line, line_index) =>
-                //            {
-
-                //                var comment_columns = line.Split(',').Select((col, col_index) => (comment_header: data_comments_header[col_index], comment_value: col)).ToList();
-                //                comment_columns = comment_columns.Where(d => d.comment_header.FirstOrDefault() != '#').ToList();
-
-                //                //var comment_columns_hash = hash.calc_hash(string.Join(" ", comment_columns.Select(c => c.comment_header + ":" + c.comment_value).ToList()));
-                //                return (filename_index: filename_index, line_index: line_index, comment_columns: comment_columns /*, comment_columns_hash: comment_columns_hash*/);
-
-                //            })
-                //            .ToList())
-                //        .ToList();
-                //}
-
-                //// data comments: filter out any '#' commented out key-value pairs 
-                //svm_manager.WriteLine($@"Removing data comments which are commented out...");
-                //if (use_parallel)
-                //{
-                //    dataset_comment_row_values = dataset_comment_row_values.AsParallel().AsOrdered().Select(a => { a.comment_columns = a.comment_columns.Where(b => b.comment_header.FirstOrDefault() != '#').ToList(); return a; }).ToList();
-                //}
-                //else
-                //{
-                //    dataset_comment_row_values = dataset_comment_row_values.Select(a => { a.comment_columns = a.comment_columns.Where(b => b.comment_header.FirstOrDefault() != '#').ToList(); return a; }).ToList();
-                //}
-
-
-                // data set: load data
-                io_proxy.WriteLine($@"Reading data...", module_name, method_name);
-                //if (use_parallel)
-                //{
-                    dataset_instance_list = dataset_csv_files.AsParallel()
-                        .AsOrdered()
-                        .SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
-                            .Skip(1 /*skip header*/)
-                            .AsParallel()
-                            .AsOrdered()
-                            .Select((line, line_index) =>
-                            {
-                                var class_id = int.Parse(line.Substring(0, line.IndexOf(',', StringComparison.InvariantCulture)), CultureInfo.InvariantCulture);
-                                var feature_data = parse_csv_line_doubles(line, required);
-                                //var feature_data_hash = hash.calc_hash(string.Join(" ", feature_data.Select(d => $"{d.fid}:{d.value}").ToList()));
-
-                                var comment_row = dataset_comment_row_values.First(b => b.filename_index == filename_index && b.line_index == line_index);
-                                var comment_columns = comment_row.comment_columns;
-                                //var comment_columns_hash = comment_row.comment_columns_hash;
-
-                                return (class_id: class_id, example_id: 0, class_example_id: 0, comment_columns: comment_columns,
-                                        //comment_columns_hash: comment_columns_hash,
-                                        feature_data: feature_data //,
-                                                                   //feature_data_hash: feature_data_hash
-                                    );
-
-                            })
-                            .ToList())
-                        .ToList();
-                //}
-                //else
-                //{
-                //    dataset_instance_list = dataset_csv_files.SelectMany((filename, filename_index) => io_proxy.ReadAllLines(filename, module_name, method_name)
-                //            .Skip(1 /*skip header*/)
-                //            . /*Take(20).*/Select((line, line_index) =>
-                //            {
-                //                var class_id = int.Parse(line.Substring(0, line.IndexOf(',', StringComparison.InvariantCulture)), CultureInfo.InvariantCulture);
-                //                var feature_data = parse_csv_line_doubles(line, required);
-                //                //var feature_data_hash = hash.calc_hash(string.Join(" ", feature_data.Select(d => $"{d.fid}:{d.value}").ToList()));
-
-                //                var comment_row = dataset_comment_row_values.First(b => b.filename_index == filename_index && b.line_index == line_index);
-                //                var comment_columns = comment_row.comment_columns;
-                //                //var comment_columns_hash = comment_row.comment_columns_hash;
-
-                //                return (class_id: class_id, example_id: 0, class_example_id: 0, comment_columns: comment_columns,
-                //                        //comment_columns_hash: comment_columns_hash,
-                //                        feature_data: feature_data //,
-                //                                                   //feature_data_hash: feature_data_hash
-                //                    );
-
-                //            })
-                //            .ToList())
-                //        .ToList();
-                //}
-
-                if (dataset_comment_row_values.Count != dataset_instance_list.Count) { throw new Exception(); }
-
-
-                dataset_instance_list = dataset_instance_list.Select((a, i) => (a.class_id, i, a.class_example_id, a.comment_columns, /*a.comment_columns_hash,*/ a.feature_data /*, a.feature_data_hash*/)).ToList();
-                dataset_instance_list = dataset_instance_list.GroupBy(a => a.class_id).SelectMany(x => x.Select((a, i) => (a.class_id, a.example_id, i, a.comment_columns, /*a.comment_columns_hash,*/ a.feature_data /*, a.feature_data_hash*/)).ToList()).ToList();
-
-
-
-                if (perform_integrity_checks)
-                {
-                    io_proxy.WriteLine($@"Checking all dataset columns are the same length...", module_name, method_name);
-                    var dataset_num_diferent_column_length = dataset_instance_list.Select(a => a.feature_data.Count).Distinct().Count();
-                    if (dataset_num_diferent_column_length != 1) throw new Exception();
-
-                    io_proxy.WriteLine($@"Checking dataset headers and dataset columns are the same length...", module_name, method_name);
-                    var header_length = header_data.Count;
-                    var dataset_column_length = dataset_instance_list.First().feature_data.Count;
-                    if (dataset_column_length != header_length) throw new Exception();
-
-                    io_proxy.WriteLine($@"Checking all dataset comment columns are the same length...", module_name, method_name);
-                    var comments_num_different_column_length = dataset_instance_list.Select(a => a.comment_columns.Count).Distinct().Count();
-                    if (comments_num_different_column_length != 1)
-                    {
-                        var distinct_comment_counts = dataset_instance_list.Select(a => a.comment_columns.Count).Distinct().ToList();
-
-                        var cc = distinct_comment_counts.Select(a => (a, dataset_instance_list.Where(b => b.comment_columns.Count == a).Select(b => b.example_id).ToList())).ToList();
-
-                        cc.ForEach(a => Console.WriteLine(a.a + ": " + string.Join(", ", a.Item2)));
-
-                        throw new Exception();
-                    }
-                }
-
-
-
-
-                //var dataset_instance_list2 = dataset_instance_list.Select((a, i) => (class_id: a.class_id, comment_columns: a.comment_columns, feature_data: a.feature_data,
-                //feature_data_hash: svm_manager.calc_hash(string.Join(" ", a.feature_data.SelectMany(b => new string[] { ""+b.fid, ""+b.fv }).ToList())), example_id: i)).ToList();
-                //
-                //var dataset_instance_list3 = dataset_instance_list2.GroupBy(a => a.class_id).Select(x => x.Select((a, i) => (class_id: a.class_id, comment_columns: a.comment_columns, feature_data: a.feature_data, 
-                //comment_columns_hash: a.comment_columns_hash, feature_data_hash: a.feature_data_hash, example_id: a.example_id, class_example_id: i))).SelectMany(a => a).ToList();
-
-                dataset.dataset_comment_row_values = dataset_comment_row_values;
-                dataset.dataset_instance_list = dataset_instance_list;
-            }
-
-
-
-
-            if (fix_dataset)
-            {
-                var num_headers_before = dataset.dataset_headers.Count;
-
-                remove_empty_features(dataset, 2);
-                remove_empty_features_by_class(dataset, 2);//, 2, $@"e:\input\feature_stats.csv");
-                remove_large_groups(dataset, 100);
-                remove_duplicate_groups(dataset);
-                // remove_duplicate_features(); will be done on the feature selection algorithm, otherwise potential feature groups may lack useful information
-
-                var num_headers_after = dataset.dataset_headers.Count;
-
-                if (num_headers_before != num_headers_after)
-                {
-                    save_dataset(dataset, new List<(int class_id, string header_filename, string data_filename)>()
-                {
-                    (+1, Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_header_csv_files[0])}_updated{Path.GetExtension(dataset_header_csv_files[0])}"), Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_csv_files[0])}_updated{Path.GetExtension(dataset_csv_files[0])}")),
-                    (-1, Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_header_csv_files[1])}_updated{Path.GetExtension(dataset_header_csv_files[1])}"), Path.Combine(dataset_folder, $"{Path.GetFileNameWithoutExtension(dataset_csv_files[1])}_updated{Path.GetExtension(dataset_csv_files[0])}"))
-                }); // Path.Combine(dataset_folder, "updated_headers.csv"), Path.Combine(dataset_folder, "updated_dataset.csv"));
-                }
-            }
-
-            return dataset;
-        }
-
-
+        /*
         internal static double[][][] get_column_data_by_class(dataset dataset) // [column][row]
         {
             //io_proxy.WriteLine("...", module_name, nameof(get_column_data_by_class));
@@ -438,7 +608,9 @@ namespace svm_fs_batch
 
             return result;
         }
+        */
 
+        /*
         internal static double[][] get_column_data(dataset dataset) // [column][row]
         {
             //io_proxy.WriteLine("...", module_name, nameof(get_column_data));
@@ -452,12 +624,13 @@ namespace svm_fs_batch
 
             return result;
         }
+        */
 
-
+        /*
         internal static void remove_large_groups(dataset dataset, int max_group_size)
         {
-            var module_name = nameof(dataset_loader);
-            var method_name = nameof(remove_large_groups);
+            const string module_name = nameof(dataset_loader);
+            const string method_name = nameof(remove_large_groups);
 
             //io_proxy.WriteLine("...", module_name, nameof(remove_large_groups));
 
@@ -480,11 +653,13 @@ namespace svm_fs_batch
 
             groups_too_large.ForEach(a => io_proxy.WriteLine($@"Removed large group: {a.Key}", module_name, method_name));
         }
+        */
 
+        /*
         internal static void remove_duplicate_groups(dataset dataset)
         {
-            //var module_name = nameof(dataset_loader);
-            //var method_name = nameof(remove_duplicate_groups);
+            //const string module_name = nameof(dataset_loader);
+            //const string method_name = nameof(remove_duplicate_groups);
 
             //io_proxy.WriteLine("...", module_name, nameof(remove_duplicate_groups));
 
@@ -565,7 +740,8 @@ namespace svm_fs_batch
                     groups_to_remove_keys.ForEach(a => Console.WriteLine($"-   Removing: {string.Join(".", a)}"));
 
 
-                    var cluster_fids_to_remove = groups_to_remove.SelectMany(a => a.Select(b => b.fid).ToList())/*.Distinct().OrderBy(a=>a)*/.ToList();
+                    //var cluster_fids_to_remove = groups_to_remove.SelectMany(a => a.Select(b => b.fid).ToList()).Distinct().OrderBy(a=>a).ToList();
+                    var cluster_fids_to_remove = groups_to_remove.SelectMany(a => a.Select(b => b.fid).ToList()).ToList();
                     fids_to_remove.AddRange(cluster_fids_to_remove);
 
                     // todo: loop through each column of group to keep, find sequence equal in the groups to remove, to get the correct new header names
@@ -628,11 +804,13 @@ namespace svm_fs_batch
                 remove_fids(dataset, fids_to_remove);
             }
         }
+        */
 
+        /*
         internal static void save_dataset(dataset dataset, List<(int class_id, string header_filename, string data_filename)> filenames)
         {
-            var module_name = nameof(dataset_loader);
-            var method_name = nameof(save_dataset);
+            const string module_name = nameof(dataset_loader);
+            const string method_name = nameof(save_dataset);
 
             io_proxy.WriteLine("started saving...", module_name, method_name);
 
@@ -646,7 +824,7 @@ namespace svm_fs_batch
                 data.Add(header_fids_str);
 
                 dataset.dataset_instance_list.Where(a => a.class_id == class_id_filenames.class_id).ToList().
-                    ForEach(a => data.Add(string.Join(",", a.feature_data.Select(b => b.fv.ToString("G17", CultureInfo.InvariantCulture)).ToList())));
+                    ForEach(a => data.Add(string.Join(",", a.feature_data.Select(b => b.fv.ToString("G17", NumberFormatInfo.InvariantInfo)).ToList())));
 
                 var header = dataset.dataset_headers.Select(a => $@"{a.fid},{a.alphabet},{a.dimension},{a.category},{a.source},{a.group},{a.member},{a.perspective}").ToList();
                 header.Insert(0, $@"fid,alphabet,dimension,category,source,group,member,perspective");
@@ -656,13 +834,16 @@ namespace svm_fs_batch
                 io_proxy.WriteAllLines(class_id_filenames.data_filename, data);
             }
 
-            io_proxy.WriteLine("finished saving...", module_name, nameof(save_dataset));
+            io_proxy.WriteLine("finished saving...", module_name, method_name);
         }
+        */
 
-        internal static void remove_empty_features(dataset dataset, /*double min_non_zero_pct = 0.25,*/ int min_distinct_numbers = 2)
+        /*
+        internal static void remove_empty_features(dataset dataset, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2)
+        internal static void remove_empty_features(dataset dataset, int min_distinct_numbers = 2)
         {
-            var module_name = nameof(dataset_loader);
-            var method_name = nameof(remove_empty_features);
+            const string module_name = nameof(dataset_loader);
+            const string method_name = nameof(remove_empty_features);
 
             io_proxy.WriteLine("...", module_name, method_name);
 
@@ -702,11 +883,13 @@ namespace svm_fs_batch
             io_proxy.WriteLine($@"Removed features ({empty_fids.Count}): {string.Join(",", empty_fids)}", module_name, method_name);
 
         }
-
-        internal static void remove_empty_features_by_class(dataset dataset, /*double min_non_zero_pct = 0.25,*/ int min_distinct_numbers = 2, string stats_filename = null)
+        */
+        /*
+        //internal static void remove_empty_features_by_class(dataset dataset, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2, string stats_filename = null)
+        internal static void remove_empty_features_by_class(dataset dataset, int min_distinct_numbers = 2, string stats_filename = null)
         {
-            var module_name = nameof(dataset_loader);
-            var method_name = nameof(remove_empty_features_by_class);
+            const string module_name = nameof(dataset_loader);
+            const string method_name = nameof(remove_empty_features_by_class);
 
             io_proxy.WriteLine("...", module_name, method_name);
 
@@ -823,8 +1006,9 @@ namespace svm_fs_batch
                 io_proxy.WriteAllLines(stats_filename, data);
             }
         }
+        */
 
-
+        /*
         internal static void remove_fids(dataset dataset, List<int> fids_to_remove)
         {
             //io_proxy.WriteLine("...", module_name, nameof(remove_fids));
@@ -856,8 +1040,8 @@ namespace svm_fs_batch
                     );
             }
         }
-
-
+        */
+        /*
         internal static List<(int fid, double value)> parse_csv_line_doubles(string line, bool[] required = null)
         {
             var result = new List<(int fid, double value)>();
@@ -891,8 +1075,8 @@ namespace svm_fs_batch
 
             return result;
         }
-
-        internal static List<string> parse_csv_line_strings(string line)
+        */
+       /* internal static List<string> parse_csv_line_strings(string line)
         {
             var result = new List<string>();
 
@@ -922,12 +1106,12 @@ namespace svm_fs_batch
             }
 
             return result;
-        }
+        }*/
 
 
 
 
-        internal static double fix_double(string double_value)
+        /*internal static double fix_double(string double_value)
         {
             const char infinity = '∞';
             const string neg_infinity = "-∞";
@@ -942,9 +1126,9 @@ namespace svm_fs_batch
             else if (double_value.Contains(infinity, StringComparison.InvariantCulture)) return fix_double(double.PositiveInfinity);
             else if (double_value.Contains(NaN, StringComparison.InvariantCulture)) return fix_double(double.NaN);
             else return 0d;
-        }
+        }*/
 
-        internal static double fix_double(double value)
+        /*internal static double fix_double(double value)
         {
             // the doubles must be compatible with libsvm which is written in C (C and CSharp have different min/max values for double)
             const double c_double_max = (double)1.79769e+308;
@@ -969,7 +1153,7 @@ namespace svm_fs_batch
             }
 
             return value;
-        }
+        }*/
 
-    }
-}
+//    }
+//}

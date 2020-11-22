@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime;
 using System.Runtime.Loader;
-using System.Text;
 using System.Threading;
 
 namespace svm_fs_batch

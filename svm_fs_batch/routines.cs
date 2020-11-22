@@ -7,16 +7,7 @@ namespace svm_fs_batch
 {
     internal static class routines
     {
-        internal enum scale_function : int
-        {
-            none,
-            rescale,
-            normalisation,
-            standardisation,
-            L0_norm,
-            L1_norm,
-            L2_norm,
-        }
+       
 
         internal enum libsvm_kernel_type : int
         {
@@ -61,62 +52,86 @@ namespace svm_fs_batch
             // if (program.write_console_log) program.WriteLine(string.Join(",",k_list));
         }
 
-        internal static List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds(int examples, int repetitions, int outer_cv_folds, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static (
+            List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> class_folds,
+            List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> down_sampled_training_class_folds
+            ) folds(List<(int class_id, int class_size)> class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        {
+            var class_folds = class_sizes.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds/*, outer_cv_folds_to_run, fold_size_limit*/))).ToList();
+
+            var down_sampled_training_class_folds = class_folds.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: a.folds?.Select(b =>
+                    {
+                        var min_num_items_in_fold =
+                            class_folds.Min(c => c.folds?
+                                .Where(e => e.repetitions_index == b.repetitions_index && e.outer_cv_index == b.outer_cv_index)
+                                .Min(e => e.indexes?.Count ?? 0) ?? 0
+                            );
+
+                        return (repetitions_index: b.repetitions_index, outer_cv_index: b.outer_cv_index, indexes: b.indexes?.Take(min_num_items_in_fold).ToList());
+                    })
+                    .ToList()))
+                .ToList();
+
+            return (class_folds, down_sampled_training_class_folds);
+        }
+
+        internal static List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds(int num_class_samples, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             // folds: returns a list of folds (including the indexes at each fold)... number folds = repetitions (!<1) * outer_cv_folds_to_run (!<1)
 
             // outer_cv_folds_to_run is the total number of outer_cv_folds to actually run/process... whereas, outer_cv_folds describes the data partitioning (i.e. 5 would be 5 tests of 80% train & 20% test, where as outer_cv_folds_to_run would reduce the 5 tests to given number).
-            if (examples <= 0) throw new Exception();
+            if (num_class_samples <= 0) throw new Exception();
             if (repetitions <= 0) throw new Exception();
             if (outer_cv_folds <= 0) throw new Exception();
-            if (outer_cv_folds_to_run < 0 || outer_cv_folds_to_run > outer_cv_folds) throw new Exception();
-            if (fold_size_limit < 0) throw new Exception();
+            //if (outer_cv_folds_to_run < 0 || outer_cv_folds_to_run > outer_cv_folds) throw new Exception();
+            //if (fold_size_limit < 0) throw new Exception();
 
-            //var module_name = nameof(svm_ctl);
-            //var method_name = nameof(folds);
+            //const string module_name = nameof(svm_ctl);
+            //const string method_name = nameof(folds);
             /*int first_index, int last_index, int num_items,*/
             
-            if (outer_cv_folds_to_run == 0) outer_cv_folds_to_run = outer_cv_folds;
+            //if (outer_cv_folds_to_run == 0) outer_cv_folds_to_run = outer_cv_folds;
             var fold_sizes = new int[outer_cv_folds/*_to_run*/];
 
-            if (examples > 0 && outer_cv_folds/*_to_run*/ > 0)
+            if (num_class_samples > 0 && outer_cv_folds/*_to_run*/ > 0)
             {
-                var n = examples / outer_cv_folds;
+                var n = num_class_samples / outer_cv_folds;
 
                 for (var i = 0; i < outer_cv_folds/*_to_run*/; i++) { fold_sizes[i] = n; }
 
-                for (var i = 0; i < (examples % outer_cv_folds) && i < outer_cv_folds/*_to_run*/; i++) { fold_sizes[i]++; }
+                for (var i = 0; i < (num_class_samples % outer_cv_folds) && i < outer_cv_folds/*_to_run*/; i++) { fold_sizes[i]++; }
             }
 
-            if (fold_size_limit > 0) { fold_sizes = fold_sizes.Select(a => a > fold_size_limit ? fold_size_limit : a).ToArray(); }
+            //if (fold_size_limit > 0) { fold_sizes = fold_sizes.Select(a => a > fold_size_limit ? fold_size_limit : a).ToArray(); }
 
             // use same seed to ensure all calls to fold() are deterministic
             var rand = new Random(1);
 
-            var indexes_pool = Enumerable.Range(0, examples).ToList();
+            var indexes_pool = Enumerable.Range(0, num_class_samples).ToList();
 
-            var x = new List<(int randomisation, int fold, List<int> indexes)>();
+            var fold_indexes = new List<(int randomisation, int outer_cv_index, List<int> indexes)>();
 
-            // if repetitions is =0, then no shuffle, data will be in default order
-            // if repetitions is >0, will be shuffled
-            // (currently the option to specify 0 is disabled above)
-
-            var rdm = repetitions == 0 ? 1 : repetitions;
-
-            for (var r = 0; r < rdm; r++)
+            for (var repetitions_index = 0; repetitions_index < repetitions; repetitions_index++)
             {
-                if (repetitions != 0) indexes_pool.shuffle(rand);
+                indexes_pool.shuffle(rand);
+                
+                var outer_cv_fold_indexes = fold_sizes
+                    .Select((fold_size, outer_cv_index) => (repetitions_index: repetitions_index, outer_cv_index: outer_cv_index, indexes: indexes_pool
+                        .Skip(fold_sizes.Where((b, j) => outer_cv_index > j /* skip previous folds*/).Sum())
+                        .Take(fold_size /* take only current fold */)
+                        .OrderBy(b => b /* order indexes in the current fold numerically */)
+                        .ToList()))
+                    .Where(c => c.indexes != null && c.indexes.Count > 0)
+                    .ToList();
 
-                var y = fold_sizes.Select((fold_size, fold_index) => (repetitions_index: r, outer_cv_index: fold_index, indexes: indexes_pool.Skip(fold_sizes.Where((b, j) => fold_index < j).Sum()).Take(fold_size).OrderBy(b => b).ToList())).ToList();
-
-                x.AddRange(y);
+                fold_indexes.AddRange(outer_cv_fold_indexes);
             }
 
-            return x;
+            return fold_indexes;
         }
 
 
-        internal static double standard_deviation_population(List<double> values)
+        internal static double standard_deviation_population(IList<double> values)
         {
             if (values.Count == 0) return 0;
 
@@ -125,7 +140,7 @@ namespace svm_fs_batch
             return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Count));
         }
 
-        internal static double standard_deviation_sample(List<double> values)
+        internal static double standard_deviation_sample(IList<double> values)
         {
             if (values.Count < 2) return 0;
 
@@ -134,65 +149,9 @@ namespace svm_fs_batch
             return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Count - 1));
         }
 
-        internal static double sqrt_sumofsqrs(List<double> list) { return Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+        internal static double sqrt_sumofsqrs(IList<double> list) { return Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
 
-        internal static double scale(double value, /* List<double> list,*/ double non_zero, double abs_sum, double srsos, double column_min, double column_max, double average, double stdev, routines.scale_function scale_function)
-        {
-            switch (scale_function)
-            {
-                case routines.scale_function.none: return value;
-
-                case routines.scale_function.rescale:
-                    var scale_min = -1;
-                    var scale_max = +1;
-
-                    var x = (scale_max - scale_min) * (value - column_min);
-                    var y = (column_max - column_min);
-                    var z = scale_min;
-
-                    if (y == 0) return 0;
-
-                    var rescale = (x / y) + z;
-
-                    return rescale;
-
-                case routines.scale_function.normalisation:
-
-                    if (column_max - column_min == 0) return 0;
-
-                    var mean_norm = (value - average) / (column_max - column_min);
-
-                    return mean_norm;
-
-                case routines.scale_function.standardisation:
-
-                    if (stdev == 0) return 0;
-
-                    var standardisation = (value - average) / stdev;
-
-                    return standardisation;
-
-                case routines.scale_function.L0_norm:
-
-                    if (non_zero == 0) return 0;
-
-                    return value / non_zero;
-
-                case routines.scale_function.L1_norm:
-
-                    if (abs_sum == 0) return 0;
-
-                    return value / abs_sum;
-
-                case routines.scale_function.L2_norm:
-
-                    if (srsos == 0) return 0;
-
-                    return value / srsos;
-
-                default: throw new ArgumentOutOfRangeException(nameof(scale_function)); //return 0;
-            }
-        }
+      
 
         internal static int for_loop_instance_id(List<(int current, int max)> points)
         {

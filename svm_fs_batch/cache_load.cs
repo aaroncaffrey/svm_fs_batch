@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -10,11 +9,12 @@ namespace svm_fs_batch
     internal class cache_load
     {
         
-        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_basic(init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances,
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_basic(dataset_loader dataset, int iteration_index, string iteration_name, int total_groups, int instance_index, int total_instances,
              int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds)
         {
             var p = new unrolled_indexes_parameters()
             {
+                // the parameter below are for bias checking... make sure performance isn't biased towards a certain value of r/o/i below
                 r_cv_start = repetitions,
                 r_cv_end = repetitions,
                 r_cv_step = 1,
@@ -28,10 +28,12 @@ namespace svm_fs_batch
                 i_cv_step = 1
             };
 
-            return get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p, outer_cv_folds_to_run);//calc_11p_thresholds, svm_types, kernels, scales, class_weights, r_cv_start, r_cv_end, r_cv_step, o_cv_start, o_cv_end, o_cv_step, i_cv_start, i_cv_end, i_cv_step);
+            return get_unrolled_indexes(dataset, iteration_index, iteration_name, total_groups, instance_index, total_instances, p, outer_cv_folds_to_run);
+            
+            //calc_11p_thresholds, svm_types, kernels, scales, class_weights, r_cv_start, r_cv_end, r_cv_step, o_cv_start, o_cv_end, o_cv_step, i_cv_start, i_cv_end, i_cv_step);
         }
 
-        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_check_bias(int search_type, init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances)
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_check_bias(int search_type, dataset_loader dataset, int iteration_index, string iteration_name, int total_groups, int instance_index, int total_instances)
         {
             // for a specific set of features (i.e. the final result from feature selection):
 
@@ -46,15 +48,15 @@ namespace svm_fs_batch
 
                     calc_11p_thresholds = true,
 
-                    scales = new List<routines.scale_function>()
+                    scales = new List<scaling.scale_function>()
                     {
-                        routines.scale_function.none,
-                        routines.scale_function.normalisation,
-                        routines.scale_function.rescale,
-                        routines.scale_function.standardisation,
-                        routines.scale_function.L0_norm,
-                        routines.scale_function.L1_norm,
-                        routines.scale_function.L2_norm,
+                        scaling.scale_function.none,
+                        scaling.scale_function.normalisation,
+                        scaling.scale_function.rescale,
+                        scaling.scale_function.standardisation,
+                        scaling.scale_function.L0_norm,
+                        scaling.scale_function.L1_norm,
+                        scaling.scale_function.L2_norm,
                     },
 
                     kernels = new List<routines.libsvm_kernel_type>()
@@ -66,7 +68,7 @@ namespace svm_fs_batch
                     }
                 };
 
-                var variations_1 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p1);
+                var variations_1 = get_unrolled_indexes(dataset, iteration_index, iteration_name, total_groups, instance_index, total_instances, p1);
                 return variations_1;
             }
             else if (search_type == 1)
@@ -99,7 +101,7 @@ namespace svm_fs_batch
                     i_cv_step = 1
                 };
 
-                var variations_2 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p2);
+                var variations_2 = get_unrolled_indexes(dataset, iteration_index, iteration_name, total_groups, instance_index, total_instances, p2);
 
                 return variations_2;
             }
@@ -149,7 +151,7 @@ namespace svm_fs_batch
                     }
                 }
 
-                var variations_3 = get_unrolled_indexes(caller_idr, iteration_index, total_groups, instance_index, total_instances, p3);
+                var variations_3 = get_unrolled_indexes(dataset, iteration_index, iteration_name, total_groups, instance_index, total_instances, p3);
 
                 return variations_3;
             }
@@ -168,12 +170,21 @@ namespace svm_fs_batch
             return end >= start ? ((end - start) / step) + 1 : 0;
         }
 
-        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes(init_dataset_ret caller_idr, int iteration_index, int total_groups, int instance_index, int total_instances, unrolled_indexes_parameters p,
-            int outer_cv_folds_to_run = 0)
+        internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes
+        (
+            dataset_loader dataset,
+            int iteration_index, 
+            string iteration_name,
+            int total_groups,
+            int instance_index, 
+            int total_instances, 
+            unrolled_indexes_parameters p,
+            int outer_cv_folds_to_run = 0
+        )
         {
             // set default scales functions and svm_kernel types
             //if (kernels == null) kernels = ((routines.libsvm_kernel_type[])Enum.GetValues(typeof(routines.libsvm_kernel_type))).Where(a => a != routines.libsvm_kernel_type.precomputed).ToList();
-            //if (scales == null) scales = ((routines.scale_function[])Enum.GetValues(typeof(routines.scale_function))).ToList();
+            //if (scales == null) scales = ((scaling.scale_function[])Enum.GetValues(typeof(scaling.scale_function))).ToList();
 
             // limit the scale_function functions and svm_kernel types to reduce compute load
             //if (class_weights == null) class_weights = new List<(int class_id, double class_weight)>();
@@ -192,7 +203,7 @@ namespace svm_fs_batch
 
             if (p.svm_types == null || p.svm_types.Count == 0) p.svm_types = new List<routines.libsvm_svm_type>() { routines.libsvm_svm_type.c_svc };
             if (p.kernels == null || p.kernels.Count == 0) p.kernels = new List<routines.libsvm_kernel_type>() { routines.libsvm_kernel_type.rbf };
-            if (p.scales == null || p.scales.Count == 0) p.scales = new List<routines.scale_function>() { routines.scale_function.rescale };
+            if (p.scales == null || p.scales.Count == 0) p.scales = new List<scaling.scale_function>() { scaling.scale_function.rescale };
 
 
             var r_cv_series_index = -1;
@@ -223,6 +234,7 @@ namespace svm_fs_batch
 
             for (var g_series = p.group_start; g_series <= group_end; g_series++)
             {
+                // default - set group_series to 0,1,2,3,...,(total_groups-1)
                 group_series[++group_series_index] = g_series; //group_series.Add(g_series);
             }
 
@@ -241,20 +253,13 @@ namespace svm_fs_batch
                 foreach (var outer_cv_folds in o_cv_series) // e.g. 5 or 10, or 1,2,3,4,5,...
                 {
                     //var ida = (init_dataset_ret)null;
-                    var idr = (init_dataset_ret)null;
+                    
 
-                    idr = new init_dataset_ret(caller_idr);
-                    idr.set_folds(repetitions, outer_cv_folds, outer_cv_folds_to_run);
+                    
 
-                    //idr.class_folds = idr.class_sizes.Select(a => (class_id: a.class_id, size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_folds))).ToList();
-                    //
-                    //idr.downsampled_training_class_folds = idr.class_folds.Select(a => (class_id: a.class_id, size: a.size, folds: a.folds.Select(b =>
-                    //        {
-                    //            var min_num_items_in_fold = idr.class_folds.Min(c => c.folds.Where(e => e.repetitions_index == b.repetitions_index && e.outer_cv_index == b.outer_cv_index).Min(e => e.indexes.Count));
-                    //            return (repetitions_index: b.repetitions_index, outer_cv_index: b.outer_cv_index, indexes: b.indexes.Take(min_num_items_in_fold).ToList());
-                    //        })
-                    //        .ToList()))
-                    //    .ToList();
+                    // for the current number of R and O, set the folds (which vary according to the values of R and O).
+                    var (class_folds, down_sampled_training_class_folds) = routines.folds(dataset.class_sizes, repetitions, outer_cv_folds/*, outer_cv_folds_to_run*/);
+
 
                     foreach (var group_index in group_series) // ~7000
                     {
@@ -281,21 +286,24 @@ namespace svm_fs_batch
                                                 unrolled_partition_index = unrolled_partition_indexes[unrolled_instance_index],
                                                 unrolled_instance_index = unrolled_instance_index,
                                                 iteration_index = iteration_index,
-                                                group_index = group_index,
+                                                iteration_name= iteration_name,
+                                                group_array_index = group_index,
                                                 total_groups = total_groups,
                                                 calc_11p_thresholds = p.calc_11p_thresholds,
                                                 repetitions = repetitions,
                                                 outer_cv_folds = outer_cv_folds,
                                                 outer_cv_folds_to_run = outer_cv_folds_to_run,
-                                                class_weights = class_weights,
                                                 svm_type = svm_type,
                                                 svm_kernel = svm_kernel,
                                                 scale_function = scale_function,
                                                 inner_cv_folds = inner_folds,
-                                                idr = idr,
                                                 total_instances = total_instances,
                                                 total_whole_indexes = -1,
-                                                total_partition_indexes = -1
+                                                total_partition_indexes = -1,
+                                                
+                                                class_weights = class_weights,
+                                                class_folds = class_folds,
+                                                down_sampled_training_class_folds = down_sampled_training_class_folds,
                                             };
 
                                             indexes_whole.Add(index_data);
@@ -335,10 +343,11 @@ namespace svm_fs_batch
             (
                 int instance_index,
                 int iteration_index,
+                string iteration_name,
                 string experiment_name,
                 bool wait_for_cache,
                 List<string> cache_files_already_loaded,
-                List<perf.confusion_matrix_data> iteration_cm_all,
+                List<confusion_matrix> iteration_cm_all,
                 List<index_data> indexes_whole,
                 List<index_data> indexes_partition
             )
@@ -346,8 +355,8 @@ namespace svm_fs_batch
             // a single group may have multiple tests... e.g. different number of inner-cv, outer-cv, class_weights, etc...
             // therefore, group_index existing isn't enough, must also have the various other parameters
 
-            var module_name = nameof(program);
-            var method_name = nameof(load_cache);
+            const string module_name = nameof(program);
+            const string method_name = nameof(load_cache);
 
             if (cache_files_already_loaded == null) throw new Exception();
             if (iteration_cm_all == null) throw new Exception();
@@ -359,7 +368,7 @@ namespace svm_fs_batch
             if (!loaded_state.indexes_missing_whole.Any()) return loaded_state;
 
 
-            var iteration_folder = program.get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, iteration_index);
+            var iteration_folder = program.get_iteration_folder(settings.results_root_folder, experiment_name, iteration_index, iteration_name);
 
             do
             {
@@ -391,19 +400,19 @@ namespace svm_fs_batch
                     {
                         // only load m* for the partition... pt2
                         //var merge_files = indexes_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
-                        var merge_files = loaded_state.indexes_missing_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
+                        var merge_files = loaded_state.indexes_missing_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(settings.results_root_folder, experiment_name, a.iteration_index, iteration_name, a.group_array_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
 
                         cache_files = cache_files.Intersect(merge_files).ToList();
                     }
 
-
-                    var cms = cache_files.AsParallel()
+                    
+                    var cache_files_cm_list = cache_files.AsParallel()
                         .AsOrdered()
                         .Select(cm_fn =>
                         {
                             if (io_proxy.is_file_available(cm_fn))
                             {
-                                var cm = perf.confusion_matrix.load(cm_fn);
+                                var cm = confusion_matrix.load(cm_fn);
 
                                 return cm;
                             }
@@ -412,22 +421,35 @@ namespace svm_fs_batch
                         })
                         .ToList();
 
-                    lock (cache_files_already_loaded) { cache_files_already_loaded.AddRange(cache_files.Where((a, i) => cms[i] != default && cms[i].Any(b => b != default && b.cm != default)).ToList()); }
+                    lock (cache_files_already_loaded) { cache_files_already_loaded.AddRange(cache_files.Where((a, i) => cache_files_cm_list[i] != default && cache_files_cm_list[i].Any(b => b != default /*&& b.cm != default*/)).ToList()); }
 
-                    for (var cms_index = 0; cms_index < cms.Count; cms_index++)
+                    for (var cms_index = 0; cms_index < cache_files_cm_list.Count; cms_index++)
                     {
                         var cm_file = cache_files[cms_index];
 
                         if (!loaded_state.indexes_missing_whole.Any()) break;
 
-                        var cm = cms[cms_index];
+                        var cache_files_cm_list_cms_index = cache_files_cm_list[cms_index];
 
-                        if (cm == default) continue;
+                        if (cache_files_cm_list_cms_index == default) continue;
 
                         lock (iteration_cm_all)
-                        {
+                        { 
                             // limit cm to those indexes not already loaded
-                            var cm_append = cm.Where((b, i) => (i == 0 && iteration_cm_all.Count == 0 && b != default) || (b != default && b.cm != default && loaded_state.indexes_missing_whole.Any(a => a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.calc_11p_thresholds == b.cm.x_calc_11p_thresholds && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_type == b.cm.x_svm_type && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds))).ToList();
+                            var cm_append = cache_files_cm_list_cms_index.Where((cm, i) => 
+                                                               cm != null && 
+                                                               loaded_state.indexes_missing_whole.Any(a => 
+                                                                   a.iteration_index == cm.x_iteration_index && 
+                                                                   a.group_array_index == cm.x_group_array_index && 
+                                                                   a.total_groups == cm.x_total_groups && 
+                                                                   a.calc_11p_thresholds == cm.x_calc_11p_thresholds && 
+                                                                   a.repetitions == cm.x_repetitions_total && 
+                                                                   a.outer_cv_folds == cm.x_outer_cv_folds && 
+                                                                   a.svm_type == cm.x_svm_type && 
+                                                                   a.svm_kernel == cm.x_svm_kernel && 
+                                                                   a.scale_function == cm.x_scale_function && 
+                                                                   a.inner_cv_folds == cm.x_inner_cv_folds)
+                                                               ).ToList();
 
                             // maybe: cm_append = cm_append.Where(a => iteration_cm_all.All(b => b.line != a.line)).ToList();
 
@@ -452,14 +474,17 @@ namespace svm_fs_batch
 
         internal static (List<index_data> indexes_loaded_whole, List<index_data> indexes_loaded_partition, List<index_data> indexes_missing_whole, List<index_data> indexes_missing_partition) get_missing(
             int instance_index,
-                List<perf.confusion_matrix_data> iteration_cm_all,
+                List<confusion_matrix> iteration_cm_all,
                 List<index_data> indexes_whole
             )
         {
             // check iteration_cm_all to see what is already loaded and what is missing
 
-            var loaded_whole = indexes_whole.Where(a =>
-                iteration_cm_all.Any(b => a != default && b != default && b.cm != default && a.iteration_index == b.cm.x_iteration_index && a.group_index == b.cm.x_group_index && a.total_groups == b.cm.x_total_groups && a.calc_11p_thresholds == b.cm.x_calc_11p_thresholds && a.repetitions == b.cm.x_repetitions_total && a.outer_cv_folds == b.cm.x_outer_cv_folds && a.svm_kernel == b.cm.x_svm_kernel && a.scale_function == b.cm.x_scale_function && a.inner_cv_folds == b.cm.x_inner_cv_folds)).ToList();
+            var loaded_whole = indexes_whole
+                .Where(a => iteration_cm_all
+                                    .Any(cm => a != default && cm != default && cm != default && a.iteration_index == cm.x_iteration_index && a.group_array_index == cm.x_group_array_index && a.total_groups == cm.x_total_groups && a.calc_11p_thresholds == cm.x_calc_11p_thresholds && a.repetitions == cm.x_repetitions_total && a.outer_cv_folds == cm.x_outer_cv_folds && a.svm_kernel == cm.x_svm_kernel && a.scale_function == cm.x_scale_function && a.inner_cv_folds == cm.x_inner_cv_folds)
+                )
+                .ToList();
 
             var loaded_partition = instance_index > -1 ? loaded_whole.Where(a => a.unrolled_instance_index == instance_index).ToList() : loaded_whole;
 

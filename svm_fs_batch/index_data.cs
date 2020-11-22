@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace svm_fs_batch
 {
@@ -11,7 +9,8 @@ namespace svm_fs_batch
         internal int unrolled_partition_index = -1;
         internal int unrolled_instance_index = -1;
         internal int iteration_index = -1;
-        internal int group_index = -1;
+        internal string iteration_name;
+        internal int group_array_index = -1;
         internal int total_groups = -1;
         internal bool calc_11p_thresholds = false;
         internal int repetitions = 5;
@@ -20,9 +19,10 @@ namespace svm_fs_batch
         internal List<(int class_id, double class_weight)> class_weights = new List<(int class_id, double class_weight)>();
         internal routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc;
         internal routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf;
-        internal routines.scale_function scale_function = routines.scale_function.rescale;
+        internal scaling.scale_function scale_function = scaling.scale_function.rescale;
         internal int inner_cv_folds = 5;
-        internal init_dataset_ret idr = new init_dataset_ret();
+        internal List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> class_folds;
+        internal List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> down_sampled_training_class_folds;
 
         internal int total_whole_indexes = -1;
         internal int total_partition_indexes = -1;
@@ -34,7 +34,8 @@ namespace svm_fs_batch
             var list = new List<(string name, string value, string value_max)>();
 
             list.Add((nameof(this.iteration_index), $@"{this.iteration_index}", $@""));
-            list.Add((nameof(this.group_index), $@"{this.group_index}", this.total_groups > -1 ? $@"{this.total_groups}" : $@""));
+            list.Add((nameof(this.iteration_name), $@"{this.iteration_name}", $@""));
+            list.Add((nameof(this.group_array_index), $@"{this.group_array_index}", this.total_groups > -1 ? $@"{this.total_groups}" : $@""));
 
             list.Add((nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"{this.total_instances}" : $@""));
 
@@ -81,18 +82,22 @@ namespace svm_fs_batch
             unrolled_partition_index = index_data.unrolled_partition_index;
             unrolled_instance_index = index_data.unrolled_instance_index;
             iteration_index = index_data.iteration_index;
-            group_index = index_data.group_index;
+            iteration_name = index_data.iteration_name;
+
+            group_array_index = index_data.group_array_index;
             total_groups = index_data.total_groups;
             calc_11p_thresholds = index_data.calc_11p_thresholds;
             repetitions = index_data.repetitions;
             outer_cv_folds = index_data.outer_cv_folds;
             outer_cv_folds_to_run = index_data.outer_cv_folds_to_run;
-            class_weights = index_data.class_weights.ToList();
             svm_type = index_data.svm_type;
             svm_kernel = index_data.svm_kernel;
             scale_function = index_data.scale_function;
             inner_cv_folds = index_data.inner_cv_folds;
-            idr = new init_dataset_ret(index_data.idr);
+
+            class_weights = index_data.class_weights.ToList();
+            class_folds = index_data.class_folds.ToList();
+            down_sampled_training_class_folds = index_data.down_sampled_training_class_folds.ToList();
 
             total_whole_indexes = index_data.total_whole_indexes;
             total_partition_indexes = index_data.total_partition_indexes;
