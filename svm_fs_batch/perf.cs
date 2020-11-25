@@ -2,15 +2,14 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace svm_fs_batch
 {
     internal static class perf
     {
-
-
         internal static List<confusion_matrix> count_prediction_error(
-            List<prediction> prediction_list,
+            IList<prediction> prediction_list,
             double? threshold = null,
             int? threshold_class = null,
             bool calculate_auc = true
@@ -56,26 +55,24 @@ namespace svm_fs_batch
             for (var prediction_list_index = 0; prediction_list_index < prediction_list.Count; prediction_list_index++)
             {
                 var prediction = prediction_list[prediction_list_index];
-                var actual_class = prediction.real_class_id;
-                var predicted_class = prediction.predicted_class_id;
 
-                var actual_class_matrix = confusion_matrix_list.First(a => a.x_class_id == actual_class);
-                var predicted_class_matrix = confusion_matrix_list.First(a => a.x_class_id == predicted_class);
+                var actual_class_matrix = confusion_matrix_list.First(a => a.x_class_id == prediction.real_class_id);
+                var predicted_class_matrix = confusion_matrix_list.First(a => a.x_class_id == prediction.predicted_class_id);
 
-                if (actual_class == predicted_class)
+                if (prediction.real_class_id == prediction.predicted_class_id)
                 {
                     actual_class_matrix.metrics.TP++;
 
                     for (var index = 0; index < confusion_matrix_list.Count; index++)
                     {
-                        if (confusion_matrix_list[index].x_class_id != actual_class)
+                        if (confusion_matrix_list[index].x_class_id != prediction.real_class_id)
                         {
                             confusion_matrix_list[index].metrics.TN++;
                         }
                     }
                 }
 
-                else if (actual_class != predicted_class)
+                else if (prediction.real_class_id != prediction.predicted_class_id)
                 {
                     actual_class_matrix.metrics.FN++;
 
@@ -83,60 +80,63 @@ namespace svm_fs_batch
                 }
             }
 
-            foreach (var cm in confusion_matrix_list)
-            {
-                cm.calculate_metrics(cm.metrics, calculate_auc, prediction_list);
-                //if (calculate_auc)
-                //{
-                //    var (brier_score, roc_auc, roc_auc2, pr_auc, ap, api, roc_xy, pr_xy) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, cm.class_id.Value);
-                //    cm.Brier = brier_score;
 
-                //    cm.ROC_AUC_Approx = roc_auc;
-                //    cm.ROC_AUC2 = roc_auc2;
+            Parallel.ForEach(confusion_matrix_list,
+                cm =>
+                    //foreach (var cm in confusion_matrix_list)
+                {
+                    cm.calculate_metrics(cm.metrics, calculate_auc, prediction_list);
+                    //if (calculate_auc)
+                    //{
+                    //    var (brier_score, roc_auc, roc_auc2, pr_auc, ap, api, roc_xy, pr_xy) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, cm.class_id.Value);
+                    //    cm.Brier = brier_score;
 
-                //    cm.PR_AUC_Approx = pr_auc;
-                //    cm.AP = ap;
-                //    cm.API = api;
+                    //    cm.ROC_AUC_Approx = roc_auc;
+                    //    cm.ROC_AUC2 = roc_auc2;
 
-                //    cm.pr_xy_str = string.Join("/",pr_xy.Select(a => $"{Math.Round(a.x,6)};{Math.Round(a.y,6)}").ToList());
-                //    cm.roc_xy_str = string.Join("/",roc_xy.Select(a => $"{Math.Round(a.x,6)};{Math.Round(a.y,6)}").ToList());
-                //}
+                    //    cm.PR_AUC_Approx = pr_auc;
+                    //    cm.AP = ap;
+                    //    cm.API = api;
 
-
-                //cm.TPR = (cm.TP + cm.FN) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP) / (double) (cm.TP + cm.FN);
-                //cm.TNR = (cm.TN + cm.FP) == (double) 0.0 ? (double) 0.0 : (double) (cm.TN) / (double) (cm.TN + cm.FP);
-                //cm.PPV = (cm.TP + cm.FP) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP) / (double) (cm.TP + cm.FP);
-                //cm.NPV = (cm.TN + cm.FN) == (double) 0.0 ? (double) 0.0 : (double) (cm.TN) / (double) (cm.TN + cm.FN);
-                //cm.FNR = (cm.FN + cm.TP) == (double) 0.0 ? (double) 0.0 : (double) (cm.FN) / (double) (cm.FN + cm.TP);
-                //cm.FPR = (cm.FP + cm.TN) == (double) 0.0 ? (double) 0.0 : (double) (cm.FP) / (double) (cm.FP + cm.TN);
-                //cm.FDR = (cm.FP + cm.TP) == (double) 0.0 ? (double) 0.0 : (double) (cm.FP) / (double) (cm.FP + cm.TP);
-                //cm.FOR = (cm.FN + cm.TN) == (double) 0.0 ? (double) 0.0 : (double) (cm.FN) / (double) (cm.FN + cm.TN);
-                //cm.ACC = (cm.P + cm.N) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP + cm.TN) / (double) (cm.P + cm.N);
-                //cm.F1S = (cm.PPV + cm.TPR) == (double) 0.0 ? (double) 0.0 : (double) (2 * cm.PPV * cm.TPR) / (double) (cm.PPV + cm.TPR);
-                //cm.G1S = (cm.PPV + cm.TPR) == (double) 0.0 ? (double) 0.0 : (double) Math.Sqrt((double) (cm.PPV * cm.TPR));
-                //cm.MCC = ((double) Math.Sqrt((double) ((cm.TP + cm.FP) * (cm.TP + cm.FN) * (cm.TN + cm.FP) * (cm.TN + cm.FN))) == (double) 0.0) ? (double) 0.0 : ((cm.TP * cm.TN) - (cm.FP * cm.FN)) / (double) Math.Sqrt((double) ((cm.TP + cm.FP) * (cm.TP + cm.FN) * (cm.TN + cm.FP) * (cm.TN + cm.FN)));
-                //cm.Informedness = (cm.TPR + cm.TNR) - (double) 1.0;
-                //cm.Markedness = (cm.PPV + cm.NPV) - (double) 1.0;
-                //cm.BalancedAccuracy = (double) (cm.TPR + cm.TNR) / (double) 2.0;
-
-                //cm.LRP = (1 - cm.TNR)== (double)0.0 ? (double)0.0 : (cm.TPR) / (1 - cm.TNR);
-                //cm.LRN = (cm.TNR)==(double)0.0?(double)0.0:(1 - cm.TPR) / (cm.TNR);
+                    //    cm.pr_xy_str = string.Join("/",pr_xy.Select(a => $"{Math.Round(a.x,6)};{Math.Round(a.y,6)}").ToList());
+                    //    cm.roc_xy_str = string.Join("/",roc_xy.Select(a => $"{Math.Round(a.x,6)};{Math.Round(a.y,6)}").ToList());
+                    //}
 
 
-                //cm.F1B_00 = fbeta2(cm.PPV, cm.TPR, (double) 0.0);
-                //cm.F1B_01 = fbeta2(cm.PPV, cm.TPR, (double) 0.1);
-                //cm.F1B_02 = fbeta2(cm.PPV, cm.TPR, (double) 0.2);
-                //cm.F1B_03 = fbeta2(cm.PPV, cm.TPR, (double) 0.3);
-                //cm.F1B_04 = fbeta2(cm.PPV, cm.TPR, (double) 0.4);
-                //cm.F1B_05 = fbeta2(cm.PPV, cm.TPR, (double) 0.5);
-                //cm.F1B_06 = fbeta2(cm.PPV, cm.TPR, (double) 0.6);
-                //cm.F1B_07 = fbeta2(cm.PPV, cm.TPR, (double) 0.7);
-                //cm.F1B_08 = fbeta2(cm.PPV, cm.TPR, (double) 0.8);
-                //cm.F1B_09 = fbeta2(cm.PPV, cm.TPR, (double) 0.9);
-                //cm.F1B_10 = fbeta2(cm.PPV, cm.TPR, (double) 1.0);
+                    //cm.TPR = (cm.TP + cm.FN) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP) / (double) (cm.TP + cm.FN);
+                    //cm.TNR = (cm.TN + cm.FP) == (double) 0.0 ? (double) 0.0 : (double) (cm.TN) / (double) (cm.TN + cm.FP);
+                    //cm.PPV = (cm.TP + cm.FP) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP) / (double) (cm.TP + cm.FP);
+                    //cm.NPV = (cm.TN + cm.FN) == (double) 0.0 ? (double) 0.0 : (double) (cm.TN) / (double) (cm.TN + cm.FN);
+                    //cm.FNR = (cm.FN + cm.TP) == (double) 0.0 ? (double) 0.0 : (double) (cm.FN) / (double) (cm.FN + cm.TP);
+                    //cm.FPR = (cm.FP + cm.TN) == (double) 0.0 ? (double) 0.0 : (double) (cm.FP) / (double) (cm.FP + cm.TN);
+                    //cm.FDR = (cm.FP + cm.TP) == (double) 0.0 ? (double) 0.0 : (double) (cm.FP) / (double) (cm.FP + cm.TP);
+                    //cm.FOR = (cm.FN + cm.TN) == (double) 0.0 ? (double) 0.0 : (double) (cm.FN) / (double) (cm.FN + cm.TN);
+                    //cm.ACC = (cm.P + cm.N) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP + cm.TN) / (double) (cm.P + cm.N);
+                    //cm.F1S = (cm.PPV + cm.TPR) == (double) 0.0 ? (double) 0.0 : (double) (2 * cm.PPV * cm.TPR) / (double) (cm.PPV + cm.TPR);
+                    //cm.G1S = (cm.PPV + cm.TPR) == (double) 0.0 ? (double) 0.0 : (double) Math.Sqrt((double) (cm.PPV * cm.TPR));
+                    //cm.MCC = ((double) Math.Sqrt((double) ((cm.TP + cm.FP) * (cm.TP + cm.FN) * (cm.TN + cm.FP) * (cm.TN + cm.FN))) == (double) 0.0) ? (double) 0.0 : ((cm.TP * cm.TN) - (cm.FP * cm.FN)) / (double) Math.Sqrt((double) ((cm.TP + cm.FP) * (cm.TP + cm.FN) * (cm.TN + cm.FP) * (cm.TN + cm.FN)));
+                    //cm.Informedness = (cm.TPR + cm.TNR) - (double) 1.0;
+                    //cm.Markedness = (cm.PPV + cm.NPV) - (double) 1.0;
+                    //cm.BalancedAccuracy = (double) (cm.TPR + cm.TNR) / (double) 2.0;
 
-                //cm.calculate_ppf();
-            }
+                    //cm.LRP = (1 - cm.TNR)== (double)0.0 ? (double)0.0 : (cm.TPR) / (1 - cm.TNR);
+                    //cm.LRN = (cm.TNR)==(double)0.0?(double)0.0:(1 - cm.TPR) / (cm.TNR);
+
+
+                    //cm.F1B_00 = fbeta2(cm.PPV, cm.TPR, (double) 0.0);
+                    //cm.F1B_01 = fbeta2(cm.PPV, cm.TPR, (double) 0.1);
+                    //cm.F1B_02 = fbeta2(cm.PPV, cm.TPR, (double) 0.2);
+                    //cm.F1B_03 = fbeta2(cm.PPV, cm.TPR, (double) 0.3);
+                    //cm.F1B_04 = fbeta2(cm.PPV, cm.TPR, (double) 0.4);
+                    //cm.F1B_05 = fbeta2(cm.PPV, cm.TPR, (double) 0.5);
+                    //cm.F1B_06 = fbeta2(cm.PPV, cm.TPR, (double) 0.6);
+                    //cm.F1B_07 = fbeta2(cm.PPV, cm.TPR, (double) 0.7);
+                    //cm.F1B_08 = fbeta2(cm.PPV, cm.TPR, (double) 0.8);
+                    //cm.F1B_09 = fbeta2(cm.PPV, cm.TPR, (double) 0.9);
+                    //cm.F1B_10 = fbeta2(cm.PPV, cm.TPR, (double) 1.0);
+
+                    //cm.calculate_ppf();
+                });
 
             return confusion_matrix_list;
         }
@@ -204,6 +204,9 @@ namespace svm_fs_batch
 
         internal static List<prediction> load_prediction_file_regression_values(string test_file, string test_comments_file, string prediction_file)
         {
+            const string module_name = nameof(perf);
+            const string method_name = nameof(load_prediction_file_regression_values);
+
             //if (string.IsNullOrWhiteSpace(test_file) || !io_proxy.Exists(test_file, nameof(performance_measure), nameof(load_prediction_file_regression_values)) || new FileInfo(test_file).Length == 0)
             //{
             //    throw new Exception($@"Error: Test data file not found: ""{test_file}"".");
@@ -224,11 +227,11 @@ namespace svm_fs_batch
             //    throw new Exception($@"Error: Prediction output file not available for access: ""{prediction_file}"".");
             //}
 
-            var test_file_lines = io_proxy.ReadAllLines(test_file, nameof(perf), nameof(load_prediction_file_regression_values)).ToList();
+            var test_file_lines = io_proxy.ReadAllLines(test_file, module_name, method_name).ToList();
 
-            var test_comments_file_lines = !string.IsNullOrWhiteSpace(test_comments_file) && io_proxy.Exists(test_comments_file, nameof(perf), nameof(load_prediction_file_regression_values)) ? io_proxy.ReadAllLines(test_comments_file, nameof(perf), nameof(load_prediction_file_regression_values)).ToList() : null;
+            var test_comments_file_lines = !string.IsNullOrWhiteSpace(test_comments_file) && io_proxy.Exists(test_comments_file/*, module_name, method_name*/) ? io_proxy.ReadAllLines(test_comments_file, module_name, method_name).ToList() : null;
 
-            var prediction_file_lines = io_proxy.ReadAllLines(prediction_file, nameof(perf), nameof(load_prediction_file_regression_values)).ToList();
+            var prediction_file_lines = io_proxy.ReadAllLines(prediction_file, module_name, method_name).ToList();
 
             return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines);
         }
@@ -456,7 +459,7 @@ namespace svm_fs_batch
             return confusion_matrix_list;
         }
 
-        internal static double brier(List<prediction> prediction_list, int positive_id)
+        internal static double brier(IList<prediction> prediction_list, int positive_id)
         {
             if (prediction_list.Any(a => a.probability_estimates == null || a.probability_estimates.Count == 0)) return default;
 
@@ -476,7 +479,7 @@ namespace svm_fs_batch
         }
 
         internal static (/*double brier_score,*/ double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, List<(double x, double y)> roc_xy, List<(double x, double y)> pr_xy, List<(double x, double y)> pri_xy)
-            Calculate_ROC_PR_AUC(List<prediction> prediction_list, int positive_id, threshold_type threshold_type = threshold_type.all_thresholds)
+            Calculate_ROC_PR_AUC(IList<prediction> prediction_list, int positive_id, threshold_type threshold_type = threshold_type.all_thresholds)
         {
             if (prediction_list.Any(a => a.probability_estimates == null || a.probability_estimates.Count == 0)) return default;
 

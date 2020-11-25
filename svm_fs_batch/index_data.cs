@@ -31,42 +31,42 @@ namespace svm_fs_batch
 
         internal string id_index_str()
         {
-            var list = new List<(string name, string value, string value_max)>();
-
-            list.Add((nameof(this.iteration_index), $@"{this.iteration_index}", $@""));
-            list.Add((nameof(this.iteration_name), $@"{this.iteration_name}", $@""));
-            list.Add((nameof(this.group_array_index), $@"{this.group_array_index}", this.total_groups > -1 ? $@"{this.total_groups}" : $@""));
-
-            list.Add((nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"{this.total_instances}" : $@""));
-
-            list.Add((nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $@"{this.total_whole_indexes}" : $@""));
-            list.Add((nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $@"{this.total_partition_indexes}" : $@""));
-
+            var list = new (string name, string value, string value_max)[]
+            {
+                (nameof(this.iteration_index), $@"{this.iteration_index}", $@""),
+                (nameof(this.iteration_name), $@"{this.iteration_name}", $@""),
+                (nameof(this.group_array_index), $@"{this.group_array_index}", this.total_groups > -1 ? $@"{this.total_groups}" : $@""), 
+                (nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"{this.total_instances}" : $@""), 
+                (nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $@"{this.total_whole_indexes}" : $@""),
+                (nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $@"{this.total_partition_indexes}" : $@"")
+            };
 
             return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : $@"")).ToList()) + $@"]";
         }
 
         internal string id_ml_str()
         {
-            var list = new List<(string name, string value, string value_max)>();
-
-            list.Add((nameof(this.svm_type), $@"{this.svm_type}", $@""));
-            list.Add((nameof(this.svm_kernel), $@"{this.svm_kernel}", $@""));
-            list.Add((nameof(this.scale_function), $@"{this.scale_function}", $@""));
-            list.Add((nameof(this.class_weights), $@"{(this.class_weights != null ? string.Join($@"; ", class_weights.Select(a => $@"w{(a.class_id>0? $@"+": $@"")} {a.class_weight}").ToList()) : "")}", ""));
-            list.Add((nameof(this.calc_11p_thresholds), $@"{this.calc_11p_thresholds}", ""));
+            var list = new (string name, string value, string value_max)[]
+            {
+                (nameof(this.svm_type), $@"{this.svm_type}", $@""),
+                (nameof(this.svm_kernel), $@"{this.svm_kernel}", $@""),
+                (nameof(this.scale_function), $@"{this.scale_function}", $@""),
+                (nameof(this.class_weights), $@"{(this.class_weights != null ? string.Join($@"; ", class_weights.Select(a => $@"w{(a.class_id > 0 ? $@"+" : $@"")} {a.class_weight}").ToList()) : "")}", ""),
+                (nameof(this.calc_11p_thresholds), $@"{this.calc_11p_thresholds}", "")
+            };
 
             return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : "")).ToList()) + $@"]";
         }
 
         internal string id_fold_str()
         {
-            var list = new List<(string name, string value, string value_max)>();
-
-            list.Add((nameof(this.repetitions), $@"{this.repetitions}", ""));
-            list.Add((nameof(this.outer_cv_folds), $@"{this.outer_cv_folds}", ""));
-            list.Add((nameof(this.outer_cv_folds_to_run), $@"{this.outer_cv_folds_to_run}", ""));
-            list.Add((nameof(this.inner_cv_folds), $@"{this.inner_cv_folds}", ""));
+            var list = new (string name, string value, string value_max)[]
+            {
+                (nameof(this.repetitions), $@"{this.repetitions}", ""),
+                (nameof(this.outer_cv_folds), $@"{this.outer_cv_folds}", ""),
+                (nameof(this.outer_cv_folds_to_run), $@"{this.outer_cv_folds_to_run}", ""),
+                (nameof(this.inner_cv_folds), $@"{this.inner_cv_folds}", "")
+            };
 
             return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : "")).ToList()) + $@"]";
         }

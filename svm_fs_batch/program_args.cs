@@ -46,14 +46,18 @@ namespace svm_fs_batch
                     nameof(instance_array_index_start), nameof(instance_array_index_end), nameof(array_instances), nameof(array_step), nameof(array_start), nameof(array_end), nameof(setup_total_vcpus), nameof(setup_instance_vcpus),
             };
 
-            var args_given = args.Where(a => a.StartsWith('-')).Select(a => a.Substring(1)).ToList();
+            var args_given = args.AsParallel().AsOrdered().Where(a => a.StartsWith('-')).Select(a => a[1..]).ToList();
 
             if (args_given.Any(a => !arg_list.Contains(a))) throw new Exception();
 
             if (args_given.Any(a => args_given.Count(b => a == b) > 1)) throw new Exception();
 
             //var arg_list_indexes = arg_list.Select(name => args.ToList().FindIndex(arg => string.Equals(arg, $"-{name}", StringComparison.InvariantCultureIgnoreCase))).ToList();
-            var arg_list_indexes = arg_list.Select(name => (arg_name: name, arg_index: args.ToList().FindIndex(arg => string.Equals(arg, $"-{name}", StringComparison.InvariantCultureIgnoreCase)))).Where(a => a.arg_index != -1).OrderBy(a => a.arg_index).ToList();
+            var arg_list_indexes = arg_list.AsParallel().AsOrdered().Select(name => 
+                (
+                    arg_name: name, 
+                    arg_index: args.ToList().FindIndex(arg => string.Equals(arg, $"-{name}", StringComparison.InvariantCultureIgnoreCase))))
+                .Where(a => a.arg_index != -1).OrderBy(a => a.arg_index).ToList();
 
 
             for (var i = 0; i < arg_list_indexes.Count; i++)

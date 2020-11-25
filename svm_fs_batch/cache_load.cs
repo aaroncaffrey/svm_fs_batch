@@ -248,45 +248,53 @@ namespace svm_fs_batch
             var unrolled_instance_index = 0;
             var indexes_whole = new List<index_data>();
 
-            foreach (var repetitions in r_cv_series) // e.g. 1 or 5, or 1,2,3,4,5,...
+            for (var z_r_cv_series_index = 0; z_r_cv_series_index < r_cv_series.Length; z_r_cv_series_index++)
             {
-                foreach (var outer_cv_folds in o_cv_series) // e.g. 5 or 10, or 1,2,3,4,5,...
-                {
-                    //var ida = (init_dataset_ret)null;
-                    
+                var repetitions = r_cv_series[z_r_cv_series_index];
 
-                    
+                for (var z_o_cv_series_index = 0; z_o_cv_series_index < o_cv_series.Length; z_o_cv_series_index++)
+                {
+                    var outer_cv_folds = o_cv_series[z_o_cv_series_index];
 
                     // for the current number of R and O, set the folds (which vary according to the values of R and O).
-                    var (class_folds, down_sampled_training_class_folds) = routines.folds(dataset.class_sizes, repetitions, outer_cv_folds/*, outer_cv_folds_to_run*/);
+                    var (class_folds, down_sampled_training_class_folds) = routines.folds(dataset.class_sizes, repetitions, outer_cv_folds /*, outer_cv_folds_to_run*/);
 
 
-                    foreach (var group_index in group_series) // ~7000
+                    for (var z_group_series_index = 0; z_group_series_index < group_series.Length; z_group_series_index++)
                     {
-                        foreach (var svm_type in p.svm_types)
-                        {
-                            // loop through number of kernels
-                            foreach (var svm_kernel in p.kernels)
-                            {
-                                // loop through number of scale_function functions
-                                foreach (var scale_function in p.scales)
-                                {
-                                    // loop through number of inner folds
-                                    foreach (var inner_folds in i_cv_series)
-                                    {
+                        var group_index = group_series[z_group_series_index];
 
-                                        // todo: add class_weights,  
+                        for (var z_svm_types_index = 0; z_svm_types_index < p.svm_types.Count; z_svm_types_index++)
+                        {
+                            var svm_type = p.svm_types[z_svm_types_index];
+                            
+                            // loop through number of kernels
+                            for (var z_kernels_index = 0; z_kernels_index < p.kernels.Count; z_kernels_index++)
+                            {
+                                var svm_kernel = p.kernels[z_kernels_index];
+
+                                // loop through number of scale_function functions
+                                for (var z_scales_index = 0; z_scales_index < p.scales.Count; z_scales_index++)
+                                {
+                                    var scale_function = p.scales[z_scales_index];
+                                    // loop through number of inner folds
+
+                                    for (var z_i_cv_series_index = 0; z_i_cv_series_index < i_cv_series.Length; z_i_cv_series_index++)
+                                    {
+                                        var inner_folds = i_cv_series[z_i_cv_series_index];
                                         // note: repetition index, outer cv index, etc. are not included because all folds represent 1 job
 
-                                        foreach (var class_weights in p.class_weight_sets)
+                                        for (var z_class_weight_sets_index = 0; z_class_weight_sets_index < p.class_weight_sets.Count; z_class_weight_sets_index++)
                                         {
+                                            var class_weights = p.class_weight_sets[z_class_weight_sets_index];
+
                                             var index_data = new index_data()
                                             {
                                                 unrolled_whole_index = unrolled_whole_index,
                                                 unrolled_partition_index = unrolled_partition_indexes[unrolled_instance_index],
                                                 unrolled_instance_index = unrolled_instance_index,
                                                 iteration_index = iteration_index,
-                                                iteration_name= iteration_name,
+                                                iteration_name = iteration_name,
                                                 group_array_index = group_index,
                                                 total_groups = total_groups,
                                                 calc_11p_thresholds = p.calc_11p_thresholds,
@@ -300,7 +308,6 @@ namespace svm_fs_batch
                                                 total_instances = total_instances,
                                                 total_whole_indexes = -1,
                                                 total_partition_indexes = -1,
-                                                
                                                 class_weights = class_weights,
                                                 class_folds = class_folds,
                                                 down_sampled_training_class_folds = down_sampled_training_class_folds,
@@ -323,15 +330,18 @@ namespace svm_fs_batch
                 }
             }
 
-            var indexes_partition = indexes_whole.Where(a => a.unrolled_instance_index == instance_index).ToList();
+            var indexes_partition = indexes_whole.AsParallel().AsOrdered().Where(a => a.unrolled_instance_index == instance_index).ToList();
 
             //var total_whole_indexes = indexes_whole.Count;
-            
-            for (var index = 0; index < indexes_whole.Count; index++)
-            {
-                indexes_whole[index].total_whole_indexes = unrolled_whole_index;
-                indexes_whole[index].total_partition_indexes = unrolled_partition_indexes[indexes_whole[index].unrolled_instance_index];
-            }
+
+            Parallel.For(0,
+                indexes_whole.Count,
+                index =>
+                    //for (var index = 0; index < indexes_whole.Count; index++)
+                {
+                    indexes_whole[index].total_whole_indexes = unrolled_whole_index;
+                    indexes_whole[index].total_partition_indexes = unrolled_partition_indexes[indexes_whole[index].unrolled_instance_index];
+                });
 
 
             return (indexes_whole, indexes_partition);
@@ -400,13 +410,14 @@ namespace svm_fs_batch
                     {
                         // only load m* for the partition... pt2
                         //var merge_files = indexes_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(init_dataset_ret.results_root_folder, experiment_name, a.iteration_index, a.group_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
-                        var merge_files = loaded_state.indexes_missing_partition.Select(a => $@"{Path.Combine(program.get_iteration_folder(settings.results_root_folder, experiment_name, a.iteration_index, iteration_name, a.group_array_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
+                        var merge_files = loaded_state.indexes_missing_partition.AsParallel().AsOrdered().Select(a => $@"{Path.Combine(program.get_iteration_folder(settings.results_root_folder, experiment_name, a.iteration_index, iteration_name, a.group_array_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv").ToList();
 
                         cache_files = cache_files.Intersect(merge_files).ToList();
                     }
 
                     
-                    var cache_files_cm_list = cache_files.AsParallel()
+                    var cache_files_cm_list = cache_files
+                        .AsParallel()
                         .AsOrdered()
                         .Select(cm_fn =>
                         {

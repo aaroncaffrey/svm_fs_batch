@@ -37,7 +37,7 @@ namespace svm_fs_batch
 
                 if (String.IsNullOrWhiteSpace(filename)) return false;
 
-                if (!io_proxy.Exists(filename, module_name, method_name)) return false;
+                if (!io_proxy.Exists(filename/*, module_name, method_name*/)) return false;
 
                 if (new FileInfo(filename).Length <= 0) return false;
 
@@ -215,7 +215,7 @@ namespace svm_fs_batch
         //    return file_empty;
         //}
 
-        internal static bool Exists(string filename, string module_name = "", string method_name = "")
+        internal static bool Exists(string filename)//, string module_name = "", string method_name = "")
         {
             //filename = /*convert_path*/(filename);
 

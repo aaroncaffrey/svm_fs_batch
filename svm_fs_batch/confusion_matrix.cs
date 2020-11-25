@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace svm_fs_batch
 {
@@ -14,11 +15,14 @@ namespace svm_fs_batch
 
             var lines = new string[cm_list.Count+1];
             lines[0] = csv_header;
-            
-            for (var i = 0; i < cm_list.Count; i++)
-            {
-                lines[i + 1] = cm_list[i].csv_values();
-            }
+
+            Parallel.For(0,
+                cm_list.Count,
+                i =>
+                    //for (var i = 0; i < cm_list.Count; i++)
+                {
+                    lines[i + 1] = cm_list[i].csv_values();
+                });
 
             io_proxy.WriteAllLines(cm_list_filename, lines, module_name, method_name);
         }
@@ -60,347 +64,318 @@ namespace svm_fs_batch
                 }
             }
 
-            var cms = new List<confusion_matrix_data>();
+            //var cms = new List<confusion_matrix_data>();
 
-            for (var line_index = 0; line_index < lines.Count; line_index++)// in lines.Where(a => !string.IsNullOrWhiteSpace(a)))
-            {
-                var line = lines[line_index];
-
-                if ((has_header && line_index == 0) || string.IsNullOrWhiteSpace(line))
+            var cm_list = lines.Skip(has_header ? 1 : 0)
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .AsParallel()
+                .AsOrdered()
+                .Select(line =>
+                    //for (var line_index = 0; line_index < lines.Count; line_index++)// in lines.Where(a => !string.IsNullOrWhiteSpace(a)))
                 {
-                    continue;
-                }
-                
-                var s_all = line.Split(',').ToList();
+                    //var line = lines[line_index];
 
-                var x_double = s_all.Select(a => double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var out_double) ? out_double : (double?)null).ToList();
-                var x_int = s_all.Select(a => int.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out var out_int) ? out_int : (int?)null).ToList();
-                var x_bool = s_all.Select(a => bool.TryParse(a, out var out_bool) ? out_bool : (bool?)null).ToList();
+                    //if ((has_header && line_index == 0) || string.IsNullOrWhiteSpace(line))
+                    //{
+                    //    continue;
+                    //}
 
-                var key_value_list = line_header.Select((a, i) => (
-                    key: line_header[i],
-                    value_str: s_all.Count - 1 >= i ? s_all[i] : default,
-                    value_int: x_int.Count - 1 >= i ? x_int[i] : default,
-                    value_double: x_double.Count - 1 >= i ? x_double[i] : default
-                )).ToList();
+                    var s_all = line.Split(',').ToList();
 
-                var unknown_key_value_list = key_value_list.Where(a => !csv_header_values.Contains(a.key)).ToList();
-                key_value_list = key_value_list.Where(a => csv_header_values.Contains(a.key)).ToList();
-
-                //if (line_index == 0 || string.IsNullOrWhiteSpace(line))
-                //{
-                //    cms.Add(new confusion_matrix_data()
-                //    {
-                //        line = line,
-                //        cm = (confusion_matrix)null,
-                //        key_value_list = key_value_list,
-                //        unknown_key_value_list = unknown_key_value_list
-                //    });
-                //    continue;
-                //}
-
-                var s = s_all.Skip(column_offset).ToList();
-
-                if (s.Count != csv_header_values.Count) continue;
+                    var x_double = s_all.AsParallel().AsOrdered().Select(a => double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var out_double) ? out_double : (double?) null).ToList();
+                    var x_int = s_all.AsParallel().AsOrdered().Select(a => int.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out var out_int) ? out_int : (int?) null).ToList();
+                    var x_bool = s_all.AsParallel().AsOrdered().Select(a => bool.TryParse(a, out var out_bool) ? out_bool : (bool?) null).ToList();
 
 
-                var k = 0;// column_offset;
+                    //var key_value_list = line_header.Select((a, i) => (key: line_header[i], value_str: s_all.Count - 1 >= i ? s_all[i] : default, value_int: x_int.Count - 1 >= i ? x_int[i] : default, value_double: x_double.Count - 1 >= i ? x_double[i] : default)).ToList();
+                    //var unknown_key_value_list = key_value_list.Where(a => !csv_header_values.Contains(a.key)).ToList();
+                    //key_value_list = key_value_list.Where(a => csv_header_values.Contains(a.key)).ToList();
 
-                if (column_offset != 0)
-                {
-                    x_double = x_double.Skip(column_offset).ToList();
-                    x_int = x_int.Skip(column_offset).ToList(); 
-                    x_bool = x_bool.Skip(column_offset).ToList();
-                }
 
-                var cm = new confusion_matrix()
-                {
-                    selection_test_info = new selection_test_info()
+                    //if (line_index == 0 || string.IsNullOrWhiteSpace(line))
+                    //{
+                    //    cms.Add(new confusion_matrix_data()
+                    //    {
+                    //        line = line,
+                    //        cm = (confusion_matrix)null,
+                    //        key_value_list = key_value_list,
+                    //        unknown_key_value_list = unknown_key_value_list
+                    //    });
+                    //    continue;
+                    //}
+
+                    var s = s_all.Skip(column_offset).ToList();
+
+                    if (s.Count != csv_header_values.Count) return null;//continue;
+
+
+                    var k = 0; // column_offset;
+
+                    if (column_offset != 0)
                     {
-                        y_is_group_selected = x_bool[k++] ?? default,
-                        y_is_only_selection = x_bool[k++] ?? default,
-                        y_is_last_winner = x_bool[k++] ?? default,
-                        y_num_columns_added_from_last_iteration = x_int[k++] ?? default,
-                        y_num_groups_added_from_last_iteration = x_int[k++] ?? default,
-                        y_num_columns_added_from_highest_score_iteration = x_int[k++] ?? default,
-                        y_num_groups_added_from_highest_score_iteration = x_int[k++] ?? default,
-                        y_selection_direction = Enum.TryParse(s[k++], out program.direction out_selection_direction) ? out_selection_direction : default,
-                        y_previous_selected_groups = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(),
-                        y_previous_selected_columns = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(),
-                        y_selected_groups = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(),
-                        y_selected_columns = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(),
-                        y_test_selected_groups = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(),
-                        y_test_selected_columns = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(),
-                    },
-                    x_experiment_name = s[k++],
-                    x_id = x_int[k++],
-                    x_iteration_index = x_int[k++],
-                    x_iteration_name = s[k++],
-                    x_group_array_index = x_int[k++],
-                    x_total_groups = x_int[k++],
-                    x_calc_11p_thresholds = x_bool[k++],
-                    x_key_file_tag = s[k++],
-                    x_key_alphabet = s[k++],
-                    x_key_dimension = s[k++],
-                    x_key_category = s[k++],
-                    x_key_source = s[k++],
-                    x_key_group = s[k++],
-                    x_key_member = s[k++],
-                    x_key_perspective = s[k++],
-                    x_duration_grid_search = s[k++],
-                    x_duration_training = s[k++],
-                    x_duration_testing = s[k++],
-                    x_scale_function = Enum.TryParse(s[k++], out scaling.scale_function out_scale_function) ? out_scale_function : default,
-                    x_libsvm_cv = x_double[k++] ?? 0,
-                    x_prediction_threshold = x_double[k++],
-                    x_prediction_threshold_class = x_double[k++],
-                    x_old_feature_count = x_int[k++] ?? 0,
-                    x_new_feature_count = x_int[k++] ?? 0,
-                    x_old_group_count = x_int[k++] ?? 0,
-                    x_new_group_count = x_int[k++] ?? 0,
-                    x_features_included = s[k++],
-                    x_groups_included = s[k++],
-                    x_inner_cv_folds = x_int[k++] ?? 0,
-                    x_repetitions_index = x_int[k++] ?? 0,
-                    x_repetitions_total = x_int[k++] ?? 0,
-                    x_outer_cv_index = x_int[k++] ?? 0,
-                    x_outer_cv_folds = x_int[k++] ?? 0,
-                    x_outer_cv_folds_to_run = x_int[k++] ?? 0,
-                    x_svm_type = Enum.TryParse(s[k++], out routines.libsvm_svm_type out_svm_type) ? out_svm_type : default,
-                    x_svm_kernel = Enum.TryParse(s[k++], out routines.libsvm_kernel_type out_svm_kernel) ? out_svm_kernel : default,
-                    grid_point = new grid_point()
+                        x_double = x_double.Skip(column_offset).ToList();
+                        x_int = x_int.Skip(column_offset).ToList();
+                        x_bool = x_bool.Skip(column_offset).ToList();
+                    }
+
+                    var cm = new confusion_matrix()
+                    {
+                        selection_test_info = new selection_test_info() {y_is_group_selected = x_bool[k++] ?? default, y_is_only_selection = x_bool[k++] ?? default, y_is_last_winner = x_bool[k++] ?? default, y_num_columns_added_from_last_iteration = x_int[k++] ?? default, y_num_groups_added_from_last_iteration = x_int[k++] ?? default, y_num_columns_added_from_highest_score_iteration = x_int[k++] ?? default, y_num_groups_added_from_highest_score_iteration = x_int[k++] ?? default, y_selection_direction = Enum.TryParse(s[k++], out program.direction out_selection_direction) ? out_selection_direction : default, y_previous_selected_groups = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(), y_previous_selected_columns = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(), y_selected_groups = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(), y_selected_columns = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(), y_test_selected_groups = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(), y_test_selected_columns = s[k++].Split(';').Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList(),},
+                        x_experiment_name = s[k++],
+                        x_id = x_int[k++],
+                        x_iteration_index = x_int[k++],
+                        x_iteration_name = s[k++],
+                        x_group_array_index = x_int[k++],
+                        x_total_groups = x_int[k++],
+                        x_calc_11p_thresholds = x_bool[k++],
+                        x_key_file_tag = s[k++],
+                        x_key_alphabet = s[k++],
+                        x_key_dimension = s[k++],
+                        x_key_category = s[k++],
+                        x_key_source = s[k++],
+                        x_key_group = s[k++],
+                        x_key_member = s[k++],
+                        x_key_perspective = s[k++],
+                        x_duration_grid_search = s[k++],
+                        x_duration_training = s[k++],
+                        x_duration_testing = s[k++],
+                        x_scale_function = Enum.TryParse(s[k++], out scaling.scale_function out_scale_function) ? out_scale_function : default,
+                        x_libsvm_cv = x_double[k++] ?? 0,
+                        x_prediction_threshold = x_double[k++],
+                        x_prediction_threshold_class = x_double[k++],
+                        x_old_feature_count = x_int[k++] ?? 0,
+                        x_new_feature_count = x_int[k++] ?? 0,
+                        x_old_group_count = x_int[k++] ?? 0,
+                        x_new_group_count = x_int[k++] ?? 0,
+                        x_features_included = s[k++],
+                        x_groups_included = s[k++],
+                        x_inner_cv_folds = x_int[k++] ?? 0,
+                        x_repetitions_index = x_int[k++] ?? 0,
+                        x_repetitions_total = x_int[k++] ?? 0,
+                        x_outer_cv_index = x_int[k++] ?? 0,
+                        x_outer_cv_folds = x_int[k++] ?? 0,
+                        x_outer_cv_folds_to_run = x_int[k++] ?? 0,
+                        x_svm_type = Enum.TryParse(s[k++], out routines.libsvm_svm_type out_svm_type) ? out_svm_type : default,
+                        x_svm_kernel = Enum.TryParse(s[k++], out routines.libsvm_kernel_type out_svm_kernel) ? out_svm_kernel : default,
+                        grid_point = new grid_point() {cost = x_double[k++], gamma = x_double[k++], epsilon = x_double[k++], coef0 = x_double[k++], degree = x_double[k++],},
+                        x_class_id = x_int[k++],
+                        x_class_weight = x_double[k++],
+                        x_class_name = s[k++],
+                        x_class_size = x_double[k++] ?? 0,
+                        x_class_training_size = x_double[k++] ?? 0,
+                        x_class_testing_size = x_double[k++] ?? 0,
+                        metrics = new metrics_box()
                         {
-                    cost = x_double[k++],
-                    gamma = x_double[k++],
-                    epsilon = x_double[k++],
-                    coef0 = x_double[k++],
-                    degree = x_double[k++],
-                    },
-                    x_class_id = x_int[k++],
-                    x_class_weight = x_double[k++],
-                    x_class_name = s[k++],
-                    x_class_size = x_double[k++] ?? 0,
-                    x_class_training_size = x_double[k++] ?? 0,
-                    x_class_testing_size = x_double[k++] ?? 0,
-                    metrics = new metrics_box()
-                    {
-                        P = x_double[k++] ?? 0,
-                        N = x_double[k++] ?? 0,
-                        TP = x_double[k++] ?? 0,
-                        FP = x_double[k++] ?? 0,
-                        TN = x_double[k++] ?? 0,
-                        FN = x_double[k++] ?? 0,
-                        TPR = x_double[k++] ?? 0,
-                        TNR = x_double[k++] ?? 0,
-                        PPV = x_double[k++] ?? 0,
-                        Precision = x_double[k++] ?? 0,
-                        Prevalence = x_double[k++] ?? 0,
-                        MCR = x_double[k++] ?? 0,
-                        ER = x_double[k++] ?? 0,
-                        NER = x_double[k++] ?? 0,
-                        CNER = x_double[k++] ?? 0,
-                        Kappa = x_double[k++] ?? 0,
-                        Overlap = x_double[k++] ?? 0,
-                        RND_ACC = x_double[k++] ?? 0,
-                        Support = x_double[k++] ?? 0,
-                        BaseRate = x_double[k++] ?? 0,
-                        YoudenIndex = x_double[k++] ?? 0,
-                        NPV = x_double[k++] ?? 0,
-                        FNR = x_double[k++] ?? 0,
-                        FPR = x_double[k++] ?? 0,
-                        FDR = x_double[k++] ?? 0,
-                        FOR = x_double[k++] ?? 0,
-                        ACC = x_double[k++] ?? 0,
-                        GMean = x_double[k++] ?? 0,
-                        F1S = x_double[k++] ?? 0,
-                        G1S = x_double[k++] ?? 0,
-                        MCC = x_double[k++] ?? 0,
-                        Informedness = x_double[k++] ?? 0,
-                        Markedness = x_double[k++] ?? 0,
-                        BalancedAccuracy = x_double[k++] ?? 0,
-                        ROC_AUC_Approx_All = x_double[k++] ?? 0,
-                        ROC_AUC_Approx_11p = x_double[k++] ?? 0,
-                        ROC_AUC_All = x_double[k++] ?? 0,
-                        PR_AUC_Approx_All = x_double[k++] ?? 0,
-                        PR_AUC_Approx_11p = x_double[k++] ?? 0,
-                        PRI_AUC_Approx_All = x_double[k++] ?? 0,
-                        PRI_AUC_Approx_11p = x_double[k++] ?? 0,
-                        AP_All = x_double[k++] ?? 0,
-                        AP_11p = x_double[k++] ?? 0,
-                        API_All = x_double[k++] ?? 0,
-                        API_11p = x_double[k++] ?? 0,
-                        Brier_Inverse_All = x_double[k++] ?? 0,
-                        LRP = x_double[k++] ?? 0,
-                        LRN = x_double[k++] ?? 0,
-                        DOR = x_double[k++] ?? 0,
-                        PrevalenceThreshold = x_double[k++] ?? 0,
-                        CriticalSuccessIndex = x_double[k++] ?? 0,
+                            P = x_double[k++] ?? 0,
+                            N = x_double[k++] ?? 0,
+                            TP = x_double[k++] ?? 0,
+                            FP = x_double[k++] ?? 0,
+                            TN = x_double[k++] ?? 0,
+                            FN = x_double[k++] ?? 0,
+                            TPR = x_double[k++] ?? 0,
+                            TNR = x_double[k++] ?? 0,
+                            PPV = x_double[k++] ?? 0,
+                            Precision = x_double[k++] ?? 0,
+                            Prevalence = x_double[k++] ?? 0,
+                            MCR = x_double[k++] ?? 0,
+                            ER = x_double[k++] ?? 0,
+                            NER = x_double[k++] ?? 0,
+                            CNER = x_double[k++] ?? 0,
+                            Kappa = x_double[k++] ?? 0,
+                            Overlap = x_double[k++] ?? 0,
+                            RND_ACC = x_double[k++] ?? 0,
+                            Support = x_double[k++] ?? 0,
+                            BaseRate = x_double[k++] ?? 0,
+                            YoudenIndex = x_double[k++] ?? 0,
+                            NPV = x_double[k++] ?? 0,
+                            FNR = x_double[k++] ?? 0,
+                            FPR = x_double[k++] ?? 0,
+                            FDR = x_double[k++] ?? 0,
+                            FOR = x_double[k++] ?? 0,
+                            ACC = x_double[k++] ?? 0,
+                            GMean = x_double[k++] ?? 0,
+                            F1S = x_double[k++] ?? 0,
+                            G1S = x_double[k++] ?? 0,
+                            MCC = x_double[k++] ?? 0,
+                            Informedness = x_double[k++] ?? 0,
+                            Markedness = x_double[k++] ?? 0,
+                            BalancedAccuracy = x_double[k++] ?? 0,
+                            ROC_AUC_Approx_All = x_double[k++] ?? 0,
+                            ROC_AUC_Approx_11p = x_double[k++] ?? 0,
+                            ROC_AUC_All = x_double[k++] ?? 0,
+                            PR_AUC_Approx_All = x_double[k++] ?? 0,
+                            PR_AUC_Approx_11p = x_double[k++] ?? 0,
+                            PRI_AUC_Approx_All = x_double[k++] ?? 0,
+                            PRI_AUC_Approx_11p = x_double[k++] ?? 0,
+                            AP_All = x_double[k++] ?? 0,
+                            AP_11p = x_double[k++] ?? 0,
+                            API_All = x_double[k++] ?? 0,
+                            API_11p = x_double[k++] ?? 0,
+                            Brier_Inverse_All = x_double[k++] ?? 0,
+                            LRP = x_double[k++] ?? 0,
+                            LRN = x_double[k++] ?? 0,
+                            DOR = x_double[k++] ?? 0,
+                            PrevalenceThreshold = x_double[k++] ?? 0,
+                            CriticalSuccessIndex = x_double[k++] ?? 0,
+                            F1B_00 = x_double[k++] ?? 0,
+                            F1B_01 = x_double[k++] ?? 0,
+                            F1B_02 = x_double[k++] ?? 0,
+                            F1B_03 = x_double[k++] ?? 0,
+                            F1B_04 = x_double[k++] ?? 0,
+                            F1B_05 = x_double[k++] ?? 0,
+                            F1B_06 = x_double[k++] ?? 0,
+                            F1B_07 = x_double[k++] ?? 0,
+                            F1B_08 = x_double[k++] ?? 0,
+                            F1B_09 = x_double[k++] ?? 0,
+                            F1B_10 = x_double[k++] ?? 0,
+                        },
+                        metrics_ppf = new metrics_box()
+                        {
+                            P = x_double[k++] ?? 0,
+                            N = x_double[k++] ?? 0,
+                            TP = x_double[k++] ?? 0,
+                            FP = x_double[k++] ?? 0,
+                            TN = x_double[k++] ?? 0,
+                            FN = x_double[k++] ?? 0,
+                            TPR = x_double[k++] ?? 0,
+                            TNR = x_double[k++] ?? 0,
+                            PPV = x_double[k++] ?? 0,
+                            Precision = x_double[k++] ?? 0,
+                            Prevalence = x_double[k++] ?? 0,
+                            MCR = x_double[k++] ?? 0,
+                            ER = x_double[k++] ?? 0,
+                            NER = x_double[k++] ?? 0,
+                            CNER = x_double[k++] ?? 0,
+                            Kappa = x_double[k++] ?? 0,
+                            Overlap = x_double[k++] ?? 0,
+                            RND_ACC = x_double[k++] ?? 0,
+                            Support = x_double[k++] ?? 0,
+                            BaseRate = x_double[k++] ?? 0,
+                            YoudenIndex = x_double[k++] ?? 0,
+                            NPV = x_double[k++] ?? 0,
+                            FNR = x_double[k++] ?? 0,
+                            FPR = x_double[k++] ?? 0,
+                            FDR = x_double[k++] ?? 0,
+                            FOR = x_double[k++] ?? 0,
+                            ACC = x_double[k++] ?? 0,
+                            GMean = x_double[k++] ?? 0,
+                            F1S = x_double[k++] ?? 0,
+                            G1S = x_double[k++] ?? 0,
+                            MCC = x_double[k++] ?? 0,
+                            Informedness = x_double[k++] ?? 0,
+                            Markedness = x_double[k++] ?? 0,
+                            BalancedAccuracy = x_double[k++] ?? 0,
+                            ROC_AUC_Approx_All = x_double[k++] ?? 0,
+                            ROC_AUC_Approx_11p = x_double[k++] ?? 0,
+                            ROC_AUC_All = x_double[k++] ?? 0,
+                            PR_AUC_Approx_All = x_double[k++] ?? 0,
+                            PR_AUC_Approx_11p = x_double[k++] ?? 0,
+                            PRI_AUC_Approx_All = x_double[k++] ?? 0,
+                            PRI_AUC_Approx_11p = x_double[k++] ?? 0,
+                            AP_All = x_double[k++] ?? 0,
+                            AP_11p = x_double[k++] ?? 0,
+                            API_All = x_double[k++] ?? 0,
+                            API_11p = x_double[k++] ?? 0,
+                            Brier_Inverse_All = x_double[k++] ?? 0,
+                            LRP = x_double[k++] ?? 0,
+                            LRN = x_double[k++] ?? 0,
+                            DOR = x_double[k++] ?? 0,
+                            PrevalenceThreshold = x_double[k++] ?? 0,
+                            CriticalSuccessIndex = x_double[k++] ?? 0,
+                            F1B_00 = x_double[k++] ?? 0,
+                            F1B_01 = x_double[k++] ?? 0,
+                            F1B_02 = x_double[k++] ?? 0,
+                            F1B_03 = x_double[k++] ?? 0,
+                            F1B_04 = x_double[k++] ?? 0,
+                            F1B_05 = x_double[k++] ?? 0,
+                            F1B_06 = x_double[k++] ?? 0,
+                            F1B_07 = x_double[k++] ?? 0,
+                            F1B_08 = x_double[k++] ?? 0,
+                            F1B_09 = x_double[k++] ?? 0,
+                            F1B_10 = x_double[k++] ?? 0,
+                        },
+                        metrics_ppg = new metrics_box()
+                        {
+                            P = x_double[k++] ?? 0,
+                            N = x_double[k++] ?? 0,
+                            TP = x_double[k++] ?? 0,
+                            FP = x_double[k++] ?? 0,
+                            TN = x_double[k++] ?? 0,
+                            FN = x_double[k++] ?? 0,
+                            TPR = x_double[k++] ?? 0,
+                            TNR = x_double[k++] ?? 0,
+                            PPV = x_double[k++] ?? 0,
+                            Precision = x_double[k++] ?? 0,
+                            Prevalence = x_double[k++] ?? 0,
+                            MCR = x_double[k++] ?? 0,
+                            ER = x_double[k++] ?? 0,
+                            NER = x_double[k++] ?? 0,
+                            CNER = x_double[k++] ?? 0,
+                            Kappa = x_double[k++] ?? 0,
+                            Overlap = x_double[k++] ?? 0,
+                            RND_ACC = x_double[k++] ?? 0,
+                            Support = x_double[k++] ?? 0,
+                            BaseRate = x_double[k++] ?? 0,
+                            YoudenIndex = x_double[k++] ?? 0,
+                            NPV = x_double[k++] ?? 0,
+                            FNR = x_double[k++] ?? 0,
+                            FPR = x_double[k++] ?? 0,
+                            FDR = x_double[k++] ?? 0,
+                            FOR = x_double[k++] ?? 0,
+                            ACC = x_double[k++] ?? 0,
+                            GMean = x_double[k++] ?? 0,
+                            F1S = x_double[k++] ?? 0,
+                            G1S = x_double[k++] ?? 0,
+                            MCC = x_double[k++] ?? 0,
+                            Informedness = x_double[k++] ?? 0,
+                            Markedness = x_double[k++] ?? 0,
+                            BalancedAccuracy = x_double[k++] ?? 0,
+                            ROC_AUC_Approx_All = x_double[k++] ?? 0,
+                            ROC_AUC_Approx_11p = x_double[k++] ?? 0,
+                            ROC_AUC_All = x_double[k++] ?? 0,
+                            PR_AUC_Approx_All = x_double[k++] ?? 0,
+                            PR_AUC_Approx_11p = x_double[k++] ?? 0,
+                            PRI_AUC_Approx_All = x_double[k++] ?? 0,
+                            PRI_AUC_Approx_11p = x_double[k++] ?? 0,
+                            AP_All = x_double[k++] ?? 0,
+                            AP_11p = x_double[k++] ?? 0,
+                            API_All = x_double[k++] ?? 0,
+                            API_11p = x_double[k++] ?? 0,
+                            Brier_Inverse_All = x_double[k++] ?? 0,
+                            LRP = x_double[k++] ?? 0,
+                            LRN = x_double[k++] ?? 0,
+                            DOR = x_double[k++] ?? 0,
+                            PrevalenceThreshold = x_double[k++] ?? 0,
+                            CriticalSuccessIndex = x_double[k++] ?? 0,
+                            F1B_00 = x_double[k++] ?? 0,
+                            F1B_01 = x_double[k++] ?? 0,
+                            F1B_02 = x_double[k++] ?? 0,
+                            F1B_03 = x_double[k++] ?? 0,
+                            F1B_04 = x_double[k++] ?? 0,
+                            F1B_05 = x_double[k++] ?? 0,
+                            F1B_06 = x_double[k++] ?? 0,
+                            F1B_07 = x_double[k++] ?? 0,
+                            F1B_08 = x_double[k++] ?? 0,
+                            F1B_09 = x_double[k++] ?? 0,
+                            F1B_10 = x_double[k++] ?? 0,
+                        },
+                        roc_xy_str_all = s.Count > k ? s[k++] : "",
+                        roc_xy_str_11p = s.Count > k ? s[k++] : "",
+                        pr_xy_str_all = s.Count > k ? s[k++] : "",
+                        pr_xy_str_11p = s.Count > k ? s[k++] : "",
+                        pri_xy_str_all = s.Count > k ? s[k++] : "",
+                        pri_xy_str_11p = s.Count > k ? s[k++] : "",
+                        thresholds = s.Count > k ? s[k++].Split(';').Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : 0d).ToList() : null,
+                        predictions = s.Count > k ? s[k++].Split('|').Select(a => new prediction(a)).ToList() : null,
+                    };
 
-                        F1B_00 = x_double[k++] ?? 0,
-                        F1B_01 = x_double[k++] ?? 0,
-                        F1B_02 = x_double[k++] ?? 0,
-                        F1B_03 = x_double[k++] ?? 0,
-                        F1B_04 = x_double[k++] ?? 0,
-                        F1B_05 = x_double[k++] ?? 0,
-                        F1B_06 = x_double[k++] ?? 0,
-                        F1B_07 = x_double[k++] ?? 0,
-                        F1B_08 = x_double[k++] ?? 0,
-                        F1B_09 = x_double[k++] ?? 0,
-                        F1B_10 = x_double[k++] ?? 0,
-                    },
-                    metrics_ppf = new metrics_box()
-                    {
-                        P = x_double[k++] ?? 0,
-                        N = x_double[k++] ?? 0,
-                        TP = x_double[k++] ?? 0,
-                        FP = x_double[k++] ?? 0,
-                        TN = x_double[k++] ?? 0,
-                        FN = x_double[k++] ?? 0,
-                        TPR = x_double[k++] ?? 0,
-                        TNR = x_double[k++] ?? 0,
-                        PPV = x_double[k++] ?? 0,
-                        Precision = x_double[k++] ?? 0,
-                        Prevalence = x_double[k++] ?? 0,
-                        MCR = x_double[k++] ?? 0,
-                        ER = x_double[k++] ?? 0,
-                        NER = x_double[k++] ?? 0,
-                        CNER = x_double[k++] ?? 0,
-                        Kappa = x_double[k++] ?? 0,
-                        Overlap = x_double[k++] ?? 0,
-                        RND_ACC = x_double[k++] ?? 0,
-                        Support = x_double[k++] ?? 0,
-                        BaseRate = x_double[k++] ?? 0,
-                        YoudenIndex = x_double[k++] ?? 0,
-                        NPV = x_double[k++] ?? 0,
-                        FNR = x_double[k++] ?? 0,
-                        FPR = x_double[k++] ?? 0,
-                        FDR = x_double[k++] ?? 0,
-                        FOR = x_double[k++] ?? 0,
-                        ACC = x_double[k++] ?? 0,
-                        GMean = x_double[k++] ?? 0,
-                        F1S = x_double[k++] ?? 0,
-                        G1S = x_double[k++] ?? 0,
-                        MCC = x_double[k++] ?? 0,
-                        Informedness = x_double[k++] ?? 0,
-                        Markedness = x_double[k++] ?? 0,
-                        BalancedAccuracy = x_double[k++] ?? 0,
-                        ROC_AUC_Approx_All = x_double[k++] ?? 0,
-                        ROC_AUC_Approx_11p = x_double[k++] ?? 0,
-                        ROC_AUC_All = x_double[k++] ?? 0,
-                        PR_AUC_Approx_All = x_double[k++] ?? 0,
-                        PR_AUC_Approx_11p = x_double[k++] ?? 0,
-                        PRI_AUC_Approx_All = x_double[k++] ?? 0,
-                        PRI_AUC_Approx_11p = x_double[k++] ?? 0,
-                        AP_All = x_double[k++] ?? 0,
-                        AP_11p = x_double[k++] ?? 0,
-                        API_All = x_double[k++] ?? 0,
-                        API_11p = x_double[k++] ?? 0,
-                        Brier_Inverse_All = x_double[k++] ?? 0,
-                        LRP = x_double[k++] ?? 0,
-                        LRN = x_double[k++] ?? 0,
-                        DOR = x_double[k++] ?? 0,
-                        PrevalenceThreshold = x_double[k++] ?? 0,
-                        CriticalSuccessIndex = x_double[k++] ?? 0,
+                    return cm;
+                    //cms.Add(new confusion_matrix_data() {line = line, cm = cm, key_value_list = key_value_list, unknown_key_value_list = unknown_key_value_list,});
+                })
+                .Where(a=>a!=null)
+                .ToList();
 
-                        F1B_00 = x_double[k++] ?? 0,
-                        F1B_01 = x_double[k++] ?? 0,
-                        F1B_02 = x_double[k++] ?? 0,
-                        F1B_03 = x_double[k++] ?? 0,
-                        F1B_04 = x_double[k++] ?? 0,
-                        F1B_05 = x_double[k++] ?? 0,
-                        F1B_06 = x_double[k++] ?? 0,
-                        F1B_07 = x_double[k++] ?? 0,
-                        F1B_08 = x_double[k++] ?? 0,
-                        F1B_09 = x_double[k++] ?? 0,
-                        F1B_10 = x_double[k++] ?? 0,
-                    },
-                    metrics_ppg = new metrics_box()
-                    {
-                        P = x_double[k++] ?? 0,
-                        N = x_double[k++] ?? 0,
-                        TP = x_double[k++] ?? 0,
-                        FP = x_double[k++] ?? 0,
-                        TN = x_double[k++] ?? 0,
-                        FN = x_double[k++] ?? 0,
-                        TPR = x_double[k++] ?? 0,
-                        TNR = x_double[k++] ?? 0,
-                        PPV = x_double[k++] ?? 0,
-                        Precision = x_double[k++] ?? 0,
-                        Prevalence = x_double[k++] ?? 0,
-                        MCR = x_double[k++] ?? 0,
-                        ER = x_double[k++] ?? 0,
-                        NER = x_double[k++] ?? 0,
-                        CNER = x_double[k++] ?? 0,
-                        Kappa = x_double[k++] ?? 0,
-                        Overlap = x_double[k++] ?? 0,
-                        RND_ACC = x_double[k++] ?? 0,
-                        Support = x_double[k++] ?? 0,
-                        BaseRate = x_double[k++] ?? 0,
-                        YoudenIndex = x_double[k++] ?? 0,
-                        NPV = x_double[k++] ?? 0,
-                        FNR = x_double[k++] ?? 0,
-                        FPR = x_double[k++] ?? 0,
-                        FDR = x_double[k++] ?? 0,
-                        FOR = x_double[k++] ?? 0,
-                        ACC = x_double[k++] ?? 0,
-                        GMean = x_double[k++] ?? 0,
-                        F1S = x_double[k++] ?? 0,
-                        G1S = x_double[k++] ?? 0,
-                        MCC = x_double[k++] ?? 0,
-                        Informedness = x_double[k++] ?? 0,
-                        Markedness = x_double[k++] ?? 0,
-                        BalancedAccuracy = x_double[k++] ?? 0,
-                        ROC_AUC_Approx_All = x_double[k++] ?? 0,
-                        ROC_AUC_Approx_11p = x_double[k++] ?? 0,
-                        ROC_AUC_All = x_double[k++] ?? 0,
-                        PR_AUC_Approx_All = x_double[k++] ?? 0,
-                        PR_AUC_Approx_11p = x_double[k++] ?? 0,
-                        PRI_AUC_Approx_All = x_double[k++] ?? 0,
-                        PRI_AUC_Approx_11p = x_double[k++] ?? 0,
-                        AP_All = x_double[k++] ?? 0,
-                        AP_11p = x_double[k++] ?? 0,
-                        API_All = x_double[k++] ?? 0,
-                        API_11p = x_double[k++] ?? 0,
-                        Brier_Inverse_All = x_double[k++] ?? 0,
-                        LRP = x_double[k++] ?? 0,
-                        LRN = x_double[k++] ?? 0,
-                        DOR = x_double[k++] ?? 0,
-                        PrevalenceThreshold = x_double[k++] ?? 0,
-                        CriticalSuccessIndex = x_double[k++] ?? 0,
-
-                        F1B_00 = x_double[k++] ?? 0,
-                        F1B_01 = x_double[k++] ?? 0,
-                        F1B_02 = x_double[k++] ?? 0,
-                        F1B_03 = x_double[k++] ?? 0,
-                        F1B_04 = x_double[k++] ?? 0,
-                        F1B_05 = x_double[k++] ?? 0,
-                        F1B_06 = x_double[k++] ?? 0,
-                        F1B_07 = x_double[k++] ?? 0,
-                        F1B_08 = x_double[k++] ?? 0,
-                        F1B_09 = x_double[k++] ?? 0,
-                        F1B_10 = x_double[k++] ?? 0,
-                    },
-                    roc_xy_str_all = s.Count > k ? s[k++] : "",
-                    roc_xy_str_11p = s.Count > k ? s[k++] : "",
-                    pr_xy_str_all = s.Count > k ? s[k++] : "",
-                    pr_xy_str_11p = s.Count > k ? s[k++] : "",
-                    pri_xy_str_all = s.Count > k ? s[k++] : "",
-                    pri_xy_str_11p = s.Count > k ? s[k++] : "",
-
-                    thresholds = s.Count > k ? s[k++].Split(';').Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : 0d).ToList() : null,
-                    predictions = s.Count > k ? s[k++].Split('|').Select(a => new prediction(a)).ToList() : null,
-                };
-
-                cms.Add(new confusion_matrix_data()
-                {
-                    line = line,
-                    cm = cm,
-                    key_value_list = key_value_list,
-                    unknown_key_value_list = unknown_key_value_list,
-                });
-            }
-
-            var cm_list = cms.Select(a => a.cm).ToList();
+            //var cm_list = cms.Select(a => a.cm).ToList();
             return cm_list;
         }
 
@@ -471,7 +446,7 @@ namespace svm_fs_batch
 
        
 
-        internal void calculate_metrics(metrics_box metrics, bool calculate_auc, List<prediction> prediction_list)
+        internal void calculate_metrics(metrics_box metrics, bool calculate_auc, IList<prediction> prediction_list)
         {
             //var cm = this;
 

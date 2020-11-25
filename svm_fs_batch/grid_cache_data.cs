@@ -134,9 +134,12 @@ namespace svm_fs_batch
             const string module_name = nameof(grid_cache_data);
             const string method_name = nameof(write_cache_file);
 
-            var lines = new List<string>();
-            lines.Add(csv_header);
-            lines.AddRange(grid_cache_data_list.Select(a => a.csv_values()).ToList());
+            var lines = new string[grid_cache_data_list.Count+1];
+            lines[0]=csv_header;
+            for (var i = 0; i < grid_cache_data_list.Count; i++)
+            {
+                lines[i + 1] = grid_cache_data_list[i].csv_values();
+            }
 
             io_proxy.WriteAllLines(cache_train_grid_csv, lines, module_name, method_name);
         }

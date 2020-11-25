@@ -1,4 +1,0 @@
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.csprojAssemblyReference.cache
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.AssemblyInfoInputs.cache
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.AssemblyInfo.cs
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\netcoreapp3.1\svm_fs_batch.csproj.CoreCompileInputs.cache

@@ -74,7 +74,7 @@ namespace svm_fs_batch
 
             if (class_weights != null && class_weights.Count > 0)
             {
-                foreach (var weight in class_weights.OrderBy(a => a).ToList()) { libsvm_params.Add($@"-w{weight.class_id} {weight.weight}"); }
+                foreach (var weight in class_weights.OrderBy(a => a.class_id).ToList()) { libsvm_params.Add($@"-w{weight.class_id} {weight.weight}"); }
             }
 
             if (!shrinking_heuristics) { libsvm_params.Add($@"-h {(shrinking_heuristics ? "1" : "0")}"); }
