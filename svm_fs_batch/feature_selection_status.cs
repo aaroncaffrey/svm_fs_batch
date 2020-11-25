@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace svm_fs_batch
 {
@@ -31,8 +33,8 @@ namespace svm_fs_batch
         internal bool score_better_than_last;
         internal bool score_better_than_all;
         internal int total_groups;
-        internal var iteration_winner_group;
-        internal var iteration_winner_group_key;
+        internal ((string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key, (int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list, int[] grouped_list_internal_column_indexes) iteration_winner_group;
+        internal (string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) iteration_winner_group_key;
 
         internal static void save(string status_filename, IList<feature_selection_status> feature_selection_status_list)
         {
@@ -87,7 +89,7 @@ namespace svm_fs_batch
 
         internal string csv_values()
         {
-            return string.Join(",", csv_values_array);
+            return string.Join(",", csv_values_array());
         }
 
         internal string[] csv_values_array()
@@ -123,7 +125,7 @@ namespace svm_fs_batch
                             $"{score_increase_from_all_pct:G17}",
                             $"{(score_better_than_last?1:0)}",
                             $"{(score_better_than_all?1:0)}",
-                          };
+                          }.Select(a => a?.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase) ?? "").ToArray();
         }
     }
 }

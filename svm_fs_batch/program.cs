@@ -15,7 +15,8 @@ namespace svm_fs_batch
         internal static
             List<(
                 (string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                List<(int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)> grouped_list
+                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
+                int[] grouped_list_internal_column_indexes
                 )>
             get_groups_to_use(dataset_loader dataset)
         {
@@ -131,7 +132,7 @@ namespace svm_fs_batch
 
             if (program_args.setup)
             {
-                program_args.experiment_name += $@"_{DateTime.Now:yyyyMMddHHmmssfff}";
+                program_args.experiment_name += $@"_{DateTime.Now:yyyy_MM_dd_HH_mm_ss_fff}";
 
                 // set default vcpu amounts if not specified
                 if (program_args.setup_total_vcpus <= 0) program_args.setup_total_vcpus = 1504 - 320;
@@ -402,9 +403,10 @@ namespace svm_fs_batch
         internal static (List<int> best_groups, List<int> best_columns, int best_iteration, double best_score) worker2(
             dataset_loader dataset,
             List<(
-                (string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key, 
-                List<(int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)> grouped_list
-                )> groups,
+                (string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
+                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
+                int[] grouped_list_internal_column_indexes
+            )> groups,
             string experiment_name,
             int instance_index,
             int total_instances,
@@ -536,7 +538,7 @@ namespace svm_fs_batch
                             {
                                 io_proxy.WriteLine($@"{experiment_name}: Start parallel index: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()} (groups {(array_index_start)} to {(array_index_last)}).");
 
-                                var group_key = unrolled_index_data.group_array_index > -1 ? groups[unrolled_index_data.group_array_index].key : default;
+                                var group_key = unrolled_index_data.group_array_index > -1 ? groups[unrolled_index_data.group_array_index].grouped_by_key : default;
 
                                 io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index_data.iteration_index)} group {(unrolled_index_data.group_array_index)}/{total_groups} (groups {(array_index_start)} to {(array_index_last)}).");// File: {group_merged_cm_fn}.");
 
@@ -562,14 +564,14 @@ namespace svm_fs_batch
                                         {
                                             selection_direction = direction.backwards;
                                             test_selected_groups.Remove(unrolled_index_data.group_array_index);
-                                            test_selected_columns = test_selected_columns.Except(groups[unrolled_index_data.group_array_index].columns).ToList();
+                                            test_selected_columns = test_selected_columns.Except(groups[unrolled_index_data.group_array_index].grouped_list_internal_column_indexes).ToList();
                                         }
                                     }
                                     else
                                     {
                                         selection_direction = direction.forwards;
                                         test_selected_groups.Add(unrolled_index_data.group_array_index);
-                                        test_selected_columns = test_selected_columns.Union(groups[unrolled_index_data.group_array_index].columns).OrderBy(a => a).ToList();
+                                        test_selected_columns = test_selected_columns.Union(groups[unrolled_index_data.group_array_index].grouped_list_internal_column_indexes).OrderBy(a => a).ToList();
                                     }
 
                                     if (selection_direction != direction.neutral)
@@ -727,7 +729,7 @@ namespace svm_fs_batch
                 var iteration_winner_group_array_index = (int)iteration_winner_cm.x_group_array_index;
                 var iteration_winner_cm_list = iteration_scoring_cm_list.Where(a => a.x_group_array_index == iteration_winner_group_array_index).ToList();
                 var iteration_winner_group = iteration_winner_group_array_index > -1 ? groups[iteration_winner_group_array_index] : default;
-                var iteration_winner_group_key = iteration_winner_group.key;
+                var iteration_winner_group_key = iteration_winner_group.grouped_by_key;
                 var iteration_winner_score = scoring_args.scoring_metrics.Select(metric_name => iteration_winner_cm.metrics.get_value_by_name(metric_name)).Average();
                 var iteration_winner_direction = iteration_winner_cm.selection_test_info.y_selection_direction;
 
@@ -755,12 +757,12 @@ namespace svm_fs_batch
                         if (iteration_winner_direction == direction.forwards)
                         {
                             selected_groups.Add(iteration_winner_group_array_index);
-                            selected_columns.AddRange(iteration_winner_group.columns);
+                            selected_columns.AddRange(iteration_winner_group.grouped_list_internal_column_indexes);
                         }
                         else if (iteration_winner_direction == direction.backwards)
                         {
                             selected_groups.Remove(iteration_winner_group_array_index);
-                            selected_columns = selected_columns.Except(iteration_winner_group.columns).ToList();
+                            selected_columns = selected_columns.Except(iteration_winner_group.grouped_list_internal_column_indexes).ToList();
                         }
 
                         if (iteration_winner_direction != direction.neutral)

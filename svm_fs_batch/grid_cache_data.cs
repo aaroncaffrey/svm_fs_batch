@@ -67,7 +67,7 @@ namespace svm_fs_batch
                    $@"{grid_point.coef0:G17}",
                    $@"{grid_point.degree:G17}",
                    $@"{grid_point.cv_rate:G17}",
-            };
+            }.Select(a => a.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase)).ToArray(); 
         }
 
         public grid_cache_data()

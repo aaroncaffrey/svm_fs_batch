@@ -12,10 +12,11 @@ namespace svm_fs_batch
         // note: group_index is usually the array group index, which may be different to the group number in file
 
         
-        internal 
+        internal
             List<(
                 (string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                List<(int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)> grouped_list
+                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
+                int[] grouped_list_internal_column_indexes
             )>
             get_groups(bool file_tag, bool alphabet, bool dimension, bool category, bool source, bool @group, bool member = false, bool perspective = false)
         {
@@ -30,7 +31,13 @@ namespace svm_fs_batch
                 perspective: perspective ? a.perspective : null
                 )).ToList();
 
-            var groups = groupings.Select(a => (grouped_by_key: a.Key, grouped_list: a.ToList())).ToList();
+            var groups = groupings
+                .Select(a => (
+                    grouped_by_key: a.Key, 
+                    grouped_list: a.ToArray(), 
+                    columns: a.Select(b=> b.internal_column_index).ToArray()
+                    )
+                ).ToList();
 
             return groups;
         }

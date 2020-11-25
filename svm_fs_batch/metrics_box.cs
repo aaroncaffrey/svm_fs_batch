@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace svm_fs_batch
 {
@@ -644,7 +645,7 @@ namespace svm_fs_batch
                 F1B_08.ToString("G17", NumberFormatInfo.InvariantInfo),
                 F1B_09.ToString("G17", NumberFormatInfo.InvariantInfo),
                 F1B_10.ToString("G17", NumberFormatInfo.InvariantInfo),
-            };
+            }.Select(a => a.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase)).ToArray();
         }
     }
 }

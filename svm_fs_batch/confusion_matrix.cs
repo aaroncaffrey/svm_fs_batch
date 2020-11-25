@@ -1252,7 +1252,7 @@ namespace svm_fs_batch
             //var m_ppf = metrics_ppf.as_csv_values();
             //var m_ppg = metrics_ppg.as_csv_values();
 
-            var data = new string[]
+            return new string[]
             {
                 $"{selection_test_info?.y_is_group_selected}",
                 $"{selection_test_info?.y_is_only_selection}",
@@ -1516,18 +1516,12 @@ namespace svm_fs_batch
                     pri_xy_str_11p ?? "",
                     string.Join(';',thresholds?.Select(a=> $"{a:G17}").ToArray() ?? Array.Empty<string>()),
                     string.Join("|", predictions?.Select(a=> a?.str() ?? "").ToArray() ?? Array.Empty<string>())
-            };
-
-            var data1 = data.Select(a => a?.ToString(CultureInfo.InvariantCulture).Replace(",", ";", StringComparison.InvariantCulture) ?? "").ToArray();
-
-            return data1;
+            }.Select(a => a?.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase) ?? "").ToArray();
         }
 
         public string csv_values()
         {
-            return string.Join(",", csv_values_array().Select(a => a?.ToString(CultureInfo.InvariantCulture).Replace(",", ";", StringComparison.InvariantCulture) ?? "").ToList());
+            return string.Join(",", csv_values_array());
         }
-
-        
     }
 }
