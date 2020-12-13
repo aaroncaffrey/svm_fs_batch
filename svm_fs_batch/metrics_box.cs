@@ -7,6 +7,8 @@ namespace svm_fs_batch
 {
     internal class metrics_box
     {
+        public const string module_name = nameof(metrics_box);
+
         internal double P;
         internal double N;
         internal double TP;
@@ -507,7 +509,7 @@ namespace svm_fs_batch
             //ROC_AUC_11p = 1UL << 36,
         }
 
-        public static readonly string csv_header = string.Join(",", csv_header_values);
+        
         public static readonly string[] csv_header_values = new string[]
             {
                 nameof(P),
@@ -573,6 +575,8 @@ namespace svm_fs_batch
                 nameof(F1B_09),
                 nameof(F1B_10),
             };
+
+        public static readonly string csv_header = string.Join(",", csv_header_values);
 
         public string csv_values()
         {

@@ -9,40 +9,93 @@ namespace svm_fs_batch
 {
     internal class dataset_loader
     {
+        public const string module_name = nameof(dataset_loader);
+
+
         // note: group_index is usually the array group index, which may be different to the group number in file
 
-        
-        internal
-            List<(
-                (string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
-                int[] grouped_list_internal_column_indexes
-            )>
-            get_groups(bool file_tag, bool alphabet, bool dimension, bool category, bool source, bool @group, bool member = false, bool perspective = false)
+
+
+        internal class dataset_groups
         {
-            var groupings = header_list.GroupBy(a => (
+
+        }
+
+        internal
+            (
+                (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
+                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
+                int[] grouped_list_internal_column_indexes
+                )[][]
+        get_subgroups(
+                (
+                    (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
+                    (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
+                    int[] grouped_list_internal_column_indexes
+                    )[] groups,
+                bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member = false, bool perspective = false)
+        {
+            var groupings = groups
+                .AsParallel()
+                .AsOrdered()
+                .Select(a=>a.grouped_list
+                    .GroupBy(a =>
+                    (
+                        file_tag: file_tag ? a.file_tag : null,
+                        alphabet: alphabet ? a.alphabet : null,
+                        stats: stats ? a.stats : null,
+                        dimension: dimension ? a.dimension : null,
+                        category: category ? a.category : null,
+                        source: source ? a.source : null,
+                        group: group ? a.group : null,
+                        member: member ? a.member : null,
+                        perspective: perspective ? a.perspective : null
+                    )))
+                .Select(a=>a
+                    .Select(b=> (grouped_by_key:b.Key, grouped_list:b.ToArray(), grouped_list_internal_column_indexes:b
+                        .Select(c=>c.internal_column_index)
+                        .ToArray()))
+                    .ToArray())
+                .ToArray();
+                
+            return groupings;
+        }
+
+        internal static
+            (
+                (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
+                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
+                int[] grouped_list_internal_column_indexes
+            )[]
+            get_groups(dataset_loader dataset, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member = false, bool perspective = false)
+        {
+            var groupings = dataset
+                .header_list
+                .Skip(1 /* skip class id column */)
+                .AsParallel()
+                .AsOrdered()
+                .GroupBy(a => (
                 file_tag: file_tag ? a.file_tag : null,
                 alphabet: alphabet ? a.alphabet : null,
+                stats: stats ? a.stats : null,
                 dimension: dimension ? a.dimension : null,
                 category: category ? a.category : null,
                 source: source ? a.source : null,
                 group: group ? a.group : null,
                 member: member ? a.member : null,
                 perspective: perspective ? a.perspective : null
-                )).ToList();
-
-            var groups = groupings
+            ))
                 .Select(a => (
-                    grouped_by_key: a.Key, 
-                    grouped_list: a.ToArray(), 
-                    columns: a.Select(b=> b.internal_column_index).ToArray()
+                        grouped_by_key: a.Key,
+                        grouped_list: a.ToArray(),
+                        columns: a.Select(b => b.internal_column_index).ToArray()
                     )
-                ).ToList();
+                ).ToArray();
 
-            return groups;
+            return groupings;
         }
 
-        internal List<(int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)> header_list;
+        internal List<(int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)> header_list;
         internal List<(int class_id, string class_name, List<(int row_index, int col_index, string comment_key, string comment_value)[]> cl_comment_list)> comment_list;
 
         // feature values, grouped by class id, with class name and class size
@@ -66,6 +119,7 @@ namespace svm_fs_batch
                         int external_column_index,
                         string file_tag,
                         string alphabet,
+                        string stats,
                         string dimension,
                         string category,
                         string source,
@@ -121,12 +175,13 @@ namespace svm_fs_batch
             for (var y_index = 0; y_index < row_indexes.Count; y_index++)
             {
                 var row_index = row_indexes[y_index];
-                as_rows[row_index] = new double[column_indexes.Count];
+                as_rows[y_index] = new double[column_indexes.Count];
 
                 for (var x_index = 0; x_index < column_indexes.Count; x_index++)
                 {
                     var col_index = column_indexes[x_index];
-                    as_rows[row_index][col_index] = v[row_index].row_columns[col_index].row_column_val;
+                    //as_rows[row_index][col_index] = v[row_index].row_columns[col_index].row_column_val;
+                    as_rows[y_index][x_index] = v[row_index].row_columns[col_index].row_column_val;
                 }
             }
 
@@ -134,22 +189,23 @@ namespace svm_fs_batch
             for (var x_index = 0; x_index < column_indexes.Count; x_index++)
             {
                 var col_index = column_indexes[x_index];
-                as_cols[col_index] = new double[row_indexes.Count];
+                as_cols[x_index] = new double[row_indexes.Count];
 
                 for (var y_index = 0; y_index < row_indexes.Count; y_index++)
                 {
                     var row_index = row_indexes[y_index];
-                    as_cols[col_index][row_index] = v[row_index].row_columns[col_index].row_column_val;
+                    //as_cols[col_index][row_index] = v[row_index].row_columns[col_index].row_column_val;
+                    as_cols[x_index][y_index] = v[row_index].row_columns[col_index].row_column_val;
                 }
             }
 
             return (as_rows, as_cols);
         }
 
-        internal dataset_loader(string dataset_names = "2i,2n")//, bool split_by_file_tag = true, bool split_by_groups = true)
+        internal dataset_loader(string dataset_names = "[1i.aaindex]")//"2i,2n")//, bool split_by_file_tag = true, bool split_by_groups = true)
         {
             var required_default = false;
-            var required_matches = new List<(bool required, string alphabet, string dimension, string category, string source, string group, string member, string perspective)>();
+            var required_matches = new List<(bool required, string alphabet, string stats, string dimension, string category, string source, string group, string member, string perspective)>();
             //required_matches.Add((required: true, alphabet: null, dimension: null, category: null, source: null, group: null, member: null, perspective: null));
 
             // file tags: 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p (1d - linear, 2d - predicted, 3d - actual, interface, neighborhood, protein)
@@ -172,11 +228,10 @@ namespace svm_fs_batch
             List<(int class_id, string class_name)> class_names,
             bool perform_integrity_checks = false,
             bool required_default = true,
-            List<(bool required, string alphabet, string dimension, string category, string source, string @group, string member, string perspective)> required_matches = null
+            List<(bool required, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)> required_matches = null
         )
         {
             const string method_name = nameof(load_dataset);
-            const string module_name = nameof(dataset_loader);
 
             class_names = class_names.OrderBy(a => a.class_id).ToList();
             file_tags = file_tags.OrderBy(a => a).ToArray();
@@ -184,9 +239,9 @@ namespace svm_fs_batch
             var data_filenames = class_names.Select(cl =>
                {
                    // (string file_tag, int class_id, string class_name, string filename)
-                   var values_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"f_{file_tag}_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
-                   var header_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"h_{file_tag}_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
-                   var comment_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"c_{file_tag}_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+                   var values_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"f_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+                   var header_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"h_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+                   var comment_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"c_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
 
                    return (cl.class_id, cl.class_name, values_csv_filenames, header_csv_filenames, comment_csv_filenames);
 
@@ -206,9 +261,13 @@ namespace svm_fs_batch
             if (data_filenames == null || data_filenames.Count == 0) throw new Exception();
             foreach (var cl in data_filenames)
             {
-                if (cl.values_csv_filenames == null || cl.values_csv_filenames.Count == 0 || cl.values_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception();
-                if (cl.header_csv_filenames == null || cl.header_csv_filenames.Count == 0 || cl.header_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception();
-                if (cl.comment_csv_filenames == null || cl.comment_csv_filenames.Count == 0 || cl.comment_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception();
+                if (cl.values_csv_filenames == null || cl.values_csv_filenames.Count == 0 || cl.values_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.values_csv_filenames)} is empty"); }
+                if (cl.header_csv_filenames == null || cl.header_csv_filenames.Count == 0 || cl.header_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.header_csv_filenames)} is empty"); }
+                if (cl.comment_csv_filenames == null || cl.comment_csv_filenames.Count == 0 || cl.comment_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.comment_csv_filenames)} is empty"); }
+
+                if (cl.values_csv_filenames .Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.values_csv_filenames .Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+                if (cl.header_csv_filenames .Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.header_csv_filenames .Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+                if (cl.comment_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.comment_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
             }
 
 
@@ -231,13 +290,14 @@ namespace svm_fs_batch
                         .Select((b, b_i) =>
                         {
                             var row = b.Split(',');
-                            return (internal_column_index: -1, external_column_index: b_i /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/, file_tag: (file_index == 0 && b_i == 0 ? "" : file_info.file_tag), alphabet: row[1], dimension: row[2], category: row[3], source: row[4], group: row[5], member: row[6], perspective: row[7]);
+                            return (internal_column_index: -1, external_column_index: b_i /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/, file_tag: (file_index == 0 && b_i == 0 ? "" : file_info.file_tag), 
+                                alphabet: row[1], stats: row[2], dimension: row[3], category: row[4], source: row[5], group: row[6], member: row[7], perspective: row[8]);
                         })
                         .ToArray();
                 })
                 .ToList();
 
-            header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.alphabet, a.dimension, a.category, a.source, a.@group, a.member, a.perspective)).ToList();
+            header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.alphabet, a.stats, a.dimension, a.category, a.source, a.@group, a.member, a.perspective)).ToList();
             sw_header.Stop();
             io_proxy.WriteLine($@"Finish: reading headers ({sw_header.Elapsed}).", module_name, method_name);
 
@@ -698,7 +758,7 @@ internal static double[][] get_column_data(dataset dataset) // [column][row]
 /*
 internal static void remove_large_groups(dataset dataset, int max_group_size)
 {
-    const string module_name = nameof(dataset_loader);
+    
     const string method_name = nameof(remove_large_groups);
 
     //io_proxy.WriteLine("...", module_name, nameof(remove_large_groups));
@@ -727,7 +787,7 @@ internal static void remove_large_groups(dataset dataset, int max_group_size)
 /*
 internal static void remove_duplicate_groups(dataset dataset)
 {
-    //const string module_name = nameof(dataset_loader);
+    
     //const string method_name = nameof(remove_duplicate_groups);
 
     //io_proxy.WriteLine("...", module_name, nameof(remove_duplicate_groups));
@@ -878,7 +938,7 @@ internal static void remove_duplicate_groups(dataset dataset)
 /*
 internal static void save_dataset(dataset dataset, List<(int class_id, string header_filename, string data_filename)> filenames)
 {
-    const string module_name = nameof(dataset_loader);
+    
     const string method_name = nameof(save_dataset);
 
     io_proxy.WriteLine("started saving...", module_name, method_name);
@@ -911,7 +971,7 @@ internal static void save_dataset(dataset dataset, List<(int class_id, string he
 internal static void remove_empty_features(dataset dataset, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2)
 internal static void remove_empty_features(dataset dataset, int min_distinct_numbers = 2)
 {
-    const string module_name = nameof(dataset_loader);
+    
     const string method_name = nameof(remove_empty_features);
 
     io_proxy.WriteLine("...", module_name, method_name);
@@ -957,7 +1017,6 @@ internal static void remove_empty_features(dataset dataset, int min_distinct_num
 //internal static void remove_empty_features_by_class(dataset dataset, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2, string stats_filename = null)
 internal static void remove_empty_features_by_class(dataset dataset, int min_distinct_numbers = 2, string stats_filename = null)
 {
-    const string module_name = nameof(dataset_loader);
     const string method_name = nameof(remove_empty_features_by_class);
 
     io_proxy.WriteLine("...", module_name, method_name);

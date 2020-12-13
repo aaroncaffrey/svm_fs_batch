@@ -8,6 +8,8 @@ namespace svm_fs_batch
 {
     internal static class perf
     {
+        public const string module_name = nameof(perf);
+
         internal static List<confusion_matrix> count_prediction_error(
             IList<prediction> prediction_list,
             double? threshold = null,
@@ -45,7 +47,7 @@ namespace svm_fs_batch
                     },
                     x_prediction_threshold = threshold,
                     x_prediction_threshold_class = threshold_class,
-                    thresholds = prediction_list.Select(a => a.probability_estimates.FirstOrDefault(b => b.class_id == actual_class_id).probability_estimate).Distinct().OrderByDescending(a => a).ToList(),
+                    thresholds = prediction_list.Select(a => a.probability_estimates.FirstOrDefault(b => b.class_id == actual_class_id).probability_estimate)/*.Distinct()*/.OrderByDescending(a => a).ToList(),
                     predictions = prediction_list.ToList()
                 };
                 confusion_matrix_list.Add(confusion_matrix1);
@@ -165,7 +167,6 @@ namespace svm_fs_batch
         internal static List<prediction> load_prediction_file_regression_values(IList<(string test_file, string test_comments_file, string prediction_file)> files)
         {
             // method untested
-            const string module_name = nameof(perf);
             const string method_name = nameof(load_prediction_file_regression_values);
 
             var lines = files.AsParallel().AsOrdered().Select((a, i) => 
@@ -204,7 +205,7 @@ namespace svm_fs_batch
 
         internal static List<prediction> load_prediction_file_regression_values(string test_file, string test_comments_file, string prediction_file)
         {
-            const string module_name = nameof(perf);
+            
             const string method_name = nameof(load_prediction_file_regression_values);
 
             //if (string.IsNullOrWhiteSpace(test_file) || !io_proxy.Exists(test_file, nameof(performance_measure), nameof(load_prediction_file_regression_values)) || new FileInfo(test_file).Length == 0)

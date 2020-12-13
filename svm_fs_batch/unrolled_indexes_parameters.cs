@@ -4,6 +4,9 @@ namespace svm_fs_batch
 {
     internal class unrolled_indexes_parameters
     {
+        public const string module_name = nameof(unrolled_indexes_parameters);
+
+
         internal bool calc_11p_thresholds = false;
 
         internal List<routines.libsvm_svm_type> svm_types = new List<routines.libsvm_svm_type>() { routines.libsvm_svm_type.c_svc };

@@ -6,6 +6,8 @@ namespace svm_fs_batch
 {
     internal class prediction
     {
+        public const string module_name = nameof(prediction);
+
         internal int prediction_index;
         internal int class_sample_id; /* composite key with real_class_id for unique id */
         internal int real_class_id;
@@ -34,7 +36,7 @@ namespace svm_fs_batch
         public prediction(string str)
         {
             var k = 0;
-            var s = str.Split(';');
+            var s = str.Split('|');
             prediction_index = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
             class_sample_id = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
 
@@ -84,7 +86,7 @@ namespace svm_fs_batch
         {
             // 0;-1;1;2;p1:0.6;p-1:0.4;cval=xyz|0;-1;1;2;p1:0.6;p-1:0.4;cval=abc
 
-            return string.Join(";", new string[]
+            return string.Join("|", new string[]
             {
                     $@"{prediction_index}",
                     $@"{class_sample_id}",
@@ -92,8 +94,8 @@ namespace svm_fs_batch
                     $@"{predicted_class_id}",
                     $@"{(probability_estimates?.Count ?? 0)}",
                     $@"{(comment?.Count ?? 0)}",
-                    $@"{(probability_estimates != null &&probability_estimates.Count>0? string.Join(";", probability_estimates.Select(a => $@"p{a.class_id:+#;-#;+0}:{a.probability_estimate:G17}").ToList()) : $@"")}",
-                    $@"{(comment != null && comment.Count>0? string.Join(";", comment.Where(a=>!string.IsNullOrWhiteSpace(a.comment_header) || !string.IsNullOrWhiteSpace(a.comment_value)).Select(a => $@"c{a.comment_header}:{a.comment_value}").ToList()) : $@"")}"
+                    $@"{(probability_estimates != null &&probability_estimates.Count>0? string.Join("|", probability_estimates.Select(a => $@"p{a.class_id:+#;-#;+0}:{a.probability_estimate:G17}").ToList()) : $@"")}",
+                    $@"{(comment != null && comment.Count>0? string.Join("|", comment.Where(a=>!string.IsNullOrWhiteSpace(a.comment_header) || !string.IsNullOrWhiteSpace(a.comment_value)).Select(a => $@"c{a.comment_header}:{a.comment_value}").ToList()) : $@"")}"
             }.Where(a => !string.IsNullOrWhiteSpace(a)).ToArray());
         }
     }

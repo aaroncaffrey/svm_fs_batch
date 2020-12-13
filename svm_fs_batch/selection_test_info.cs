@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
 
 namespace svm_fs_batch
 {
     internal class selection_test_info
     {
+        public const string module_name = nameof(selection_test_info);
+
         internal bool              y_is_group_selected;
         internal bool              y_is_only_selection;
         internal bool              y_is_last_winner;
@@ -12,14 +14,26 @@ namespace svm_fs_batch
         internal int               y_num_columns_added_from_highest_score_iteration;
         internal int               y_num_groups_added_from_highest_score_iteration;
         internal program.direction y_selection_direction;
-        internal List<int>         y_previous_selected_groups;
-        internal List<int>         y_previous_selected_columns;
-        internal List<int>         y_selected_groups;
-        internal List<int>         y_selected_columns;
-        internal List<int>         y_test_selected_groups;
-        internal List<int>         y_test_selected_columns;
 
-        public static readonly string csv_header = string.Join(",", csv_header_values);
+        internal int y_test_groups_count;
+        internal int y_test_columns_count;
+        internal int[] y_test_groups;
+        internal int[] y_test_columns;
+
+        internal int y_previous_winner_groups_count;
+        internal int y_previous_winner_columns_count;
+        internal int[] y_previous_winner_groups;
+        internal int[] y_previous_winner_columns;
+
+        internal int y_best_winner_groups_count;
+        internal int y_best_winner_columns_count;
+        internal int[] y_best_winner_groups;
+        internal int[] y_best_winner_columns;
+
+        public selection_test_info()
+        {
+            
+        }
 
         public static readonly string[] csv_header_values = new string[]
             {
@@ -31,19 +45,27 @@ namespace svm_fs_batch
                 nameof(y_num_columns_added_from_highest_score_iteration),
                 nameof(y_num_groups_added_from_highest_score_iteration),
                 nameof(y_selection_direction),
-                nameof(y_previous_selected_groups),
-                nameof(y_previous_selected_columns),
-                nameof(y_selected_groups),
-                nameof(y_selected_columns),
-                nameof(y_test_selected_groups),
-                nameof(y_test_selected_columns),
+
+                nameof(y_test_groups_count),
+                nameof(y_test_columns_count),
+                nameof(y_test_groups),
+                nameof(y_test_columns),
+
+                nameof(y_previous_winner_groups_count),
+                nameof(y_previous_winner_columns_count),
+                nameof(y_previous_winner_groups),
+                nameof(y_previous_winner_columns),
+
+                nameof(y_best_winner_groups_count),
+                nameof(y_best_winner_columns_count),
+                nameof(y_best_winner_groups),
+                nameof(y_best_winner_columns),
+
+
             };
 
+        public static readonly string csv_header = string.Join(",", csv_header_values);
 
-        public string csv_values()
-        {
-            return string.Join(",", csv_values_array());
-        }
 
         public string[] csv_values_array()
         {
@@ -57,13 +79,27 @@ namespace svm_fs_batch
                 $"{y_num_columns_added_from_highest_score_iteration}",
                 $"{y_num_groups_added_from_highest_score_iteration}",
                 $"{y_selection_direction}",
-                $"{string.Join(";",y_previous_selected_groups)}",
-                $"{string.Join(";",y_previous_selected_columns)}",
-                $"{string.Join(";",y_selected_groups)}",
-                $"{string.Join(";",y_selected_columns)}",
-                $"{string.Join(";",y_test_selected_groups)}",
-                $"{string.Join(";",y_test_selected_columns)}",
+
+                $"{y_test_groups_count}",
+                $"{y_test_columns_count}",
+                $"{string.Join(";",y_test_groups ?? Array.Empty<int>())}",
+                $"{string.Join(";",y_test_columns ?? Array.Empty<int>())}",
+
+                $"{y_previous_winner_groups_count}",
+                $"{y_previous_winner_columns_count}",
+                $"{string.Join(";",y_previous_winner_groups ?? Array.Empty<int>())}",
+                $"{string.Join(";",y_previous_winner_columns ?? Array.Empty<int>())}",
+
+                $"{y_best_winner_groups_count}",
+                $"{y_best_winner_columns_count}",
+                $"{string.Join(";",y_best_winner_groups ?? Array.Empty<int>())}",
+                $"{string.Join(";",y_best_winner_columns ?? Array.Empty<int>())}",
             };
+        }
+
+        public string csv_values()
+        {
+            return string.Join(",", csv_values_array());
         }
 
     }

@@ -7,7 +7,7 @@ namespace svm_fs_batch
 {
     internal static class routines
     {
-       
+        public const string module_name = nameof(routines);
 
         internal enum libsvm_kernel_type : int
         {
@@ -86,7 +86,6 @@ namespace svm_fs_batch
             //if (outer_cv_folds_to_run < 0 || outer_cv_folds_to_run > outer_cv_folds) throw new Exception();
             //if (fold_size_limit < 0) throw new Exception();
 
-            //const string module_name = nameof(svm_ctl);
             //const string method_name = nameof(folds);
             /*int first_index, int last_index, int num_items,*/
             

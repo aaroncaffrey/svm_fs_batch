@@ -1,7 +1,3 @@
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.AssemblyInfoInputs.cache
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.AssemblyInfo.cs
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.csproj.CoreCompileInputs.cache
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\svm_fs_batch.exe
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\svm_fs_batch.deps.json
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\svm_fs_batch.runtimeconfig.json
@@ -9,7 +5,12 @@ C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\svm_fs_bat
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\svm_fs_batch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\ref\svm_fs_batch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\svm_fs_batch.pdb
+C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.AssemblyInfoInputs.cache
+C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.AssemblyInfo.cs
+C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.csproj.CoreCompileInputs.cache
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\ref\svm_fs_batch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.pdb
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.genruntimeconfig.cache
+C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\svm_fs_batch.csprojAssemblyReference.cache

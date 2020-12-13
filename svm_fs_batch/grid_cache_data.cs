@@ -7,6 +7,8 @@ namespace svm_fs_batch
 {
     internal class grid_cache_data
     {
+        public const string module_name = nameof(grid_cache_data);
+
         internal routines.libsvm_svm_type svm_type;
         internal routines.libsvm_kernel_type svm_kernel;
         internal int repetitions;
@@ -20,7 +22,7 @@ namespace svm_fs_batch
         internal grid_point grid_point;
         //internal double rate;
 
-        public static readonly string csv_header = string.Join(",", csv_header_values);
+        
 
         public static readonly string[] csv_header_values = new string[] {
                     nameof(svm_type),
@@ -41,6 +43,7 @@ namespace svm_fs_batch
                     nameof(svm_fs_batch.grid_point.cv_rate),
                 };
 
+        public static readonly string csv_header = string.Join(",", csv_header_values);
 
         public string csv_values()
         {
@@ -101,7 +104,7 @@ namespace svm_fs_batch
 
         internal static List<grid_cache_data> read_cache_file(string cache_train_grid_csv)
         {
-            const string module_name = nameof(grid_cache_data);
+            
             const string method_name = nameof(read_cache_file);
 
             var cache = new List<grid_cache_data>();
@@ -131,7 +134,7 @@ namespace svm_fs_batch
 
         internal static void write_cache_file(string cache_train_grid_csv, IList<grid_cache_data> grid_cache_data_list)
         {
-            const string module_name = nameof(grid_cache_data);
+            
             const string method_name = nameof(write_cache_file);
 
             var lines = new string[grid_cache_data_list.Count+1];

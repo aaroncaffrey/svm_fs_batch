@@ -5,6 +5,8 @@ namespace svm_fs_batch
 {
     internal static class settings
     {
+        public const string module_name = nameof(settings);
+
         internal static readonly bool is_win = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         internal static readonly string user_home = is_win ? @"C:\home\k1040015" : @"/home/k1040015";
@@ -13,7 +15,8 @@ namespace svm_fs_batch
         internal static readonly string libsvm_predict_runtime = is_win ? $@"C:\libsvm\windows\svm-predict.exe" : $@"{user_home}/libsvm/svm-predict";
         internal static readonly string libsvm_train_runtime = is_win ? $@"C:\libsvm\windows\svm-train.exe" : $@"{user_home}/libsvm/svm-train";
 
-        internal static string dataset_dir = is_win ? @"E:\caddy\input\" : $@"{user_home}/dataset/";
+        //internal static string dataset_dir = is_win ? @"E:\caddy\input\" : $@"{user_home}/dataset/";
+        internal static string dataset_dir = is_win ? @"E:\dataset7\merged_files\" : $@"{user_home}/dataset/";
 
 
         internal static int negative_class_id = -1;

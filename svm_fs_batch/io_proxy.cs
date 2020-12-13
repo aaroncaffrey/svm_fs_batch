@@ -7,14 +7,14 @@ namespace svm_fs_batch
 {
     internal static class io_proxy
     {
+        public const string module_name = nameof(io_proxy);
         private static readonly Random random = new Random();
 
         internal static void log_exception(Exception e, string msg, string caller_module_name, string caller_method_name)
         {
             do
             {
-                io_proxy.WriteLine(
-                    $@"Error: ""{msg}"" ""{e.GetType()}"" ""{e.Source}"" ""{e.Message}"" ""{e.StackTrace}""", caller_module_name, caller_method_name);
+                io_proxy.WriteLine($@"Error: ""{msg}"" ""{e.GetType()}"" ""{e.Source}"" ""{e.Message}"" ""{e.StackTrace}""", caller_module_name, caller_method_name);
 
 #if DEBUG
                 if (e.InnerException == null || e == e.InnerException)
@@ -28,7 +28,7 @@ namespace svm_fs_batch
 
         internal static bool is_file_available(string filename, string caller_module_name = "", string caller_method_name = "")
         {
-            const string module_name = nameof(io_proxy);
+            
             const string method_name = nameof(is_file_available);
 
             try
@@ -340,10 +340,10 @@ namespace svm_fs_batch
             }
         }
 
-        internal static string[] ReadAllLines(string filename, string module_name = "", string method_name = "", int max_tries = 1_000_000)
+        internal static string[] ReadAllLines(string filename, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
-
+            const string method_name = nameof(ReadAllLines);
 
             int tries = 0;
 
@@ -351,7 +351,7 @@ namespace svm_fs_batch
             {
                 try
                 {
-                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
+                    io_proxy.WriteLine($"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     tries++;
 
@@ -361,7 +361,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
@@ -371,7 +371,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllLines));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
                     }
                 }
             }

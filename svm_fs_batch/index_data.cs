@@ -5,6 +5,8 @@ namespace svm_fs_batch
 {
     internal class index_data
     {
+        public const string module_name = nameof(index_data);
+
         internal int unrolled_whole_index = -1;
         internal int unrolled_partition_index = -1;
         internal int unrolled_instance_index = -1;

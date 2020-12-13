@@ -7,9 +7,11 @@ namespace svm_fs_batch
 {
     internal static class grid
     {
+        public const string module_name = nameof(grid);
+
         internal static grid_point get_best_rate(List<grid_point> grid_search_results)
         {
-            //const string module_name = nameof(grid);
+            
             //const string method_name = nameof(get_best_rate);
 
             // libsvm grid.py: if ((rate > best_rate) || (rate == best_rate && g == best_g && c < best_c))
@@ -99,7 +101,7 @@ namespace svm_fs_batch
 
             )
         {
-            //const string module_name = nameof(grid);
+            
             //const string method_name = nameof(grid_parameter_search);
 
             var cache_list = grid_cache_data.read_cache_file(cache_train_grid_csv);
@@ -362,7 +364,7 @@ namespace svm_fs_batch
 
         internal static double libsvm_cv_perf(List<string> libsvm_result_lines)
         {
-            //const string module_name = nameof(grid);
+            
             //const string method_name = nameof(libsvm_cv_perf);
 
             if (libsvm_result_lines == null || libsvm_result_lines.Count == 0) return -1;

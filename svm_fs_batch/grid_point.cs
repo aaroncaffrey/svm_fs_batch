@@ -2,6 +2,8 @@
 {
     internal class grid_point
     {
+        public const string module_name = nameof(grid_point);
+
         internal double? cost;
         internal double? gamma;
         internal double? epsilon;

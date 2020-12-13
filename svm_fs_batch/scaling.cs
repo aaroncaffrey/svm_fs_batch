@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace svm_fs_batch
 {
     internal class scaling
     {
+        public const string module_name = nameof(scaling);
         internal enum scale_function : int { none, rescale, normalisation, standardisation, L0_norm, L1_norm, L2_norm, }
 
+        internal double rescale_scale_min = -1;
+        internal double rescale_scale_max = +1;
 
         internal double non_zero;
         internal double abs_sum;
@@ -22,13 +26,28 @@ namespace svm_fs_batch
 
             this.non_zero = y_col.Count(y => y != 0);
             this.abs_sum = y_col.Sum(Math.Abs);
-            this.srsos = routines.sqrt_sumofsqrs(y_col);
+            this.srsos = sqrt_sumofsqrs(y_col);
             this.average = y_col.Average();
-            this.stdev = routines.standard_deviation_sample(y_col);
+            this.stdev = standard_deviation_sample(y_col);
             this.column_min = y_col.Min();
             this.column_max = y_col.Max();
         }
 
+        internal static double sqrt_sumofsqrs(IList<double> list) { return Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+
+        internal static double standard_deviation_sample(IList<double> values)
+        {
+            if (values.Count < 2) return 0;
+
+            var mean = values.Average();
+
+            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Count - 1));
+        }
+
+        internal double[] scale(double[] values, scaling.scale_function scale_function)
+        {
+            return values.Select(a => scale(a, scale_function)).ToArray();
+        }
 
         internal double scale(double value, scaling.scale_function scale_function)
         {
@@ -43,12 +62,11 @@ namespace svm_fs_batch
                 case scaling.scale_function.none: return value;
 
                 case scaling.scale_function.rescale:
-                    var scale_min = -1;
-                    var scale_max = +1;
 
-                    var x = (scale_max - scale_min) * (value - sp.column_min);
+
+                    var x = (rescale_scale_max - rescale_scale_min) * (value - sp.column_min);
                     var y = (sp.column_max - sp.column_min);
-                    var z = scale_min;
+                    var z = rescale_scale_min;
 
                     if (y == 0) return 0;
 

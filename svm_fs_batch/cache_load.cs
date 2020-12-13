@@ -8,7 +8,8 @@ namespace svm_fs_batch
 {
     internal class cache_load
     {
-        
+        public const string module_name = nameof(cache_load);
+
         internal static (List<index_data> indexes_whole, List<index_data> indexes_partition) get_unrolled_indexes_basic(dataset_loader dataset, int iteration_index, string iteration_name, int total_groups, int instance_index, int total_instances,
              int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds)
         {
@@ -365,7 +366,6 @@ namespace svm_fs_batch
             // a single group may have multiple tests... e.g. different number of inner-cv, outer-cv, class_weights, etc...
             // therefore, group_index existing isn't enough, must also have the various other parameters
 
-            const string module_name = nameof(program);
             const string method_name = nameof(load_cache);
 
             if (cache_files_already_loaded == null) throw new Exception();

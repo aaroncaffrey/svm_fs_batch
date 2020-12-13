@@ -7,6 +7,7 @@ namespace svm_fs_batch
 {
     internal class init
     {
+        public const string module_name = nameof(init);
         internal static void set_thread_counts()
         {
             ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);

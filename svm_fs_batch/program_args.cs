@@ -7,6 +7,8 @@ namespace svm_fs_batch
 {
     internal class program_args
     {
+        public const string module_name = nameof(program_args);
+
         internal int? folds = (int?)null;
         internal int repetitions = 1;
         internal int outer_cv_folds = 5;
