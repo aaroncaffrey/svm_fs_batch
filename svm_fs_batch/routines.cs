@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace svm_fs_batch
 {
@@ -132,7 +131,7 @@ namespace svm_fs_batch
 
         internal static double standard_deviation_population(IList<double> values)
         {
-            if (values.Count == 0) return 0;
+            if (values == null || values.Count < 2) return 0;
 
             var mean = values.Average();
 
@@ -141,57 +140,90 @@ namespace svm_fs_batch
 
         internal static double standard_deviation_sample(IList<double> values)
         {
-            if (values.Count < 2) return 0;
+            if (values == null || values.Count < 2) return 0;
 
             var mean = values.Average();
 
             return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Count - 1));
         }
 
-        internal static double sqrt_sumofsqrs(IList<double> list) { return Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+
+        //public static double sample_variance(double[] samples)
+        //{
+        //    if (samples == null || samples.Length <= 1)
+        //    {
+        //        return 0;
+        //    }
+        //
+        //    var variance = 0.0;
+        //    var t = samples[0];
+        //    for (int i = 1; i < samples.Length; i++)
+        //    {
+        //        t += samples[i];
+        //        var diff = ((i + 1) * samples[i]) - t;
+        //        variance += (diff * diff) / ((i + 1.0) * i);
+        //    }
+        //
+        //    return variance / (samples.Length - 1);
+        //}
+        //
+        //public static (double variance, double stdev) sample_standard_deviation(double[] samples)
+        //{
+        //    if (samples == null || samples.Length <= 1)
+        //    {
+        //        return (0, 0);
+        //    }
+        //
+        //    var variance = sample_variance(samples);
+        //    var stdev = Math.Sqrt(variance);
+        //
+        //    return (variance, stdev);
+        //}
+
+        //internal static double sqrt_sumofsqrs(IList<double> list) { return list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
 
       
 
-        internal static int for_loop_instance_id(List<(int current, int max)> points)
-        {
-            //var jid = (i * max_j * max_k) + (j * max_k) + k;
-            //var job_id = (i * max_j * max_k * max_l) + (j * max_k * max_l) + (k * max_l) + l;
-            var v = 0;
+        //internal static int for_loop_instance_id(List<(int current, int max)> points)
+        //{
+        //    //var jid = (i * max_j * max_k) + (j * max_k) + k;
+        //    //var job_id = (i * max_j * max_k * max_l) + (j * max_k * max_l) + (k * max_l) + l;
+        //    var v = 0;
 
-            for (var i = 0; i < points.Count - 1; i++)
-            {
-                var t = points[i].current;
-                for (var j = i + 1; j < points.Count; j++) { t *= points[j].max; }
+        //    for (var i = 0; i < points.Count - 1; i++)
+        //    {
+        //        var t = points[i].current;
+        //        for (var j = i + 1; j < points.Count; j++) { t *= points[j].max; }
 
-                v += t;
-            }
+        //        v += t;
+        //    }
 
-            v += points.Last().current;
-            return v;
-        }
+        //    v += points.Last().current;
+        //    return v;
+        //}
 
 
-        internal static void wait_any<T>(IList<Task<T>> tasks, int max_tasks = -1)
-        {
-            wait_any(tasks.ToArray<Task>(), max_tasks);
-        }
+        //internal static void wait_any<T>(IList<Task<T>> tasks, int max_tasks = -1)
+        //{
+        //    wait_any(tasks.ToArray<Task>(), max_tasks);
+        //}
 
-        internal static void wait_any(IList<Task> tasks, int max_tasks = -1)
-        {
-            if (max_tasks == -1)
-            {
-                max_tasks = Environment.ProcessorCount * 4;
-            }
+        //internal static void wait_any(IList<Task> tasks, int max_tasks = -1)
+        //{
+        //    if (max_tasks == -1)
+        //    {
+        //        max_tasks = Environment.ProcessorCount * 4;
+        //    }
 
-            Task[] incomplete_tasks = null;
+        //    Task[] incomplete_tasks = null;
 
-            do
-            {
-                incomplete_tasks = tasks.Where(a => !a.IsCompleted).ToArray<Task>();
+        //    do
+        //    {
+        //        incomplete_tasks = tasks.Where(a => !a.IsCompleted).ToArray<Task>();
 
-                if (incomplete_tasks.Length > 0 && incomplete_tasks.Length > max_tasks) { Task.WaitAny(incomplete_tasks); }
+        //        if (incomplete_tasks.Length > 0 && incomplete_tasks.Length > max_tasks) { Task.WaitAny(incomplete_tasks); }
 
-            } while (incomplete_tasks.Length >= max_tasks);
-        }
+        //    } while (incomplete_tasks.Length >= max_tasks);
+        //}
     }
 }

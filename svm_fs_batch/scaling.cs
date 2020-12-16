@@ -33,7 +33,10 @@ namespace svm_fs_batch
             this.column_max = y_col.Max();
         }
 
-        internal static double sqrt_sumofsqrs(IList<double> list) { return Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+        internal static double sqrt_sumofsqrs(IList<double> list)
+        {
+            return list == null || list.Count == 0 ? 0d : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
+        }
 
         internal static double standard_deviation_sample(IList<double> values)
         {
@@ -46,7 +49,7 @@ namespace svm_fs_batch
 
         internal double[] scale(double[] values, scaling.scale_function scale_function)
         {
-            return values.Select(a => scale(a, scale_function)).ToArray();
+            return values == null || values.Length == 0 ? Array.Empty<double>() : values.Select(a => scale(a, scale_function)).ToArray();
         }
 
         internal double scale(double value, scaling.scale_function scale_function)
@@ -59,7 +62,9 @@ namespace svm_fs_batch
 
             switch (scale_function)
             {
-                case scaling.scale_function.none: return value;
+                case scaling.scale_function.none:
+
+                    return value;
 
                 case scaling.scale_function.rescale:
 
@@ -108,7 +113,9 @@ namespace svm_fs_batch
 
                     return value / sp.srsos;
 
-                default: throw new ArgumentOutOfRangeException(nameof(scale_function)); //return 0;
+                default: 
+                    
+                    throw new ArgumentOutOfRangeException(nameof(scale_function)); //return 0;
             }
         }
     }

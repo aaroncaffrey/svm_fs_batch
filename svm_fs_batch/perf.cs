@@ -164,7 +164,7 @@ namespace svm_fs_batch
         }
 
 
-        internal static List<prediction> load_prediction_file_regression_values(IList<(string test_file, string test_comments_file, string prediction_file)> files)
+        internal static List<prediction> load_prediction_file_regression_values(IList<(string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)> files)
         {
             // method untested
             const string method_name = nameof(load_prediction_file_regression_values);
@@ -173,7 +173,8 @@ namespace svm_fs_batch
                 (
                     test_file_lines: io_proxy.ReadAllLines(a.test_file, module_name, method_name).ToList(),
                     test_comments_file_lines: io_proxy.ReadAllLines(a.test_comments_file, module_name, method_name).ToList(),
-                    prediction_file_lines: io_proxy.ReadAllLines(a.prediction_file, module_name, method_name).ToList()
+                    prediction_file_lines: io_proxy.ReadAllLines(a.prediction_file, module_name, method_name).ToList(),
+                    test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? io_proxy.ReadAllLines(a.test_class_sample_id_list_file, module_name, method_name).ToList() : null
                 )).ToList();
 
             // prediction file MAY have a header, but only if probability estimates are enabled
@@ -193,17 +194,21 @@ namespace svm_fs_batch
             lines = lines.AsParallel().AsOrdered().Select((a, i) => (
                 a.test_file_lines, 
                 a.test_comments_file_lines.Skip(1 /* skip header */).ToList(),
-                a.prediction_file_lines.Skip(i > 0 && prediction_has_headers ? 1 : 0).ToList()
+                a.prediction_file_lines.Skip(i > 0 && prediction_has_headers ? 1 : 0).ToList(),
+                a.test_class_sample_id_list_lines
             )).ToList();
 
             var test_file_lines = lines.SelectMany(a => a.test_file_lines).ToList();
             var test_comments_file_lines = lines.SelectMany(a => a.test_comments_file_lines).ToList();
             var prediction_file_lines = lines.SelectMany(a => a.prediction_file_lines).ToList();
 
-            return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines);
+            var test_class_sample_id_list = lines.Where(a=> a.test_class_sample_id_list_lines != null).SelectMany(a => a.test_class_sample_id_list_lines).Select(a => int.Parse(a)).ToList();
+            if (test_class_sample_id_list.Count == 0) test_class_sample_id_list = null;
+
+            return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static List<prediction> load_prediction_file_regression_values(string test_file, string test_comments_file, string prediction_file)
+        internal static List<prediction> load_prediction_file_regression_values(string test_file, string test_comments_file, string prediction_file, string test_sample_id_list_file = null)
         {
             
             const string method_name = nameof(load_prediction_file_regression_values);
@@ -234,10 +239,13 @@ namespace svm_fs_batch
 
             var prediction_file_lines = io_proxy.ReadAllLines(prediction_file, module_name, method_name).ToList();
 
-            return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines);
+            var test_sample_id_list_lines = !string.IsNullOrWhiteSpace(test_sample_id_list_file) ? io_proxy.ReadAllLines(test_sample_id_list_file, module_name, method_name).ToList() : null;
+            var test_class_sample_id_list = test_sample_id_list_lines != null ? test_sample_id_list_lines.Select(a => int.Parse(a)).ToList() : null;
+
+            return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static List<prediction> load_prediction_file_regression_values_from_text(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, IList<int> test_class_sample_id_list = null)
+        internal static List<prediction> load_prediction_file_regression_values_from_text(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, IList<int> test_class_sample_id_list)
         {
             // todo: output misclassification file
 
@@ -381,7 +389,7 @@ namespace svm_fs_batch
             return (prediction_list, cm_list);
         }
 
-        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list = null)
+        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list)
         {
 
             //var param_list = new List<(string key, string value)>()

@@ -11,7 +11,7 @@ namespace svm_fs_batch
         internal int unrolled_partition_index = -1;
         internal int unrolled_instance_index = -1;
         internal int iteration_index = -1;
-        internal string iteration_name;
+        //internal string iteration_name;
         internal int group_array_index = -1;
         internal int total_groups = -1;
         internal bool calc_11p_thresholds = false;
@@ -36,7 +36,7 @@ namespace svm_fs_batch
             var list = new (string name, string value, string value_max)[]
             {
                 (nameof(this.iteration_index), $@"{this.iteration_index}", $@""),
-                (nameof(this.iteration_name), $@"{this.iteration_name}", $@""),
+                //(nameof(this.iteration_name), $@"{this.iteration_name}", $@""),
                 (nameof(this.group_array_index), $@"{this.group_array_index}", this.total_groups > -1 ? $@"{this.total_groups}" : $@""), 
                 (nameof(this.unrolled_instance_index), $@"{this.unrolled_instance_index}", this.total_instances > -1 ? $@"{this.total_instances}" : $@""), 
                 (nameof(this.unrolled_whole_index), $@"{this.unrolled_whole_index}", this.total_whole_indexes > -1 ? $@"{this.total_whole_indexes}" : $@""),
@@ -84,7 +84,7 @@ namespace svm_fs_batch
             unrolled_partition_index = index_data.unrolled_partition_index;
             unrolled_instance_index = index_data.unrolled_instance_index;
             iteration_index = index_data.iteration_index;
-            iteration_name = index_data.iteration_name;
+            //iteration_name = index_data.iteration_name;
 
             group_array_index = index_data.group_array_index;
             total_groups = index_data.total_groups;

@@ -31,9 +31,73 @@ namespace svm_fs_batch
         internal int setup_total_vcpus = -1;
         internal int setup_instance_vcpus = -1;
 
-        internal List<(string key, int int_value, string str_value)> args = new List<(string key, int int_value, string str_value)>();
+        internal List<(string key, string as_str, int? as_int, double? as_double, bool? as_bool)> args = new List<(string key, string as_str, int? as_int, double? as_double, bool? as_bool)>();
 
 
+        internal static List<(string key, string as_str, int? as_int, double? as_double, bool? as_bool)> get_params(string[] args)
+        {
+            var x = new List<(string key, string value)>();
+
+            if (args == null || args.Length == 0)
+            {
+                return null;
+            }
+
+            args = args.SelectMany(a => a.Split(new char[] { '=' }, StringSplitOptions.RemoveEmptyEntries)).Where(a => !string.IsNullOrWhiteSpace(a)).ToArray();
+
+            var name = "";
+            var value = "";
+
+            for (var i = 0; i < args.Length; i++)
+            {
+                var arg = args[i];
+
+                var starts_dash = arg[0] == '-';
+                var is_num = double.TryParse(arg, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var val_out);
+
+                var is_name = starts_dash && (!is_num || string.IsNullOrEmpty(name)) && arg.Length > 1;
+                var is_value = !is_name;
+                var is_final_index = i == args.Length - 1;
+
+                if (is_name)
+                {
+                    if (!string.IsNullOrWhiteSpace(name) || !string.IsNullOrWhiteSpace(value))
+                    {
+                        x.Add((name, value));
+                    };
+
+                    name = arg[1..];
+                    value = "";
+                }
+
+                if (is_value) value += (value.Length > 0 ? " " : "") + arg;
+
+                if (is_final_index)
+                {
+                    x.Add((name, value));
+                }
+            }
+
+            var x2 = new List<(string key, string as_str, int? as_int, double? as_double, bool? as_bool)>();
+
+            x2 = x.Select(a =>
+            {
+                var as_int = int.TryParse(a.value, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var as_int_out) ? (int?)as_int_out : (int?) null;
+                var as_double = double.TryParse(a.value, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var as_double_out) ? (double?)as_double_out : (double?) null;
+                var as_bool = bool.TryParse(a.value, out var as_bool_out) ? (bool?)as_bool_out : (bool?) null;
+
+                if (as_bool == null)
+                {
+                    if (string.IsNullOrWhiteSpace(a.value)) as_bool = true;
+                    else if (as_int == 0 && as_double == 0) as_bool = false;
+                    else if (as_int == 1 && as_double == 1) as_bool = true;
+                }
+
+                return (a.key, a.value, as_int, as_double, as_bool);
+            }).ToList();
+
+            return x2;
+        }
 
         public program_args()
         {
@@ -42,113 +106,121 @@ namespace svm_fs_batch
 
         public program_args(string[] args)
         {
-            var arg_list = new string[]
+            const string method_name = nameof(program_args);
+
+            var arg_names = new string[]
             {
                     nameof(folds), nameof(repetitions), nameof(outer_cv_folds), nameof(outer_cv_folds_to_run), nameof(inner_folds), nameof(setup), nameof(run_local), nameof(experiment_name), nameof(job_id), nameof(job_name),
                     nameof(instance_array_index_start), nameof(instance_array_index_end), nameof(array_instances), nameof(array_step), nameof(array_start), nameof(array_end), nameof(setup_total_vcpus), nameof(setup_instance_vcpus),
             };
 
-            var args_given = args.AsParallel().AsOrdered().Where(a => a.StartsWith('-')).Select(a => a[1..]).ToList();
+            this.args = get_params(args);
 
-            if (args_given.Any(a => !arg_list.Contains(a))) throw new Exception();
-
-            if (args_given.Any(a => args_given.Count(b => a == b) > 1)) throw new Exception();
-
-            //var arg_list_indexes = arg_list.Select(name => args.ToList().FindIndex(arg => string.Equals(arg, $"-{name}", StringComparison.InvariantCultureIgnoreCase))).ToList();
-            var arg_list_indexes = arg_list.AsParallel().AsOrdered().Select(name => 
-                (
-                    arg_name: name, 
-                    arg_index: args.ToList().FindIndex(arg => string.Equals(arg, $"-{name}", StringComparison.InvariantCultureIgnoreCase))))
-                .Where(a => a.arg_index != -1).OrderBy(a => a.arg_index).ToList();
-
-
-            for (var i = 0; i < arg_list_indexes.Count; i++)
+            if (this.args.Any(a => !arg_names.Contains(a.key)))
             {
-                var arg = arg_list_indexes[i];
-
-
-                var arg_given = arg.arg_index > -1;
-
-                var next_arg_index = arg_list_indexes.FindIndex(a => a.arg_index > arg.arg_index);
-                var value_str = arg_given ? string.Join(" ", args.Where((a, k) => k > arg.arg_index && (next_arg_index == -1 || k < arg_list_indexes[next_arg_index].arg_index)).ToList()) : "";
-                var value_given = !string.IsNullOrWhiteSpace(value_str);
-
-                if ((arg_given && !value_given) || (!arg_given && value_given)) throw new Exception();
-
-                if (arg_given && value_given)
-                {
-                    var value_int = int.TryParse(value_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_value_int) ? out_value_int : -1;
-                    //var value_double = double.TryParse(value_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_value_double) ? out_value_double : -1;
-                    //var value_bool = bool.TryParse(value_str, out var out_value_bool) ? out_value_bool : false;
-
-                    if (this.args.Any(a => a.key == arg.arg_name)) throw new Exception();
-
-                    this.args.Add((arg.arg_name, value_int, value_str));
-
-                    switch (arg.arg_name)
-                    {
-                        case nameof(experiment_name):
-                            experiment_name = value_str;
-                            break;
-                        case nameof(job_id):
-                            job_id = value_str;
-                            break;
-                        case nameof(job_name):
-                            job_name = value_str;
-                            break;
-                        case nameof(run_local):
-                            run_local = value_int == 1;
-                            break;
-                        case nameof(setup):
-                            setup = value_int == 1;
-                            break;
-                        case nameof(folds):
-                            folds = value_int;
-                            inner_folds = value_int;
-                            outer_cv_folds = value_int;
-                            outer_cv_folds_to_run = value_int;
-                            repetitions = value_int;
-                            break;
-                        case nameof(repetitions):
-                            repetitions = value_int;
-                            break;
-                        case nameof(outer_cv_folds):
-                            outer_cv_folds = value_int;
-                            break;
-                        case nameof(outer_cv_folds_to_run):
-                            outer_cv_folds_to_run = value_int;
-                            break;
-                        case nameof(inner_folds):
-                            inner_folds = value_int;
-                            break;
-                        case nameof(instance_array_index_start):
-                            instance_array_index_start = value_int;
-                            break;
-                        case nameof(instance_array_index_end):
-                            instance_array_index_end = value_int;
-                            break;
-                        case nameof(array_instances):
-                            array_instances = value_int;
-                            break;
-                        case nameof(array_step):
-                            array_step = value_int;
-                            break;
-                        case nameof(array_start):
-                            array_start = value_int;
-                            break;
-                        case nameof(array_end):
-                            array_end = value_int;
-                            break;
-                        case nameof(setup_total_vcpus):
-                            setup_total_vcpus = value_int;
-                            break;
-                        case nameof(setup_instance_vcpus):
-                            setup_instance_vcpus = value_int;
-                            break;
-                        default: break;
-                    }
-                }
+                throw new ArgumentOutOfRangeException(nameof(args), $@"{module_name}.{method_name}: invalid arguments");
             }
+
+            if (this.args.Any(a => this.args.Count(b => string.Equals(a.key, b.key, StringComparison.OrdinalIgnoreCase)) > 1))
+            {
+                throw new ArgumentOutOfRangeException(nameof(args), $@"{module_name}.{method_name}: arguments specified more than once");
+            }
+
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(experiment_name), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                experiment_name = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(experiment_name), StringComparison.OrdinalIgnoreCase)).as_str;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(job_id), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                job_id = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(job_id), StringComparison.OrdinalIgnoreCase)).as_str;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(job_name), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                job_name = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(job_name), StringComparison.OrdinalIgnoreCase)).as_str;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(run_local), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                run_local = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(run_local), StringComparison.OrdinalIgnoreCase)).as_bool.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(setup), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                setup = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(setup), StringComparison.OrdinalIgnoreCase)).as_bool.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(folds), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                folds = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(folds), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+                inner_folds = folds.Value;
+                outer_cv_folds = folds.Value;
+                outer_cv_folds_to_run = folds.Value;
+                repetitions = folds.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(repetitions), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                repetitions = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(repetitions), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(outer_cv_folds), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                outer_cv_folds = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(outer_cv_folds), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(outer_cv_folds_to_run), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                outer_cv_folds_to_run = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(outer_cv_folds_to_run), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(inner_folds), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                inner_folds = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(inner_folds), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(instance_array_index_start), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                instance_array_index_start = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(instance_array_index_start), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(instance_array_index_end), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                instance_array_index_end = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(instance_array_index_end), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(array_instances), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                array_instances = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(array_instances), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(array_step), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                array_step = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(array_step), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(array_start), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                array_start = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(array_start), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(array_end), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                array_end = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(array_end), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(setup_total_vcpus), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                setup_total_vcpus = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(setup_total_vcpus), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
+            if (this.args.Any(a => string.Equals(a.key, nameof(setup_instance_vcpus), StringComparison.InvariantCultureIgnoreCase)))
+            {
+                setup_instance_vcpus = this.args.FirstOrDefault(a => string.Equals(a.key, nameof(setup_instance_vcpus), StringComparison.OrdinalIgnoreCase)).as_int.Value;
+            }
+
         }
     }
 }

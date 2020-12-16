@@ -13,14 +13,14 @@ namespace svm_fs_batch
         internal int total_groups;
         internal int iterations_not_higher_than_all;
         internal int iterations_not_higher_than_last;
-        internal int deep_search_index;
+        //internal int deep_search_index;
         internal bool feature_selection_finished;
         internal string[] scoring_metrics;
         internal int[] scoring_class_ids;
 
-        internal score_data this_winner_score_data;
-        internal score_data last_winner_score_data;
-        internal score_data best_winner_score_data;
+        internal score_data this_winner_score_data; // the winner of the current iteration
+        internal score_data last_winner_score_data; // the winner of the last iteration (may not be the best winner overall)
+        internal score_data best_winner_score_data; // the overall best winner from all iterations  ('winner' means the set of groups/features)
 
         public feature_selection_status()
         {
@@ -51,21 +51,25 @@ namespace svm_fs_batch
                 $@"fs_{nameof(iterations_not_higher_than_all)}",
                 $@"fs_{nameof(iterations_not_higher_than_last)}",
                 $@"fs_{nameof(feature_selection_finished)}",
-                $@"fs_{nameof(deep_search_index)}",
-
-                $@"winner_key_file_tag",
-                $@"winner_key_alphabet",
-                $@"winner_key_stats",
-                $@"winner_key_dimension",
-                $@"winner_key_category",
-                $@"winner_key_source",
-                $@"winner_key_group",
-                $@"winner_key_member",
-                $@"winner_key_perspective",
+                //$@"fs_{nameof(deep_search_index)}",
+                $@"_",
+                $@"this_winner_key_file_tag",
+                $@"this_winner_key_alphabet",
+                $@"this_winner_key_stats",
+                $@"this_winner_key_dimension",
+                $@"this_winner_key_category",
+                $@"this_winner_key_source",
+                $@"this_winner_key_group",
+                $@"this_winner_key_member",
+                $@"this_winner_key_perspective",
+                $@"_",
             }
-            .Concat(score_data.csv_header_array.Select(a => $@"this_winner_{a}").ToArray())
-            .Concat(score_data.csv_header_array.Select(a => $@"last_winner_{a}").ToArray())
-            .Concat(score_data.csv_header_array.Select(a => $@"best_winner_{a}").ToArray())
+            .Concat(score_data.csv_header_values.Select(a => $@"this_winner_{a}").ToArray())
+            .Concat(new[] { $@"_" })
+            .Concat(score_data.csv_header_values.Select(a => $@"last_winner_{a}").ToArray())
+            .Concat(new[] { $@"_" })
+            .Concat(score_data.csv_header_values.Select(a => $@"best_winner_{a}").ToArray())
+            .Concat(new[] { $@"_" })
             .ToArray();
         
 
@@ -86,8 +90,10 @@ namespace svm_fs_batch
                 $@"{iterations_not_higher_than_all}",
                 $@"{iterations_not_higher_than_last}",
                 $@"{(feature_selection_finished?1:0)}",
-                $@"{deep_search_index}",
-
+                //$@"{deep_search_index}",
+                
+                $@"_",
+                
                 $@"{winner_key.file_tag}",
                 $@"{winner_key.alphabet}",
                 $@"{winner_key.stats}",
@@ -97,11 +103,16 @@ namespace svm_fs_batch
                 $@"{winner_key.group}",
                 $@"{winner_key.member}",
                 $@"{winner_key.perspective}",
+
+                $@"_",
             };
 
             array1.AddRange(this_winner_score_data.csv_values_array());
+            array1.AddRange(new[] { $@"_" });
             array1.AddRange(last_winner_score_data.csv_values_array());
+            array1.AddRange(new[] { $@"_" });
             array1.AddRange(best_winner_score_data.csv_values_array());
+            array1.AddRange(new[] { $@"_" });
 
             return array1.Select(a => a?.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase) ?? "").ToArray();
         }

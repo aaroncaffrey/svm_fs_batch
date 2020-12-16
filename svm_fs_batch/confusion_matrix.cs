@@ -10,28 +10,71 @@ namespace svm_fs_batch
     {
         public const string module_name = nameof(confusion_matrix);
 
+        // note: load does not load the rd/sd part of the cm file.  this has to be recalculated after loading the cm.
 
-        internal static void save(string cm_list_filename, IList<confusion_matrix> cm_list, IList<score_data> sd_list = null)
+        internal static void save(string cm_filename, IList<confusion_matrix> cm_list)
+        {
+            save(cm_filename, cm_list, null, null);
+        }
+
+        internal static void save(string cm_sd_list_filename, IList<(confusion_matrix cm, score_data sd)> cm_sd_list)
+        {
+            save(cm_sd_list_filename, cm_sd_list.Select(a => a.cm).ToArray(), cm_sd_list.Select(a => a.sd).ToArray(), null);
+        }
+
+        internal static void save(string cm_sd_rd_list_filename, IList<(confusion_matrix cm, score_data sd, rank_data rd)> cm_sd_rd_list)
+        {
+            save(cm_sd_rd_list_filename, cm_sd_rd_list.Select(a => a.cm).ToArray(), cm_sd_rd_list.Select(a => a.sd).ToArray(), cm_sd_rd_list.Select(a => a.rd).ToArray());
+        }
+
+
+        internal static void save(string cm_sd_rd_list_filename, IList<confusion_matrix> cm_list, IList<score_data> sd_list, IList<rank_data> rd_list)
         {
             const string method_name = nameof(save);
 
-            if (sd_list != null && cm_list.Count != sd_list.Count) throw new Exception();
+            if (string.IsNullOrWhiteSpace(cm_sd_rd_list_filename)) throw new Exception();
 
-            var lines = new string[cm_list.Count+1];
+            var lens = new int[] { cm_list?.Count??0, sd_list?.Count??0, rd_list?.Count??0 }.Where(a=>a>0).ToArray();
 
-            if (sd_list == null) { lines[0] = csv_header; } 
-            else { lines[0] = score_data.csv_header + "," + csv_header; }
+            if (lens.Length == 0 || lens.Distinct().Count() > 1) throw new Exception();
+
+            var lines = new string[lens.Max() + 1];
+
+            var csv_header_values = new List<string>();
+
+            if (sd_list != null && sd_list.Count > 0) { csv_header_values.AddRange(score_data.csv_header_values); csv_header_values.Add($@"_"); }
+            if (rd_list != null && rd_list.Count > 0) { csv_header_values.AddRange(rank_data.csv_header_values); csv_header_values.Add($@"_"); }
+            if (cm_list != null && cm_list.Count > 0) { csv_header_values.AddRange(confusion_matrix.csv_header_values); csv_header_values.Add($@"_"); }
+
+            lines[0] = string.Join(",", csv_header_values);
+
 
             Parallel.For(0,
                 cm_list.Count,
                 i =>
-                    //for (var i = 0; i < cm_list.Count; i++)
                 {
-                    if (sd_list == null) { lines[i + 1] = cm_list[i].csv_values(); }
-                    else { lines[i + 1] = sd_list[i].csv_values() + "," + cm_list[i].csv_values(); }
+                    var values = new List<string>();
+                    if (sd_list != null && sd_list.Count > 0)
+                    {
+                        values.AddRange(sd_list[i].csv_values_array());
+                        values.Add($@"_");
+                    }
+
+                    if (rd_list != null && rd_list.Count > 0)
+                    {
+                        values.AddRange(rd_list[i].csv_values_array());
+                        values.Add($@"_");
+                    }
+
+                    if (cm_list != null && cm_list.Count > 0)
+                    {
+                        values.AddRange(cm_list[i].csv_values_array());
+                        values.Add($@"_");
+                    }
+                    lines[i + 1] = string.Join(",", values);
                 });
 
-            io_proxy.WriteAllLines(cm_list_filename, lines, module_name, method_name);
+            io_proxy.WriteAllLines(cm_sd_rd_list_filename, lines, module_name, method_name);
         }
 
         internal static List<confusion_matrix> load(string filename, int column_offset = -1)
@@ -78,7 +121,7 @@ namespace svm_fs_batch
                 .AsParallel()
                 .AsOrdered()
                 .Select(line =>
-                    //for (var line_index = 0; line_index < lines.Count; line_index++)// in lines.Where(a => !string.IsNullOrWhiteSpace(a)))
+                //for (var line_index = 0; line_index < lines.Count; line_index++)// in lines.Where(a => !string.IsNullOrWhiteSpace(a)))
                 {
                     //var line = lines[line_index];
 
@@ -89,9 +132,9 @@ namespace svm_fs_batch
 
                     var s_all = line.Split(',').ToList();
 
-                    var x_double = s_all.AsParallel().AsOrdered().Select(a => double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var out_double) ? out_double : (double?) null).ToList();
-                    var x_int = s_all.AsParallel().AsOrdered().Select((a, j) => int.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out var out_int) ? out_int : (int?) null).ToList();
-                    var x_bool = s_all.AsParallel().AsOrdered().Select((a,j) =>
+                    var x_double = s_all.AsParallel().AsOrdered().Select(a => double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var out_double) ? out_double : (double?)null).ToList();
+                    var x_int = s_all.AsParallel().AsOrdered().Select((a, j) => int.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out var out_int) ? out_int : (int?)null).ToList();
+                    var x_bool = s_all.AsParallel().AsOrdered().Select((a, j) =>
                     {
                         if (x_int[j] == 0) return (bool?)false;
                         if (x_int[j] == 1) return (bool?)true;
@@ -118,7 +161,8 @@ namespace svm_fs_batch
 
                     var x_str = s_all.Skip(column_offset).ToList();
 
-                    if (x_str.Count != csv_header_values.Count) return null;//continue;
+                    //if (x_str.Count != csv_header_values.Count) return null;//continue;
+                    if (x_str.Count < csv_header_values.Count) return null;//continue;
 
 
                     var k = 0; // column_offset;
@@ -134,13 +178,13 @@ namespace svm_fs_batch
                     {
                         selection_test_info = new selection_test_info()
                         {
-                            y_is_group_selected = x_bool[k++] ?? default, 
-                            y_is_only_selection = x_bool[k++] ?? default, 
+                            y_is_group_selected = x_bool[k++] ?? default,
+                            y_is_only_selection = x_bool[k++] ?? default,
                             y_is_last_winner = x_bool[k++] ?? default,
-                            y_num_groups_added_from_last_iteration = x_int[k++] ?? default,
-                            y_num_columns_added_from_last_iteration = x_int[k++] ?? default,
-                            y_num_groups_added_from_highest_score_iteration = x_int[k++] ?? default,
-                            y_num_columns_added_from_highest_score_iteration = x_int[k++] ?? default,
+                            //y_num_groups_added_from_last_iteration = x_int[k++] ?? default,
+                            //y_num_columns_added_from_last_iteration = x_int[k++] ?? default,
+                            //y_num_groups_added_from_highest_score_iteration = x_int[k++] ?? default,
+                            //y_num_columns_added_from_highest_score_iteration = x_int[k++] ?? default,
                             y_selection_direction = Enum.TryParse(x_str[k++], out program.direction out_selection_direction) ? out_selection_direction : default,
 
                             y_test_groups_count = x_int[k++] ?? default,
@@ -148,22 +192,22 @@ namespace svm_fs_batch
                             y_test_groups = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
                             y_test_columns = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
 
-                            y_previous_winner_groups_count = x_int[k++] ?? default,
-                            y_previous_winner_columns_count = x_int[k++] ?? default,
-                            y_previous_winner_groups = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
-                            y_previous_winner_columns = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
+                            //y_previous_winner_groups_count = x_int[k++] ?? default,
+                            //y_previous_winner_columns_count = x_int[k++] ?? default,
+                            //y_previous_winner_groups = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
+                            //y_previous_winner_columns = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
 
-                            y_best_winner_groups_count = x_int[k++] ?? default,
-                            y_best_winner_columns_count = x_int[k++] ?? default,
-                            y_best_winner_groups = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
-                            y_best_winner_columns = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
-                            
+                            //y_best_winner_groups_count = x_int[k++] ?? default,
+                            //y_best_winner_columns_count = x_int[k++] ?? default,
+                            //y_best_winner_groups = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
+                            //y_best_winner_columns = x_str[k++].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).ToArray(),
+
                         },
 
                         x_experiment_name = x_str[k++],
-                        x_id = x_int[k++],
+                        //x_id = x_int[k++],
                         x_iteration_index = x_int[k++],
-                        x_iteration_name = x_str[k++],
+                        //x_iteration_name = x_str[k++],
                         x_group_array_index = x_int[k++],
                         x_total_groups = x_int[k++],
                         x_calc_11p_thresholds = x_bool[k++],
@@ -197,7 +241,7 @@ namespace svm_fs_batch
                         x_outer_cv_folds_to_run = x_int[k++] ?? 0,
                         x_svm_type = Enum.TryParse(x_str[k++], out routines.libsvm_svm_type out_svm_type) ? out_svm_type : default,
                         x_svm_kernel = Enum.TryParse(x_str[k++], out routines.libsvm_kernel_type out_svm_kernel) ? out_svm_kernel : default,
-                        grid_point = new grid_point() {cost = x_double[k++], gamma = x_double[k++], epsilon = x_double[k++], coef0 = x_double[k++], degree = x_double[k++],},
+                        grid_point = new grid_point() { cost = x_double[k++], gamma = x_double[k++], epsilon = x_double[k++], coef0 = x_double[k++], degree = x_double[k++], },
                         x_class_id = x_int[k++],
                         x_class_weight = x_double[k++],
                         x_class_name = x_str[k++],
@@ -269,71 +313,71 @@ namespace svm_fs_batch
                             F1B_09 = x_double[k++] ?? 0,
                             F1B_10 = x_double[k++] ?? 0,
                         },
-                        metrics_ppf = new metrics_box()
-                        {
-                            P = x_double[k++] ?? 0,
-                            N = x_double[k++] ?? 0,
-                            TP = x_double[k++] ?? 0,
-                            FP = x_double[k++] ?? 0,
-                            TN = x_double[k++] ?? 0,
-                            FN = x_double[k++] ?? 0,
-                            TPR = x_double[k++] ?? 0,
-                            TNR = x_double[k++] ?? 0,
-                            PPV = x_double[k++] ?? 0,
-                            Precision = x_double[k++] ?? 0,
-                            Prevalence = x_double[k++] ?? 0,
-                            MCR = x_double[k++] ?? 0,
-                            ER = x_double[k++] ?? 0,
-                            NER = x_double[k++] ?? 0,
-                            CNER = x_double[k++] ?? 0,
-                            Kappa = x_double[k++] ?? 0,
-                            Overlap = x_double[k++] ?? 0,
-                            RND_ACC = x_double[k++] ?? 0,
-                            Support = x_double[k++] ?? 0,
-                            BaseRate = x_double[k++] ?? 0,
-                            YoudenIndex = x_double[k++] ?? 0,
-                            NPV = x_double[k++] ?? 0,
-                            FNR = x_double[k++] ?? 0,
-                            FPR = x_double[k++] ?? 0,
-                            FDR = x_double[k++] ?? 0,
-                            FOR = x_double[k++] ?? 0,
-                            ACC = x_double[k++] ?? 0,
-                            GMean = x_double[k++] ?? 0,
-                            F1S = x_double[k++] ?? 0,
-                            G1S = x_double[k++] ?? 0,
-                            MCC = x_double[k++] ?? 0,
-                            Informedness = x_double[k++] ?? 0,
-                            Markedness = x_double[k++] ?? 0,
-                            BalancedAccuracy = x_double[k++] ?? 0,
-                            ROC_AUC_Approx_All = x_double[k++] ?? 0,
-                            ROC_AUC_Approx_11p = x_double[k++] ?? 0,
-                            ROC_AUC_All = x_double[k++] ?? 0,
-                            PR_AUC_Approx_All = x_double[k++] ?? 0,
-                            PR_AUC_Approx_11p = x_double[k++] ?? 0,
-                            PRI_AUC_Approx_All = x_double[k++] ?? 0,
-                            PRI_AUC_Approx_11p = x_double[k++] ?? 0,
-                            AP_All = x_double[k++] ?? 0,
-                            AP_11p = x_double[k++] ?? 0,
-                            API_All = x_double[k++] ?? 0,
-                            API_11p = x_double[k++] ?? 0,
-                            Brier_Inverse_All = x_double[k++] ?? 0,
-                            LRP = x_double[k++] ?? 0,
-                            LRN = x_double[k++] ?? 0,
-                            DOR = x_double[k++] ?? 0,
-                            PrevalenceThreshold = x_double[k++] ?? 0,
-                            CriticalSuccessIndex = x_double[k++] ?? 0,
-                            F1B_00 = x_double[k++] ?? 0,
-                            F1B_01 = x_double[k++] ?? 0,
-                            F1B_02 = x_double[k++] ?? 0,
-                            F1B_03 = x_double[k++] ?? 0,
-                            F1B_04 = x_double[k++] ?? 0,
-                            F1B_05 = x_double[k++] ?? 0,
-                            F1B_06 = x_double[k++] ?? 0,
-                            F1B_07 = x_double[k++] ?? 0,
-                            F1B_08 = x_double[k++] ?? 0,
-                            F1B_09 = x_double[k++] ?? 0,
-                            F1B_10 = x_double[k++] ?? 0,
-                        },
+                        //metrics_ppf = new metrics_box()
+                        //{
+                        //    P = x_double[k++] ?? 0,
+                        //    N = x_double[k++] ?? 0,
+                        //    TP = x_double[k++] ?? 0,
+                        //    FP = x_double[k++] ?? 0,
+                        //    TN = x_double[k++] ?? 0,
+                        //    FN = x_double[k++] ?? 0,
+                        //    TPR = x_double[k++] ?? 0,
+                        //    TNR = x_double[k++] ?? 0,
+                        //    PPV = x_double[k++] ?? 0,
+                        //    Precision = x_double[k++] ?? 0,
+                        //    Prevalence = x_double[k++] ?? 0,
+                        //    MCR = x_double[k++] ?? 0,
+                        //    ER = x_double[k++] ?? 0,
+                        //    NER = x_double[k++] ?? 0,
+                        //    CNER = x_double[k++] ?? 0,
+                        //    Kappa = x_double[k++] ?? 0,
+                        //    Overlap = x_double[k++] ?? 0,
+                        //    RND_ACC = x_double[k++] ?? 0,
+                        //    Support = x_double[k++] ?? 0,
+                        //    BaseRate = x_double[k++] ?? 0,
+                        //    YoudenIndex = x_double[k++] ?? 0,
+                        //    NPV = x_double[k++] ?? 0,
+                        //    FNR = x_double[k++] ?? 0,
+                        //    FPR = x_double[k++] ?? 0,
+                        //    FDR = x_double[k++] ?? 0,
+                        //    FOR = x_double[k++] ?? 0,
+                        //    ACC = x_double[k++] ?? 0,
+                        //    GMean = x_double[k++] ?? 0,
+                        //    F1S = x_double[k++] ?? 0,
+                        //    G1S = x_double[k++] ?? 0,
+                        //    MCC = x_double[k++] ?? 0,
+                        //    Informedness = x_double[k++] ?? 0,
+                        //    Markedness = x_double[k++] ?? 0,
+                        //    BalancedAccuracy = x_double[k++] ?? 0,
+                        //    ROC_AUC_Approx_All = x_double[k++] ?? 0,
+                        //    ROC_AUC_Approx_11p = x_double[k++] ?? 0,
+                        //    ROC_AUC_All = x_double[k++] ?? 0,
+                        //    PR_AUC_Approx_All = x_double[k++] ?? 0,
+                        //    PR_AUC_Approx_11p = x_double[k++] ?? 0,
+                        //    PRI_AUC_Approx_All = x_double[k++] ?? 0,
+                        //    PRI_AUC_Approx_11p = x_double[k++] ?? 0,
+                        //    AP_All = x_double[k++] ?? 0,
+                        //    AP_11p = x_double[k++] ?? 0,
+                        //    API_All = x_double[k++] ?? 0,
+                        //    API_11p = x_double[k++] ?? 0,
+                        //    Brier_Inverse_All = x_double[k++] ?? 0,
+                        //    LRP = x_double[k++] ?? 0,
+                        //    LRN = x_double[k++] ?? 0,
+                        //    DOR = x_double[k++] ?? 0,
+                        //    PrevalenceThreshold = x_double[k++] ?? 0,
+                        //    CriticalSuccessIndex = x_double[k++] ?? 0,
+                        //    F1B_00 = x_double[k++] ?? 0,
+                        //    F1B_01 = x_double[k++] ?? 0,
+                        //    F1B_02 = x_double[k++] ?? 0,
+                        //    F1B_03 = x_double[k++] ?? 0,
+                        //    F1B_04 = x_double[k++] ?? 0,
+                        //    F1B_05 = x_double[k++] ?? 0,
+                        //    F1B_06 = x_double[k++] ?? 0,
+                        //    F1B_07 = x_double[k++] ?? 0,
+                        //    F1B_08 = x_double[k++] ?? 0,
+                        //    F1B_09 = x_double[k++] ?? 0,
+                        //    F1B_10 = x_double[k++] ?? 0,
+                        //},
                         //metrics_ppg = new metrics_box()
                         //{
                         //    P = x_double[k++] ?? 0,
@@ -412,7 +456,7 @@ namespace svm_fs_batch
                     return cm;
                     //cms.Add(new confusion_matrix_data() {line = line, cm = cm, key_value_list = key_value_list, unknown_key_value_list = unknown_key_value_list,});
                 })
-                .Where(a=>a!=null)
+                .Where(a => a != null)
                 .ToList();
 
             //var cm_list = cms.Select(a => a.cm).ToList();
@@ -423,9 +467,9 @@ namespace svm_fs_batch
         internal List<prediction> predictions;
 
         internal string x_experiment_name;
-        internal int? x_id;
+        //internal int? x_id;
         internal int? x_iteration_index;
-        internal string x_iteration_name;
+        //internal string x_iteration_name;
         internal int? x_group_array_index;
         internal int? x_total_groups;
         internal bool? x_calc_11p_thresholds;
@@ -475,7 +519,7 @@ namespace svm_fs_batch
         internal selection_test_info selection_test_info;
 
         internal metrics_box metrics;
-        internal metrics_box metrics_ppf;
+        //internal metrics_box metrics_ppf;
         //internal metrics_box metrics_ppg;
 
         internal string roc_xy_str_all;
@@ -485,7 +529,7 @@ namespace svm_fs_batch
         internal string pri_xy_str_all;
         internal string pri_xy_str_11p;
 
-       
+
 
         internal void calculate_metrics(metrics_box metrics, bool calculate_auc, IList<prediction> prediction_list)
         {
@@ -638,16 +682,16 @@ namespace svm_fs_batch
             metrics.F1B_09 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.9);
             metrics.F1B_10 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)1.0);
 
-            calculate_ppf_ppg();
+            //calculate_ppf_ppg();
         }
 
-        internal void calculate_ppf_ppg()
-        {
-            metrics_ppf = new metrics_box(metrics, selection_test_info?.y_test_columns_count ?? 0);
-            //metrics_ppg = new metrics_box(metrics, selection_test_info?.y_test_groups_count ?? 0);
-        }
+        //internal void calculate_ppf_ppg()
+        //{
+        //    //metrics_ppf = new metrics_box(metrics, selection_test_info?.y_test_columns_count ?? 0);
+        //    //metrics_ppg = new metrics_box(metrics, selection_test_info?.y_test_groups_count ?? 0);
+        //}
 
-        
+
 
         /*internal static confusion_matrix Average2(List<confusion_matrix> cm)
         {
@@ -1015,7 +1059,7 @@ namespace svm_fs_batch
             return x;
         }*/
 
-        
+
 
         internal static readonly List<string> csv_header_values = new List<string>()
             {
@@ -1023,31 +1067,30 @@ namespace svm_fs_batch
                 nameof(svm_fs_batch.selection_test_info.y_is_group_selected),
                 nameof(svm_fs_batch.selection_test_info.y_is_only_selection),
                 nameof(svm_fs_batch.selection_test_info.y_is_last_winner),
-                nameof(svm_fs_batch.selection_test_info.y_num_groups_added_from_last_iteration),
-                nameof(svm_fs_batch.selection_test_info.y_num_columns_added_from_last_iteration),
-                nameof(svm_fs_batch.selection_test_info.y_num_groups_added_from_highest_score_iteration),
-                nameof(svm_fs_batch.selection_test_info.y_num_columns_added_from_highest_score_iteration),
+                //nameof(svm_fs_batch.selection_test_info.y_num_groups_added_from_last_iteration),
+                //nameof(svm_fs_batch.selection_test_info.y_num_columns_added_from_last_iteration),
+                //nameof(svm_fs_batch.selection_test_info.y_num_groups_added_from_highest_score_iteration),
+                //nameof(svm_fs_batch.selection_test_info.y_num_columns_added_from_highest_score_iteration),
                 nameof(svm_fs_batch.selection_test_info.y_selection_direction),
-                
+
                 nameof(svm_fs_batch.selection_test_info.y_test_groups_count),
                 nameof(svm_fs_batch.selection_test_info.y_test_columns_count),
                 nameof(svm_fs_batch.selection_test_info.y_test_groups),
                 nameof(svm_fs_batch.selection_test_info.y_test_columns),
-                
-                nameof(svm_fs_batch.selection_test_info.y_previous_winner_groups_count),
-                nameof(svm_fs_batch.selection_test_info.y_previous_winner_columns_count),
-                nameof(svm_fs_batch.selection_test_info.y_previous_winner_groups),
-                nameof(svm_fs_batch.selection_test_info.y_previous_winner_columns),
 
-                nameof(svm_fs_batch.selection_test_info.y_best_winner_groups_count),
-                nameof(svm_fs_batch.selection_test_info.y_best_winner_columns_count),
-                nameof(svm_fs_batch.selection_test_info.y_best_winner_groups),
-                nameof(svm_fs_batch.selection_test_info.y_best_winner_columns),
+                //nameof(svm_fs_batch.selection_test_info.y_previous_winner_groups_count),
+                //nameof(svm_fs_batch.selection_test_info.y_previous_winner_columns_count),
+                //nameof(svm_fs_batch.selection_test_info.y_previous_winner_groups),
+                //nameof(svm_fs_batch.selection_test_info.y_previous_winner_columns),
+                //nameof(svm_fs_batch.selection_test_info.y_best_winner_groups_count),
+                //nameof(svm_fs_batch.selection_test_info.y_best_winner_columns_count),
+                //nameof(svm_fs_batch.selection_test_info.y_best_winner_groups),
+                //nameof(svm_fs_batch.selection_test_info.y_best_winner_columns),
 
                 nameof(x_experiment_name),
-                nameof(x_id),
+                //nameof(x_id),
                 nameof(x_iteration_index),
-                nameof(x_iteration_name),
+                //nameof(x_iteration_name),
                 nameof(x_group_array_index),
                 nameof(x_total_groups),
                 nameof(x_calc_11p_thresholds),
@@ -1156,68 +1199,68 @@ namespace svm_fs_batch
                 nameof(metrics_box.F1B_09),
                 nameof(metrics_box.F1B_10),
 
-                "ppf_" + nameof(metrics_box.P),
-                "ppf_" + nameof(metrics_box.N),
-                "ppf_" + nameof(metrics_box.TP),
-                "ppf_" + nameof(metrics_box.FP),
-                "ppf_" + nameof(metrics_box.TN),
-                "ppf_" + nameof(metrics_box.FN),
-                "ppf_" + nameof(metrics_box.TPR),
-                "ppf_" + nameof(metrics_box.TNR),
-                "ppf_" + nameof(metrics_box.PPV),
-                "ppf_" + nameof(metrics_box.Precision),
-                "ppf_" + nameof(metrics_box.Prevalence),
-                "ppf_" + nameof(metrics_box.MCR),
-                "ppf_" + nameof(metrics_box.ER),
-                "ppf_" + nameof(metrics_box.NER),
-                "ppf_" + nameof(metrics_box.CNER),
-                "ppf_" + nameof(metrics_box.Kappa),
-                "ppf_" + nameof(metrics_box.Overlap),
-                "ppf_" + nameof(metrics_box.RND_ACC),
-                "ppf_" + nameof(metrics_box.Support),
-                "ppf_" + nameof(metrics_box.BaseRate),
-                "ppf_" + nameof(metrics_box.YoudenIndex),
-                "ppf_" + nameof(metrics_box.NPV),
-                "ppf_" + nameof(metrics_box.FNR),
-                "ppf_" + nameof(metrics_box.FPR),
-                "ppf_" + nameof(metrics_box.FDR),
-                "ppf_" + nameof(metrics_box.FOR),
-                "ppf_" + nameof(metrics_box.ACC),
-                "ppf_" + nameof(metrics_box.GMean),
-                "ppf_" + nameof(metrics_box.F1S),
-                "ppf_" + nameof(metrics_box.G1S),
-                "ppf_" + nameof(metrics_box.MCC),
-                "ppf_" + nameof(metrics_box.Informedness),
-                "ppf_" + nameof(metrics_box.Markedness),
-                "ppf_" + nameof(metrics_box.BalancedAccuracy),
-                "ppf_" + nameof(metrics_box.ROC_AUC_Approx_All),
-                "ppf_" + nameof(metrics_box.ROC_AUC_Approx_11p),
-                "ppf_" + nameof(metrics_box.ROC_AUC_All),
-                "ppf_" + nameof(metrics_box.PR_AUC_Approx_All),
-                "ppf_" + nameof(metrics_box.PR_AUC_Approx_11p),
-                "ppf_" + nameof(metrics_box.PRI_AUC_Approx_All),
-                "ppf_" + nameof(metrics_box.PRI_AUC_Approx_11p),
-                "ppf_" + nameof(metrics_box.AP_All),
-                "ppf_" + nameof(metrics_box.AP_11p),
-                "ppf_" + nameof(metrics_box.API_All),
-                "ppf_" + nameof(metrics_box.API_11p),
-                "ppf_" + nameof(metrics_box.Brier_Inverse_All),
-                "ppf_" + nameof(metrics_box.LRP),
-                "ppf_" + nameof(metrics_box.LRN),
-                "ppf_" + nameof(metrics_box.DOR),
-                "ppf_" + nameof(metrics_box.PrevalenceThreshold),
-                "ppf_" + nameof(metrics_box.CriticalSuccessIndex),
-                "ppf_" + nameof(metrics_box.F1B_00),
-                "ppf_" + nameof(metrics_box.F1B_01),
-                "ppf_" + nameof(metrics_box.F1B_02),
-                "ppf_" + nameof(metrics_box.F1B_03),
-                "ppf_" + nameof(metrics_box.F1B_04),
-                "ppf_" + nameof(metrics_box.F1B_05),
-                "ppf_" + nameof(metrics_box.F1B_06),
-                "ppf_" + nameof(metrics_box.F1B_07),
-                "ppf_" + nameof(metrics_box.F1B_08),
-                "ppf_" + nameof(metrics_box.F1B_09),
-                "ppf_" + nameof(metrics_box.F1B_10),
+                //"ppf_" + nameof(metrics_box.P),
+                //"ppf_" + nameof(metrics_box.N),
+                //"ppf_" + nameof(metrics_box.TP),
+                //"ppf_" + nameof(metrics_box.FP),
+                //"ppf_" + nameof(metrics_box.TN),
+                //"ppf_" + nameof(metrics_box.FN),
+                //"ppf_" + nameof(metrics_box.TPR),
+                //"ppf_" + nameof(metrics_box.TNR),
+                //"ppf_" + nameof(metrics_box.PPV),
+                //"ppf_" + nameof(metrics_box.Precision),
+                //"ppf_" + nameof(metrics_box.Prevalence),
+                //"ppf_" + nameof(metrics_box.MCR),
+                //"ppf_" + nameof(metrics_box.ER),
+                //"ppf_" + nameof(metrics_box.NER),
+                //"ppf_" + nameof(metrics_box.CNER),
+                //"ppf_" + nameof(metrics_box.Kappa),
+                //"ppf_" + nameof(metrics_box.Overlap),
+                //"ppf_" + nameof(metrics_box.RND_ACC),
+                //"ppf_" + nameof(metrics_box.Support),
+                //"ppf_" + nameof(metrics_box.BaseRate),
+                //"ppf_" + nameof(metrics_box.YoudenIndex),
+                //"ppf_" + nameof(metrics_box.NPV),
+                //"ppf_" + nameof(metrics_box.FNR),
+                //"ppf_" + nameof(metrics_box.FPR),
+                //"ppf_" + nameof(metrics_box.FDR),
+                //"ppf_" + nameof(metrics_box.FOR),
+                //"ppf_" + nameof(metrics_box.ACC),
+                //"ppf_" + nameof(metrics_box.GMean),
+                //"ppf_" + nameof(metrics_box.F1S),
+                //"ppf_" + nameof(metrics_box.G1S),
+                //"ppf_" + nameof(metrics_box.MCC),
+                //"ppf_" + nameof(metrics_box.Informedness),
+                //"ppf_" + nameof(metrics_box.Markedness),
+                //"ppf_" + nameof(metrics_box.BalancedAccuracy),
+                //"ppf_" + nameof(metrics_box.ROC_AUC_Approx_All),
+                //"ppf_" + nameof(metrics_box.ROC_AUC_Approx_11p),
+                //"ppf_" + nameof(metrics_box.ROC_AUC_All),
+                //"ppf_" + nameof(metrics_box.PR_AUC_Approx_All),
+                //"ppf_" + nameof(metrics_box.PR_AUC_Approx_11p),
+                //"ppf_" + nameof(metrics_box.PRI_AUC_Approx_All),
+                //"ppf_" + nameof(metrics_box.PRI_AUC_Approx_11p),
+                //"ppf_" + nameof(metrics_box.AP_All),
+                //"ppf_" + nameof(metrics_box.AP_11p),
+                //"ppf_" + nameof(metrics_box.API_All),
+                //"ppf_" + nameof(metrics_box.API_11p),
+                //"ppf_" + nameof(metrics_box.Brier_Inverse_All),
+                //"ppf_" + nameof(metrics_box.LRP),
+                //"ppf_" + nameof(metrics_box.LRN),
+                //"ppf_" + nameof(metrics_box.DOR),
+                //"ppf_" + nameof(metrics_box.PrevalenceThreshold),
+                //"ppf_" + nameof(metrics_box.CriticalSuccessIndex),
+                //"ppf_" + nameof(metrics_box.F1B_00),
+                //"ppf_" + nameof(metrics_box.F1B_01),
+                //"ppf_" + nameof(metrics_box.F1B_02),
+                //"ppf_" + nameof(metrics_box.F1B_03),
+                //"ppf_" + nameof(metrics_box.F1B_04),
+                //"ppf_" + nameof(metrics_box.F1B_05),
+                //"ppf_" + nameof(metrics_box.F1B_06),
+                //"ppf_" + nameof(metrics_box.F1B_07),
+                //"ppf_" + nameof(metrics_box.F1B_08),
+                //"ppf_" + nameof(metrics_box.F1B_09),
+                //"ppf_" + nameof(metrics_box.F1B_10),
 
                 //"ppg_" + nameof(metrics_box.P),
                 //"ppg_" + nameof(metrics_box.N),
@@ -1310,10 +1353,10 @@ namespace svm_fs_batch
                 $"{((selection_test_info?.y_is_group_selected ?? false)? 1 : 0)}",
                 $"{((selection_test_info?.y_is_only_selection ?? false)? 1 : 0)}",
                 $"{((selection_test_info?.y_is_last_winner ?? false)? 1 : 0)}",
-                $"{selection_test_info?.y_num_groups_added_from_last_iteration}",
-                $"{selection_test_info?.y_num_columns_added_from_last_iteration}",
-                $"{selection_test_info?.y_num_groups_added_from_highest_score_iteration}",
-                $"{selection_test_info?.y_num_columns_added_from_highest_score_iteration}",
+                //$"{selection_test_info?.y_num_groups_added_from_last_iteration}",
+                //$"{selection_test_info?.y_num_columns_added_from_last_iteration}",
+                //$"{selection_test_info?.y_num_groups_added_from_highest_score_iteration}",
+                //$"{selection_test_info?.y_num_columns_added_from_highest_score_iteration}",
                 
                 $"{selection_test_info?.y_selection_direction}",
 
@@ -1322,20 +1365,20 @@ namespace svm_fs_batch
                 $"{string.Join(";",selection_test_info?.y_test_groups ?? Array.Empty<int>())}",
                 $"{string.Join(";",selection_test_info?.y_test_columns ?? Array.Empty<int>())}",
 
-                $"{selection_test_info?.y_previous_winner_groups_count}",
-                $"{selection_test_info?.y_previous_winner_columns_count}",
-                $"{string.Join(";",selection_test_info?.y_previous_winner_groups  ?? Array.Empty<int>())}",
-                $"{string.Join(";",selection_test_info?.y_previous_winner_columns ?? Array.Empty<int>())}",
+                //$"{selection_test_info?.y_previous_winner_groups_count}",
+                //$"{selection_test_info?.y_previous_winner_columns_count}",
+                //$"{string.Join(";",selection_test_info?.y_previous_winner_groups  ?? Array.Empty<int>())}",
+                //$"{string.Join(";",selection_test_info?.y_previous_winner_columns ?? Array.Empty<int>())}",
 
-                $"{selection_test_info?.y_best_winner_groups_count}",
-                $"{selection_test_info?.y_best_winner_columns_count}",
-                $"{string.Join(";",selection_test_info?.y_best_winner_groups ?? Array.Empty<int>())}",
-                $"{string.Join(";",selection_test_info?.y_best_winner_columns ?? Array.Empty<int>())}",
+                //$"{selection_test_info?.y_best_winner_groups_count}",
+                //$"{selection_test_info?.y_best_winner_columns_count}",
+                //$"{string.Join(";",selection_test_info?.y_best_winner_groups ?? Array.Empty<int>())}",
+                //$"{string.Join(";",selection_test_info?.y_best_winner_columns ?? Array.Empty<int>())}",
 
                 x_experiment_name ?? "",
-                    x_id?.ToString(CultureInfo.InvariantCulture),
+                    //x_id?.ToString(CultureInfo.InvariantCulture),
                     x_iteration_index?.ToString(CultureInfo.InvariantCulture),
-                    x_iteration_name ?? "",
+                    //x_iteration_name ?? "",
                     x_group_array_index?.ToString(CultureInfo.InvariantCulture),
                     x_total_groups?.ToString(CultureInfo.InvariantCulture),
                     $"{((x_calc_11p_thresholds ?? false) ? 1 : 0)}",
@@ -1445,68 +1488,68 @@ namespace svm_fs_batch
                     metrics.F1B_09.ToString("G17", NumberFormatInfo.InvariantInfo),
                     metrics.F1B_10.ToString("G17", NumberFormatInfo.InvariantInfo),
 
-                    metrics_ppf?.P.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.N.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.TP.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.FP.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.TN.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.FN.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.TPR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.TNR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.PPV.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Precision.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Prevalence.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.MCR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.ER.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.NER.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.CNER.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Kappa.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Overlap.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.RND_ACC.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Support.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.BaseRate.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.YoudenIndex.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.NPV.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.FNR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.FPR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.FDR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.FOR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.ACC.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.GMean.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1S.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.G1S.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.MCC.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Informedness.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Markedness.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.BalancedAccuracy.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.ROC_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.ROC_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.ROC_AUC_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.PR_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.PR_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.PRI_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.PRI_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.AP_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.AP_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.API_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.API_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.Brier_Inverse_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.LRP.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.LRN.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.DOR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.PrevalenceThreshold.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.CriticalSuccessIndex.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_00.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_01.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_02.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_03.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_04.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_05.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_06.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_07.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_08.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_09.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    metrics_ppf?.F1B_10.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.P.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.N.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.TP.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.FP.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.TN.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.FN.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.TPR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.TNR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.PPV.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Precision.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Prevalence.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.MCR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.ER.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.NER.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.CNER.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Kappa.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Overlap.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.RND_ACC.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Support.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.BaseRate.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.YoudenIndex.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.NPV.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.FNR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.FPR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.FDR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.FOR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.ACC.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.GMean.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1S.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.G1S.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.MCC.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Informedness.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Markedness.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.BalancedAccuracy.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.ROC_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.ROC_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.ROC_AUC_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.PR_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.PR_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.PRI_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.PRI_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.AP_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.AP_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.API_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.API_11p.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.Brier_Inverse_All.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.LRP.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.LRN.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.DOR.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.PrevalenceThreshold.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.CriticalSuccessIndex.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_00.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_01.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_02.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_03.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_04.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_05.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_06.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_07.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_08.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_09.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    //metrics_ppf?.F1B_10.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
 
                     //metrics_ppg?.P.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                     //metrics_ppg?.N.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
