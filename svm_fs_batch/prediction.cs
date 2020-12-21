@@ -178,18 +178,24 @@ namespace svm_fs_batch
                             values[k++] = $@"{cm_list[cm_list_index].predictions[cm_pred_index].predicted_class_id:+#;-#;+0}";
                             values[k++] = $"_";
 
-                            for (var probability_estimates_index = 0; probability_estimates_index < cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Count; probability_estimates_index++)
+                            if (cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates != null && cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Count > 0)
                             {
-                                var values_index = header_csv_values.IndexOf($@"prob_{cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates[probability_estimates_index].class_id:+#;-#;+0}", k);
-                                values[values_index] = $"{cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates[probability_estimates_index].probability_estimate:G17}";
+                                for (var probability_estimates_index = 0; probability_estimates_index < cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Count; probability_estimates_index++)
+                                {
+                                    var values_index = header_csv_values.IndexOf($@"prob_{cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates[probability_estimates_index].class_id:+#;-#;+0}", k);
+                                    values[values_index] = $"{cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates[probability_estimates_index].probability_estimate:G17}";
+                                }
+
+                                k += cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Count + 1;
                             }
 
-                            k += cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Count + 1;
-
-                            for (var comment_index = 0; comment_index < cm_list[cm_list_index].predictions[cm_pred_index].comment.Count; comment_index++)
+                            if (cm_list[cm_list_index].predictions[cm_pred_index].comment != null && cm_list[cm_list_index].predictions[cm_pred_index].comment.Count > 0)
                             {
-                                var values_index = header_csv_values.IndexOf(cm_list[cm_list_index].predictions[cm_pred_index].comment[comment_index].comment_header, k);
-                                values[values_index] = cm_list[cm_list_index].predictions[cm_pred_index].comment[comment_index].comment_value;
+                                for (var comment_index = 0; comment_index < cm_list[cm_list_index].predictions[cm_pred_index].comment.Count; comment_index++)
+                                {
+                                    var values_index = header_csv_values.IndexOf(cm_list[cm_list_index].predictions[cm_pred_index].comment[comment_index].comment_header, k);
+                                    values[values_index] = cm_list[cm_list_index].predictions[cm_pred_index].comment[comment_index].comment_value;
+                                }
                             }
 
                             for (var header_csv_values_index = 0; header_csv_values_index < header_csv_values.Count; header_csv_values_index++)

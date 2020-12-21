@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace svm_fs_batch
 {
@@ -11,96 +12,15 @@ namespace svm_fs_batch
     {
         public const string module_name = nameof(dataset_loader);
 
+        //internal (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] column_header_list;
+        internal dataset_group_key[] column_header_list;
+        internal (int class_id, string class_name, (int row_index, int col_index, string comment_key, string comment_value)[][] cl_comment_list)[] comment_list;
 
-        // note: group_index is usually the array group index, which may be different to the group number in file
+        // feature values, grouped by class id (with meta data class name and class size)
+        // internal List<(int class_id, string class_name, int class_size, List<((int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) column_header, double fv)[]> val_list)> value_list;
 
-
-
-        internal class dataset_groups
-        {
-
-        }
-
-        internal
-            (
-                (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
-                int[] grouped_list_internal_column_indexes
-                )[][]
-        get_subgroups(
-                (
-                    (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                    (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
-                    int[] grouped_list_internal_column_indexes
-                    )[] groups,
-                bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member = false, bool perspective = false)
-        {
-            var groupings = groups
-                .AsParallel()
-                .AsOrdered()
-                .Select(a=>a.grouped_list
-                    .GroupBy(a =>
-                    (
-                        file_tag: file_tag ? a.file_tag : null,
-                        alphabet: alphabet ? a.alphabet : null,
-                        stats: stats ? a.stats : null,
-                        dimension: dimension ? a.dimension : null,
-                        category: category ? a.category : null,
-                        source: source ? a.source : null,
-                        group: group ? a.group : null,
-                        member: member ? a.member : null,
-                        perspective: perspective ? a.perspective : null
-                    )))
-                .Select(a=>a
-                    .Select(b=> (grouped_by_key:b.Key, grouped_list:b.ToArray(), grouped_list_internal_column_indexes:b
-                        .Select(c=>c.internal_column_index)
-                        .ToArray()))
-                    .ToArray())
-                .ToArray();
-                
-            return groupings;
-        }
-
-        internal static
-            (
-                (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
-                int[] grouped_list_internal_column_indexes
-            )[]
-            get_groups(dataset_loader dataset, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member = false, bool perspective = false)
-        {
-            var groupings = dataset
-                .header_list
-                .Skip(1 /* skip class id column */)
-                .AsParallel()
-                .AsOrdered()
-                .GroupBy(a => (
-                file_tag: file_tag ? a.file_tag : null,
-                alphabet: alphabet ? a.alphabet : null,
-                stats: stats ? a.stats : null,
-                dimension: dimension ? a.dimension : null,
-                category: category ? a.category : null,
-                source: source ? a.source : null,
-                group: group ? a.group : null,
-                member: member ? a.member : null,
-                perspective: perspective ? a.perspective : null
-            ))
-                .Select(a => (
-                        grouped_by_key: a.Key,
-                        grouped_list: a.ToArray(),
-                        columns: a.Select(b => b.internal_column_index).ToArray()
-                    )
-                ).ToArray();
-
-            return groupings;
-        }
-
-        internal List<(int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)> header_list;
-        internal List<(int class_id, string class_name, List<(int row_index, int col_index, string comment_key, string comment_value)[]> cl_comment_list)> comment_list;
-
-        // feature values, grouped by class id, with class name and class size
-        //internal List<(int class_id, string class_name, int class_size, List<((int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) column_header, double fv)[]> val_list)> value_list;
-        internal List<(
+        internal 
+        (
             int class_id,
             string class_name,
             int class_size,
@@ -114,28 +34,48 @@ namespace svm_fs_batch
                 (
                     int row_index,
                     int col_index,
-                    (
-                        int internal_column_index,
-                        int external_column_index,
-                        string file_tag,
-                        string alphabet,
-                        string stats,
-                        string dimension,
-                        string category,
-                        string source,
-                        string @group,
-                        string member,
-                        string perspective
-                    ) column_header,
+                    dataset_group_key column_header,
                     double row_column_val
                 )[] row_columns
             )[] val_list
-        )> value_list;
+        )[] value_list;
+        //internal 
+        //(
+        //    int class_id,
+        //    string class_name,
+        //    int class_size,
+        //    (
+        //        (
+        //            int row_index,
+        //            int col_index,
+        //            string comment_key,
+        //            string comment_value
+        //        )[] row_comment,
+        //        (
+        //            int row_index,
+        //            int col_index,
+        //            (
+        //                int internal_column_index,
+        //                int external_column_index,
+        //                string file_tag,
+        //                string alphabet,
+        //                string stats,
+        //                string dimension,
+        //                string category,
+        //                string source,
+        //                string @group,
+        //                string member,
+        //                string perspective
+        //            ) column_header,
+        //            double row_column_val
+        //        )[] row_columns
+        //    )[] val_list
+        //)[] value_list;
 
-        internal List<(int class_id, int class_size)> class_sizes;
+        internal (int class_id, int class_size)[] class_sizes;
 
 
-        internal double[][] get_row_features(List<(int class_id, List<int> row_indexes)> class_row_indexes, List<int> column_indexes)
+        internal double[][] get_row_features((int class_id, int[] row_indexes)[] class_row_indexes, int[] column_indexes)
         {
             if (column_indexes.First() != 0) throw new Exception(); // class id missing
 
@@ -145,7 +85,7 @@ namespace svm_fs_batch
             return rows;
         }
 
-        internal static scaling[] get_scaling_params(double[][] rows, List<int> column_indexes)
+        internal static scaling[] get_scaling_params(double[][] rows, int[] column_indexes)
         {
             var cols = column_indexes.Select((column_index, x_index) => rows.Select(row => row[x_index /* column_index -> x_index*/]).ToArray()).ToArray();
             var sp = cols.Select((col, x_index) => x_index == 0 /* do not scale class id */ ? null : new scaling(col)).ToArray();
@@ -163,21 +103,21 @@ namespace svm_fs_batch
             return rows_scaled;
         }
 
-        internal (double[/*row*/][/*col*/] as_rows, double[/*col*/][/*row*/] as_cols) get_class_row_features(int class_id, List<int> row_indexes, List<int> column_indexes)
+        internal (double[/*row*/][/*col*/] as_rows, double[/*col*/][/*row*/] as_cols) get_class_row_features(int class_id, int[] row_indexes, int[] column_indexes)
         {
             if (column_indexes.First() != 0) throw new Exception(); // class id missing
 
-            var as_rows = new double[row_indexes.Count][];
-            var as_cols = new double[column_indexes.Count][];
+            var as_rows = new double[row_indexes.Length][];
+            var as_cols = new double[column_indexes.Length][];
 
             var v = value_list.First(a => a.class_id == class_id).val_list;
 
-            for (var y_index = 0; y_index < row_indexes.Count; y_index++)
+            for (var y_index = 0; y_index < row_indexes.Length; y_index++)
             {
                 var row_index = row_indexes[y_index];
-                as_rows[y_index] = new double[column_indexes.Count];
+                as_rows[y_index] = new double[column_indexes.Length];
 
-                for (var x_index = 0; x_index < column_indexes.Count; x_index++)
+                for (var x_index = 0; x_index < column_indexes.Length; x_index++)
                 {
                     var col_index = column_indexes[x_index];
                     //as_rows[row_index][col_index] = v[row_index].row_columns[col_index].row_column_val;
@@ -186,12 +126,12 @@ namespace svm_fs_batch
             }
 
 
-            for (var x_index = 0; x_index < column_indexes.Count; x_index++)
+            for (var x_index = 0; x_index < column_indexes.Length; x_index++)
             {
                 var col_index = column_indexes[x_index];
-                as_cols[x_index] = new double[row_indexes.Count];
+                as_cols[x_index] = new double[row_indexes.Length];
 
-                for (var y_index = 0; y_index < row_indexes.Count; y_index++)
+                for (var y_index = 0; y_index < row_indexes.Length; y_index++)
                 {
                     var row_index = row_indexes[y_index];
                     //as_cols[col_index][row_index] = v[row_index].row_columns[col_index].row_column_val;
@@ -221,111 +161,96 @@ namespace svm_fs_batch
 
         }
 
-        private void load_dataset
-        (
-            string dataset_folder,
-            string[] file_tags,
-            List<(int class_id, string class_name)> class_names,
-            bool perform_integrity_checks = false,
-            bool required_default = true,
-            List<(bool required, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)> required_matches = null
-        )
+        private void load_dataset_headers(
+            List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> data_filenames
+            )
         {
-            const string method_name = nameof(load_dataset);
-
-            class_names = class_names.OrderBy(a => a.class_id).ToList();
-            file_tags = file_tags.OrderBy(a => a).ToArray();
-
-            var data_filenames = class_names.Select(cl =>
-               {
-                   // (string file_tag, int class_id, string class_name, string filename)
-                   var values_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"f_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
-                   var header_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"h_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
-                   var comment_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"c_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
-
-                   return (cl.class_id, cl.class_name, values_csv_filenames, header_csv_filenames, comment_csv_filenames);
-
-               })
-               .ToList();
-
-            foreach (var cl in class_names) { io_proxy.WriteLine($@"{cl.class_id:+#;-#;+0} = {cl.class_name}", module_name, method_name); }
-
-            foreach (var cl in data_filenames)
-            {
-                io_proxy.WriteLine($@"{nameof(cl.values_csv_filenames)}: {string.Join(", ", cl.values_csv_filenames)}", module_name, method_name);
-                io_proxy.WriteLine($@"{nameof(cl.header_csv_filenames)}: {string.Join(", ", cl.header_csv_filenames)}", module_name, method_name);
-                io_proxy.WriteLine($@"{nameof(cl.comment_csv_filenames)}: {string.Join(", ", cl.comment_csv_filenames)}", module_name, method_name);
-            }
-
-            // don't try to read any data until checking all files exist...
-            if (data_filenames == null || data_filenames.Count == 0) throw new Exception();
-            foreach (var cl in data_filenames)
-            {
-                if (cl.values_csv_filenames == null || cl.values_csv_filenames.Count == 0 || cl.values_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.values_csv_filenames)} is empty"); }
-                if (cl.header_csv_filenames == null || cl.header_csv_filenames.Count == 0 || cl.header_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.header_csv_filenames)} is empty"); }
-                if (cl.comment_csv_filenames == null || cl.comment_csv_filenames.Count == 0 || cl.comment_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.comment_csv_filenames)} is empty"); }
-
-                if (cl.values_csv_filenames .Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.values_csv_filenames .Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
-                if (cl.header_csv_filenames .Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.header_csv_filenames .Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
-                if (cl.comment_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.comment_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
-            }
-
-
-
+            const string method_name = nameof(load_dataset_headers);
 
             // 1. headers
             io_proxy.WriteLine($@"Start: reading headers.", module_name, method_name);
             var sw_header = new Stopwatch();
             sw_header.Start();
-            var header_list = data_filenames.First(/* headers are same for all classes, so only load first class headers */)
+            column_header_list = data_filenames.First(/* headers are same for all classes, so only load first class headers */)
                 .header_csv_filenames
                 .AsParallel()
                 .AsOrdered()
                 .SelectMany((file_info, file_index) =>
                 {
                     return io_proxy.ReadAllLines(file_info.filename, module_name, method_name)
-                        .Skip(file_index == 0 ? 1 : 2 /*skip header, and if not first file, class id rows*/)
+                        .Skip(file_index == 0 ? 1 : 2 /*skip header line, and if not first file, class id line too */)
                         .AsParallel()
                         .AsOrdered()
-                        .Select((b, b_i) =>
+                        .Select((line, line_index) =>
                         {
-                            var row = b.Split(',');
-                            return (internal_column_index: -1, external_column_index: b_i /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/, file_tag: (file_index == 0 && b_i == 0 ? "" : file_info.file_tag), 
-                                alphabet: row[1], stats: row[2], dimension: row[3], category: row[4], source: row[5], group: row[6], member: row[7], perspective: row[8]);
+                            var row = line.Split(',');
+
+                            if (row.Length == 9)
+                            {
+                                return new dataset_group_key(
+
+                                    //internal_column_index: -1, 
+                                    //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/,
+                                    file_tag: (file_index == 0 && line_index == 0 /* class id isn't associated with any particular file */ ? "" : file_info.file_tag),
+                                    alphabet: row[1],
+                                    stats: row[2],
+                                    dimension: row[3],
+                                    category: row[4],
+                                    source: row[5],
+                                    group: row[6],
+                                    member: row[7],
+                                    perspective: row[8]);
+                            }
+                            else if (row.Length == 8)
+                            {
+                                return new dataset_group_key(
+
+                                    //internal_column_index: -1, 
+                                    //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/,
+                                    file_tag: (file_index == 0 && line_index == 0 /* class id isn't associated with any particular file */ ? "" : file_info.file_tag),
+                                    alphabet: row[1],
+                                    stats: "",
+                                    dimension: row[2],
+                                    category: row[3],
+                                    source: row[4],
+                                    group: row[5],
+                                    member: row[6],
+                                    perspective: row[7]);
+                            } else throw new Exception();
                         })
                         .ToArray();
                 })
-                .ToList();
+                .ToArray();
 
-            header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.alphabet, a.stats, a.dimension, a.category, a.source, a.@group, a.member, a.perspective)).ToList();
+            Parallel.For(0,
+                column_header_list.Length,
+                i =>
+                {
+                    column_header_list[i].column_index = i;
+                });
+
+
+            //header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.alphabet, a.stats, a.dimension, a.category, a.source, a.@group, a.member, a.perspective)).ToArray();
             sw_header.Stop();
             io_proxy.WriteLine($@"Finish: reading headers ({sw_header.Elapsed}).", module_name, method_name);
+        }
 
-            // 1.a compress headers
-            //var header_str = header_list.AsParallel().AsOrdered().SelectMany(a => new string[] {a.alphabet, a.dimension, a.category, a.source, a.group, a.member, a.perspective}).Distinct().ToList();
-            //header_list = header_list.AsParallel().AsOrdered().Select(a => (
-            //    a.internal_fid,
-            //    a.external_fid,
-            //    alphabet:header_str.First(b => b == a.alphabet),
-            //    dimension:header_str.First(b => b == a.dimension),
-            //    category:header_str.First(b => b == a.category),
-            //    source:header_str.First(b => b == a.source),
-            //    group:header_str.First(b => b == a.group),
-            //    member:header_str.First(b => b == a.member),
-            //    perspective:header_str.First(b => b == a.perspective)
-            //        )).ToList();
-
+        private void load_dataset_comments(
+            List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> data_filenames
+            )
+        {
+            const string method_name = nameof(load_dataset_comments);
 
             // 2. comment files. (same class with same samples = same data)
             io_proxy.WriteLine($@"Start: reading comments.", module_name, method_name);
             var sw_comment = new Stopwatch();
             sw_comment.Start();
-            var comment_list = data_filenames.AsParallel()
+            comment_list = data_filenames.AsParallel()
                 .AsOrdered()
                 .Select(cl =>
                 {
 
-                    var comment_lines = io_proxy.ReadAllLines(cl.comment_csv_filenames.First().filename, module_name, method_name).AsParallel().AsOrdered().Select(line => line.Split(',')).ToList();
+                    var comment_lines = io_proxy.ReadAllLines(cl.comment_csv_filenames.First().filename, module_name, method_name).AsParallel().AsOrdered().Select(line => line.Split(',')).ToArray();
                     var comment_header = comment_lines.First();
                     var cl_comment_list = comment_lines.Skip(1 /*skip header*/)
                         .AsParallel()
@@ -337,70 +262,168 @@ namespace svm_fs_batch
                                 col_index: col_index,
                                 comment_key: comment_header[col_index],
                                 comment_value: col_data
-                                )).ToArray();
+                            )).ToArray();
 
                             return key_value_list;
                         })
-                        .ToList();
+                        .ToArray();
                     return (cl.class_id, cl.class_name, cl_comment_list);
                 })
-                .ToList();
+                .ToArray();
             sw_comment.Stop();
             io_proxy.WriteLine($@"Finish: reading comments ({sw_comment.Elapsed}).", module_name, method_name);
 
+        }
+
+        private void load_dataset_values(
+            List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> data_filenames
+        )
+        {
+            const string method_name = nameof(load_dataset_values);
+
+            if (column_header_list == null || column_header_list.Length == 0) throw new Exception();
+            if (comment_list == null || comment_list.Length == 0) throw new Exception();
 
             // 3. values
             io_proxy.WriteLine($@"Start: reading values.", module_name, method_name);
             var sw_values = new Stopwatch();
             sw_values.Start();
-            var value_list = data_filenames
+            value_list = data_filenames
                     .AsParallel()
                     .AsOrdered()
                     .Select((cl, cl_index) =>
-                {
-                    // 3. experimental sample data
-                    var vals_tag = cl.values_csv_filenames.AsParallel().AsOrdered().Select((file_info, file_info_index) => io_proxy.ReadAllLines(file_info.filename, module_name, method_name).Skip(1 /*skip header - col index only*/)
-                        .AsParallel().AsOrdered().Select((row, row_index) => row.Split(',').Skip(file_info_index == 0 ? 0 : 1 /*skip class id*/).AsParallel().AsOrdered().Select((col, col_index) => double.Parse(col, NumberStyles.Float, CultureInfo.InvariantCulture)).ToArray()).ToArray()).ToList();
-                    var vals = new double[vals_tag.First().Length /* number of rows */][ /* columns */];
-                    for (var row_index = 0; row_index < vals.Length; row_index++)
                     {
-                        //vals[row_index] = new double[vals_tag.Sum(a=> a[row_index].Length)];
-                        vals[row_index] = vals_tag.SelectMany((a_cl, a_cl_index) => a_cl[row_index]).ToArray();
-                    }
+                        // 3. experimental sample data
+                        var vals_tag = cl.values_csv_filenames
+                            .AsParallel()
+                            .AsOrdered()
+                            .Select((file_info, file_info_index) =>
+                                io_proxy.ReadAllLines(file_info.filename, module_name, method_name)
+                                    .Skip(1 /*skip header - col index only*/)
+                                    .AsParallel()
+                                    .AsOrdered()
+                                    .Select
+                                    ((row, row_index) =>
+                                        row.Split(',')
+                                        .Skip(file_info_index == 0 ? 0 : 1 /*skip class id*/)
+                                        .AsParallel()
+                                        .AsOrdered()
+                                        .Select((col, col_index) => double.Parse(col, NumberStyles.Float, CultureInfo.InvariantCulture))
+                                        .ToArray()
+                                    )
+                                .ToArray())
+                            .ToArray();
 
-                    var val_list = vals.AsParallel()
-                        .AsOrdered()
-                        .Select((row, row_index) =>
+                        var vals = new double[vals_tag.First().Length /* number of rows */][ /* columns */];
+
+                        for (var row_index = 0; row_index < vals.Length; row_index++)
                         {
-                            var comment = comment_list[cl_index].cl_comment_list[row_index];
+                            //vals[row_index] = new double[vals_tag.Sum(a=> a[row_index].Length)];
+                            vals[row_index] = vals_tag.SelectMany((a_cl, a_cl_index) => a_cl[row_index]).ToArray();
+                        }
 
-                            return (row_comment: comment, row_columns: row.Select((col_val, col_index) =>
-                                 {
-                                     var column_header = header_list[col_index];
+                        var val_list = vals.AsParallel()
+                            .AsOrdered()
+                            .Select((row, row_index) =>
 
-                                     return (
-                                         row_index: row_index,
-                                         col_index: col_index,
-                                         column_header: column_header,
-                                         row_column_val: vals[row_index][col_index]
-                                         );
-                                 })
-                                .ToArray());
-                        })
-                        .ToArray();
-
-
-                    return (cl.class_id, cl.class_name, class_size: val_list.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list);
-                })
-                .ToList();
+                                (row_comment: comment_list[cl_index].cl_comment_list[row_index], row_columns: row.Select((col_val, col_index) => (
+                                        row_index: row_index,
+                                        col_index: col_index,
+                                        column_header: column_header_list[col_index],
+                                        row_column_val: vals[row_index][col_index]
+                                    ))
+                                    .ToArray())
+                            )
+                            .ToArray();
+                        return (cl.class_id, cl.class_name, class_size: val_list.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list);
+                    })
+                .ToArray();
             sw_values.Stop();
             io_proxy.WriteLine($@"Finish: reading values ({sw_values.Elapsed}).", module_name, method_name);
+        }
+
+        private
+            List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)>
+        get_data_filenames(
+            string dataset_folder,
+            string[] file_tags,
+            IList<(int class_id, string class_name)> class_names
+        )
+        {
+            const string method_name = nameof(get_data_filenames);
+
+            var data_filenames = class_names.Select(cl =>
+                {
+                    // (string file_tag, int class_id, string class_name, string filename)
+                    var values_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"f_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+                    var header_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"h_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+                    var comment_csv_filenames = file_tags.Select(file_tag => (file_tag, cl.class_id, cl.class_name, filename: Path.Combine(dataset_folder, $@"c_({file_tag})_({cl.class_id:+#;-#;+0})_({cl.class_name}).csv"))).ToList();
+
+                    return (cl.class_id, cl.class_name, values_csv_filenames, header_csv_filenames, comment_csv_filenames);
+
+                })
+                .ToList();
+
+            foreach (var cl in data_filenames)
+            {
+                io_proxy.WriteLine($@"{nameof(cl.values_csv_filenames)}: {string.Join(", ", cl.values_csv_filenames)}", module_name, method_name);
+                io_proxy.WriteLine($@"{nameof(cl.header_csv_filenames)}: {string.Join(", ", cl.header_csv_filenames)}", module_name, method_name);
+                io_proxy.WriteLine($@"{nameof(cl.comment_csv_filenames)}: {string.Join(", ", cl.comment_csv_filenames)}", module_name, method_name);
+            }
+
+            return data_filenames;
+        }
+
+        private void check_data_files(
+            List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> data_filenames)
+        {
+            const string method_name = nameof(check_data_files);
+
+            // don't try to read any data until checking all files exist...
+            if (data_filenames == null || data_filenames.Count == 0) throw new Exception();
+            foreach (var cl in data_filenames)
+            {
+                if (cl.values_csv_filenames == null || cl.values_csv_filenames.Count == 0 || cl.values_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.values_csv_filenames)} is empty"); }
+                if (cl.header_csv_filenames == null || cl.header_csv_filenames.Count == 0 || cl.header_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.header_csv_filenames)} is empty"); }
+                if (cl.comment_csv_filenames == null || cl.comment_csv_filenames.Count == 0 || cl.comment_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) { throw new Exception($@"{module_name}.{method_name}: {nameof(cl.comment_csv_filenames)} is empty"); }
+
+                if (cl.values_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.values_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+                if (cl.header_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.header_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+                if (cl.comment_csv_filenames.Any(b => !io_proxy.Exists(b.filename))) throw new Exception($@"{module_name}.{method_name}: missing input files: {string.Join($@", ", cl.comment_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+            }
+        }
 
 
-            this.header_list = header_list;
-            this.comment_list = comment_list;
-            this.value_list = value_list;
-            this.class_sizes = value_list.Select(a => (a.class_id, a.class_size)).ToList();
+        private void load_dataset
+        (
+            string dataset_folder,
+            string[] file_tags,
+            IList<(int class_id, string class_name)> class_names,
+            bool perform_integrity_checks = false,
+            bool required_default = true,
+            IList<(bool required, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)> required_matches = null
+        )
+        {
+            const string method_name = nameof(load_dataset);
+
+            class_names = class_names.OrderBy(a => a.class_id).ToList();
+            foreach (var cl in class_names) { io_proxy.WriteLine($@"{cl.class_id:+#;-#;+0} = {cl.class_name}", module_name, method_name); }
+
+            file_tags = file_tags.OrderBy(a => a).ToArray();
+            foreach (var file_tag in file_tags) { io_proxy.WriteLine($@"{file_tag}: {file_tag}", module_name, method_name); }
+
+            var data_filenames = get_data_filenames(dataset_folder, file_tags, class_names);
+            check_data_files(data_filenames);
+
+
+            var t1 = Task.Run(() => load_dataset_headers(data_filenames));
+            var t2 = Task.Run(() => load_dataset_comments(data_filenames));
+            t1.Wait();
+            t2.Wait();
+
+            load_dataset_values(data_filenames);
+
+            class_sizes = value_list.Select(a => (a.class_id, a.class_size)).ToArray();
         }
     }
 }

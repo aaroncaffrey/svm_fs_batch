@@ -12,33 +12,57 @@ namespace svm_fs_batch
 
         // note: load does not load the rd/sd part of the cm file.  this has to be recalculated after loading the cm.
 
-        internal static void save(string cm_filename, IList<confusion_matrix> cm_list)
+        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<confusion_matrix> x_list)
         {
-            save(cm_filename, cm_list, null, null);
+            save(cm_full_filename, cm_summary_filename, overwrite, null, x_list, null, null);
         }
 
-        internal static void save(string cm_sd_list_filename, IList<(confusion_matrix cm, score_data sd)> cm_sd_list)
+        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<(index_data id, confusion_matrix cm, score_data sd)> x_list)
         {
-            save(cm_sd_list_filename, cm_sd_list.Select(a => a.cm).ToArray(), cm_sd_list.Select(a => a.sd).ToArray(), null);
+            save(cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), null);
         }
 
-        internal static void save(string cm_sd_rd_list_filename, IList<(confusion_matrix cm, score_data sd, rank_data rd)> cm_sd_rd_list)
+        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<(index_data id, confusion_matrix cm, score_data sd, rank_data rd)> x_list)
         {
-            save(cm_sd_rd_list_filename, cm_sd_rd_list.Select(a => a.cm).ToArray(), cm_sd_rd_list.Select(a => a.sd).ToArray(), cm_sd_rd_list.Select(a => a.rd).ToArray());
+            save(cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), x_list.Select(a => a.rd).ToArray());
         }
 
 
-        internal static void save(string cm_sd_rd_list_filename, IList<confusion_matrix> cm_list, IList<score_data> sd_list, IList<rank_data> rd_list)
+        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<index_data> id_list, IList<confusion_matrix> cm_list, IList<score_data> sd_list, IList<rank_data> rd_list)
         {
             const string method_name = nameof(save);
 
-            if (string.IsNullOrWhiteSpace(cm_sd_rd_list_filename)) throw new Exception();
+            var save_full_req = !string.IsNullOrWhiteSpace(cm_full_filename);
+            var save_summary_req = !string.IsNullOrWhiteSpace(cm_summary_filename);
+            if (!save_full_req && !save_summary_req) throw new Exception($@"No filenames provided to save data to.");
 
-            var lens = new int[] { cm_list?.Count??0, sd_list?.Count??0, rd_list?.Count??0 }.Where(a=>a>0).ToArray();
+            var lens = new int[] { cm_list?.Count ?? 0, sd_list?.Count ?? 0, rd_list?.Count ?? 0 }.Where(a => a > 0).ToArray();
+            var lens_distinct_count = lens.Distinct().Count();
+            if (lens.Length == 0 || lens_distinct_count > 1) throw new Exception($@"Array length of {nameof(cm_list)}, {nameof(sd_list)}, and {nameof(rd_list)} do not match.");
+            var lens_max = lens.Max();
 
-            if (lens.Length == 0 || lens.Distinct().Count() > 1) throw new Exception();
+            var save_full = save_full_req && (overwrite || !io_proxy.is_file_available(cm_full_filename, module_name, method_name));
+            var save_summary = save_summary_req && (overwrite || !io_proxy.is_file_available(cm_summary_filename, module_name, method_name));
 
-            var lines = new string[lens.Max() + 1];
+            if (save_full_req && !save_full)
+            {
+                io_proxy.WriteLine($@"Not overwriting file: {cm_full_filename}", module_name, method_name);
+
+            }
+
+            if (save_summary_req && !save_summary)
+            {
+                io_proxy.WriteLine($@"Not overwriting file: {cm_summary_filename}", module_name, method_name);
+            }
+
+            if (!save_full && !save_summary)
+            {
+                return;
+            }
+
+
+            var lines1 = save_full ? new string[lens.Max() + 1] : null;
+            var lines2 = save_summary ? new string[lens.Max() + 1] : null;
 
             var csv_header_values = new List<string>();
 
@@ -46,35 +70,69 @@ namespace svm_fs_batch
             if (rd_list != null && rd_list.Count > 0) { csv_header_values.AddRange(rank_data.csv_header_values); csv_header_values.Add($@"_"); }
             if (cm_list != null && cm_list.Count > 0) { csv_header_values.AddRange(confusion_matrix.csv_header_values); csv_header_values.Add($@"_"); }
 
-            lines[0] = string.Join(",", csv_header_values);
+            if (lines1 != null) lines1[0] = string.Join(",", csv_header_values);
+            if (lines2 != null) lines2[0] = string.Join(",", csv_header_values);
+
 
 
             Parallel.For(0,
-                cm_list.Count,
+                lens_max,
                 i =>
                 {
-                    var values = new List<string>();
-                    if (sd_list != null && sd_list.Count > 0)
+                    var values1 = lines1 != null ? new List<string>() : null;
+                    if (values1 != null)
                     {
-                        values.AddRange(sd_list[i].csv_values_array());
-                        values.Add($@"_");
+                        if (sd_list != null && sd_list.Count > 0)
+                        {
+                            values1?.AddRange(sd_list[i].csv_values_array());
+                            values1?.Add($@"_");
+                        }
+                        if (rd_list != null && rd_list.Count > 0)
+                        {
+                            values1?.AddRange(rd_list[i].csv_values_array());
+                            values1?.Add($@"_");
+                        }
+                        if (cm_list != null && cm_list.Count > 0)
+                        {
+                            values1?.AddRange(cm_list[i].csv_values_array(false));
+                            values1?.Add($@"_");
+                        }
+                        if (lines1 != null) lines1[i + 1] = string.Join(",", values1);
                     }
 
-                    if (rd_list != null && rd_list.Count > 0)
+                    var values2 = lines2 != null ? new List<string>() : null;
+                    if (values2 != null)
                     {
-                        values.AddRange(rd_list[i].csv_values_array());
-                        values.Add($@"_");
+                        if (sd_list != null && sd_list.Count > 0)
+                        {
+                            values2.AddRange(sd_list[i].csv_values_array());
+                            values2.Add($@"_");
+                        }
+                        if (rd_list != null && rd_list.Count > 0)
+                        {
+                            values2.AddRange(rd_list[i].csv_values_array());
+                            values2.Add($@"_");
+                        }
+                        if (cm_list != null && cm_list.Count > 0)
+                        {
+                            values2.AddRange(cm_list[i].csv_values_array(true));
+                            values2.Add($@"_");
+                        }
+                        if (lines2 != null) lines2[i + 1] = string.Join(",", values2);
                     }
-
-                    if (cm_list != null && cm_list.Count > 0)
-                    {
-                        values.AddRange(cm_list[i].csv_values_array());
-                        values.Add($@"_");
-                    }
-                    lines[i + 1] = string.Join(",", values);
                 });
 
-            io_proxy.WriteAllLines(cm_sd_rd_list_filename, lines, module_name, method_name);
+            if (lines1 != null && lines1.Length > 0)
+            {
+                io_proxy.WriteAllLines(cm_full_filename, lines1, module_name, method_name);
+                io_proxy.WriteLine($@"Saved: {cm_full_filename} ({lines1.Length} lines)", module_name, method_name);
+            }
+
+            if (lines2 != null && lines2.Length > 0)
+            {
+                io_proxy.WriteAllLines(cm_summary_filename, lines2, module_name, method_name);
+                io_proxy.WriteLine($@"Saved: {cm_summary_filename} ({lines2.Length} lines)", module_name, method_name);
+            }
         }
 
         internal static List<confusion_matrix> load(string filename, int column_offset = -1)
@@ -224,7 +282,7 @@ namespace svm_fs_batch
                         x_duration_training = x_str[k++],
                         x_duration_testing = x_str[k++],
                         x_scale_function = Enum.TryParse(x_str[k++], out scaling.scale_function out_scale_function) ? out_scale_function : default,
-                        x_libsvm_cv = x_double[k++] ?? 0,
+                        //x_libsvm_cv = x_double[k++] ?? 0,
                         x_prediction_threshold = x_double[k++],
                         x_prediction_threshold_class = x_double[k++],
                         //x_old_column_count = x_int[k++] ?? 0,
@@ -241,7 +299,15 @@ namespace svm_fs_batch
                         x_outer_cv_folds_to_run = x_int[k++] ?? 0,
                         x_svm_type = Enum.TryParse(x_str[k++], out routines.libsvm_svm_type out_svm_type) ? out_svm_type : default,
                         x_svm_kernel = Enum.TryParse(x_str[k++], out routines.libsvm_kernel_type out_svm_kernel) ? out_svm_kernel : default,
-                        grid_point = new grid_point() { cost = x_double[k++], gamma = x_double[k++], epsilon = x_double[k++], coef0 = x_double[k++], degree = x_double[k++], },
+                        grid_point = new grid_point()
+                        {
+                            cost = x_double[k++], 
+                            gamma = x_double[k++], 
+                            epsilon = x_double[k++], 
+                            coef0 = x_double[k++], 
+                            degree = x_double[k++],
+                            cv_rate = x_double[k++],
+                        },
                         x_class_id = x_int[k++],
                         x_class_weight = x_double[k++],
                         x_class_name = x_str[k++],
@@ -486,7 +552,7 @@ namespace svm_fs_batch
         internal string x_duration_training;
         internal string x_duration_testing;
         internal scaling.scale_function x_scale_function;
-        internal double x_libsvm_cv;
+        //internal double x_libsvm_cv;
         internal double? x_prediction_threshold = -1;
         internal double? x_prediction_threshold_class;
         //internal int x_old_column_count;
@@ -533,49 +599,49 @@ namespace svm_fs_batch
 
         internal void calculate_metrics(metrics_box metrics, bool calculate_auc, IList<prediction> prediction_list)
         {
-            //var cm = this;
-
-            if (calculate_auc && prediction_list != null && prediction_list.Count > 0 && prediction_list.Any(a => a.probability_estimates != null && a.probability_estimates.Count > 0))
+            if (x_class_id != null && prediction_list != null && prediction_list.Count > 0 && prediction_list.Any(a => a.probability_estimates != null && a.probability_estimates.Count > 0))
             {
-
-                var (p_roc_auc_approx_all, p_roc_auc_actual_all, p_pr_auc_approx_all, p_pri_auc_approx_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = perf.Calculate_ROC_PR_AUC(prediction_list, x_class_id.Value, perf.threshold_type.all_thresholds);
-                var (p_roc_auc_approx_11p, p_roc_auc_actual_11p, p_pr_auc_approx_11p, p_pri_auc_approx_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = perf.Calculate_ROC_PR_AUC(prediction_list, x_class_id.Value, perf.threshold_type.eleven_points);
-
                 var p_brier_score_all = perf.brier(prediction_list, x_class_id.Value);
-                //var (p_brier_score_all, p_roc_auc_all, p_roc_auc2_all, p_pr_auc_all, p_pri_auc_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, class_id.Value, false);
-                //var (p_brier_score_11p, p_roc_auc_11p, p_roc_auc2_11p, p_pr_auc_11p, p_pri_auc_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, class_id.Value, true);
-
                 metrics.Brier_Inverse_All = 1 - p_brier_score_all;
-                //Brier_11p = p_brier_score_11p;
 
-                metrics.ROC_AUC_Approx_All = p_roc_auc_approx_all;
-                metrics.ROC_AUC_Approx_11p = p_roc_auc_approx_11p;
+                if (calculate_auc)
+                {
+                    //var (p_brier_score_all, p_roc_auc_all, p_roc_auc2_all, p_pr_auc_all, p_pri_auc_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, class_id.Value, false);
+                    //var (p_brier_score_11p, p_roc_auc_11p, p_roc_auc2_11p, p_pr_auc_11p, p_pri_auc_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, class_id.Value, true);
 
-                metrics.ROC_AUC_All = p_roc_auc_actual_all;
-                //ROC_AUC_11p = p_roc_auc_actual_11p;
+                    var (p_roc_auc_approx_all, p_roc_auc_actual_all, p_pr_auc_approx_all, p_pri_auc_approx_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = perf.Calculate_ROC_PR_AUC(prediction_list, x_class_id.Value, perf.threshold_type.all_thresholds);
+                    var (p_roc_auc_approx_11p, p_roc_auc_actual_11p, p_pr_auc_approx_11p, p_pri_auc_approx_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = perf.Calculate_ROC_PR_AUC(prediction_list, x_class_id.Value, perf.threshold_type.eleven_points);
 
-                metrics.PR_AUC_Approx_All = p_pr_auc_approx_all;
-                metrics.PR_AUC_Approx_11p = p_pr_auc_approx_11p;
 
-                metrics.PRI_AUC_Approx_All = p_pri_auc_approx_all;
-                metrics.PRI_AUC_Approx_11p = p_pri_auc_approx_11p;
+                    metrics.ROC_AUC_Approx_All = p_roc_auc_approx_all;
+                    metrics.ROC_AUC_Approx_11p = p_roc_auc_approx_11p;
 
-                metrics.AP_All = p_ap_all;
-                metrics.AP_11p = p_ap_11p;
-                metrics.API_All = p_api_all;
-                metrics.API_11p = p_api_11p;
+                    metrics.ROC_AUC_All = p_roc_auc_actual_all;
+                    //ROC_AUC_11p = p_roc_auc_actual_11p;
 
-                // PR (x: a.TPR, y: a.PPV)
-                // ROC (x: a.FPR, y: a.TPR)
+                    metrics.PR_AUC_Approx_All = p_pr_auc_approx_all;
+                    metrics.PR_AUC_Approx_11p = p_pr_auc_approx_11p;
 
-                roc_xy_str_all = p_roc_xy_all != null ? $"FPR;TPR/{string.Join("/", p_roc_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
-                roc_xy_str_11p = p_roc_xy_11p != null ? $"FPR;TPR/{string.Join("/", p_roc_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    metrics.PRI_AUC_Approx_All = p_pri_auc_approx_all;
+                    metrics.PRI_AUC_Approx_11p = p_pri_auc_approx_11p;
 
-                pr_xy_str_all = p_pr_xy_all != null ? $"TPR;PPV/{string.Join("/", p_pr_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
-                pr_xy_str_11p = p_pr_xy_11p != null ? $"TPR;PPV/{string.Join("/", p_pr_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    metrics.AP_All = p_ap_all;
+                    metrics.AP_11p = p_ap_11p;
+                    metrics.API_All = p_api_all;
+                    metrics.API_11p = p_api_11p;
 
-                pri_xy_str_all = p_pri_xy_all != null ? $"TPR;PPV/{string.Join("/", p_pri_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
-                pri_xy_str_11p = p_pri_xy_11p != null ? $"TPR;PPV/{string.Join("/", p_pri_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    // PR (x: a.TPR, y: a.PPV)
+                    // ROC (x: a.FPR, y: a.TPR)
+
+                    roc_xy_str_all = p_roc_xy_all != null && p_roc_xy_all.Count > 0 ? $"FPR;TPR/{string.Join("/", p_roc_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    roc_xy_str_11p = p_roc_xy_11p != null && p_roc_xy_11p.Count > 0 ? $"FPR;TPR/{string.Join("/", p_roc_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+
+                    pr_xy_str_all = p_pr_xy_all != null && p_pr_xy_all.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pr_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    pr_xy_str_11p = p_pr_xy_11p != null && p_pr_xy_11p.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pr_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+
+                    pri_xy_str_all = p_pri_xy_all != null && p_pri_xy_all.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pri_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    pri_xy_str_11p = p_pri_xy_11p != null && p_pri_xy_11p.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pri_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                }
             }
 
             const double zero = 0.0;
@@ -670,17 +736,17 @@ namespace svm_fs_batch
             // Fowlkes–Mallows index - (same as G1 score?):
             // var FM_Index = Math.Sqrt(PPV * TPR);
 
-            metrics.F1B_00 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.0);
-            metrics.F1B_01 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.1);
-            metrics.F1B_02 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.2);
-            metrics.F1B_03 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.3);
-            metrics.F1B_04 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.4);
-            metrics.F1B_05 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.5);
-            metrics.F1B_06 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.6);
-            metrics.F1B_07 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.7);
-            metrics.F1B_08 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.8);
-            metrics.F1B_09 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)0.9);
-            metrics.F1B_10 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, (double)1.0);
+            metrics.F1B_00 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.0d);
+            metrics.F1B_01 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.1d);
+            metrics.F1B_02 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.2d);
+            metrics.F1B_03 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.3d);
+            metrics.F1B_04 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.4d);
+            metrics.F1B_05 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.5d);
+            metrics.F1B_06 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.6d);
+            metrics.F1B_07 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.7d);
+            metrics.F1B_08 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.8d);
+            metrics.F1B_09 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.9d);
+            metrics.F1B_10 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 1.0d);
 
             //calculate_ppf_ppg();
         }
@@ -1107,7 +1173,7 @@ namespace svm_fs_batch
                 nameof(x_duration_training),
                 nameof(x_duration_testing),
                 nameof(x_scale_function),
-                nameof(x_libsvm_cv),
+                //nameof(x_libsvm_cv),
                 nameof(x_prediction_threshold),
                 nameof(x_prediction_threshold_class),
                 //nameof(x_old_column_count),
@@ -1129,6 +1195,7 @@ namespace svm_fs_batch
                 "x_"+nameof(svm_fs_batch.grid_point.epsilon),
                 "x_"+nameof(svm_fs_batch.grid_point.coef0),
                 "x_"+nameof(svm_fs_batch.grid_point.degree),
+                "x_"+nameof(svm_fs_batch.grid_point.cv_rate),
                 nameof(x_class_id),
                 nameof(x_class_weight),
                 nameof(x_class_name),
@@ -1335,13 +1402,12 @@ namespace svm_fs_batch
 
                 nameof(thresholds),
                 nameof(predictions),
-
             };
 
         internal static readonly string csv_header = string.Join(",", csv_header_values);
 
 
-        internal string[] csv_values_array()
+        internal string[] csv_values_array(bool summary = false)
         {
             //var st = selection_test_info.get_values();
             //var m = metrics.as_csv_values();
@@ -1395,7 +1461,7 @@ namespace svm_fs_batch
                     x_duration_training ?? "",
                     x_duration_testing ?? "",
                     x_scale_function.ToString(),
-                    x_libsvm_cv.ToString("G17", NumberFormatInfo.InvariantInfo),
+                    //x_libsvm_cv.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_prediction_threshold?.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_prediction_threshold_class?.ToString("G17", NumberFormatInfo.InvariantInfo),
                     //x_old_column_count.ToString(CultureInfo.InvariantCulture),
@@ -1413,13 +1479,15 @@ namespace svm_fs_batch
                     x_svm_type.ToString() ?? "",
                     x_svm_kernel.ToString() ?? "",
                     //grid_point = new grid_point() {cost = x_double[k++], gamma = x_double[k++], epsilon = x_double[k++], coef0 = x_double[k++], degree = x_double[k++],},
-                    grid_point.cost?.ToString("G17", NumberFormatInfo.InvariantInfo).Replace(",",";", StringComparison.InvariantCulture) ?? "",
-                    grid_point.gamma?.ToString("G17", NumberFormatInfo.InvariantInfo).Replace(",",";", StringComparison.InvariantCulture) ?? "",
-                    grid_point.epsilon?.ToString("G17", NumberFormatInfo.InvariantInfo).Replace(",",";", StringComparison.InvariantCulture) ?? "",
-                    grid_point.coef0?.ToString("G17", NumberFormatInfo.InvariantInfo).Replace(",",";", StringComparison.InvariantCulture) ?? "",
-                    grid_point.degree?.ToString("G17", NumberFormatInfo.InvariantInfo).Replace(",",";", StringComparison.InvariantCulture) ?? "",
+                    grid_point.cost?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    grid_point.gamma?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    grid_point.epsilon?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    grid_point.coef0?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    grid_point.degree?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    grid_point.cv_rate?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+
                     x_class_id?.ToString(CultureInfo.InvariantCulture),
-                    x_class_weight?.ToString("G17", NumberFormatInfo.InvariantInfo).Replace(",",";", StringComparison.InvariantCulture) ?? "",
+                    x_class_weight?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                     x_class_name ?? "",
                     x_class_size.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_class_training_size.ToString("G17", NumberFormatInfo.InvariantInfo),
@@ -1616,14 +1684,14 @@ namespace svm_fs_batch
 
 
 
-                    roc_xy_str_all ?? "",
-                    roc_xy_str_11p ?? "",
-                    pr_xy_str_all ?? "",
-                    pr_xy_str_11p ?? "",
-                    pri_xy_str_all ?? "",
-                    pri_xy_str_11p ?? "",
-                    string.Join(';',thresholds?.Select(a=> $"{a:G17}").ToArray() ?? Array.Empty<string>()),
-                    string.Join(";", predictions?.Select(a=> a?.str() ?? "").ToArray() ?? Array.Empty<string>())
+                    !summary ? roc_xy_str_all ?? "" : "",
+                    !summary ? roc_xy_str_11p ?? "" : "",
+                    !summary ? pr_xy_str_all ?? "" : "",
+                    !summary ? pr_xy_str_11p ?? "" : "",
+                    !summary ? pri_xy_str_all ?? "" : "",
+                    !summary ? pri_xy_str_11p ?? "" : "",
+                    !summary ? string.Join(';',thresholds?.Select(a=> $"{a:G17}").ToArray() ?? Array.Empty<string>()) : "",
+                    !summary ? string.Join(";", predictions?.Select(a=> a?.str() ?? "").ToArray() ?? Array.Empty<string>()) : "",
             }.Select(a => a?.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase) ?? "").ToArray();
         }
 

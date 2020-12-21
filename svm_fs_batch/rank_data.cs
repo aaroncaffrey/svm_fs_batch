@@ -9,33 +9,38 @@ namespace svm_fs_batch
         internal rank_data last_rank;
         internal double max_rank;
         internal average_history rank_number;
-        internal average_history rank_number_pct;
         internal average_history rank_score;
-        internal average_history rank_score_ppf;
 
+#if RD_EXTRA
+        internal average_history rank_number_pct;
+        
+        internal average_history rank_score_ppf;
+#endif
         public rank_data(int rank_number /* max_rank is best rank */, int max_rank /* total - 1 */, double rank_score /* 0 to 1 */ , double rank_score_ppf /* 0 to 1 */, rank_data last_rank)
         {
             this.max_rank = max_rank;
             this.last_rank = last_rank;
-
             this.rank_number = new average_history(rank_number, last_rank?.rank_number);
-            this.rank_number_pct = new average_history(max_rank != 0 ? (double)rank_number / (double)max_rank : 0d, last_rank?.rank_number_pct);
             this.rank_score = new average_history(rank_score, last_rank?.rank_score);
+#if RD_EXTRA
+            this.rank_number_pct = new average_history(max_rank != 0 ? (double)rank_number / (double)max_rank : 0d, last_rank?.rank_number_pct);
+            
             this.rank_score_ppf = new average_history(rank_score_ppf, last_rank?.rank_score_ppf);
+#endif
         }
 
-        internal static (confusion_matrix cm, score_data sd, rank_data rd)[] set_ranks
+        internal static (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] set_ranks
         (
-            ref List<(confusion_matrix cm, score_data sd)> cm_sd_list_ref,
+            ref List<(index_data id, confusion_matrix cm, score_data sd)> cm_sd_list_ref,
             bool order_by_ppf,
             score_data last_winner,
-            (confusion_matrix cm, score_data sd, rank_data rd)[] last_iteration_cm_sd_rd_list
+            (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] last_iteration_cm_sd_rd_list
         )
         {
             // ensure consistent reordering (i.e. for items with equal tied scores when processing may have been done out of order)
             var cm_sd_list = cm_sd_list_ref.OrderBy(a => a.sd.group_array_index).ThenBy(a => a.sd.class_id).ToList();
 
-            // reorder by score, or score_ppf
+            // reorder by score, or score_ppf... descending so that highest score is first result.
             cm_sd_list = cm_sd_list
                 .OrderByDescending((a => order_by_ppf ? a.sd.last_winner_score_ppf_increase : a.sd.last_winner_score_increase))
                 .ThenByDescending(a => !order_by_ppf ? a.sd.last_winner_score_ppf_increase : a.sd.last_winner_score_increase)
@@ -81,7 +86,7 @@ namespace svm_fs_batch
                         sd_last.rd
                     );
 
-                    return (a.cm, a.sd, rd);
+                    return (a.id, a.cm, a.sd, rd);
                 })
                 .ToArray();
 
@@ -97,12 +102,16 @@ namespace svm_fs_batch
         }
         .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_number)}_{a}").ToArray())
         .Concat(new[] { $@"_" })
-        .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_number_pct)}_{a}").ToArray())
-        .Concat(new[] { $@"_" })
         .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_score)}_{a}").ToArray())
         .Concat(new[] { $@"_" })
+
+#if RD_EXTRA
+        .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_number_pct)}_{a}").ToArray())
+        .Concat(new[] { $@"_" })
+
         .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_score_ppf)}_{a}").ToArray())
         .Concat(new[] { $@"_" })
+#endif
         .ToArray();
 
 
@@ -121,12 +130,15 @@ namespace svm_fs_batch
 
             values.AddRange(rank_number.csv_values_array());
             values.Add($@"_");
-            values.AddRange(rank_number_pct.csv_values_array());
-            values.Add($@"_");
             values.AddRange(rank_score.csv_values_array());
             values.Add($@"_");
+#if RD_EXTRA
+            values.AddRange(rank_number_pct.csv_values_array());
+            values.Add($@"_");
+            
             values.AddRange(rank_score_ppf.csv_values_array());
             values.Add($@"_");
+#endif
 
             var values_array = values.Select(a => a.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase)).ToArray();
             return values_array;

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Transactions;
 
 namespace svm_fs_batch
 {
@@ -14,44 +15,46 @@ namespace svm_fs_batch
     {
         public const string module_name = nameof(program);
 
-        internal static
-            (
-                (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
-                int[] grouped_list_internal_column_indexes
-                )[]
-            get_groups_to_use(dataset_loader dataset)
-        {
-            var groups = dataset_loader.get_groups
-            (
-                dataset: dataset,
-                file_tag: true,
-                alphabet: true,
-                stats: true,
-                dimension: true,
-                category: true,
-                source: true,
-                @group: true,
-                member: false,
-                perspective: false
-            );
-
-            groups = groups.Take(1000).ToArray();
-
-            return groups;
-        }
+        //internal static
+        //    (
+        //        dataset_group_key group_key,
+        //        (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] group_members,
+        //        int[] group_members_column_indexes
+        //        )[]
+        //    get_groups_to_use(dataset_loader dataset)
+        //{
+        //    var groups = dataset_group_methods.get_groups
+        //    (
+        //        dataset: dataset,
+        //        file_tag: true,
+        //        alphabet: true,
+        //        stats: true,
+        //        dimension: true,
+        //        category: true,
+        //        source: true,
+        //        @group: true,
+        //        member: false,
+        //        perspective: false
+        //    );
+        //
+        //    groups = groups.Take(10).ToArray();
+        //
+        //    //var g2 = dataset_group_methods.get_subgroups(groups, true, true, true, true, true, true, true, true, true);
+        //
+        //    return groups;
+        //}
 
         internal static void Main(string[] args)
         {
+            const string method_name = nameof(Main);
             //-experiment_name _20201028084510741 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 1 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 1
-
+            //-experiment_name test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
             //var x=confusion_matrix.load($@"C:\mmfs1\data\scratch\k1040015\svm_fs_batch\results\test\it_5\x_it-5_gr-5_sv-1_kr-3_sc-2_rn-1_oc-10_ic-10_ix-1-5.cm.csv");
-
             // debug cmd line parameters: -experiment_name test2 -array_start 0 -array_end 4 -array_index 0 -array_step 5 -array_instances 1 -array_last_index -1
 
 
-            io_proxy.WriteLine($@"cmd line: {Environment.CommandLine}", nameof(program), nameof(Main));
-            io_proxy.WriteLine($@"processor count: {Environment.ProcessorCount}", nameof(program), nameof(Main));
+            io_proxy.WriteLine($@"cmd line: {Environment.CommandLine}", module_name, method_name);
+            io_proxy.WriteLine($@"processor count: {Environment.ProcessorCount}", module_name, method_name);
 
             var main_cts = new CancellationTokenSource();
             init.close_notifications(main_cts);
@@ -61,140 +64,91 @@ namespace svm_fs_batch
 
             var program_args = new program_args(args);
 
-            //-experiment_name test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
-
-            if (program_args.run_local)
-            {
-                program_args.experiment_name += $@"_{DateTime.Now:yyyyMMddHHmmssfff}";
-
-
-                program_args.run_local = false;
-                program_args.args.RemoveAll(a => string.Equals(a.key, nameof(program_args.run_local), StringComparison.OrdinalIgnoreCase));
-
-
-                // set other vars
-
-                if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.inner_folds), StringComparison.OrdinalIgnoreCase)))
-                {
-                    program_args.inner_folds = 1;
-                    program_args.args.Add((nameof(program_args.inner_folds), $"{program_args.inner_folds}", program_args.inner_folds, program_args.inner_folds, null));
-                }
-
-                if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.outer_cv_folds), StringComparison.OrdinalIgnoreCase)))
-                {
-                    program_args.outer_cv_folds = 5;
-                    program_args.args.Add((nameof(program_args.outer_cv_folds), $"{program_args.outer_cv_folds}", program_args.outer_cv_folds, program_args.outer_cv_folds, null));
-                }
-
-                if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.outer_cv_folds_to_run), StringComparison.OrdinalIgnoreCase)))
-                {
-                    program_args.outer_cv_folds_to_run = 1;
-                    program_args.args.Add((nameof(program_args.outer_cv_folds_to_run), $"{program_args.outer_cv_folds_to_run}", program_args.outer_cv_folds_to_run, program_args.outer_cv_folds_to_run, null));
-                }
-
-                if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.repetitions), StringComparison.OrdinalIgnoreCase)))
-                {
-                    program_args.repetitions = 1;
-                    program_args.args.Add((nameof(program_args.repetitions), $"{program_args.repetitions}", program_args.repetitions, program_args.repetitions, null));
-                }
-
-                //if (program_args.args.All(a => a.key != nameof(program_args.instance_array_index_start)))
-                //{
-                //    program_args.instance_array_index_start = 0;
-                //    program_args.args.Add((nameof(program_args.instance_array_index_start), program_args.instance_array_index_start, $"{program_args.instance_array_index_start}"));
-                //}
-
-                //if (program_args.args.All(a => a.key != nameof(program_args.array_instances)))
-                //{
-                //    program_args.array_instances = 1;
-                //    program_args.args.Add((nameof(program_args.array_instances), program_args.array_instances, $"{program_args.array_instances}"));
-                //}
-
-
-                // set default vcpu amounts if not specified
-                if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.setup_total_vcpus), StringComparison.OrdinalIgnoreCase)))
-                {
-                    program_args.setup_total_vcpus = Environment.ProcessorCount;
-                    program_args.args.Add((nameof(program_args.setup_total_vcpus), $"{program_args.setup_total_vcpus}", program_args.setup_total_vcpus, program_args.setup_total_vcpus, null));
-                }
-
-                if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.setup_instance_vcpus), StringComparison.OrdinalIgnoreCase)))
-                {
-                    program_args.setup_instance_vcpus = Environment.ProcessorCount;
-                    program_args.args.Add((nameof(program_args.setup_instance_vcpus), $"{program_args.setup_instance_vcpus}", program_args.setup_instance_vcpus, program_args.setup_instance_vcpus, null));
-                }
-
-
-
-                // calculate array size (get total number of groups)
-                var dataset = new dataset_loader();
-
-                var groups = get_groups_to_use(dataset);
-
-                // number of jobs
-                var setup_array_instances = groups.Length;
-
-                // calculate total number of instanced and array step
-                var setup_total_instances = (int)Math.Floor((double)program_args.setup_total_vcpus / (double)program_args.setup_instance_vcpus);
-                var setup_array_step = (int)Math.Ceiling((double)setup_array_instances / (double)setup_total_instances);
-
-                var pbs_script = make_pbs_script(program_args, program_args.setup_instance_vcpus, true, 0, setup_array_instances - 1, setup_array_step, true);
-
-                Console.WriteLine(pbs_script.run_line);
-
-                return;
-            }
-
             if (program_args.setup)
             {
-                program_args.experiment_name += $@"_{DateTime.Now:yyyy_MM_dd_HH_mm_ss_fff}";
-
-                // set default vcpu amounts if not specified
-                if (program_args.setup_total_vcpus <= 0) program_args.setup_total_vcpus = 1504 - 320;
-                if (program_args.setup_instance_vcpus <= 0) program_args.setup_instance_vcpus = 64;
-
-                // calculate array size (get total number of groups)
-                var dataset = new dataset_loader();
-                var groups = get_groups_to_use(dataset);
-
-                // todo: group features ...
-                var setup_array_instances = groups.Length;
-
-                // calculate total number of instanced and array step
-                var setup_total_instances = (int)Math.Floor((double)program_args.setup_total_vcpus / (double)program_args.setup_instance_vcpus);
-                var setup_array_step = (int)Math.Ceiling((double)setup_array_instances / (double)setup_total_instances);
-
-                // calculate list of expected indexes
-                //var group_index_pairs = new List<(int instance_id, int group_index_first, int group_index_last)>();
-                //var instance_id = -1;
-                //for (var a = 0; a <= setup_array_instances - 1; a += setup_array_step)
-                //{
-                //    instance_id++;
-                //    group_index_pairs.Add((instance_id, a, a + setup_array_step - 1));
-                //}
-
-                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_array_instances)}: {setup_array_instances}");
-                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(program_args.setup_total_vcpus)}: {program_args.setup_total_vcpus}");
-                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(program_args.setup_instance_vcpus)}: {program_args.setup_instance_vcpus}");
-                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_total_instances)}: {setup_total_instances}");
-                io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_array_step)}: {setup_array_step}");
-                io_proxy.WriteLine("");
-
-                var pbs_script = make_pbs_script(program_args, program_args.setup_instance_vcpus, true, 0, setup_array_instances - 1, setup_array_step, true);
-
-                for (var index = 0; index < pbs_script.pbs_script_lines.Count; index++)
-                {
-                    io_proxy.WriteLine($"{((index).ToString().PadLeft(3))}: {pbs_script.pbs_script_lines[index]}");
-                }
-
-                io_proxy.WriteLine("");
+                setup(program_args);
                 return;
             }
+
+            //if (program_args.run_local)
+            //{
+            //    program_args.experiment_name += $@"_{DateTime.Now:yyyyMMddHHmmssfff}";
+            //    program_args.run_local = false;
+            //    program_args.args.RemoveAll(a => string.Equals(a.key, nameof(program_args.run_local), StringComparison.OrdinalIgnoreCase));
+            //
+            //    // set other vars
+            //    if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.inner_folds), StringComparison.OrdinalIgnoreCase)))
+            //    {
+            //        program_args.inner_folds = 1;
+            //        program_args.args.Add((nameof(program_args.inner_folds), $"{program_args.inner_folds}", program_args.inner_folds, program_args.inner_folds, null));
+            //    }
+            //
+            //    if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.outer_cv_folds), StringComparison.OrdinalIgnoreCase)))
+            //    {
+            //        program_args.outer_cv_folds = 5;
+            //        program_args.args.Add((nameof(program_args.outer_cv_folds), $"{program_args.outer_cv_folds}", program_args.outer_cv_folds, program_args.outer_cv_folds, null));
+            //    }
+            //
+            //    if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.outer_cv_folds_to_run), StringComparison.OrdinalIgnoreCase)))
+            //    {
+            //        program_args.outer_cv_folds_to_run = 1;
+            //        program_args.args.Add((nameof(program_args.outer_cv_folds_to_run), $"{program_args.outer_cv_folds_to_run}", program_args.outer_cv_folds_to_run, program_args.outer_cv_folds_to_run, null));
+            //    }
+            //
+            //    if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.repetitions), StringComparison.OrdinalIgnoreCase)))
+            //    {
+            //        program_args.repetitions = 1;
+            //        program_args.args.Add((nameof(program_args.repetitions), $"{program_args.repetitions}", program_args.repetitions, program_args.repetitions, null));
+            //    }
+            //
+            //    //if (program_args.args.All(a => a.key != nameof(program_args.instance_array_index_start)))
+            //    //{
+            //    //    program_args.instance_array_index_start = 0;
+            //    //    program_args.args.Add((nameof(program_args.instance_array_index_start), program_args.instance_array_index_start, $"{program_args.instance_array_index_start}"));
+            //    //}
+            //
+            //    //if (program_args.args.All(a => a.key != nameof(program_args.array_instances)))
+            //    //{
+            //    //    program_args.array_instances = 1;
+            //    //    program_args.args.Add((nameof(program_args.array_instances), program_args.array_instances, $"{program_args.array_instances}"));
+            //    //}
+            //
+            //    // set default vcpu amounts if not specified
+            //    if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.setup_total_vcpus), StringComparison.OrdinalIgnoreCase)))
+            //    {
+            //        program_args.setup_total_vcpus = Environment.ProcessorCount;
+            //        program_args.args.Add((nameof(program_args.setup_total_vcpus), $"{program_args.setup_total_vcpus}", program_args.setup_total_vcpus, program_args.setup_total_vcpus, null));
+            //    }
+            //
+            //    if (program_args.args.All(a => !string.Equals(a.key, nameof(program_args.setup_instance_vcpus), StringComparison.OrdinalIgnoreCase)))
+            //    {
+            //        program_args.setup_instance_vcpus = Environment.ProcessorCount;
+            //        program_args.args.Add((nameof(program_args.setup_instance_vcpus), $"{program_args.setup_instance_vcpus}", program_args.setup_instance_vcpus, program_args.setup_instance_vcpus, null));
+            //    }
+            //
+            //    // calculate array size (get total number of groups)
+            //    var dataset = new dataset_loader();
+            //
+            //    var groups = get_groups_to_use(dataset);
+            //
+            //    // number of jobs
+            //    var setup_array_instances = groups.Length;
+            //
+            //    // calculate total number of instanced and array step
+            //    var setup_total_instances = (int)Math.Floor((double)program_args.setup_total_vcpus / (double)program_args.setup_instance_vcpus);
+            //    var setup_array_step = (int)Math.Ceiling((double)setup_array_instances / (double)setup_total_instances);
+            //
+            //    var pbs_script = make_pbs_script(program_args, program_args.setup_instance_vcpus, true, 0, setup_array_instances - 1, setup_array_step, true);
+            //
+            //    Console.WriteLine(pbs_script.run_line);
+            //
+            //    return;
+            //}
+
 
 
 
             if (string.IsNullOrWhiteSpace(program_args.experiment_name)) { throw new ArgumentOutOfRangeException(nameof(args), $"{nameof(program_args.experiment_name)}: must specify experiment name"); }
-
             if (program_args.array_start <= -1) { throw new ArgumentOutOfRangeException(nameof(args), nameof(program_args.array_start)); }
             if (program_args.array_end <= -1) { throw new ArgumentOutOfRangeException(nameof(args), nameof(program_args.array_end)); }
             if (program_args.instance_array_index_start <= -1) { throw new ArgumentOutOfRangeException(nameof(args), nameof(program_args.instance_array_index_start)); }
@@ -203,15 +157,61 @@ namespace svm_fs_batch
             if (program_args.instance_array_index_end <= -1) { program_args.instance_array_index_end = program_args.instance_array_index_start + (program_args.array_step - 1); }
 
             var instance_id = -1;
-            for (var i = program_args.array_start; i <= program_args.instance_array_index_start; i += program_args.array_step) { instance_id++; } // is this correct?
+            for (var i = program_args.array_start; i <= program_args.instance_array_index_start; i += program_args.array_step) { instance_id++; }
+            if (instance_id < 0) throw new ArgumentException(nameof(args), nameof(instance_id));
 
             worker(program_args.experiment_name, instance_id, program_args.array_instances, program_args.instance_array_index_start, program_args.array_step, program_args.instance_array_index_end, program_args.repetitions, program_args.outer_cv_folds, program_args.outer_cv_folds_to_run, program_args.inner_folds);
         }
 
+        internal static void setup(program_args program_args)
+        {
+            const string method_name = nameof(setup);
+
+            program_args.experiment_name += $@"_{DateTime.Now:yyyy_MM_dd_HH_mm_ss_fff}";
+
+            // set default vcpu amounts if not specified
+            if (program_args.setup_total_vcpus <= 0) program_args.setup_total_vcpus = 1504 - 320;
+            if (program_args.setup_instance_vcpus <= 0) program_args.setup_instance_vcpus = 64;
+
+            // calculate array size (get total number of groups)
+            var dataset = new dataset_loader();
+            var groups = dataset_group_methods.get_main_groups(dataset, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: false, perspective: false);
+
+            // todo: group features ...
+            var setup_array_instances = groups.Length;
+
+            // calculate total number of instanced and array step
+            var setup_total_instances = (int)Math.Floor((double)program_args.setup_total_vcpus / (double)program_args.setup_instance_vcpus);
+            var setup_array_step = (int)Math.Ceiling((double)setup_array_instances / (double)setup_total_instances);
+
+            // calculate list of expected indexes
+            //var group_index_pairs = new List<(int instance_id, int group_index_first, int group_index_last)>();
+            //var instance_id = -1;
+            //for (var a = 0; a <= setup_array_instances - 1; a += setup_array_step)
+            //{
+            //    instance_id++;
+            //    group_index_pairs.Add((instance_id, a, a + setup_array_step - 1));
+            //}
+
+            io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_array_instances)}: {setup_array_instances}", module_name, method_name);
+            io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(program_args.setup_total_vcpus)}: {program_args.setup_total_vcpus}", module_name, method_name);
+            io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(program_args.setup_instance_vcpus)}: {program_args.setup_instance_vcpus}", module_name, method_name);
+            io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_total_instances)}: {setup_total_instances}", module_name, method_name);
+            io_proxy.WriteLine($@"{program_args.experiment_name}: {nameof(setup_array_step)}: {setup_array_step}", module_name, method_name);
+            io_proxy.WriteLine("");
+
+            var pbs_script = make_pbs_script(program_args, program_args.setup_instance_vcpus, true, 0, setup_array_instances - 1, setup_array_step, true);
+
+            for (var index = 0; index < pbs_script.pbs_script_lines.Count; index++)
+            {
+                io_proxy.WriteLine($"{((index).ToString().PadLeft(3))}: {pbs_script.pbs_script_lines[index]}", module_name, method_name);
+            }
+
+            io_proxy.WriteLine("");
+        }
+
         internal static (List<string> pbs_script_lines, string run_line) make_pbs_script(program_args program_args, int pbs_ppn = 1, bool is_job_array = false, int job_array_start = 0, int job_array_end = 0, int job_array_step = 1, bool rerunnable = true)
         {
-
-
             //const string method_name = nameof(make_pbs_script); 
 
             var pbs_script_lines = new List<string>();
@@ -371,7 +371,7 @@ namespace svm_fs_batch
         {
             var ranges = get_ranges(ids);
 
-            return string.Join("_", ranges.Select(range => $@"{range.@from}" + (range.from != range.to ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1 ? $@":{range.step}" : $@"") : $@"")).ToList());
+            return string.Join("_", ranges.Select(range => $@"{range.@from}" + (range.from != range.to ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1 ? $@";{range.step}" : $@"") : $@"")).ToList());
         }
 
 
@@ -394,34 +394,143 @@ namespace svm_fs_batch
             bool test_final_best_bias = false
         )
         {
-            //const string method_name = nameof(worker);
+            const string method_name = nameof(worker);
+
+            var find_best_group_features_first = true;
+            var check_individual_last = true;
 
 
+            // Load dataset
             var dataset = new dataset_loader();
 
-            var groups = program.get_groups_to_use(dataset);
+            // Get the feature groups within the dataset
+            var groups1 = dataset_group_methods.get_main_groups(dataset, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: false, perspective: false);
+
+            // Limit for testing
+            groups1 = groups1.Take(2).ToArray();
+
+            // Feature select within each group first, to reduce number of columns
+            if (find_best_group_features_first)
+            {
+                io_proxy.WriteLine($@"Finding best of {groups1.Sum(a => a.columns.Length)} individual columns within the {groups1.Length} groups", module_name, method_name);
+
+                // get best features in each group
+                var groups1_reduce_input = dataset_group_methods.get_sub_groups(groups1, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: true, perspective: true);
+
+                // There is 1 performance test per instance (i.e. each nested cross validation performance test [1-repetition, 5-fold outer, 5-fold inner])
+                // This means that if number of groups is less than number of instances, some instances could be idle... problem, but rare enough to ignore.
+
+                var groups1_reduce_output = groups1_reduce_input
+                    .AsParallel()
+                    .AsOrdered()
+                    .Select
+                    (
+                        (group, group_index) =>
+                        feature_selection_worker
+                        (
+                            dataset: dataset,
+                            groups: group,
+                            preselect: true, //todo: set back to FALSE... just testing true.
+                            save_status: true,
+                            cache_full: false,
+                            cache_summary: true,
+                            base_group_indexes: null,
+                            experiment_name: $"{experiment_name}_subselect_{group_index}",
+                            instance_index: instance_index,
+                            total_instances: total_instances,
+                            array_index_start: array_index_start,
+                            array_step: array_step,
+                            array_index_last: array_index_last,
+                            repetitions: repetitions,
+                            outer_cv_folds: outer_cv_folds,
+                            outer_cv_folds_to_run: outer_cv_folds_to_run,
+                            inner_folds: inner_folds,
+                            order_by_ppf: order_by_ppf,
+                            min_score_increase: 0.01,
+                            max_iterations: 10,
+                            limit_iteration_not_higher_than_all: 6,
+                            limit_iteration_not_higher_than_last: 3,
+                            make_outer_cv_confusion_matrices: false
+                        )
+                    ).ToArray();
+
+                // ungroup (member & perspective)
+                var groups1_reduce_output_ungrouped = dataset_group_methods.ungroup(groups1_reduce_output.Select(a => a.best_winner_groups).ToArray());
+
+                // regroup (without member & perspective)
+                var groups1_reduce_output_regrouped = dataset_group_methods.get_main_groups(groups1_reduce_output_ungrouped, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: false, perspective: false);
+
+                groups1 = groups1_reduce_output_regrouped;
+            }
+
+
+            // Feature select between the dataset groups
+            io_proxy.WriteLine($@"Finding best of {groups1.Length} groups (made of {groups1.Sum(a => a.columns.Length)} columns)", module_name, method_name);
 
             var winner = feature_selection_worker(
-                dataset,
-                groups,
-                null,
-                experiment_name,
-                instance_index,
-                total_instances,
-                array_index_start,
-                array_step,
-                array_index_last,
-                repetitions,
-                outer_cv_folds,
-                outer_cv_folds_to_run,
-                inner_folds,
-                order_by_ppf,
-                limit_iteration_not_higher_than_all,
-                limit_iteration_not_higher_than_last,
-                make_outer_cv_confusion_matrices);//,
-                //test_final_best_bias);
+                dataset: dataset,
+                groups: groups1,
+                preselect: false,
+                save_status: true,
+                cache_full: false,
+                cache_summary: true,
+                base_group_indexes: null,
+                experiment_name: experiment_name,
+                instance_index: instance_index,
+                total_instances: total_instances,
+                array_index_start: array_index_start,
+                array_step: array_step,
+                array_index_last: array_index_last,
+                repetitions: repetitions,
+                outer_cv_folds: outer_cv_folds,
+                outer_cv_folds_to_run: outer_cv_folds_to_run,
+                inner_folds: inner_folds,
+                order_by_ppf: order_by_ppf,
+                min_score_increase: 0.005,
+                max_iterations: 100,
+                limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+                limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last,
+                make_outer_cv_confusion_matrices: make_outer_cv_confusion_matrices
+                );
 
 
+            // Column based feature select from the winners
+            if (check_individual_last)
+            {
+                // preselect all winner group columns, then test if feature selection goes backwards.
+
+                var best_winner_columns = dataset_group_methods.ungroup(winner.best_winner_groups);
+                var best_winner_columns_input = dataset_group_methods.get_main_groups(best_winner_columns, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: true, perspective: true);
+                var best_winner_columns_output = feature_selection_worker
+                (
+                    dataset: dataset,
+                    groups: best_winner_columns_input,
+                    preselect: true,
+                    save_status: true,
+                    cache_full: false,
+                    cache_summary: true,
+                    base_group_indexes: null,
+                    experiment_name: $"{experiment_name}_postselect_{best_winner_columns}",
+                    instance_index: instance_index,
+                    total_instances: total_instances,
+                    array_index_start: array_index_start,
+                    array_step: array_step,
+                    array_index_last: array_index_last,
+                    repetitions: repetitions,
+                    outer_cv_folds: outer_cv_folds,
+                    outer_cv_folds_to_run: outer_cv_folds_to_run,
+                    inner_folds: inner_folds,
+                    order_by_ppf: order_by_ppf,
+                    min_score_increase: 0.01,
+                    max_iterations: 10,
+                    limit_iteration_not_higher_than_all: 6,
+                    limit_iteration_not_higher_than_last: 3,
+                    make_outer_cv_confusion_matrices: false
+                );
+
+            }
+
+            // Check if result is approximately the same with other parameters values (i.e. variance number of repetitions, outer folds, inner folds, etc.)
             if (test_final_best_bias)
             {
                 // 1. test variance of kernel & scale
@@ -436,27 +545,19 @@ namespace svm_fs_batch
 
         internal static
         (
-            (
-                (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
-                int[] grouped_list_internal_column_indexes
-            )[] groups,
-
-            (confusion_matrix cm, score_data sd, rank_data rd) best_score_data,
-
-            List<(confusion_matrix cm, score_data sd, rank_data rd)> winners
+            (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] best_winner_groups,
+            (index_data id, confusion_matrix cm, score_data sd, rank_data rd) best_winner_data,
+            List<(index_data id, confusion_matrix cm, score_data sd, rank_data rd)> winners
         )
         feature_selection_worker
         (
             dataset_loader dataset,
-
-            (
-                (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) grouped_by_key,
-                (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] grouped_list,
-                int[] grouped_list_internal_column_indexes
-            )[] groups,
-
-            int[] base_group_indexes,
+            (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups,
+            bool preselect,// preselect all groups
+            bool save_status,
+            bool cache_full,
+            bool cache_summary,
+            int[] base_group_indexes,//always include these groups
             string experiment_name,
             int instance_index,
             int total_instances,
@@ -468,25 +569,27 @@ namespace svm_fs_batch
             int outer_cv_folds_to_run,
             int inner_folds,
             bool order_by_ppf = false,
+            double min_score_increase = 0.005,
+            int max_iterations = 100,
             int limit_iteration_not_higher_than_all = 14,
             int limit_iteration_not_higher_than_last = 7,
-            bool make_outer_cv_confusion_matrices = false//,
-            //bool test_final_best_bias = false//,
-                                             //bool perform_feature_selection = true
+            bool make_outer_cv_confusion_matrices = false
         )
         {
             const string method_name = nameof(feature_selection_worker);
 
+            const bool overwrite_cache = false;
+
             var total_groups = groups.Length;
 
             base_group_indexes = base_group_indexes?.OrderBy(a => a).Distinct().ToArray();
-            var base_column_indexes = base_group_indexes?.SelectMany(a => groups[a].grouped_list_internal_column_indexes).OrderBy(a => a).Distinct().ToArray();
+            var base_column_indexes = base_group_indexes?.SelectMany(base_group_index => groups[base_group_index].columns).OrderBy(a => a).Distinct().ToArray();
 
-            (confusion_matrix cm, score_data sd, rank_data rd) best_winner_cm_sd_rd = default;
-            (confusion_matrix cm, score_data sd, rank_data rd) last_winner_cm_sd_rd = default;
+            (index_data id, confusion_matrix cm, score_data sd, rank_data rd) best_winner_cm_sd_rd = default;
+            (index_data id, confusion_matrix cm, score_data sd, rank_data rd) last_winner_cm_sd_rd = default;
 
-            var all_winners_cm_sd_rd_list = new List<(confusion_matrix cm, score_data sd, rank_data rd)>();
-            var last_iteration_cm_sd_rd_list = Array.Empty<(confusion_matrix cm, score_data sd, rank_data rd)>();
+            var all_winners_cm_sd_rd_list = new List<(index_data id, confusion_matrix cm, score_data sd, rank_data rd)>();
+            var last_iteration_cm_sd_rd_list = Array.Empty<(index_data id, confusion_matrix cm, score_data sd, rank_data rd)>();
 
             var cache_files_loaded = new List<string>();
             //var deep_search_index = -1;
@@ -503,25 +606,37 @@ namespace svm_fs_batch
             var selection_excluded_groups = new List<int>();
 
             io_proxy.WriteLine($@"{experiment_name}: Groups: (array indexes: [{(array_index_start)}..{(array_index_last)}]). Total groups: {total_groups}. (This instance #{(instance_index)}/#{total_instances}. array indexes: [{(array_index_start)}..{(array_index_last)}]). All indexes: [0..{(total_groups - 1)}].)", module_name, method_name);
+            var calibrate = false;
 
 
             while (!feature_selection_finished)// || test_final_best_bias)
             {
-                // get list of work to do this iteration
-                (List<index_data> indexes_whole, List<index_data> indexes_partition) unrolled_indexes = default;
+                // todo: remove calibrate = true; testing only.
+                calibrate = true;
 
-                int[] selected_groups;
-                int[] selected_columns;
+                // get list of work to do this iteration
+                (index_data[] indexes_whole, index_data[] indexes_partition) unrolled_indexes = default;
+
+
 
                 //if (!feature_selection_finished)
                 //{
 
-                selected_groups = last_winner_cm_sd_rd.sd?.selected_groups?.ToArray() ?? Array.Empty<int>();
-                selected_columns = last_winner_cm_sd_rd.sd?.selected_columns?.ToArray() ?? Array.Empty<int>();
+                var selected_groups = last_winner_cm_sd_rd.sd?.selected_groups?.ToArray() ?? Array.Empty<int>();
+                var selected_columns = last_winner_cm_sd_rd.sd?.selected_columns?.ToArray() ?? Array.Empty<int>();
 
                 var selection_excluded_groups2 = last_winner_cm_sd_rd.sd != null ? selection_excluded_groups.Concat(new List<int>() { last_winner_cm_sd_rd.sd.group_array_index }).ToArray() : selection_excluded_groups.ToArray();
 
-                unrolled_indexes = cache_load.get_unrolled_indexes_basic(dataset, iteration_index, /*iteration_name,*/ total_groups, instance_index, total_instances, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds, selection_excluded_groups2);
+                if (preselect)
+                {
+                    selected_groups = selected_groups.Union(Enumerable.Range(0, groups.Length).ToArray()).ToArray();
+                    selected_columns = selected_groups.SelectMany(group_index => groups[group_index].columns).OrderBy(internal_column_index => internal_column_index).Distinct().ToArray();
+                    preselect = false;
+                    calibrate = true;
+                }
+
+                unrolled_indexes = cache_load.get_unrolled_indexes_basic(dataset, experiment_name, iteration_index, /*iteration_name,*/ calibrate ? -1 : total_groups, instance_index, total_instances, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds, selection_excluded_groups2);
+
 
                 //(string experiment_name, int instance_index, int total_instances, int array_index_start, int array_step, int array_index_last, int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds)
                 //}
@@ -550,190 +665,99 @@ namespace svm_fs_batch
                 //    throw new Exception();
                 //}
 
-                if (base_group_indexes != null && base_group_indexes.Length > 0) selected_groups = selected_groups.Union(base_group_indexes).OrderBy(a => a).ToArray();
-                if (base_column_indexes != null && base_column_indexes.Length > 0) selected_columns = selected_columns.Union(base_column_indexes).OrderBy(a => a).ToArray();
 
-                var total_whole_indexes = unrolled_indexes.indexes_whole.Count;
-                var total_partition_indexes = unrolled_indexes.indexes_partition.Count;
+                if (base_group_indexes != null && base_group_indexes.Length > 0)
+                {
+                    selected_groups = selected_groups.Union(base_group_indexes).OrderBy(a => a).ToArray();
+                    selected_columns = selected_groups.SelectMany(group_index => groups[group_index].columns).OrderBy(internal_column_index => internal_column_index).Distinct().ToArray();
+                }
+
+                if (base_column_indexes != null && base_column_indexes.Length > 0)
+                {
+                    selected_columns = selected_columns.Union(base_column_indexes).OrderBy(a => a).ToArray();
+                }
+
+                if (calibrate && (selected_columns == null || selected_columns.Length == 0))
+                {
+                    throw new Exception();
+                }
+
+                var total_whole_indexes = unrolled_indexes.indexes_whole.Length;
+                var total_partition_indexes = unrolled_indexes.indexes_partition.Length;
                 io_proxy.WriteLine($"{experiment_name}: iteration: {iteration_index}, instance_index = {instance_index}/{total_instances}, total_whole_indexes = {total_whole_indexes}, total_partition_indexes = {total_partition_indexes}.");
+
+                // iteration_all_cm is a list of all merged results (i.e. the individual outer-cross-validation partitions merged)
+                var iteration_whole_results = new List<(index_data id, confusion_matrix cm, score_data sd)>();
+                
+
+
 
                 // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
                 //var last_iteration_folder = get_iteration_folder(settings.results_root_folder, experiment_name, iteration_index/*, iteration_name*/);
-                var iteration_folder = get_iteration_folder(settings.results_root_folder, experiment_name, iteration_index/*, iteration_name*/);
-                var iteration_whole_cm_filename = Path.Combine(iteration_folder, $@"z_{get_iteration_filename(unrolled_indexes.indexes_whole)}.cm.csv");
-                var iteration_partition_cm_filename = Path.Combine(iteration_folder, $@"x_{get_iteration_filename(unrolled_indexes.indexes_partition)}.cm.csv");
+                var iteration_folder = get_iteration_folder(settings.results_root_folder, experiment_name, iteration_index /*, iteration_name*/);
+                var iteration_whole_cm_filename1 = cache_full ? Path.Combine(iteration_folder, $@"z_{get_iteration_filename(unrolled_indexes.indexes_whole)}.cm.csv") : null;
+                var iteration_whole_cm_filename2 = cache_summary ? Path.Combine(iteration_folder, $@"z_{get_iteration_filename(unrolled_indexes.indexes_whole)}_summary.cm.csv") : null;
+                var iteration_partition_cm_filename1 = cache_full ? Path.Combine(iteration_folder, $@"x_{get_iteration_filename(unrolled_indexes.indexes_partition)}.cm.csv") : null;
+                var iteration_partition_cm_filename2 = cache_summary ? Path.Combine(iteration_folder, $@"x_{get_iteration_filename(unrolled_indexes.indexes_partition)}_summary.cm.csv") : null;
 
-                // iteration_all_cm is a list of all merged results (i.e. the individual outer-cross-validation partitions merged)
-                var iteration_whole_results = new List<(confusion_matrix cm, score_data sd)>();
+
 
                 // load cache (first try whole iteration, then try partition, then try individual work items)
-                var unrolled_indexes_state = cache_load.load_cache(instance_index, iteration_index, /*iteration_name,*/ experiment_name, false, cache_files_loaded, iteration_whole_results, unrolled_indexes.indexes_whole, unrolled_indexes.indexes_partition, last_iteration_cm_sd_rd_list, last_winner_cm_sd_rd, best_winner_cm_sd_rd);
+                var unrolled_indexes_state = cache_load.load_cache(instance_index, iteration_index, experiment_name, false, cache_files_loaded, iteration_whole_results, unrolled_indexes.indexes_whole, unrolled_indexes.indexes_partition, last_iteration_cm_sd_rd_list, last_winner_cm_sd_rd, best_winner_cm_sd_rd);
 
-                //if (iteration_index == 11)
-                //{
-                //    Console.WriteLine();
-                //}
+
+                // check if this partition is loaded....
+                if (unrolled_indexes_state.indexes_missing_partition.Any())
+                {
+                    //var p_iteration_index = iteration_index;
+                    //var p_selected_groups = selected_groups.ToList();
+                    //var p_selected_columns = selected_columns.ToList();
+
+                    var previous_winner_group_index = last_winner_cm_sd_rd.sd?.group_array_index;
+
+                    // after loading the whole iteration cache, all partitions cache, and partition individual merged items cache, and if there are still partition items missing... 
+                    // use parallel to split the missing items into cpu bound partitions
+                    var indexes_missing_partition_results = unrolled_indexes_state.indexes_missing_partition.AsParallel().AsOrdered().Select(unrolled_index_data => parallel_index_run(dataset: dataset, groups: groups, base_group_indexes: base_group_indexes, experiment_name: experiment_name, array_index_start: array_index_start, array_index_last: array_index_last, unrolled_index_data: unrolled_index_data, total_groups: total_groups, selected_groups: selected_groups, selected_columns: selected_columns, previous_winner_group_index: previous_winner_group_index, last_iteration_cm_sd_rd_list: last_iteration_cm_sd_rd_list, last_winner_cm_sd_rd: last_winner_cm_sd_rd, best_winner_cm_sd_rd: best_winner_cm_sd_rd, make_outer_cv_confusion_matrices: make_outer_cv_confusion_matrices)).ToList();
+
+                    iteration_whole_results.AddRange(indexes_missing_partition_results.Where(a => a != default).SelectMany(a => a).ToList());
+
+                    // all partition should be loaded by this point, check
+                    unrolled_indexes_state = cache_load.get_missing(instance_index, iteration_whole_results, unrolled_indexes.indexes_whole, unrolled_indexes.indexes_partition);
+                    if (unrolled_indexes_state.indexes_missing_partition.Any()) throw new Exception();
+                }
+
+                // save partition cache
+                {
+                    // 4. save CM for all groups of this hpc instance (from index start to index end) merged outer-cv results
+                    //
+                    
+                    //var iteration_partition_results = iteration_whole_results.Where((cm_sd, i) => cm_sd.cm.x_iteration_index == iteration_index && cm_sd.cm.x_group_array_index >= array_index_start && cm_sd.cm.x_group_array_index <= array_index_last).ToList();
+                    var iteration_partition_results = iteration_whole_results.Where((cm_sd, i) => cm_sd.id.unrolled_instance_index == instance_index).ToList();
+
+                    confusion_matrix.save(iteration_partition_cm_filename1, iteration_partition_cm_filename2, overwrite_cache, iteration_partition_results);
+                    io_proxy.WriteLine($"{experiment_name}: Part cache: Saved for iteration {(iteration_index)} group (array indexes: [{(array_index_start)}..{(array_index_last)}]). Files: {iteration_partition_cm_filename1}, {iteration_partition_cm_filename2}.");
+                }
+
 
                 // check if all partitions are loaded....
                 if (unrolled_indexes_state.indexes_missing_whole.Any())
                 {
-                    // check if this partition is loaded....
-                    if (unrolled_indexes_state.indexes_missing_partition.Any())
-                    {
-                        //var p_iteration_index = iteration_index;
-                        //var p_selected_groups = selected_groups.ToList();
-                        //var p_selected_columns = selected_columns.ToList();
-
-                        var previous_winner_group_index = last_winner_cm_sd_rd.sd?.group_array_index;
-
-                        // after loading the whole iteration cache, all partitions cache, and partition individual merged items cache, and if there are still partition items missing... 
-                        // use parallel to split the missing items into cpu bound partitions
-                        var indexes_missing_partition_results = unrolled_indexes_state
-                            .indexes_missing_partition
-                            .AsParallel()
-                            .AsOrdered()
-                            .Select(unrolled_index_data =>
-                            {
-                                io_proxy.WriteLine($@"{experiment_name}: Start parallel index: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()} (array indexes: [{(array_index_start)}..{(array_index_last)}]).");
-
-                                var group_key = unrolled_index_data.group_array_index > -1 ? groups[unrolled_index_data.group_array_index].grouped_by_key : default;
-                                var group_folder = get_iteration_folder(settings.results_root_folder, experiment_name, unrolled_index_data.iteration_index, /*unrolled_index_data.iteration_name,*/ unrolled_index_data.group_array_index);
-
-                                io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index_data.iteration_index)} group {(unrolled_index_data.group_array_index)}/{total_groups} (array indexes: [{(array_index_start)}..{(array_index_last)}]).");
-
-                                var test_selected_groups = selected_groups.ToList();
-                                var test_selected_columns = selected_columns.ToList();
-
-                                var is_group_selected = test_selected_groups.Contains(unrolled_index_data.group_array_index);
-                                var is_only_selection = is_group_selected && test_selected_groups.Count == 1;
-                                var is_last_winner = unrolled_index_data.group_array_index == previous_winner_group_index;
-
-                                // if selected, remove
-                                // if not selected, add
-                                // if only group, no action
-                                // if just added, no action
-
-                                var selection_direction = !is_group_selected ? direction.forwards : (!is_only_selection && !is_last_winner ? direction.backwards : direction.neutral);
-
-                                if (unrolled_index_data.group_array_index == -1) selection_direction = direction.neutral;
-
-                                if (base_group_indexes != null && base_group_indexes.Contains(unrolled_index_data.group_array_index)) selection_direction = direction.neutral;
-
-                                if (unrolled_index_data.group_array_index > -1 && selection_direction != direction.neutral)
-                                {
-                                    if (selection_direction == direction.forwards)
-                                    {
-                                        test_selected_groups.Add(unrolled_index_data.group_array_index);
-                                    }
-                                    else if (selection_direction == direction.backwards)
-                                    {
-                                        test_selected_groups.Remove(unrolled_index_data.group_array_index);
-                                    }
-
-                                    // ensure lists are consistent between instances
-                                    test_selected_groups = test_selected_groups.OrderBy(group_index => group_index).Distinct().ToList();
-                                    test_selected_columns = test_selected_groups.SelectMany(group_index => groups[group_index].grouped_list_internal_column_indexes).OrderBy(internal_column_index => internal_column_index).Distinct().ToList();
-                                }
-
-                                remove_duplicate_columns(dataset, test_selected_columns);
-
-
-                                var selection_test_info = new selection_test_info()
-                                {
-                                    y_is_group_selected = is_group_selected,
-                                    y_is_only_selection = is_only_selection,
-                                    y_is_last_winner = is_last_winner,
-
-                                    y_selection_direction = selection_direction,
-                                    y_test_groups_count = test_selected_groups?.Count ?? 0,
-                                    y_test_columns_count = test_selected_columns?.Count ?? 0,
-                                    y_test_groups = test_selected_groups?.ToArray() ?? Array.Empty<int>(),
-                                    y_test_columns = test_selected_columns?.ToArray() ?? Array.Empty<int>(),
-                                };
-
-                                var ocv_result = outer_cross_validation(
-                                    dataset: dataset,
-                                    experiment_name: experiment_name,
-                                    selection_test_info: selection_test_info,
-                                    test_selected_columns: test_selected_columns,
-                                    unrolled_index_data: unrolled_index_data,
-                                    group_folder: group_folder,
-                                    make_outer_cv_confusion_matrices: make_outer_cv_confusion_matrices,
-                                    group_key: group_key
-                                );
-
-                                io_proxy.WriteLine($@"{experiment_name}: Finished parallel index: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()} (array indexes: [{(array_index_start)}..{(array_index_last)}]).");
-
-                                //return ocv_result.mcv_cm;
-
-                                var group_cm_sd_list = ocv_result.mcv_cm.Select(cm =>
-                                {
-                                    var same_group = last_iteration_cm_sd_rd_list
-                                        .FirstOrDefault
-                                        (a =>
-                                            a.sd.group_array_index == cm.x_group_array_index.Value &&
-                                            a.sd.iteration_index + 1 == cm.x_iteration_index.Value &&
-                                            a.sd.class_id == cm.x_class_id.Value
-                                        );
-
-                                    var sd = new score_data(cm,
-                                        same_group: same_group.sd,
-                                        last_winner: last_winner_cm_sd_rd.sd,
-                                        best_winner: best_winner_cm_sd_rd.sd
-                                    );
-
-                                    return (cm, sd);
-                                }).ToList();
-
-                                return group_cm_sd_list;
-                            }
-                            )
-                            .ToList();
-
-
-                        iteration_whole_results.AddRange(indexes_missing_partition_results.Where(a => a != default).SelectMany(a => a).ToList());
-
-
-                        // all partition should be loaded by this point, check
-                        unrolled_indexes_state = cache_load.get_missing(instance_index, iteration_whole_results, unrolled_indexes.indexes_whole);
-                        if (unrolled_indexes_state.indexes_missing_partition.Any()) throw new Exception();
-
-
-                        // 4. save CM for all groups of this hpc instance (from index start to index end) merged outer-cv results
-                        //
-                        var iteration_partition_results = iteration_whole_results
-                            .Where((cm_sd, i) =>
-                            cm_sd.cm.x_iteration_index == iteration_index &&
-                            cm_sd.cm.x_group_array_index >= array_index_start &&
-                            cm_sd.cm.x_group_array_index <= array_index_last)
-                            .ToList();
-
-                        confusion_matrix.save(iteration_partition_cm_filename, iteration_partition_results);
-                        io_proxy.WriteLine($"{experiment_name}: Part cache: Saved for iteration {(iteration_index)} group (array indexes: [{(array_index_start)}..{(array_index_last)}]). File: {iteration_partition_cm_filename}.");
-                    }
-
                     // 5. load results from other instances (into iteration_whole_results)
-                    //
-
-                    unrolled_indexes_state = cache_load.load_cache(instance_index, iteration_index, /*iteration_name,*/ experiment_name, true, cache_files_loaded, iteration_whole_results, unrolled_indexes.indexes_whole, unrolled_indexes.indexes_partition, last_iteration_cm_sd_rd_list, last_winner_cm_sd_rd, best_winner_cm_sd_rd);
-
-                    if (unrolled_indexes_state.indexes_missing_whole.Any())
-                    {
-                        throw new Exception($@"{module_name}.{method_name}: {nameof(unrolled_indexes_state)}.{nameof(unrolled_indexes_state.indexes_loaded_whole)}.Any() was true.");
-                    }
-
-                    if (instance_index == 0)
-                    {
-                        // save CM with results from all instances
-
-                        confusion_matrix.save(iteration_whole_cm_filename, iteration_whole_results);
-                        io_proxy.WriteLine($"{experiment_name}: Full cache: Saved for iteration {(iteration_index)}. File: {iteration_whole_cm_filename}.");
-                    }
+                    
+                    unrolled_indexes_state = cache_load.load_cache(instance_index, iteration_index, experiment_name, true, cache_files_loaded, iteration_whole_results, unrolled_indexes.indexes_whole, unrolled_indexes.indexes_partition, last_iteration_cm_sd_rd_list, last_winner_cm_sd_rd, best_winner_cm_sd_rd);
+                    if (unrolled_indexes_state.indexes_missing_whole.Any()) { throw new Exception($@"{module_name}.{method_name}: {nameof(unrolled_indexes_state)}.{nameof(unrolled_indexes_state.indexes_loaded_whole)}.Any() was true."); }
                 }
 
+                if (instance_index == 0)
+                {
+                    // make sure z saved, in case stopped after completed work, before saving z cache file
+                    // save CM with results from all instances
+                    confusion_matrix.save(iteration_whole_cm_filename1, iteration_whole_cm_filename2, overwrite_cache, iteration_whole_results);
+                    io_proxy.WriteLine($"{experiment_name}: Full cache: Saved for iteration {(iteration_index)}. Files: {iteration_whole_cm_filename1}, {iteration_whole_cm_filename2}.");
+                }
+                
 
-
-                // 5. find winner (highest performance of any group of any class [within scoring_metrics' and 'scoring_class_ids'])
+                // 6. find winner (highest performance of any group of any class [within scoring_metrics' and 'scoring_class_ids'])
                 //      ensure ordering will be consistent between instances
                 //      ensure score_data instances are created, may not have been if from cache.
 
@@ -772,27 +796,38 @@ namespace svm_fs_batch
                                     );
                             }
 
-                            return (cm_sd.cm, sd);
+                            return (cm_sd.id, cm_sd.cm, sd);
                         }
                     )
                     .ToList();
 
                 var iteration_whole_results_fixed_with_ranks = rank_data.set_ranks(ref iteration_whole_results_fixed, order_by_ppf, last_winner_cm_sd_rd.sd, last_iteration_cm_sd_rd_list);
 
-                // ban bad groups from future selection
-                var zero_score = iteration_whole_results_fixed_with_ranks.Where(a => a.sd.same_group_score.value == 0).Select(a => a.sd.group_array_index).ToArray();
-                selection_excluded_groups.AddRange(zero_score);
+                // todo: check this is correct - ban bad groups from future selection
+                {
+                    var zero_score = iteration_whole_results_fixed_with_ranks.Where(a => a.sd.same_group_score.value == 0).Select(a => a.sd.group_array_index).ToArray();
+                    if (zero_score.Length > 0)
+                    {
+                        selection_excluded_groups.AddRange(zero_score);
+                        io_proxy.WriteLine($@"Excluding groups with zero scores: {string.Join(", ", zero_score)}.");
+                    }
+                }
 
-                var always_poor = iteration_whole_results_fixed_with_ranks.Where(a => a.rd.rank_score.value_history.Length >= 5 && a.rd.rank_score.value_history.TakeLast(5).All(b => b.value <= 0.1 /* bottom 10% of ranks for last 5 iterations */)).Select(a => a.sd.group_array_index).ToArray();
-                selection_excluded_groups.AddRange(always_poor);
-
+                {
+                    var always_poor = iteration_whole_results_fixed_with_ranks.Where(a => a.rd.rank_score.value_history.Length >= 5 && a.rd.rank_score.value_history.TakeLast(5).All(b => b.value <= 0.1 /* bottom 10% of ranks for last 5 iterations */)).Select(a => a.sd.group_array_index).ToArray();
+                    if (always_poor.Length > 0)
+                    {
+                        selection_excluded_groups.AddRange(always_poor);
+                        io_proxy.WriteLine($@"Excluding groups with always poor scores: {string.Join(", ", always_poor)}.");
+                    }
+                }
 
                 var this_iteration_winner_cm_sd_rd = iteration_whole_results_fixed_with_ranks[0];
                 all_winners_cm_sd_rd_list.Add(this_iteration_winner_cm_sd_rd);
 
 
                 var iteration_winner_group = groups[this_iteration_winner_cm_sd_rd.sd.group_array_index];
-                var iteration_winner_group_key = iteration_winner_group.grouped_by_key;
+                var iteration_winner_group_key = iteration_winner_group.group_key;
 
 
                 if (!feature_selection_finished)
@@ -814,17 +849,21 @@ namespace svm_fs_batch
                     var groups_not_available = available_groups.Length == 0;
                     var not_higher_than_last_limit_reached = iterations_not_higher_than_last >= limit_iteration_not_higher_than_last;
                     var not_higher_than_best_limit_reached = iterations_not_higher_than_best >= limit_iteration_not_higher_than_all;
+                    var max_iterations_reached = max_iterations > 0 && iteration_index + 1 >= max_iterations;
+                    var score_increase_not_reached = min_score_increase > 0 && (this_iteration_winner_cm_sd_rd.sd.same_group_score.value - (last_winner_cm_sd_rd.sd?.same_group_score?.value ?? 0)) < min_score_increase;
 
                     //if (feature_selection_finished) io_proxy.WriteLine($@"{nameof(feature_selection_finished)}: {nameof(feature_selection_finished)} = {feature_selection_finished}");
                     if (not_higher_than_last_limit_reached) io_proxy.WriteLine($@"{nameof(feature_selection_finished)}: {nameof(not_higher_than_last_limit_reached)} = {not_higher_than_last_limit_reached}");
                     if (not_higher_than_best_limit_reached) io_proxy.WriteLine($@"{nameof(feature_selection_finished)}: {nameof(not_higher_than_best_limit_reached)} = {not_higher_than_best_limit_reached}");
                     if (groups_not_available) io_proxy.WriteLine($@"{nameof(feature_selection_finished)}: {nameof(groups_not_available)} = {groups_not_available}");
+                    if (max_iterations_reached) io_proxy.WriteLine($@"{nameof(feature_selection_finished)}: {nameof(max_iterations_reached)} = {max_iterations_reached}");
+                    if (score_increase_not_reached) io_proxy.WriteLine($@"{nameof(feature_selection_finished)}: {nameof(score_increase_not_reached)} = {score_increase_not_reached}");
 
                     feature_selection_finished = /*feature_selection_finished ||*/ not_higher_than_last_limit_reached || not_higher_than_best_limit_reached || groups_not_available;
                 }
 
                 // if main program instance, then save iteration winner to file
-                if (instance_index == 0)
+                if (save_status && instance_index == 0)
                 {
                     {
                         var feature_selection_status = new feature_selection_status()
@@ -866,31 +905,33 @@ namespace svm_fs_batch
 
                     {
                         // Save the CM ranked for the current iteration (winner rank #0)
-                        var iteration_cm_ranks_fn = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}.csv");
-                        if (io_proxy.is_file_available(iteration_cm_ranks_fn))
+                        var iteration_cm_ranks_fn1 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}.csv");
+                        var iteration_cm_ranks_fn2 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}_summary.csv");
+                        if (io_proxy.is_file_available(iteration_cm_ranks_fn1) && io_proxy.is_file_available(iteration_cm_ranks_fn2))
                         {
-                            io_proxy.WriteLine($@"{experiment_name}: Already saved for iteration {(iteration_index)}. File: {iteration_cm_ranks_fn}.");
+                            io_proxy.WriteLine($@"{experiment_name}: Already saved for iteration {(iteration_index)}. Files: {iteration_cm_ranks_fn1}, {iteration_cm_ranks_fn2}.");
                         }
                         else
                         {
-                            io_proxy.WriteLine($@"{experiment_name}: Unavailable for iteration {(iteration_index)}. File: {iteration_cm_ranks_fn}.");
-                            confusion_matrix.save(iteration_cm_ranks_fn, iteration_whole_results_fixed_with_ranks);
-                            io_proxy.WriteLine($@"{experiment_name}: Saved for iteration {(iteration_index)}. File: {iteration_cm_ranks_fn}.");
+                            io_proxy.WriteLine($@"{experiment_name}: Unavailable for iteration {(iteration_index)}. Files: {iteration_cm_ranks_fn1}, {iteration_cm_ranks_fn2}.");
+                            confusion_matrix.save(iteration_cm_ranks_fn1, iteration_cm_ranks_fn2, overwrite_cache, iteration_whole_results_fixed_with_ranks);
+                            io_proxy.WriteLine($@"{experiment_name}: Saved for iteration {(iteration_index)}. Files: {iteration_cm_ranks_fn1}, {iteration_cm_ranks_fn2}.");
                         }
                     }
 
                     {
                         // Save the CM of winners from all iterations
-                        var winners_cm_fn = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}.csv");
-                        if (io_proxy.is_file_available(winners_cm_fn))
+                        var winners_cm_fn1 = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}.csv");
+                        var winners_cm_fn2 = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}_summary.csv");
+                        if (io_proxy.is_file_available(winners_cm_fn1) && io_proxy.is_file_available(winners_cm_fn2))
                         {
-                            io_proxy.WriteLine($@"{experiment_name}: Already saved for iteration {(iteration_index)}. File: {winners_cm_fn}.");
+                            io_proxy.WriteLine($@"{experiment_name}: Already saved for iteration {(iteration_index)}. Files: {winners_cm_fn1}, {winners_cm_fn2}.");
                         }
                         else
                         {
-                            io_proxy.WriteLine($@"{experiment_name}: Unavailable for iteration {(iteration_index)}. File: {winners_cm_fn}.");
-                            confusion_matrix.save(winners_cm_fn, all_winners_cm_sd_rd_list);
-                            io_proxy.WriteLine($@"{experiment_name}: Saved for iteration {(iteration_index)}. File: {winners_cm_fn}.");
+                            io_proxy.WriteLine($@"{experiment_name}: Unavailable for iteration {(iteration_index)}. Files: {winners_cm_fn1}, {winners_cm_fn2}.");
+                            confusion_matrix.save(winners_cm_fn1, winners_cm_fn2, overwrite_cache, all_winners_cm_sd_rd_list);
+                            io_proxy.WriteLine($@"{experiment_name}: Saved for iteration {(iteration_index)}. Files: {winners_cm_fn1}, {winners_cm_fn2}.");
                         }
                     }
 
@@ -917,6 +958,7 @@ namespace svm_fs_batch
                 last_iteration_cm_sd_rd_list = iteration_whole_results_fixed_with_ranks;
                 last_iteration_folder = iteration_folder;
                 iteration_index++;
+                calibrate = false;
             }
 
             io_proxy.WriteLine($"{experiment_name}: Finished: all iterations for groups (array indexes: [{(array_index_start)}..{(array_index_last)}]).");
@@ -925,7 +967,7 @@ namespace svm_fs_batch
             //var best_grouped_keys = best_winner_score_data.sd.selected_groups.Select(group_index =>
             //{
             //    var g = groups[group_index];
-            //    return g.grouped_by_key;
+            //    return g.group_key;
             //}).ToArray();
             //
             //var best_column_keys = best_winner_score_data.sd.selected_columns.Select(column_index =>
@@ -939,23 +981,118 @@ namespace svm_fs_batch
             //
             //var winner_groups_ret = (best_grouped_keys, best_column_keys, best_column_internal_column_indexes);
 
-            var winner_groups_subset = best_winner_cm_sd_rd.sd.selected_groups.Select(group_index => groups[group_index]).ToArray();
+            var best_winner_groups = best_winner_cm_sd_rd.sd.selected_groups.Select(group_index => groups[group_index]).ToArray();
 
-            return (winner_groups_subset, best_winner_cm_sd_rd, all_winners_cm_sd_rd_list);
+            return (best_winner_groups, best_winner_cm_sd_rd, all_winners_cm_sd_rd_list);
         }
 
-        private static (List<confusion_matrix> ocv_cm, List<confusion_matrix> mcv_cm) outer_cross_validation
+        private static (index_data id, confusion_matrix cm, score_data sd)[] parallel_index_run(
+            dataset_loader dataset,
+            (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups,
+            int[] base_group_indexes,
+            string experiment_name,
+            int array_index_start,
+            int array_index_last,
+            index_data unrolled_index_data,
+            int total_groups,
+            int[] selected_groups,
+            int[] selected_columns,
+            int? previous_winner_group_index,
+            (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] last_iteration_cm_sd_rd_list,
+            (index_data id, confusion_matrix cm, score_data sd, rank_data rd) last_winner_cm_sd_rd,
+            (index_data id, confusion_matrix cm, score_data sd, rank_data rd) best_winner_cm_sd_rd,
+            bool make_outer_cv_confusion_matrices)
+        {
+            if (dataset == null) throw new ArgumentOutOfRangeException(nameof(dataset));
+            if (string.IsNullOrWhiteSpace(experiment_name)) throw new ArgumentOutOfRangeException(nameof(experiment_name));
+            if (unrolled_index_data == null) throw new ArgumentOutOfRangeException(nameof(unrolled_index_data));
+            
+
+            io_proxy.WriteLine($@"{experiment_name}: Start parallel index: {unrolled_index_data?.id_index_str()} {unrolled_index_data?.id_fold_str()} {unrolled_index_data?.id_ml_str()} (array indexes: [{(array_index_start)}..{(array_index_last)}]).");
+
+            var group_array_index = unrolled_index_data?.group_array_index ?? -1;
+
+            var group_key = group_array_index > -1 && groups.Length - 1 >= group_array_index ? groups[group_array_index].group_key : default;
+            var group_folder = get_iteration_folder(settings.results_root_folder, experiment_name, unrolled_index_data.iteration_index, /*unrolled_index_data.iteration_name,*/ group_array_index);
+
+            io_proxy.WriteLine($@"{experiment_name}: Group cache: Unavailable for iteration {(unrolled_index_data.iteration_index)} group {(group_array_index)}/{total_groups} (array indexes: [{(array_index_start)}..{(array_index_last)}]).");
+
+            var test_selected_groups = selected_groups.OrderBy(group_index => group_index).ToArray();
+            var test_selected_columns = selected_columns.OrderBy(col_index => col_index).ToArray();
+
+            var is_group_selected = test_selected_groups.Contains(group_array_index);
+            var is_only_selection = is_group_selected && test_selected_groups.Length == 1;
+            var is_last_winner = group_array_index == previous_winner_group_index;
+
+            // if selected, remove.  if not selected, add.  if only group, no action.  if just added, no action.
+            var selection_direction = !is_group_selected ? direction.forwards : (!is_only_selection && !is_last_winner ? direction.backwards : direction.neutral);
+            
+            // don't add/remove group indexes that don't exist (i.e. for calibration)
+            if (group_array_index < 0) selection_direction = direction.neutral;
+
+            // don't add/remove base features
+            if (base_group_indexes != null && base_group_indexes.Contains(group_array_index)) selection_direction = direction.neutral;
+
+            if (group_array_index > -1 && selection_direction != direction.neutral)
+            {
+                if (selection_direction == direction.forwards)
+                {
+                    test_selected_groups = test_selected_groups.Union(new[] { group_array_index }).OrderBy(group_index => group_index).ToArray();
+                } 
+                else if (selection_direction == direction.backwards)
+                {
+                    test_selected_groups = test_selected_groups.Except(new[] { group_array_index }).OrderBy(group_index => group_index).ToArray();
+                }
+
+                test_selected_columns = test_selected_groups.SelectMany(group_index => groups[group_index].columns).OrderBy(col_index => col_index).Distinct().ToArray();
+            }
+
+            test_selected_columns = remove_duplicate_columns(dataset, test_selected_columns);
+
+
+            var selection_test_info = new selection_test_info() { y_is_group_selected = is_group_selected, y_is_only_selection = is_only_selection, y_is_last_winner = is_last_winner, y_selection_direction = selection_direction, y_test_groups_count = test_selected_groups?.Length ?? 0, y_test_columns_count = test_selected_columns?.Length ?? 0, y_test_groups = test_selected_groups?.ToArray() ?? Array.Empty<int>(), y_test_columns = test_selected_columns?.ToArray() ?? Array.Empty<int>(), };
+
+            var ocv_result = outer_cross_validation(dataset: dataset, experiment_name: experiment_name, selection_test_info: selection_test_info, test_selected_columns: test_selected_columns, unrolled_index_data: unrolled_index_data, group_folder: group_folder, make_outer_cv_confusion_matrices: make_outer_cv_confusion_matrices, group_key: group_key);
+
+            io_proxy.WriteLine($@"{experiment_name}: Finished parallel index: {unrolled_index_data?.id_index_str()} {unrolled_index_data?.id_fold_str()} {unrolled_index_data?.id_ml_str()} (array indexes: [{(array_index_start)}..{(array_index_last)}]).");
+
+            //return ocv_result.mcv_cm;
+
+            var group_cm_sd_list = ocv_result.mcv_cm.Select(cm =>
+                {
+                    var same_group = last_iteration_cm_sd_rd_list.FirstOrDefault(a => a.sd.group_array_index == cm.x_group_array_index.Value && a.sd.iteration_index + 1 == cm.x_iteration_index.Value && a.sd.class_id == cm.x_class_id.Value);
+
+                    var sd = new score_data(cm, same_group: same_group.sd, last_winner: last_winner_cm_sd_rd.sd, best_winner: best_winner_cm_sd_rd.sd);
+
+                    return (ocv_result.id, cm, sd);
+                })
+                .ToArray();
+
+            return group_cm_sd_list;
+        }
+
+        private static (index_data id, confusion_matrix[] ocv_cm, confusion_matrix[] mcv_cm) outer_cross_validation
         (
             dataset_loader dataset,
             string experiment_name,
             selection_test_info selection_test_info,
-            List<int> test_selected_columns,
+            int[] test_selected_columns,
             index_data unrolled_index_data,
             string group_folder,
             bool make_outer_cv_confusion_matrices,
-            (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) group_key
+            dataset_group_key group_key
         )
         {
+            const bool overwrite_cache = false;
+            const bool save_group_cache = false;
+
+            if (dataset==null) throw new ArgumentOutOfRangeException(nameof(dataset));
+            if (string.IsNullOrWhiteSpace(experiment_name)) throw new ArgumentOutOfRangeException(nameof(experiment_name));
+            if (unrolled_index_data == null) throw new ArgumentOutOfRangeException(nameof(unrolled_index_data));
+            if (test_selected_columns == null || test_selected_columns.Length == 0) throw new ArgumentOutOfRangeException(nameof(test_selected_columns));
+            //if (selection_test_info == null) throw new ArgumentOutOfRangeException(nameof(selection_test_info));
+            //if (group_key == null) throw new ArgumentOutOfRangeException(nameof(group_key));
+
             // 1. make outer-cv files
             var outer_cv_inputs = make_outer_cv_inputs(
                 dataset: dataset,
@@ -971,59 +1108,14 @@ namespace svm_fs_batch
                 .Where(a => a.outer_cv_index != -1 && a.repetitions_index != -1)
                 .AsParallel()
                 .AsOrdered()
-                .Select(outer_cv_input =>
-                {
-                    var ocv_cm = new List<confusion_matrix>();
-
-                    //if (outer_cv_input.outer_cv_index == -1 || outer_cv_input.repetitions_index == -1) continue; // -1 is the index for the merged text
-
-                    // call libsvm... returns raw prediction file data from doing: parameter search -> train (with best parameters) -> predict
-                    var prediction_data = inner_cross_validation(unrolled_index_data, outer_cv_input);
-
-                    // optional: make_outer_cv_confusion_matrices: this will output the individual outer-cross-validation confusion matrices (i.e. if outer-cv-folds = 5, then 5 respective confusion-matrices will be created, as well as the merged data confusion-matrix).
-                    if (make_outer_cv_confusion_matrices)
-                    {
-                        var ocv_test_class_sample_id_list = outer_cv_input.test_fold_indexes.SelectMany(a => a.test_indexes).ToList();
-
-                        // convert text results to confusion matrix and performance metrics
-                        var ocv_prediction_file_data = perf.load_prediction_file(outer_cv_input.test_text, null, prediction_data.predict_text, unrolled_index_data.calc_11p_thresholds, ocv_test_class_sample_id_list);
-
-                        // add any missing meta details to the confusion-matrix
-                        update_merged_cm(
-                            dataset: dataset,
-                            experiment_name: experiment_name,
-                            selection_test_info: selection_test_info,
-                            prediction_file_data: ocv_prediction_file_data,
-                            unrolled_index: unrolled_index_data,
-                            group_key: group_key,
-                            merged_cv_input: outer_cv_input,
-                            prediction_data_list: new[] { prediction_data }
-                            );
-
-                        ocv_cm.AddRange(ocv_prediction_file_data.cm_list);
-
-                        // save outer-cross-validation confusion-matrix CM for group
-                        confusion_matrix.save(outer_cv_input.cm_fn, ocv_prediction_file_data.cm_list);
-                        io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Saved: [R({outer_cv_input.repetitions_index}/{unrolled_index_data.repetitions}) O({outer_cv_input.outer_cv_index}/{unrolled_index_data.outer_cv_folds})] {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()}. File: {outer_cv_input.cm_fn}.");
-                    }
-
-                    // delete temporary files
-                    io_proxy.Delete(outer_cv_input.train_fn);
-                    io_proxy.Delete(outer_cv_input.grid_fn);
-                    io_proxy.Delete(outer_cv_input.model_fn);
-                    io_proxy.Delete(outer_cv_input.test_fn);
-                    io_proxy.Delete(outer_cv_input.predict_fn);
-                    // do not delete the confusion-matrix: io_proxy.Delete(outer_cv_input.cm_fn);
-
-                    return (prediction_data, ocv_cm);
-                })
-                .ToList();
+                .Select(outer_cv_input => outer_cross_validation_single(dataset, experiment_name, selection_test_info, unrolled_index_data, make_outer_cv_confusion_matrices, group_key, outer_cv_input))
+                .ToArray();
 
             // 1a. the ocvi index -1 is merged data
             var merged_cv_input = outer_cv_inputs.First(a => a.outer_cv_index == -1);
 
-            var ocv_cm = pdl.SelectMany(a => a.ocv_cm).ToList();
-            var prediction_data_list = pdl.Select(a => a.prediction_data).ToList();
+            var ocv_cm = make_outer_cv_confusion_matrices ? pdl.Where(a => a.ocv_cm != null).SelectMany(a => a.ocv_cm).ToArray() : null;
+            var prediction_data_list = pdl.Select(a => a.prediction_data).ToArray();
 
             // 3. make confusion matrix from the merged prediction results
             // note: repeated 'labels' lines will be ignored
@@ -1047,10 +1139,75 @@ namespace svm_fs_batch
                 );
 
             // save CM for group
-            confusion_matrix.save(merged_cv_input.cm_fn, mcv_cm);
-            io_proxy.WriteLine($@"{experiment_name}: Group MCV cache: Saved: {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()}. File: {merged_cv_input.cm_fn}.");
+            if (save_group_cache)
+            {
+                confusion_matrix.save(merged_cv_input.cm_fn1, merged_cv_input.cm_fn2, overwrite_cache, mcv_cm);
+                io_proxy.WriteLine($@"{experiment_name}: Group MCV cache: Saved: {unrolled_index_data?.id_index_str()} {unrolled_index_data?.id_fold_str()} {unrolled_index_data?.id_ml_str()}. Files: {merged_cv_input.cm_fn1}, {merged_cv_input.cm_fn2}.");
+            }
+            else
+            {
+                io_proxy.WriteLine($@"{experiment_name}: Group MCV cache: Save disabled: {unrolled_index_data?.id_index_str()} {unrolled_index_data?.id_fold_str()} {unrolled_index_data?.id_ml_str()}. Files: {merged_cv_input.cm_fn1}, {merged_cv_input.cm_fn2}.");
+            }
 
-            return (ocv_cm, mcv_cm);
+            return (unrolled_index_data, ocv_cm, mcv_cm);
+        }
+
+        private static (((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text) prediction_data, confusion_matrix[] ocv_cm)
+            outer_cross_validation_single(
+                dataset_loader dataset,
+                string experiment_name, 
+                selection_test_info selection_test_info,
+                index_data unrolled_index_data, 
+                bool make_outer_cv_confusion_matrices, 
+                dataset_group_key group_key, 
+                (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int training_size)[] train_sizes, (int class_id, int testing_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) outer_cv_input
+            )
+        {
+            const bool overwrite_cache = false;
+            const bool save_group_cache = false;
+
+            confusion_matrix[] ocv_cm = null;
+
+            //if (outer_cv_input.outer_cv_index == -1 || outer_cv_input.repetitions_index == -1) continue; // -1 is the index for the merged text
+
+            // call libsvm... returns raw prediction file data from doing: parameter search -> train (with best parameters) -> predict
+            var prediction_data = inner_cross_validation(unrolled_index_data, outer_cv_input);
+
+            // optional: make_outer_cv_confusion_matrices: this will output the individual outer-cross-validation confusion matrices (i.e. if outer-cv-folds = 5, then 5 respective confusion-matrices will be created, as well as the merged data confusion-matrix).
+            if (make_outer_cv_confusion_matrices)
+            {
+                var ocv_test_class_sample_id_list = outer_cv_input.test_fold_indexes.SelectMany(a => a.test_indexes).ToList();
+
+                // convert text results to confusion matrix and performance metrics
+                var ocv_prediction_file_data = perf.load_prediction_file(outer_cv_input.test_text, null, prediction_data.predict_text, unrolled_index_data.calc_11p_thresholds, ocv_test_class_sample_id_list);
+
+                // add any missing meta details to the confusion-matrix
+                update_merged_cm(dataset: dataset, experiment_name: experiment_name, selection_test_info: selection_test_info, prediction_file_data: ocv_prediction_file_data, unrolled_index: unrolled_index_data, group_key: group_key, merged_cv_input: outer_cv_input, prediction_data_list: new[] { prediction_data });
+
+                //ocv_cm.AddRange(ocv_prediction_file_data.cm_list);
+                ocv_cm = ocv_prediction_file_data.cm_list;
+
+                if (save_group_cache)
+                {
+                    // save outer-cross-validation confusion-matrix CM for group
+                    confusion_matrix.save(outer_cv_input.cm_fn1, outer_cv_input.cm_fn2, overwrite_cache, ocv_prediction_file_data.cm_list);
+                    io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Saved: [R({outer_cv_input.repetitions_index}/{unrolled_index_data.repetitions}) O({outer_cv_input.outer_cv_index}/{unrolled_index_data.outer_cv_folds})] {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()}. Files: {outer_cv_input.cm_fn1}, {outer_cv_input.cm_fn2}.");
+                }
+                else
+                {
+                    io_proxy.WriteLine($@"{experiment_name}: Group OCV cache: Save disabled: [R({outer_cv_input.repetitions_index}/{unrolled_index_data.repetitions}) O({outer_cv_input.outer_cv_index}/{unrolled_index_data.outer_cv_folds})] {unrolled_index_data.id_index_str()} {unrolled_index_data.id_fold_str()} {unrolled_index_data.id_ml_str()}. Files: {outer_cv_input.cm_fn1}, {outer_cv_input.cm_fn2}.");
+                }
+            }
+
+            // delete temporary files
+            io_proxy.Delete(outer_cv_input.train_fn);
+            io_proxy.Delete(outer_cv_input.grid_fn);
+            io_proxy.Delete(outer_cv_input.model_fn);
+            io_proxy.Delete(outer_cv_input.test_fn);
+            io_proxy.Delete(outer_cv_input.predict_fn);
+            // do not delete the confusion-matrix: io_proxy.Delete(outer_cv_input.cm_fn);
+
+            return (prediction_data, ocv_cm);
         }
 
         private static void update_merged_cm
@@ -1058,18 +1215,20 @@ namespace svm_fs_batch
             dataset_loader dataset,
             string experiment_name,
             selection_test_info selection_test_info,
-            (List<prediction> prediction_list, List<confusion_matrix> cm_list) prediction_file_data,
+            (prediction[] prediction_list, confusion_matrix[] cm_list) prediction_file_data,
             index_data unrolled_index,
-            (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) group_key,
+            dataset_group_key group_key,
 
             //List<int> test_selected_groups,
             //List<int> test_selected_columns,
 
 
-            (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn, List<string> train_text, List<string> test_text, List<(int class_id, int training_size)> train_sizes, List<(int class_id, int testing_size)> test_sizes, List<(int class_id, List<int> train_indexes)> train_fold_indexes, List<(int class_id, List<int> test_indexes)> test_fold_indexes) merged_cv_input,
-            IList<((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)> prediction_data_list
+            (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int training_size)[] train_sizes, (int class_id, int testing_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) merged_cv_input,
+            ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)[] prediction_data_list
         )
         {
+            if (prediction_file_data.cm_list == null) throw new ArgumentOutOfRangeException(nameof(prediction_file_data.cm_list));
+
             Parallel.ForEach(prediction_file_data.cm_list,
                 cm =>
                 //foreach (var cm in prediction_file_data.cm_list)
@@ -1078,47 +1237,51 @@ namespace svm_fs_batch
 
                     cm.selection_test_info = selection_test_info;
 
-                    cm.grid_point = new grid_point() { cost = prediction_data_list.Where(a => a.grid_point?.cost != null).Select(a => a.grid_point.cost).DefaultIfEmpty(default).Average(), gamma = prediction_data_list.Where(a => a.grid_point?.gamma != null).Select(a => a.grid_point.gamma).DefaultIfEmpty(default).Average(), epsilon = prediction_data_list.Where(a => a.grid_point?.epsilon != null).Select(a => a.grid_point.epsilon).DefaultIfEmpty(default).Average(), coef0 = prediction_data_list.Where(a => a.grid_point?.coef0 != null).Select(a => a.grid_point.coef0).DefaultIfEmpty(default).Average(), degree = prediction_data_list.Where(a => a.grid_point?.degree != null).Select(a => a.grid_point.degree).DefaultIfEmpty(default).Average(), };
+                    if (cm.grid_point == null)
+                    {
+                        cm.grid_point = new grid_point(prediction_data_list?.Select(a => a.grid_point).ToArray());
+                    }
 
-                    cm.x_libsvm_cv = prediction_data_list.Where(a => a.grid_point?.cv_rate != null).Select(a => (double)a.grid_point.cv_rate).DefaultIfEmpty(default).Average();
+                    //cm.x_libsvm_cv = prediction_data_list?.Where(a => a.grid_point?.cv_rate != null).Select(a => (double)a.grid_point.cv_rate).DefaultIfEmpty(default).Average() ?? default;
 
                     cm.x_class_name = settings.class_names?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_name;
                     cm.x_class_size = dataset.class_sizes?.First(b => b.class_id == cm.x_class_id).class_size ?? -1;
                     cm.x_class_testing_size = merged_cv_input.test_sizes?.First(b => b.class_id == cm.x_class_id).testing_size ?? -1;
                     cm.x_class_training_size = merged_cv_input.train_sizes?.First(b => b.class_id == cm.x_class_id).training_size ?? -1;
                     cm.x_class_weight = unrolled_index.class_weights?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_weight;
-                    cm.x_duration_grid_search = prediction_data_list.Select(a => a.dur.grid_dur).Sum().ToString(CultureInfo.InvariantCulture);
-                    cm.x_duration_testing = prediction_data_list.Select(a => a.dur.predict_dur).Sum().ToString(CultureInfo.InvariantCulture);
-                    cm.x_duration_training = prediction_data_list.Select(a => a.dur.train_dur).Sum().ToString(CultureInfo.InvariantCulture);
+                    cm.x_duration_grid_search = prediction_data_list?.Select(a => a.dur.grid_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
+                    cm.x_duration_testing = prediction_data_list?.Select(a => a.dur.predict_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
+                    cm.x_duration_training = prediction_data_list?.Select(a => a.dur.train_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
                     cm.x_experiment_name = experiment_name;
                     cm.x_group_array_index = unrolled_index.group_array_index;
                     cm.x_inner_cv_folds = unrolled_index.inner_cv_folds;
                     cm.x_iteration_index = unrolled_index.iteration_index;
                     //cm.x_iteration_name = unrolled_index.iteration_name;
-                    cm.x_key_file_tag = group_key.file_tag;
-                    cm.x_key_alphabet = group_key.alphabet;
-                    cm.x_key_stats = group_key.stats;
-                    cm.x_key_category = group_key.category;
-                    cm.x_key_dimension = group_key.dimension;
-                    cm.x_key_group = group_key.@group;
-                    cm.x_key_member = group_key.member;
-                    cm.x_key_perspective = group_key.perspective;
-                    cm.x_key_source = group_key.source;
+
+                    cm.x_key_file_tag = group_key?.value.file_tag ?? "";
+                    cm.x_key_alphabet = group_key?.value.alphabet ?? "";
+                    cm.x_key_stats = group_key?.value.stats ?? "";
+                    cm.x_key_category = group_key?.value.category ?? "";
+                    cm.x_key_dimension = group_key?.value.dimension ?? "";
+                    cm.x_key_group = group_key?.value.@group ?? "";
+                    cm.x_key_member = group_key?.value.member ?? "";
+                    cm.x_key_perspective = group_key?.value.perspective ?? "";
+                    cm.x_key_source = group_key?.value.source ?? "";
 
                     //cm.x_new_column_count = test_selected_columns.Count;
                     //cm.x_new_group_count = test_selected_groups.Count;
                     //cm.x_old_column_count = previous_selected_columns.Count;
                     //cm.x_old_group_count = previous_selected_groups.Count;
-                    cm.x_outer_cv_folds = unrolled_index.outer_cv_folds;
-                    cm.x_outer_cv_folds_to_run = unrolled_index.outer_cv_folds_to_run;
+                    cm.x_outer_cv_folds = unrolled_index?.outer_cv_folds ?? default;
+                    cm.x_outer_cv_folds_to_run = unrolled_index?.outer_cv_folds_to_run ?? default;
                     cm.x_outer_cv_index = merged_cv_input.outer_cv_index;
-                    cm.x_calc_11p_thresholds = unrolled_index.calc_11p_thresholds;
+                    cm.x_calc_11p_thresholds = unrolled_index?.calc_11p_thresholds;
                     cm.x_repetitions_index = merged_cv_input.repetitions_index;
-                    cm.x_repetitions_total = unrolled_index.repetitions;
-                    cm.x_scale_function = unrolled_index.scale_function;
-                    cm.x_svm_kernel = unrolled_index.svm_kernel;
-                    cm.x_svm_type = unrolled_index.svm_type;
-                    cm.x_total_groups = unrolled_index.total_groups;
+                    cm.x_repetitions_total = unrolled_index?.repetitions ?? default;
+                    cm.x_scale_function = unrolled_index?.scale_function ?? default;
+                    cm.x_svm_kernel = unrolled_index?.svm_kernel ?? default;
+                    cm.x_svm_type = unrolled_index?.svm_type ?? default;
+                    cm.x_total_groups = unrolled_index?.total_groups;
                     //cm.x_columns_included = test_selected_columns.ToArray();
                     //cm.x_groups_included = test_selected_groups.ToArray();
 
@@ -1129,10 +1292,14 @@ namespace svm_fs_batch
                 });
         }
 
-        internal static void remove_duplicate_columns(dataset_loader dataset, List<int> query_cols)
+        internal static int[] remove_duplicate_columns(dataset_loader dataset, int[] query_cols)
         {
+            const string method_name = nameof(remove_duplicate_columns);
             // remove duplicate columns (may exist in separate groups)
             //var query_col_dupe_check = idr.dataset_instance_list_grouped.SelectMany(a => a.examples).SelectMany(a => query_cols.Select(b => (query_col: b, fv: a.feature_data[b].fv)).ToList()).GroupBy(b => b.query_col).Select(b => (query_col: b.Key, values: b.Select(c => c.fv).ToList())).ToList();
+
+            if (query_cols == null) throw new ArgumentOutOfRangeException(nameof(query_cols));
+            if (query_cols.Length <= 1) return query_cols;
 
             var query_col_dupe_check = query_cols.Select(col_index => dataset
                     .value_list
@@ -1143,41 +1310,47 @@ namespace svm_fs_batch
                         if (rc.col_index != col_index || rc.row_index != row_index) throw new Exception();
 
                         return rc.row_column_val;
-                    }).ToList()).ToList()).ToList();
+                    }).ToArray()).ToArray()).ToArray();
 
             var dupe_clusters = new List<List<int>>();
-            for (var i = 0; i < query_col_dupe_check.Count; i++)
+            for (var i = 0; i < query_col_dupe_check.Length; i++)
             {
-                for (var j = 0; j < query_col_dupe_check.Count; j++)
+                for (var j = 0; j < query_col_dupe_check.Length; j++)
                 {
                     if (i <= j) continue;
 
                     if (query_col_dupe_check[i].SequenceEqual(query_col_dupe_check[j]))
                     {
                         var cluster = new List<int>() { query_cols[i], query_cols[j] };
-                        var x = dupe_clusters.Where(a => a.Any(b => cluster.Any(c => b == c))).ToList();
-                        x.ForEach(a =>
+                        var x = dupe_clusters.Where(a => a.Any(b => cluster.Any(c => b == c))).ToArray();
+                        
+                        for (var k = 0; k < x.Length; k++)
                         {
-                            cluster.AddRange(a);
-                            dupe_clusters.Remove(a);
-                        });
+                            cluster.AddRange(x[k]);
+                            dupe_clusters.Remove(x[k]);
+                        }
+
                         cluster = cluster.OrderBy(a => a).Distinct().ToList();
                         dupe_clusters.Add(cluster);
                     }
                 }
             }
 
-            foreach (var dc in dupe_clusters)
+            var indexes_to_remove = dupe_clusters.Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray();
+
+            if (indexes_to_remove.Length > 0)
             {
-                if (dc == null || dc.Count == 0) continue;
-                var remove = dc.Skip(1 /* leave 1 copy of the item */).ToList();
-                if (remove.Count > 0) { query_cols.RemoveAll(a => remove.Any(b => a == b)); }
+                var ret = query_cols.Except(indexes_to_remove).ToArray();
+                io_proxy.WriteLine($"Removed duplicate columns: {string.Join(", ", indexes_to_remove)}.  Preserved columns: {string.Join(", ", ret)}", module_name, method_name);
+                return ret;
             }
+
+            return query_cols;
         }
 
         internal enum direction { forwards, neutral, backwards }
 
-        internal static List<(
+        internal static (
             int repetitions_index,
             int outer_cv_index,
             string train_fn,
@@ -1185,40 +1358,51 @@ namespace svm_fs_batch
             string model_fn,
             string test_fn,
             string predict_fn,
-            string cm_fn,
-            List<string> train_text,
-            List<string> test_text,
-            List<(int class_id, int training_size)> train_sizes,
-            List<(int class_id, int testing_size)> test_sizes,
-            List<(int class_id, List<int> train_indexes)> train_fold_indexes,
-            List<(int class_id, List<int> test_indexes)> test_fold_indexes
-            )>
+            string cm_fn1,
+            string cm_fn2,
+            string[] train_text,
+            string[] test_text,
+            (int class_id, int training_size)[] train_sizes,
+            (int class_id, int testing_size)[] test_sizes,
+            (int class_id, int[] train_indexes)[] train_fold_indexes,
+            (int class_id, int[] test_indexes)[] test_fold_indexes
+            )[]
 
             make_outer_cv_inputs(
                 dataset_loader dataset,
-                List<int> column_indexes,
+                int[] column_indexes,
                 string group_folder,
                 index_data unrolled_index
                 )
         {
-            var preserve_fid = false; // whether to keep the original FID in the libsvm training/testing files (note: if not, bear in mind that features with zero values are removed, so this must not distort the ordering...).
+            const bool preserve_fid = false; // whether to keep the original FID in the libsvm training/testing files (note: if not, bear in mind that features with zero values are removed, so this must not distort the ordering...).
 
+            if (column_indexes == null || column_indexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(column_indexes));
             if (unrolled_index.repetitions <= 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index), nameof(unrolled_index.repetitions));
             if (unrolled_index.outer_cv_folds <= 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index), nameof(unrolled_index.repetitions));
             if (unrolled_index.outer_cv_folds_to_run > unrolled_index.outer_cv_folds) throw new ArgumentOutOfRangeException(nameof(unrolled_index), nameof(unrolled_index.outer_cv_folds_to_run));
 
 
             // ensure columns in correct order, and has class id
-            column_indexes = column_indexes.OrderBy(a => a).ToList();
-            if (column_indexes[0] != 0) column_indexes.Insert(0, 0);
-
-
-            var r_o_indexes = new List<(int repetitions_index, int outer_cv_index)>();
-            for (var _repetitions_cv_index = 0; _repetitions_cv_index < (unrolled_index.repetitions == 0 ? 1 : unrolled_index.repetitions); _repetitions_cv_index++)
+            column_indexes = column_indexes.OrderBy(a => a).ToArray();
+            if (column_indexes[0] != 0)
             {
-                for (var _outer_cv_index = 0; _outer_cv_index < (unrolled_index.outer_cv_folds_to_run == 0 ? unrolled_index.outer_cv_folds : unrolled_index.outer_cv_folds_to_run); _outer_cv_index++)
+                column_indexes = (new int[]{0}).Concat(column_indexes).ToArray();
+                //.Insert(0, 0);
+            }
+
+
+            //var r_o_indexes = new List<(int repetitions_index, int outer_cv_index)>();
+            var total_repetitions = (unrolled_index.repetitions == 0 ? 1 : unrolled_index.repetitions);
+            var total_outer_folds_to_run = (unrolled_index.outer_cv_folds_to_run == 0 ? unrolled_index.outer_cv_folds : unrolled_index.outer_cv_folds_to_run);
+            var r_o_indexes = new (int repetitions_index, int outer_cv_index)[total_repetitions * total_outer_folds_to_run];
+            var r_o_indexes_index = 0;
+            for (var _repetitions_cv_index = 0; _repetitions_cv_index < total_repetitions; _repetitions_cv_index++)
+            {
+                for (var _outer_cv_index = 0; _outer_cv_index < total_outer_folds_to_run; _outer_cv_index++)
                 {
-                    r_o_indexes.Add((_repetitions_cv_index, _outer_cv_index));
+                    //r_o_indexes.Add((_repetitions_cv_index, _outer_cv_index));
+                    r_o_indexes[r_o_indexes_index++] = (repetitions_index: _repetitions_cv_index, outer_cv_index: _outer_cv_index);
                 }
             }
 
@@ -1237,7 +1421,8 @@ namespace svm_fs_batch
                     var model_fn = $@"{filename}.model.libsvm";
                     var test_fn = $@"{filename}.test.libsvm";
                     var predict_fn = $@"{filename}.predict.libsvm";
-                    var cm_fn = $@"{filename}.cm.csv";
+                    var cm_fn1 = $@"{filename}.cm.csv";
+                    var cm_fn2 = $@"{filename}_summary.cm.csv";
 
                     var train_fold_indexes = unrolled_index.down_sampled_training_class_folds/* down sample for training */
                         .AsParallel()
@@ -1249,14 +1434,15 @@ namespace svm_fs_batch
                                     .Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index != outer_cv_index/* do not select test fold */)
                                     .SelectMany(b => b.indexes)
                                     .OrderBy(b => b)
-                                    .ToList()
+                                    .ToArray()
                             )
-                        ).ToList();
-                    var train_sizes = train_fold_indexes.Select(a => (class_id: a.class_id, train_size: a.train_indexes.Count)).ToList();
+                        ).ToArray();
+
+                    var train_sizes = train_fold_indexes.Select(a => (class_id: a.class_id, train_size: a.train_indexes?.Length??0)).ToArray();
                     var train_row_values = dataset.get_row_features(train_fold_indexes, column_indexes);
                     var train_scaling = dataset_loader.get_scaling_params(train_row_values, column_indexes);
                     var train_row_scaled_values = dataset_loader.get_scaled_rows(train_row_values, /*column_indexes,*/ train_scaling, unrolled_index.scale_function);
-                    var train_text = train_row_scaled_values.AsParallel().AsOrdered().Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? column_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToList();
+                    var train_text = train_row_scaled_values.AsParallel().AsOrdered().Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? column_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
 
                     //var v = train_fold_indexes.Select(a => a.indexes.Select(ix => dataset.value_list.First(b => b.class_id == a.class_id).val_list[ix].row_comment).ToArray()).ToArray();
 
@@ -1272,19 +1458,19 @@ namespace svm_fs_batch
                                     .Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index == outer_cv_index/* select only test fold */)
                                     .SelectMany(b => b.indexes)
                                     .OrderBy(b => b)
-                                    .ToList()
+                                    .ToArray()
                             )
-                        ).ToList();
+                        ).ToArray();
 
-                    var test_sizes = test_fold_indexes.Select(a => (class_id: a.class_id, test_size: a.test_indexes.Count)).ToList();
+                    var test_sizes = test_fold_indexes.Select(a => (class_id: a.class_id, test_size: a.test_indexes?.Length??0)).ToArray();
                     var test_row_values = dataset.get_row_features(test_fold_indexes, column_indexes);
                     var test_scaling = train_scaling; /* scale test data with training data */
                     var test_row_scaled_values = dataset_loader.get_scaled_rows(test_row_values, /*column_indexes,*/ test_scaling, unrolled_index.scale_function);
-                    var test_text = test_row_scaled_values.AsParallel().AsOrdered().Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? column_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToList();
+                    var test_text = test_row_scaled_values.AsParallel().AsOrdered().Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? column_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
 
-                    return (repetitions_index, outer_cv_index, train_fn, grid_fn, model_fn, test_fn, predict_fn, cm_fn, train_text, test_text, train_sizes, test_sizes, train_fold_indexes, test_fold_indexes);
+                    return (repetitions_index, outer_cv_index, train_fn, grid_fn, model_fn, test_fn, predict_fn, cm_fn1, cm_fn2, train_text, test_text, train_sizes, test_sizes, train_fold_indexes, test_fold_indexes);
                 })
-                .ToList();
+                .ToArray();
 
             Parallel.ForEach(ocv_data,
                 item =>
@@ -1293,13 +1479,13 @@ namespace svm_fs_batch
                     io_proxy.WriteAllLines(item.test_fn, item.test_text);
                 });
 
-            var merged_train_text = ocv_data.SelectMany(a => a.train_text).ToList();
-            var merged_test_text = ocv_data.SelectMany(a => a.test_text).ToList();
-            var merged_train_sizes = ocv_data.SelectMany(a => a.train_sizes).GroupBy(a => a.class_id).Select(b => (class_id: b.Key, training_size: b.Select(c => c.train_size).Sum())).ToList();
-            var merged_test_sizes = ocv_data.SelectMany(a => a.test_sizes).GroupBy(a => a.class_id).Select(b => (class_id: b.Key, testing_size: b.Select(c => c.test_size).Sum())).ToList();
+            var merged_train_text = ocv_data.SelectMany(a => a.train_text).ToArray();
+            var merged_test_text = ocv_data.SelectMany(a => a.test_text).ToArray();
+            var merged_train_sizes = ocv_data.SelectMany(a => a.train_sizes).GroupBy(a => a.class_id).Select(b => (class_id: b.Key, training_size: b.Select(c => c.train_size).Sum())).ToArray();
+            var merged_test_sizes = ocv_data.SelectMany(a => a.test_sizes).GroupBy(a => a.class_id).Select(b => (class_id: b.Key, testing_size: b.Select(c => c.test_size).Sum())).ToArray();
 
-            var merged_train_fold_indexes = ocv_data.SelectMany(a => a.train_fold_indexes).GroupBy(a => a.class_id).Select(a => (class_id: a.Key, train_indexes: a.SelectMany(b => b.train_indexes).ToList())).ToList();
-            var merged_test_fold_indexes = ocv_data.SelectMany(a => a.test_fold_indexes).GroupBy(a => a.class_id).Select(a => (class_id: a.Key, test_indexes: a.SelectMany(b => b.test_indexes).ToList())).ToList();
+            var merged_train_fold_indexes = ocv_data.SelectMany(a => a.train_fold_indexes).GroupBy(a => a.class_id).Select(a => (class_id: a.Key, train_indexes: a.SelectMany(b => b.train_indexes).ToArray())).ToArray();
+            var merged_test_fold_indexes = ocv_data.SelectMany(a => a.test_fold_indexes).GroupBy(a => a.class_id).Select(a => (class_id: a.Key, test_indexes: a.SelectMany(b => b.test_indexes).ToArray())).ToArray();
 
 
             // filenames for merging all repetition indexes and outer cv indexes... as if it were a single test.
@@ -1309,7 +1495,8 @@ namespace svm_fs_batch
             var merged_model_fn = $@"{merged_filename_prefix}.model.libsvm";
             var merged_test_fn = $@"{merged_filename_prefix}.test.libsvm";
             var merged_predict_fn = $@"{merged_filename_prefix}.predict.libsvm";
-            var merged_cm_fn = $@"{merged_filename_prefix}.cm.csv";
+            var merged_cm_fn1 = $@"{merged_filename_prefix}.cm.csv";
+            var merged_cm_fn2 = $@"{merged_filename_prefix}_summary.cm.csv";
 
             var merged_cv_input =
             (
@@ -1320,7 +1507,8 @@ namespace svm_fs_batch
                 model_fn: merged_model_fn,
                 test_fn: merged_test_fn,
                 predict_fn: merged_predict_fn,
-                cm_fn: merged_cm_fn,
+                cm_fn1: merged_cm_fn1,
+                cm_fn2: merged_cm_fn2,
                 train_text: merged_train_text,
                 test_text: merged_test_text,
                 train_sizes: merged_train_sizes,
@@ -1328,7 +1516,7 @@ namespace svm_fs_batch
                 train_fold_indexes: merged_train_fold_indexes,
                 test_fold_indexes: merged_test_fold_indexes
             );
-            ocv_data.Insert(0, merged_cv_input);
+            ocv_data = (new[] {merged_cv_input}).Concat(ocv_data).ToArray();
 
 
             //var test_class_sample_id_list = merged_cv_input.test_fold_indexes.SelectMany(a => a.test_indexes).ToList();
@@ -1358,27 +1546,34 @@ namespace svm_fs_batch
                 return initials.Length > 2 ?/* initials.Substring(0, 2) */ $@"{initials.First()}{initials.Last()}" : initials;
             }
 
-            var iteration_index = get_ranges_str(indexes.Select(a => a.iteration_index).ToList());
-            var group_index = get_ranges_str(indexes.Select(a => a.group_array_index).ToList());
-            var total_groups = get_ranges_str(indexes.Select(a => a.total_groups).ToList());
-            var calc_11p_thresholds = get_ranges_str(indexes.Select(a => a.calc_11p_thresholds ? 1 : 0).ToList());
-            var repetitions = get_ranges_str(indexes.Select(a => a.repetitions).ToList());
-            var outer_cv_folds = get_ranges_str(indexes.Select(a => a.outer_cv_folds).ToList());
-            var outer_cv_folds_to_run = get_ranges_str(indexes.Select(a => a.outer_cv_folds_to_run).ToList());
+            static string reduce(string text, int max = 30)
+            {
+                return text != null && text.Length > max ? $"{text.Substring(0, max / 3)}_{text.Substring((text.Length / 2) - (((max / 3) - 2) / 2), (max / 3) - 2)}_{text.Substring(text.Length - (max / 3), max / 3)}" : text;
+            }
+
+            var experiment_group_name = reduce(string.Join($@"_", indexes.Select(a => a.experiment_group_name).Distinct().ToArray()));
+            var iteration_index = reduce(get_ranges_str(indexes.Select(a => a.iteration_index).ToList()));
+            var group_index = reduce(get_ranges_str(indexes.Select(a => a.group_array_index).ToList()));
+            var total_groups = reduce(get_ranges_str(indexes.Select(a => a.total_groups).ToList()));
+            var calc_11p_thresholds = reduce(get_ranges_str(indexes.Select(a => a.calc_11p_thresholds ? 1 : 0).ToList()));
+            var repetitions = reduce(get_ranges_str(indexes.Select(a => a.repetitions).ToList()));
+            var outer_cv_folds = reduce(get_ranges_str(indexes.Select(a => a.outer_cv_folds).ToList()));
+            var outer_cv_folds_to_run = reduce(get_ranges_str(indexes.Select(a => a.outer_cv_folds_to_run).ToList()));
             var class_weights = string.Join("_",
                 indexes
                     .Where(a => a.class_weights != null)
                     .SelectMany(a => a.class_weights)
                     .GroupBy(a => a.class_id)
-                    .Select(a => $"{a.Key}_{get_ranges_str(a.Select(b => (int)(b.class_weight * 100)).ToList())}")
+                    .Select(a => $@"{a.Key}_{reduce(get_ranges_str(a.Select(b => (int)(b.class_weight * 100)).ToList()))}")
                     .ToList());
-            var svm_type = get_ranges_str(indexes.Select(a => (int)a.svm_type).ToList());
-            var svm_kernel = get_ranges_str(indexes.Select(a => (int)a.svm_kernel).ToList());
-            var scale_function = get_ranges_str(indexes.Select(a => (int)a.scale_function).ToList());
-            var inner_cv_folds = get_ranges_str(indexes.Select(a => a.inner_cv_folds).ToList());
+            var svm_type = reduce(get_ranges_str(indexes.Select(a => (int)a.svm_type).ToList()));
+            var svm_kernel = reduce(get_ranges_str(indexes.Select(a => (int)a.svm_kernel).ToList()));
+            var scale_function = reduce(get_ranges_str(indexes.Select(a => (int)a.scale_function).ToList()));
+            var inner_cv_folds = reduce(get_ranges_str(indexes.Select(a => a.inner_cv_folds).ToList()));
 
             var p = new List<(string name, string value)>()
             {
+                (get_initials(nameof(experiment_group_name)), experiment_group_name),//it
                 (get_initials(nameof(iteration_index)), iteration_index),//it
                 (get_initials(nameof(group_index)), group_index),//gi
                 (get_initials(nameof(total_groups)), total_groups),//tg
@@ -1393,7 +1588,14 @@ namespace svm_fs_batch
                 (get_initials(nameof(inner_cv_folds)), inner_cv_folds),//ic
             };
 
-            var iter_fn = string.Join("_", p.Select(a => $@"{a.name}[{a.value ?? ""}]").ToList());
+            var iter_fn = string.Join($@"_", p.Select(a => $@"{a.name}[{a.value ?? ""}]").ToList());
+
+            const string fn_chars = @"0123456789[]{}()_+-.;qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
+
+            if (!iter_fn.All(a => fn_chars.Contains(a)))
+            {
+                throw new Exception();
+            }
 
             return iter_fn;
         }
@@ -1402,10 +1604,10 @@ namespace svm_fs_batch
         internal static ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)
             inner_cross_validation(
                 index_data unrolled_index,
-                (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn, List<string> train_text, List<string> test_text, List<(int class_id, int training_size)> train_sizes, List<(int class_id, int testing_size)> test_sizes, List<(int class_id, List<int> train_indexes)> train_fold_indexes, List<(int class_id, List<int> test_indexes)> test_fold_indexes) input,
-            bool libsvm_train_probability_estimates = true,
-            bool log = false)
-
+                (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int training_size)[] train_sizes, (int class_id, int testing_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) input,
+                bool libsvm_train_probability_estimates = true,
+                bool log = false
+            )
         {
 
             const string method_name = nameof(inner_cross_validation);

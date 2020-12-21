@@ -10,6 +10,16 @@ namespace svm_fs_batch
         public const string module_name = nameof(io_proxy);
         private static readonly Random random = new Random();
 
+        internal static void log_lock_knock(string lock_name)
+        {
+            WriteLine($@"knocking lock ({lock_name})");
+        }
+
+        internal static void log_lock_entered(string lock_name)
+        {
+            WriteLine($@"entered lock ({lock_name})");
+        }
+
         internal static void log_exception(Exception e, string msg, string caller_module_name, string caller_method_name)
         {
             do
@@ -161,49 +171,9 @@ namespace svm_fs_batch
         //private static readonly object _log_lock = new object();
         //private static string log_file = null;
 
-        internal static void WriteLine(string text = "", string module_name = "", string method_name = "")//, bool use_lock = false)
+        internal static void WriteLine(string text = "", string module_name = "_", string method_name = "_")
         {
-            //if (!program.verbose) return;
-
-            //try
-            //{
-            //const bool e_pid = false;
-            //const bool e_threadid = false;
-            //const bool e_taskid = false;
-            //const bool e_mem = false;
-
-            //var pid = Process.GetCurrentProcess().Id;
-            //var thread_id = Thread.CurrentThread.ManagedThreadId;
-            //var task_id = Task.CurrentId ?? 0;
-            //Memory usage: 
-            //var s = $@"{DateTime.Now:G} {(e_mem ? $@"{Math.Ceiling(GC.GetTotalMemory(false) / 1_000_000_000d):00}gb" : "")} {pid:000000}.{thread_id:000000}.{task_id:000000} {module_name}.{method_name} -> {text ?? ""}";
-
-            var s = $@"{DateTime.Now:G} {module_name}.{method_name} -> {text}";
-
-            //if (use_lock)
-            //{
-            //    lock (_console_lock)
-            //    {
-            //        Console.WriteLine(s);
-            //    }
-            //}
-            //else
-            //{
-            Console.WriteLine(s);
-            //}
-
-            //    if (!String.IsNullOrEmpty(log_file))
-            //    {
-            //        lock (_log_lock)
-            //        {
-            //            File.AppendAllLines(log_file, new string[] {s});
-            //        }
-            //    }
-            //}
-            //catch (Exception)// e)
-            //{
-            //    //svm_ldr.log_exception(e, "", nameof(io_proxy), nameof(is_file_available));
-            //}
+            non_blocking_console.WriteLine($@"{DateTime.Now:G} {module_name}.{method_name} -> {text}");
         }
 
         //internal static bool is_file_empty(string filename, string module_name = "", string method_name = "")

@@ -1,9 +1,58 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace svm_fs_batch
 {
     internal class dataset_group_key : IEquatable<dataset_group_key>
+    {
+        internal int column_index = -1; // note: column_index not used for equality checking.
+
+        internal (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value;
+
+        public dataset_group_key((string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value, int column_index = -1)
+        {
+            this.value = value;
+            this.column_index = column_index;
+        }
+
+        public dataset_group_key(string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective, int column_index = -1)
+        {
+            this.value.file_tag = file_tag;
+            this.value.alphabet = alphabet;
+            this.value.stats = stats;
+            this.value.dimension = dimension;
+            this.value.category = category;
+            this.value.source = source;
+            this.value.@group = @group;
+            this.value.member = member;
+            this.value.perspective = perspective;
+            this.column_index = column_index;
+        }
+
+        public bool Equals(dataset_group_key other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return value.Equals(other.value);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((dataset_group_key) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return value.GetHashCode();
+        }
+
+        public static bool operator ==(dataset_group_key left, dataset_group_key right) { return Equals(left, right); }
+        public static bool operator !=(dataset_group_key left, dataset_group_key right) { return !Equals(left, right); }
+    }
+
+    /*internal class dataset_group_key : IEquatable<dataset_group_key>
     {
         public const string module_name = nameof(dataset_group_key);
 
@@ -104,5 +153,5 @@ namespace svm_fs_batch
         }
 
         public static IEqualityComparer<dataset_group_key> DatasetGroupKeyComparer { get; } = new DatasetGroupKeyEqualityComparer();
-    }
+    }*/
 }

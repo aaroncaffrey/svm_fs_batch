@@ -8,7 +8,7 @@ namespace svm_fs_batch
     {
         public const string module_name = nameof(feature_selection_status);
 
-        internal (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) winner_key;
+        internal dataset_group_key winner_key;
 
         internal int total_groups;
         internal int iterations_not_higher_than_all;
@@ -94,15 +94,15 @@ namespace svm_fs_batch
                 
                 $@"_",
                 
-                $@"{winner_key.file_tag}",
-                $@"{winner_key.alphabet}",
-                $@"{winner_key.stats}",
-                $@"{winner_key.dimension}",
-                $@"{winner_key.category}",
-                $@"{winner_key.source}",
-                $@"{winner_key.group}",
-                $@"{winner_key.member}",
-                $@"{winner_key.perspective}",
+                $@"{winner_key?.value.file_tag??""}",
+                $@"{winner_key?.value.alphabet??""}",
+                $@"{winner_key?.value.stats??""}",
+                $@"{winner_key?.value.dimension??""}",
+                $@"{winner_key?.value.category??""}",
+                $@"{winner_key?.value.source??""}",
+                $@"{winner_key?.value.group??""}",
+                $@"{winner_key?.value.member??""}",
+                $@"{winner_key?.value.perspective??""}",
 
                 $@"_",
             };

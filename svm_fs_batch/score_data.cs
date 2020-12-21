@@ -26,19 +26,23 @@ namespace svm_fs_batch
         internal average_history same_group_score;
         internal average_history same_group_score_ppf;
 
-        internal int last_winner_num_groups_added;
+#if SD_EXTRA
         internal double last_winner_num_groups_added_pct;
-        internal int last_winner_num_columns_added;
         internal double last_winner_num_columns_added_pct;
+        internal int last_winner_num_groups_added;
+#endif
+        internal int last_winner_num_columns_added;
         internal double last_winner_score_increase;
         internal double last_winner_score_increase_pct;
         internal double last_winner_score_ppf_increase;
         internal double last_winner_score_ppf_increase_pct;
 
-        internal int best_winner_num_groups_added;
+#if SD_EXTRA
         internal double best_winner_num_groups_added_pct;
-        internal int best_winner_num_columns_added;
         internal double best_winner_num_columns_added_pct;
+        internal int best_winner_num_groups_added;
+#endif
+        internal int best_winner_num_columns_added;
         internal double best_winner_score_increase;
         internal double best_winner_score_increase_pct;
         internal double best_winner_score_ppf_increase;
@@ -63,26 +67,31 @@ namespace svm_fs_batch
                 nameof(is_score_higher_than_best_winner),
                 $@"_",
             }
-            .Concat(average_history.csv_header_values.Select(a=> $@"group_score_{a}").ToArray())
+            .Concat(average_history.csv_header_values.Select(a => $@"group_score_{a}").ToArray())
             .Concat(new[] { $@"_" })
             .Concat(average_history.csv_header_values.Select(a => $@"group_score_ppf_{a}").ToArray())
             .Concat(new[] { $@"_" })
             .Concat(new string[]
             {
-                nameof(last_winner_num_groups_added),
+#if SD_EXTRA
                 nameof(last_winner_num_groups_added_pct),
-                nameof(last_winner_num_columns_added),
                 nameof(last_winner_num_columns_added_pct),
+                nameof(last_winner_num_groups_added),
+#endif
+                nameof(last_winner_num_columns_added),
                 nameof(last_winner_score_increase),
                 nameof(last_winner_score_increase_pct),
                 nameof(last_winner_score_ppf_increase),
                 nameof(last_winner_score_ppf_increase_pct),
                 $@"_",
 
-                nameof(best_winner_num_groups_added),
+#if SD_EXTRA
+                
                 nameof(best_winner_num_groups_added_pct),
-                nameof(best_winner_num_columns_added),
                 nameof(best_winner_num_columns_added_pct),
+                nameof(best_winner_num_groups_added),
+#endif
+                nameof(best_winner_num_columns_added),
                 nameof(best_winner_score_increase),
                 nameof(best_winner_score_increase_pct),
                 nameof(best_winner_score_ppf_increase),
@@ -114,27 +123,31 @@ namespace svm_fs_batch
                     $@"_",
             });
 
-            values.AddRange(same_group_score.csv_values_array());
+            values.AddRange(same_group_score?.csv_values_array() ?? average_history.empty.csv_values_array());
             values.Add($@"_");
 
-            values.AddRange(same_group_score_ppf.csv_values_array());
+            values.AddRange(same_group_score_ppf?.csv_values_array() ?? average_history.empty.csv_values_array());
             values.Add($@"_");
 
             values.AddRange(new string[]{
-                $@"{(last_winner_num_groups_added)}",
+#if SD_EXTRA
                 $@"{(last_winner_num_groups_added_pct):G17}",
-                $@"{(last_winner_num_columns_added)}",
                 $@"{(last_winner_num_columns_added_pct):G17}",
+                $@"{(last_winner_num_groups_added)}",
+#endif
+                $@"{(last_winner_num_columns_added)}",
                 $@"{(last_winner_score_increase):G17}",
                 $@"{(last_winner_score_increase_pct):G17}",
                 $@"{(last_winner_score_ppf_increase):G17}",
                 $@"{(last_winner_score_ppf_increase_pct):G17}",
                 $@"_",
 
-                $@"{(best_winner_num_groups_added)}",
+#if SD_EXTRA
                 $@"{(best_winner_num_groups_added_pct):G17}",
-                $@"{(best_winner_num_columns_added)}",
                 $@"{(best_winner_num_columns_added_pct):G17}",
+                $@"{(best_winner_num_groups_added)}",
+#endif
+                $@"{(best_winner_num_columns_added)}",
                 $@"{(best_winner_score_increase):G17}",
                 $@"{(best_winner_score_increase_pct):G17}",
                 $@"{(best_winner_score_ppf_increase):G17}",
@@ -206,18 +219,16 @@ namespace svm_fs_batch
         {
             if (last_winner == null) last_winner = empty;
 
+#if SD_EXTRA
             this.last_winner_num_groups_added = this.num_groups - last_winner.num_groups;
             this.last_winner_num_groups_added_pct = last_winner.num_groups != 0 ? (double)this.num_groups / (double)last_winner.num_groups : 0;
-
-            this.last_winner_num_columns_added = this.num_columns - last_winner.num_columns;
             this.last_winner_num_columns_added_pct = last_winner.num_columns != 0 ? (double)this.num_columns / (double)last_winner.num_columns : 0;
-
-            this.last_winner_score_increase = this.same_group_score.value - last_winner.same_group_score.value;
-            this.last_winner_score_increase_pct = last_winner.same_group_score.value != 0 ? (double)this.same_group_score.value / (double)last_winner.same_group_score.value : 0;
-
-            this.last_winner_score_ppf_increase = this.same_group_score_ppf.value - last_winner.same_group_score_ppf.value;
-            this.last_winner_score_ppf_increase_pct = last_winner.same_group_score_ppf.value != 0 ? (double)this.same_group_score_ppf.value / (double)last_winner.same_group_score_ppf.value : 0;
-
+#endif
+            this.last_winner_num_columns_added = this.num_columns - last_winner.num_columns;
+            this.last_winner_score_increase = this.same_group_score.value - (last_winner.same_group_score?.value ?? 0);
+            this.last_winner_score_increase_pct = last_winner.same_group_score != null && last_winner.same_group_score.value != 0 ? (double)this.same_group_score.value / (double)last_winner.same_group_score.value : 0;
+            this.last_winner_score_ppf_increase = this.same_group_score_ppf.value - (last_winner?.same_group_score_ppf?.value ?? 0);
+            this.last_winner_score_ppf_increase_pct = last_winner.same_group_score_ppf != null && last_winner.same_group_score_ppf.value != 0 ? (double)this.same_group_score_ppf.value / (double)last_winner.same_group_score_ppf.value : 0;
             this.is_score_higher_than_last_winner = last_winner_score_increase > 0d;
         }
 
@@ -225,18 +236,16 @@ namespace svm_fs_batch
         {
             if (best_winner == null) best_winner = empty;
 
+#if SD_EXTRA
             this.best_winner_num_groups_added = this.num_groups - best_winner.num_groups;
             this.best_winner_num_groups_added_pct = best_winner.num_groups != 0 ? (double)this.num_groups / (double)best_winner.num_groups : 0;
-
-            this.best_winner_num_columns_added = this.num_columns - best_winner.num_columns;
             this.best_winner_num_columns_added_pct = best_winner.num_columns != 0 ? (double)this.num_columns / (double)best_winner.num_columns : 0;
-
-            this.best_winner_score_increase = this.same_group_score.value - best_winner.same_group_score.value;
-            this.best_winner_score_increase_pct = best_winner.same_group_score.value != 0 ? (double)this.same_group_score.value / (double)best_winner.same_group_score.value : 0;
-
-            this.best_winner_score_ppf_increase = this.same_group_score_ppf.value - best_winner.same_group_score_ppf.value;
-            this.best_winner_score_ppf_increase_pct = best_winner.same_group_score_ppf.value != 0 ? (double)this.same_group_score_ppf.value / (double)best_winner.same_group_score_ppf.value : 0;
-
+#endif
+            this.best_winner_num_columns_added = this.num_columns - best_winner.num_columns;
+            this.best_winner_score_increase = this.same_group_score.value - (best_winner?.same_group_score?.value ?? 0);
+            this.best_winner_score_increase_pct = best_winner.same_group_score != null && best_winner.same_group_score.value != 0 ? (double)this.same_group_score.value / (double)best_winner.same_group_score.value : 0;
+            this.best_winner_score_ppf_increase = this.same_group_score_ppf.value - (best_winner?.same_group_score_ppf?.value ?? 0);
+            this.best_winner_score_ppf_increase_pct = best_winner.same_group_score_ppf != null && best_winner.same_group_score_ppf.value != 0 ? (double)this.same_group_score_ppf.value / (double)best_winner.same_group_score_ppf.value : 0;
             this.is_score_higher_than_best_winner = best_winner_score_increase > 0d;
         }
     }

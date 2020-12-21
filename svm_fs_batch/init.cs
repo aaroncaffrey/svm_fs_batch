@@ -10,8 +10,11 @@ namespace svm_fs_batch
         public const string module_name = nameof(init);
         internal static void set_thread_counts()
         {
-            ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);
-            ThreadPool.SetMaxThreads(Environment.ProcessorCount * 100, Environment.ProcessorCount * 100);
+            //ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);
+            //ThreadPool.SetMaxThreads(Environment.ProcessorCount * 100, Environment.ProcessorCount * 100);
+
+            ThreadPool.SetMinThreads(1000, 1000);
+            ThreadPool.SetMaxThreads(10000, 10000);
         }
 
         internal static void close_notifications(CancellationTokenSource cts = null)
@@ -35,8 +38,8 @@ namespace svm_fs_batch
 
         internal static void check_x64()
         {
-            bool is64Bit = IntPtr.Size == 8;
-            if (!is64Bit) { throw new Exception("Must run in 64bit mode"); }
+            var is_x64 = IntPtr.Size == 8;
+            if (!is_x64) { throw new Exception("Must run in x64 mode"); }
         }
 
         internal static void set_gc_mode()

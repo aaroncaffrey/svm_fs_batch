@@ -7,6 +7,7 @@ namespace svm_fs_batch
     {
         public const string module_name = nameof(index_data);
 
+        internal string experiment_group_name;
         internal int unrolled_whole_index = -1;
         internal int unrolled_partition_index = -1;
         internal int unrolled_instance_index = -1;
@@ -17,14 +18,14 @@ namespace svm_fs_batch
         internal bool calc_11p_thresholds = false;
         internal int repetitions = 5;
         internal int outer_cv_folds = 5;
-        internal int outer_cv_folds_to_run = 5;
-        internal List<(int class_id, double class_weight)> class_weights = new List<(int class_id, double class_weight)>();
+        internal int outer_cv_folds_to_run = 1;
+        internal (int class_id, double class_weight)[] class_weights = null;
         internal routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc;
         internal routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf;
         internal scaling.scale_function scale_function = scaling.scale_function.rescale;
         internal int inner_cv_folds = 5;
-        internal List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> class_folds;
-        internal List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> down_sampled_training_class_folds;
+        internal (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] class_folds;
+        internal (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] down_sampled_training_class_folds;
 
         internal int total_whole_indexes = -1;
         internal int total_partition_indexes = -1;
@@ -35,6 +36,7 @@ namespace svm_fs_batch
         {
             var list = new (string name, string value, string value_max)[]
             {
+                (nameof(this.experiment_group_name), $@"{this.experiment_group_name}", $@""),
                 (nameof(this.iteration_index), $@"{this.iteration_index}", $@""),
                 //(nameof(this.iteration_name), $@"{this.iteration_name}", $@""),
                 (nameof(this.group_array_index), $@"{this.group_array_index}", this.total_groups > -1 ? $@"{this.total_groups}" : $@""), 
@@ -80,6 +82,10 @@ namespace svm_fs_batch
 
         public index_data(index_data index_data)
         {
+            if (index_data == null) return;
+
+            experiment_group_name = index_data.experiment_group_name;
+
             unrolled_whole_index = index_data.unrolled_whole_index;
             unrolled_partition_index = index_data.unrolled_partition_index;
             unrolled_instance_index = index_data.unrolled_instance_index;
@@ -97,9 +103,9 @@ namespace svm_fs_batch
             scale_function = index_data.scale_function;
             inner_cv_folds = index_data.inner_cv_folds;
 
-            class_weights = index_data.class_weights.ToList();
-            class_folds = index_data.class_folds.ToList();
-            down_sampled_training_class_folds = index_data.down_sampled_training_class_folds.ToList();
+            class_weights = index_data.class_weights?.ToArray();
+            class_folds = index_data.class_folds?.ToArray();
+            down_sampled_training_class_folds = index_data.down_sampled_training_class_folds?.ToArray();
 
             total_whole_indexes = index_data.total_whole_indexes;
             total_partition_indexes = index_data.total_partition_indexes;

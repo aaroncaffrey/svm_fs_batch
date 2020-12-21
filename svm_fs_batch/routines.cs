@@ -52,29 +52,29 @@ namespace svm_fs_batch
         }
 
         internal static (
-            List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> class_folds,
-            List<(int class_id, int class_size, List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds)> down_sampled_training_class_folds
-            ) folds(List<(int class_id, int class_size)> class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] class_folds,
+            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] down_sampled_training_class_folds
+            ) folds(IList<(int class_id, int class_size)> class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
-            var class_folds = class_sizes.AsParallel().AsOrdered().Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds/*, outer_cv_folds_to_run, fold_size_limit*/))).ToList();
+            var class_folds = class_sizes.AsParallel().AsOrdered().Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds/*, outer_cv_folds_to_run, fold_size_limit*/))).ToArray();
 
             var down_sampled_training_class_folds = class_folds.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: a.folds?.Select(b =>
                     {
                         var min_num_items_in_fold =
                             class_folds.Min(c => c.folds?
                                 .Where(e => e.repetitions_index == b.repetitions_index && e.outer_cv_index == b.outer_cv_index)
-                                .Min(e => e.indexes?.Count ?? 0) ?? 0
+                                .Min(e => e.indexes?.Length ?? 0) ?? 0
                             );
 
-                        return (repetitions_index: b.repetitions_index, outer_cv_index: b.outer_cv_index, indexes: b.indexes?.Take(min_num_items_in_fold).ToList());
+                        return (repetitions_index: b.repetitions_index, outer_cv_index: b.outer_cv_index, indexes: b.indexes?.Take(min_num_items_in_fold).ToArray());
                     })
-                    .ToList()))
-                .ToList();
+                    .ToArray()))
+                .ToArray();
 
             return (class_folds, down_sampled_training_class_folds);
         }
 
-        internal static List<(int repetitions_index, int outer_cv_index, List<int> indexes)> folds(int num_class_samples, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static (int repetitions_index, int outer_cv_index, int[] indexes)[] folds(int num_class_samples, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             // folds: returns a list of folds (including the indexes at each fold)... number folds = repetitions (!<1) * outer_cv_folds_to_run (!<1)
 
@@ -107,7 +107,7 @@ namespace svm_fs_batch
 
             var indexes_pool = Enumerable.Range(0, num_class_samples).ToList();
 
-            var fold_indexes = new List<(int randomisation, int outer_cv_index, List<int> indexes)>();
+            var fold_indexes = new List<(int randomisation, int outer_cv_index, int[] indexes)>();
 
             for (var repetitions_index = 0; repetitions_index < repetitions; repetitions_index++)
             {
@@ -118,14 +118,14 @@ namespace svm_fs_batch
                         .Skip(fold_sizes.Where((b, j) => outer_cv_index > j /* skip previous folds*/).Sum())
                         .Take(fold_size /* take only current fold */)
                         .OrderBy(b => b /* order indexes in the current fold numerically */)
-                        .ToList()))
-                    .Where(c => c.indexes != null && c.indexes.Count > 0)
-                    .ToList();
+                        .ToArray()))
+                    .Where(c => c.indexes != null && c.indexes.Length > 0)
+                    .ToArray();
 
                 fold_indexes.AddRange(outer_cv_fold_indexes);
             }
 
-            return fold_indexes;
+            return fold_indexes.ToArray();
         }
 
 

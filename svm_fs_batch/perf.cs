@@ -85,7 +85,7 @@ namespace svm_fs_batch
 
             Parallel.ForEach(confusion_matrix_list,
                 cm =>
-                    //foreach (var cm in confusion_matrix_list)
+                //foreach (var cm in confusion_matrix_list)
                 {
                     cm.calculate_metrics(cm.metrics, calculate_auc, prediction_list);
                     //if (calculate_auc)
@@ -164,12 +164,12 @@ namespace svm_fs_batch
         }
 
 
-        internal static List<prediction> load_prediction_file_regression_values(IList<(string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)> files)
+        internal static prediction[] load_prediction_file_regression_values(IList<(string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)> files)
         {
             // method untested
             const string method_name = nameof(load_prediction_file_regression_values);
 
-            var lines = files.AsParallel().AsOrdered().Select((a, i) => 
+            var lines = files.AsParallel().AsOrdered().Select((a, i) =>
                 (
                     test_file_lines: io_proxy.ReadAllLines(a.test_file, module_name, method_name).ToList(),
                     test_comments_file_lines: io_proxy.ReadAllLines(a.test_comments_file, module_name, method_name).ToList(),
@@ -181,7 +181,7 @@ namespace svm_fs_batch
 
             //var test_has_headers = false;
             //var test_comments_has_headers = true;
-            
+
             // check any prediction file has labels on first line
             var prediction_has_headers = lines.Any(a => a.prediction_file_lines.FirstOrDefault().StartsWith("labels", StringComparison.InvariantCulture));
 
@@ -192,7 +192,7 @@ namespace svm_fs_batch
             }
 
             lines = lines.AsParallel().AsOrdered().Select((a, i) => (
-                a.test_file_lines, 
+                a.test_file_lines,
                 a.test_comments_file_lines.Skip(1 /* skip header */).ToList(),
                 a.prediction_file_lines.Skip(i > 0 && prediction_has_headers ? 1 : 0).ToList(),
                 a.test_class_sample_id_list_lines
@@ -202,15 +202,15 @@ namespace svm_fs_batch
             var test_comments_file_lines = lines.SelectMany(a => a.test_comments_file_lines).ToList();
             var prediction_file_lines = lines.SelectMany(a => a.prediction_file_lines).ToList();
 
-            var test_class_sample_id_list = lines.Where(a=> a.test_class_sample_id_list_lines != null).SelectMany(a => a.test_class_sample_id_list_lines).Select(a => int.Parse(a)).ToList();
+            var test_class_sample_id_list = lines.Where(a => a.test_class_sample_id_list_lines != null).SelectMany(a => a.test_class_sample_id_list_lines).Select(a => int.Parse(a)).ToList();
             if (test_class_sample_id_list.Count == 0) test_class_sample_id_list = null;
 
             return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static List<prediction> load_prediction_file_regression_values(string test_file, string test_comments_file, string prediction_file, string test_sample_id_list_file = null)
+        internal static prediction[] load_prediction_file_regression_values(string test_file, string test_comments_file, string prediction_file, string test_sample_id_list_file = null)
         {
-            
+
             const string method_name = nameof(load_prediction_file_regression_values);
 
             //if (string.IsNullOrWhiteSpace(test_file) || !io_proxy.Exists(test_file, nameof(performance_measure), nameof(load_prediction_file_regression_values)) || new FileInfo(test_file).Length == 0)
@@ -245,7 +245,7 @@ namespace svm_fs_batch
             return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static List<prediction> load_prediction_file_regression_values_from_text(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, IList<int> test_class_sample_id_list)
+        internal static prediction[] load_prediction_file_regression_values_from_text(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, IList<int> test_class_sample_id_list)
         {
             // todo: output misclassification file
 
@@ -346,7 +346,7 @@ namespace svm_fs_batch
                 {
                     prediction_index = prediction_index,
                     class_sample_id = test_class_sample_id_list != null && test_class_sample_id_list.Count - 1 >= prediction_index ? test_class_sample_id_list[prediction_index] : -1,
-                    comment = test_comments_file_lines != null && test_comments_file_lines.Count > 0 ? test_comments_file_lines[prediction_index].Split(',').Select((a, i) => (comment_header: ((test_file_comments_header?.Length??0) - 1 >= i ? test_file_comments_header[i] : ""), comment_value: a)).ToList() : new List<(string comment_header, string comment_value)>(),
+                    comment = test_comments_file_lines != null && test_comments_file_lines.Count > 0 ? test_comments_file_lines[prediction_index].Split(',').Select((a, i) => (comment_header: ((test_file_comments_header?.Length ?? 0) - 1 >= i ? test_file_comments_header[i] : ""), comment_value: a)).ToList() : new List<(string comment_header, string comment_value)>(),
                     real_class_id = int.TryParse(test_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_real_class_id) ? out_real_class_id : default,
                     predicted_class_id = int.TryParse(prediction_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_predicted_class_id) ? out_predicted_class_id : default,
                     probability_estimates = probability_estimates,
@@ -354,7 +354,7 @@ namespace svm_fs_batch
                 };
 
                 return prediction;
-            }).ToList();
+            }).ToArray();
 
             return prediction_list;
         }
@@ -370,7 +370,7 @@ namespace svm_fs_batch
 
         //}
 
-        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(string test_file, string test_comments_file, string prediction_file, bool calc_11p_thresholds)
+        internal static (prediction[] prediction_list, confusion_matrix[] cm_list) load_prediction_file(string test_file, string test_comments_file, string prediction_file, bool calc_11p_thresholds)
         {
 
             //var param_list = new List<(string key, string value)>()
@@ -389,7 +389,8 @@ namespace svm_fs_batch
             return (prediction_list, cm_list);
         }
 
-        internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list)
+        //internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list)
+        internal static (prediction[] prediction_list, confusion_matrix[] cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list)
         {
 
             //var param_list = new List<(string key, string value)>()
@@ -408,8 +409,9 @@ namespace svm_fs_batch
             return (prediction_list, cm_list);
         }
 
-        internal static List<confusion_matrix> load_prediction_file(List<prediction> prediction_list, bool calc_11p_thresholds)
+        internal static confusion_matrix[] load_prediction_file(prediction[] prediction_list, bool calc_11p_thresholds)
         {
+            if (prediction_list == null || prediction_list.Length == 0) throw new ArgumentOutOfRangeException(nameof(prediction_list));
 
             //var param_list = new List<(string key, string value)>()
             //{
@@ -420,52 +422,62 @@ namespace svm_fs_batch
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
-            var class_id_list = prediction_list.SelectMany(a => new int[] { a.real_class_id, a.predicted_class_id }).Distinct().OrderBy(a => a).ToList();
+            var class_id_list = prediction_list.SelectMany(a => new int[] { a.real_class_id, a.predicted_class_id }).Distinct().OrderBy(a => a).ToArray();
 
-            var default_confusion_matrix_list = count_prediction_error(prediction_list);
-
+            if (class_id_list == null || class_id_list.Length == 0) throw new Exception();
+            
             var confusion_matrix_list = new List<confusion_matrix>();
+
+            // make confusion matrix performance scores with default decision boundary threshold
+            var default_confusion_matrix_list = count_prediction_error(prediction_list);
             confusion_matrix_list.AddRange(default_confusion_matrix_list);
+            
 
-            if (class_id_list.Count >= 2 && calc_11p_thresholds)
+            if (class_id_list.Length >= 2 && calc_11p_thresholds)
             {
-                var positive_id = class_id_list.Max();
-                var negative_id = class_id_list.Min();
-
-                var thresholds = new List<double>();
-                for (var i = 0.00m; i <= 1.00m; i += 0.10m)//0.05m)
+                // make confusion matrix performance scores with altered default decision boundary threshold
+                for (var class_id_x = 0; class_id_x < class_id_list.Length; class_id_x++)
                 {
-                    thresholds.Add((double)i);
+                    for (var class_id_y = 0; class_id_y < class_id_list.Length; class_id_y++)
+                    {
+                        if (class_id_x >= class_id_y) continue;
+
+                        var negative_id = class_id_list[class_id_x];
+                        var positive_id = class_id_list[class_id_y];
+
+                        var threshold_prediction_list = eleven_points.Select(th => (positive_threshold: th, prediction_list: prediction_list.Select(p => new prediction(p)
+                        {
+                            predicted_class_id = p.probability_estimates.First(e => e.class_id == positive_id).probability_estimate >= th ? positive_id : negative_id,
+                        }).ToArray())).ToArray();
+
+                        var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(a.prediction_list, a.positive_threshold, positive_id, false)).ToArray();
+
+
+                        for (var i = 0; i < threshold_confusion_matrix_list.Length; i++)
+                        {
+                            var class_default_cm = default_confusion_matrix_list.First(a => a.x_class_id == threshold_confusion_matrix_list[i].x_class_id);
+
+                            // note: AUC_ROC and AUC_PR don't change when altering the default threshold since the predicted class isn't a factor in their calculation.
+
+                            threshold_confusion_matrix_list[i].metrics.ROC_AUC_Approx_All = class_default_cm.metrics.ROC_AUC_Approx_All;
+                            threshold_confusion_matrix_list[i].metrics.ROC_AUC_Approx_11p = class_default_cm.metrics.ROC_AUC_Approx_11p;
+                            threshold_confusion_matrix_list[i].roc_xy_str_all = class_default_cm.roc_xy_str_all;
+                            threshold_confusion_matrix_list[i].roc_xy_str_11p = class_default_cm.roc_xy_str_11p;
+
+                            threshold_confusion_matrix_list[i].metrics.PR_AUC_Approx_All = class_default_cm.metrics.PR_AUC_Approx_All;
+                            threshold_confusion_matrix_list[i].metrics.PR_AUC_Approx_11p = class_default_cm.metrics.PR_AUC_Approx_11p;
+                            threshold_confusion_matrix_list[i].pr_xy_str_all = class_default_cm.pr_xy_str_all;
+                            threshold_confusion_matrix_list[i].pr_xy_str_11p = class_default_cm.pr_xy_str_11p;
+                            threshold_confusion_matrix_list[i].pri_xy_str_all = class_default_cm.pri_xy_str_all;
+                            threshold_confusion_matrix_list[i].pri_xy_str_11p = class_default_cm.pri_xy_str_11p;
+                        }
+
+                        confusion_matrix_list.AddRange(threshold_confusion_matrix_list);
+                    }
                 }
-
-                var threshold_prediction_list = thresholds.Select(t => (positive_threshold: t, prediction_list: prediction_list.Select(p => new prediction(p)
-                {
-                    predicted_class_id = p.probability_estimates.First(e => e.class_id == positive_id).probability_estimate >= t ? positive_id : negative_id,
-                }).ToList())).ToList();
-
-                var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(a.prediction_list, a.positive_threshold, positive_id, false)).ToList();
-
-                for (var i = 0; i < threshold_confusion_matrix_list.Count; i++)
-                {
-                    var default_cm = default_confusion_matrix_list.First(a => a.x_class_id == threshold_confusion_matrix_list[i].x_class_id);
-
-                    threshold_confusion_matrix_list[i].metrics.ROC_AUC_Approx_All = default_cm.metrics.ROC_AUC_Approx_All;
-                    threshold_confusion_matrix_list[i].metrics.ROC_AUC_Approx_11p = default_cm.metrics.ROC_AUC_Approx_11p;
-                    threshold_confusion_matrix_list[i].roc_xy_str_all = default_cm.roc_xy_str_all;
-                    threshold_confusion_matrix_list[i].roc_xy_str_11p = default_cm.roc_xy_str_11p;
-
-                    threshold_confusion_matrix_list[i].metrics.PR_AUC_Approx_All = default_cm.metrics.PR_AUC_Approx_All;
-                    threshold_confusion_matrix_list[i].metrics.PR_AUC_Approx_11p = default_cm.metrics.PR_AUC_Approx_11p;
-                    threshold_confusion_matrix_list[i].pr_xy_str_all = default_cm.pr_xy_str_all;
-                    threshold_confusion_matrix_list[i].pr_xy_str_11p = default_cm.pr_xy_str_11p;
-                    threshold_confusion_matrix_list[i].pri_xy_str_all = default_cm.pri_xy_str_all;
-                    threshold_confusion_matrix_list[i].pri_xy_str_11p = default_cm.pri_xy_str_11p;
-                }
-
-                confusion_matrix_list.AddRange(threshold_confusion_matrix_list);
             }
 
-            return confusion_matrix_list;
+            return confusion_matrix_list.ToArray();
         }
 
         internal static double brier(IList<prediction> prediction_list, int positive_id)
@@ -487,6 +499,9 @@ namespace svm_fs_batch
             eleven_points
         }
 
+        internal static readonly double[] eleven_points = new double[] { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0 };
+        //var thresholds11p = new double[] { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
+
         internal static (/*double brier_score,*/ double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, List<(double x, double y)> roc_xy, List<(double x, double y)> pr_xy, List<(double x, double y)> pri_xy)
             Calculate_ROC_PR_AUC(IList<prediction> prediction_list, int positive_id, threshold_type threshold_type = threshold_type.all_thresholds)
         {
@@ -499,24 +514,22 @@ namespace svm_fs_batch
             var p = prediction_list.Count(a => a.real_class_id == positive_id);
 
             // Calc N
-            var n = prediction_list.Count(a => a.real_class_id == negative_id);
+            //var n = prediction_list.Count(a => a.real_class_id == negative_id);
+            var n = prediction_list.Count(a => a.real_class_id != positive_id);
 
             // Order predictions descending by positive class probability
             prediction_list = prediction_list.OrderByDescending(a => a.probability_estimates.FirstOrDefault(b => b.class_id == positive_id).probability_estimate).ToList();
 
             // Get thresholds list (either all thresholds or 11 points)
-            List<double> thresholds = null;
+            double[] thresholds = null;
 
             if (threshold_type == threshold_type.all_thresholds)
             {
-                thresholds = prediction_list.Select(a => a.probability_estimates.FirstOrDefault(b => b.class_id == positive_id).probability_estimate).Distinct().OrderByDescending(a => a).ToList();
+                thresholds = prediction_list.Select(a => a.probability_estimates.FirstOrDefault(b => b.class_id == positive_id).probability_estimate).Distinct().OrderByDescending(a => a).ToArray();
             }
             else if (threshold_type == threshold_type.eleven_points)
             {
-                thresholds = new List<double>()
-                {
-                    1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0
-                };
+                thresholds = eleven_points;
             }
             else
             {
@@ -617,14 +630,17 @@ namespace svm_fs_batch
 
             // ROC (Not Approx & Not Eleven Point - Incompatible)
 
-            var total_neg_for_threshold = prediction_list.Select((a, i) => (actual_class: a.real_class_id, total_neg_at_point: prediction_list.Where((b, j) => j <= i && b.real_class_id == negative_id).Count())).ToList();
+            //var total_neg_for_threshold = prediction_list.Select((a, i) => (actual_class: a.real_class_id, total_neg_at_point: prediction_list.Where((b, j) => j <= i && b.real_class_id == negative_id).Count())).ToList();
+            var total_neg_for_threshold = prediction_list.Select((a, i) => (actual_class: a.real_class_id, total_neg_at_point: prediction_list.Where((b, j) => j <= i && b.real_class_id != positive_id).Count())).ToList();
+
             var roc_auc_actual = ((double)1 / (double)(p * n)) * (double)prediction_list
                                   .Select((a, i) =>
                                   {
                                       if (a.real_class_id != positive_id) return 0;
                                       var total_n_at_current_threshold = total_neg_for_threshold[i].total_neg_at_point;
 
-                                      var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class == negative_id && b.total_neg_at_point > total_n_at_current_threshold);
+                                      //var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class == negative_id && b.total_neg_at_point > total_n_at_current_threshold);
+                                      var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class != positive_id && b.total_neg_at_point > total_n_at_current_threshold);
 
                                       return n_more_than_current_n;
                                   }).Sum();

@@ -60,7 +60,7 @@ namespace svm_fs_batch
                 string train_stdout_file,
                 string train_stderr_file,
 
-                List<(int class_id, double weight)> class_weights = null,
+                (int class_id, double weight)[] class_weights = null,
 
                 routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc,
                 routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf,
@@ -153,7 +153,6 @@ namespace svm_fs_batch
             var coef0_exp_list = new List<double?>();
             var degree_exp_list = new List<double?>();
 
-            var search_grid_points = new List<(double? cost, double? gamma, double? epsilon, double? coef0, double? degree)>();
 
             // always search for cost, unless not specified
             if (cost_exp_begin != null && cost_exp_end != null && cost_exp_step != null)
@@ -214,24 +213,35 @@ namespace svm_fs_batch
             if (coef0_exp_list == null || coef0_exp_list.Count == 0) coef0_exp_list = new List<double?>() { null };
             if (degree_exp_list == null || degree_exp_list.Count == 0) degree_exp_list = new List<double?>() { null };
 
-            for (var cost_index = 0; cost_index < cost_exp_list.Count; cost_index++)
+            var cost_exp_list_len = cost_exp_list.Count;
+            var gamma_exp_list_len = gamma_exp_list.Count;
+            var epsilon_exp_list_len = epsilon_exp_list.Count;
+            var coef0_exp_list_len = coef0_exp_list.Count;
+            var degree_exp_list_len = degree_exp_list.Count;
+
+
+            var search_grid_points = new (double? cost, double? gamma, double? epsilon, double? coef0, double? degree)[cost_exp_list_len * gamma_exp_list_len * epsilon_exp_list_len * coef0_exp_list_len * degree_exp_list_len];
+            var k = -1;
+
+            for (var cost_index = 0; cost_index < cost_exp_list_len; cost_index++)
             {
-                for (var gamma_index = 0; gamma_index < gamma_exp_list.Count; gamma_index++)
+                for (var gamma_index = 0; gamma_index < gamma_exp_list_len; gamma_index++)
                 {
-                    for (var epsilon_index = 0; epsilon_index < epsilon_exp_list.Count; epsilon_index++)
+                    for (var epsilon_index = 0; epsilon_index < epsilon_exp_list_len; epsilon_index++)
                     {
-                        for (var coef0_index = 0; coef0_index < coef0_exp_list.Count; coef0_index++)
+                        for (var coef0_index = 0; coef0_index < coef0_exp_list_len; coef0_index++)
                         {
-                            for (var degree_index = 0; degree_index < degree_exp_list.Count; degree_index++)
+                            for (var degree_index = 0; degree_index < degree_exp_list_len; degree_index++)
                             {
-                                search_grid_points.Add((cost_exp_list[cost_index], gamma_exp_list[gamma_index], epsilon_exp_list[epsilon_index], coef0_exp_list[coef0_index], degree_exp_list[degree_index]));
+                                //search_grid_points.Add((cost_exp_list[cost_index], gamma_exp_list[gamma_index], epsilon_exp_list[epsilon_index], coef0_exp_list[coef0_index], degree_exp_list[degree_index]));
+                                search_grid_points[++k] = (cost_exp_list[cost_index], gamma_exp_list[gamma_index], epsilon_exp_list[epsilon_index], coef0_exp_list[coef0_index], degree_exp_list[degree_index]);
                             }
                         }
                     }
                 }
             }
 
-            search_grid_points = search_grid_points.Distinct().OrderByDescending(a => a.cost).ThenByDescending(a => a.gamma).ThenByDescending(a => a.epsilon).ThenByDescending(a => a.coef0).ThenByDescending(a => a.degree).ToList();
+            search_grid_points = search_grid_points.Distinct().OrderByDescending(a => a.cost).ThenByDescending(a => a.gamma).ThenByDescending(a => a.epsilon).ThenByDescending(a => a.coef0).ThenByDescending(a => a.degree).ToArray();
 
             var cached_search_grid_points = search_grid_points.Where(a => cache_list.Any(b => svm_type == b.svm_type && svm_kernel == b.svm_kernel && inner_cv_folds == b.inner_cv_folds && probability_estimates == b.probability_estimates && shrinking_heuristics == b.shrinking_heuristics &&
                                                                               a.cost == b.grid_point.cost &&
@@ -239,7 +249,7 @@ namespace svm_fs_batch
                                                                               a.epsilon == b.grid_point.epsilon &&
                                                                               a.coef0 == b.grid_point.coef0 &&
                                                                               a.degree == b.grid_point.degree
-                                                                             )).ToList();
+                                                                             )).ToArray();
             /*
             var cached_search = cache.Where(b => cached_search_grid_points.Any(a => svm_type == b.svm_type && svm_kernel == b.svm_kernel && inner_cv_folds == b.inner_cv_folds && probability_estimates == b.probability_estimates && shrinking_heuristics == b.shrinking_heuristics &&
                                                                              a.cost == b.point.cost &&
@@ -250,15 +260,18 @@ namespace svm_fs_batch
             )).ToList();
             */
 
-            search_grid_points = search_grid_points.Except(cached_search_grid_points).ToList();
+            search_grid_points = search_grid_points.Except(cached_search_grid_points).ToArray();
 
             //var tasks = new List<Task<((double? cost, double? gamma, double? epsilon, double? coef0, double? degree) point, double cv_rate)>>();
 
 
 
-            var results = Enumerable.Range(0, search_grid_points.Count).AsParallel().AsOrdered().Select(index =>
+            var results = search_grid_points
+                .AsParallel()
+                .AsOrdered()
+                .Select((point, index) =>
             {
-                var point = search_grid_points[index];
+                //var point = search_grid_points[index];
                 
 
                 var model_index = index;
@@ -331,7 +344,7 @@ namespace svm_fs_batch
                 .ToList();
 
 
-            if (search_grid_points.Count > 0)
+            if (search_grid_points.Length > 0)
             {
                 var results_cache_format = results.Select(a =>
                     new grid_cache_data()
