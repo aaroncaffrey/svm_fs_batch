@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -11,12 +12,15 @@ namespace svm_fs_batch
         public const string module_name = nameof(perf);
 
         internal static List<confusion_matrix> count_prediction_error(
+
+            CancellationTokenSource cts,
             IList<prediction> prediction_list,
             double? threshold = null,
             int? threshold_class = null,
             bool calculate_auc = true
             )
         {
+            if (cts.IsCancellationRequested) return default;
 
             //var param_list = new List<(string key, string value)>()
             //{
@@ -87,7 +91,7 @@ namespace svm_fs_batch
                 cm =>
                 //foreach (var cm in confusion_matrix_list)
                 {
-                    cm.calculate_metrics(cm.metrics, calculate_auc, prediction_list);
+                    cm.calculate_metrics(cts, cm.metrics, calculate_auc, prediction_list);
                     //if (calculate_auc)
                     //{
                     //    var (brier_score, roc_auc, roc_auc2, pr_auc, ap, api, roc_xy, pr_xy) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, cm.class_id.Value);
@@ -164,17 +168,19 @@ namespace svm_fs_batch
         }
 
 
-        internal static prediction[] load_prediction_file_regression_values(IList<(string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)> files)
+        internal static prediction[] load_prediction_file_regression_values(CancellationTokenSource cts, IList<(string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)> files)
         {
             // method untested
             const string method_name = nameof(load_prediction_file_regression_values);
 
-            var lines = files.AsParallel().AsOrdered().Select((a, i) =>
+            if (cts.IsCancellationRequested) return default;
+
+            var lines = files.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((a, i) =>
                 (
-                    test_file_lines: io_proxy.ReadAllLines(a.test_file, module_name, method_name).ToList(),
-                    test_comments_file_lines: io_proxy.ReadAllLines(a.test_comments_file, module_name, method_name).ToList(),
-                    prediction_file_lines: io_proxy.ReadAllLines(a.prediction_file, module_name, method_name).ToList(),
-                    test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? io_proxy.ReadAllLines(a.test_class_sample_id_list_file, module_name, method_name).ToList() : null
+                    test_file_lines: io_proxy.ReadAllLines(cts, a.test_file, module_name, method_name).ToList(),
+                    test_comments_file_lines: io_proxy.ReadAllLines(cts, a.test_comments_file, module_name, method_name).ToList(),
+                    prediction_file_lines: io_proxy.ReadAllLines(cts, a.prediction_file, module_name, method_name).ToList(),
+                    test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? io_proxy.ReadAllLines(cts, a.test_class_sample_id_list_file, module_name, method_name).ToList() : null
                 )).ToList();
 
             // prediction file MAY have a header, but only if probability estimates are enabled
@@ -183,7 +189,7 @@ namespace svm_fs_batch
             //var test_comments_has_headers = true;
 
             // check any prediction file has labels on first line
-            var prediction_has_headers = lines.Any(a => a.prediction_file_lines.FirstOrDefault().StartsWith("labels", StringComparison.InvariantCulture));
+            var prediction_has_headers = lines.Any(a => a.prediction_file_lines.FirstOrDefault().StartsWith("labels", StringComparison.Ordinal));
 
             if (prediction_has_headers)
             {
@@ -191,7 +197,7 @@ namespace svm_fs_batch
                 if (lines.Select(a => a.prediction_file_lines.FirstOrDefault()).Distinct().Count() != 1) { throw new ArgumentOutOfRangeException(nameof(files)); }
             }
 
-            lines = lines.AsParallel().AsOrdered().Select((a, i) => (
+            lines = lines.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((a, i) => (
                 a.test_file_lines,
                 a.test_comments_file_lines.Skip(1 /* skip header */).ToList(),
                 a.prediction_file_lines.Skip(i > 0 && prediction_has_headers ? 1 : 0).ToList(),
@@ -205,13 +211,15 @@ namespace svm_fs_batch
             var test_class_sample_id_list = lines.Where(a => a.test_class_sample_id_list_lines != null).SelectMany(a => a.test_class_sample_id_list_lines).Select(a => int.Parse(a)).ToList();
             if (test_class_sample_id_list.Count == 0) test_class_sample_id_list = null;
 
-            return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
+            return load_prediction_file_regression_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static prediction[] load_prediction_file_regression_values(string test_file, string test_comments_file, string prediction_file, string test_sample_id_list_file = null)
+        internal static prediction[] load_prediction_file_regression_values(CancellationTokenSource cts, string test_file, string test_comments_file, string prediction_file, string test_sample_id_list_file = null)
         {
 
             const string method_name = nameof(load_prediction_file_regression_values);
+
+            if (cts.IsCancellationRequested) return default;
 
             //if (string.IsNullOrWhiteSpace(test_file) || !io_proxy.Exists(test_file, nameof(performance_measure), nameof(load_prediction_file_regression_values)) || new FileInfo(test_file).Length == 0)
             //{
@@ -233,21 +241,21 @@ namespace svm_fs_batch
             //    throw new Exception($@"Error: Prediction output file not available for access: ""{prediction_file}"".");
             //}
 
-            var test_file_lines = io_proxy.ReadAllLines(test_file, module_name, method_name).ToList();
+            var test_file_lines = io_proxy.ReadAllLines(cts, test_file, module_name, method_name).ToList();
 
-            var test_comments_file_lines = !string.IsNullOrWhiteSpace(test_comments_file) && io_proxy.Exists(test_comments_file/*, module_name, method_name*/) ? io_proxy.ReadAllLines(test_comments_file, module_name, method_name).ToList() : null;
+            var test_comments_file_lines = !string.IsNullOrWhiteSpace(test_comments_file) && io_proxy.Exists(test_comments_file/*, module_name, method_name*/) ? io_proxy.ReadAllLines(cts, test_comments_file, module_name, method_name).ToList() : null;
 
-            var prediction_file_lines = io_proxy.ReadAllLines(prediction_file, module_name, method_name).ToList();
+            var prediction_file_lines = io_proxy.ReadAllLines(cts, prediction_file, module_name, method_name).ToList();
 
-            var test_sample_id_list_lines = !string.IsNullOrWhiteSpace(test_sample_id_list_file) ? io_proxy.ReadAllLines(test_sample_id_list_file, module_name, method_name).ToList() : null;
+            var test_sample_id_list_lines = !string.IsNullOrWhiteSpace(test_sample_id_list_file) ? io_proxy.ReadAllLines(cts, test_sample_id_list_file, module_name, method_name).ToList() : null;
             var test_class_sample_id_list = test_sample_id_list_lines != null ? test_sample_id_list_lines.Select(a => int.Parse(a)).ToList() : null;
 
-            return load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
+            return load_prediction_file_regression_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static prediction[] load_prediction_file_regression_values_from_text(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, IList<int> test_class_sample_id_list)
+        internal static prediction[] load_prediction_file_regression_values_from_text(CancellationTokenSource cts, IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, IList<int> test_class_sample_id_list)
         {
-            // todo: output misclassification file
+            if (cts.IsCancellationRequested) return default;
 
             if (test_file_lines == null || test_file_lines.Count == 0)
             {
@@ -262,7 +270,7 @@ namespace svm_fs_batch
             // remove comments from test_file_lines (comments start with #)
             test_file_lines = test_file_lines.Select(a =>
             {
-                var hash_index = a.IndexOf('#', StringComparison.InvariantCulture);
+                var hash_index = a.IndexOf('#', StringComparison.Ordinal);
 
                 if (hash_index > -1)
                 {
@@ -329,14 +337,14 @@ namespace svm_fs_batch
             var total_predictions = test_file_data.Count;
 
 
-            var prediction_list = Enumerable.Range(0, total_predictions).AsParallel().AsOrdered().Select(prediction_index =>
+            var prediction_list = Enumerable.Range(0, total_predictions).AsParallel().AsOrdered().WithCancellation(cts.Token).Select(prediction_index =>
             {
                 var probability_estimates = prediction_file_data[prediction_index].Length <= 1 ?
                     new List<(int class_id, double probability_estimate)>()
                     :
                     prediction_file_data[prediction_index]
                         .Skip(1 /* skip predicted class id */)
-                        .Select((a, i) => (class_id: probability_estimate_class_labels[i], probability_estimate: double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var pe_out) ? pe_out : default))
+                        .Select((a, i) => (class_id: probability_estimate_class_labels[i], probability_estimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var pe_out) ? pe_out : default))
                         .OrderBy(a => a.class_id)
                         .ToList();
 
@@ -370,9 +378,9 @@ namespace svm_fs_batch
 
         //}
 
-        internal static (prediction[] prediction_list, confusion_matrix[] cm_list) load_prediction_file(string test_file, string test_comments_file, string prediction_file, bool calc_11p_thresholds)
+        internal static (prediction[] prediction_list, confusion_matrix[] cm_list) load_prediction_file(CancellationTokenSource cts, string test_file, string test_comments_file, string prediction_file, bool calc_11p_thresholds)
         {
-
+            if (cts.IsCancellationRequested) return default;
             //var param_list = new List<(string key, string value)>()
             //{
             //    (nameof(test_file),test_io_proxy.ToString()),
@@ -383,15 +391,16 @@ namespace svm_fs_batch
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
-            var prediction_list = load_prediction_file_regression_values(test_file, test_comments_file, prediction_file);
-            var cm_list = load_prediction_file(prediction_list, calc_11p_thresholds);
+            var prediction_list = load_prediction_file_regression_values(cts, test_file, test_comments_file, prediction_file);
+            var cm_list = load_prediction_file(cts, prediction_list, calc_11p_thresholds);
 
             return (prediction_list, cm_list);
         }
 
         //internal static (List<prediction> prediction_list, List<confusion_matrix> cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list)
-        internal static (prediction[] prediction_list, confusion_matrix[] cm_list) load_prediction_file(IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list)
+        internal static (prediction[] prediction_list, confusion_matrix[] cm_list) load_prediction_file(CancellationTokenSource cts, IList<string> test_file_lines, IList<string> test_comments_file_lines, IList<string> prediction_file_lines, bool calc_11p_thresholds, IList<int> test_class_sample_id_list)
         {
+            if (cts.IsCancellationRequested) return default;
 
             //var param_list = new List<(string key, string value)>()
             //{
@@ -403,14 +412,16 @@ namespace svm_fs_batch
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
-            var prediction_list = load_prediction_file_regression_values_from_text(test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
-            var cm_list = load_prediction_file(prediction_list, calc_11p_thresholds);
+            var prediction_list = load_prediction_file_regression_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
+            var cm_list = load_prediction_file(cts, prediction_list, calc_11p_thresholds);
 
             return (prediction_list, cm_list);
         }
 
-        internal static confusion_matrix[] load_prediction_file(prediction[] prediction_list, bool calc_11p_thresholds)
+        internal static confusion_matrix[] load_prediction_file(CancellationTokenSource cts, prediction[] prediction_list, bool calc_11p_thresholds)
         {
+            if (cts.IsCancellationRequested) return default;
+
             if (prediction_list == null || prediction_list.Length == 0) throw new ArgumentOutOfRangeException(nameof(prediction_list));
 
             //var param_list = new List<(string key, string value)>()
@@ -429,7 +440,7 @@ namespace svm_fs_batch
             var confusion_matrix_list = new List<confusion_matrix>();
 
             // make confusion matrix performance scores with default decision boundary threshold
-            var default_confusion_matrix_list = count_prediction_error(prediction_list);
+            var default_confusion_matrix_list = count_prediction_error(cts, prediction_list);
             confusion_matrix_list.AddRange(default_confusion_matrix_list);
             
 
@@ -450,7 +461,7 @@ namespace svm_fs_batch
                             predicted_class_id = p.probability_estimates.First(e => e.class_id == positive_id).probability_estimate >= th ? positive_id : negative_id,
                         }).ToArray())).ToArray();
 
-                        var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(a.prediction_list, a.positive_threshold, positive_id, false)).ToArray();
+                        var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(cts, a.prediction_list, a.positive_threshold, positive_id, false)).ToArray();
 
 
                         for (var i = 0; i < threshold_confusion_matrix_list.Length; i++)
@@ -503,8 +514,10 @@ namespace svm_fs_batch
         //var thresholds11p = new double[] { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
 
         internal static (/*double brier_score,*/ double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, List<(double x, double y)> roc_xy, List<(double x, double y)> pr_xy, List<(double x, double y)> pri_xy)
-            Calculate_ROC_PR_AUC(IList<prediction> prediction_list, int positive_id, threshold_type threshold_type = threshold_type.all_thresholds)
+            Calculate_ROC_PR_AUC(CancellationTokenSource cts, IList<prediction> prediction_list, int positive_id, threshold_type threshold_type = threshold_type.all_thresholds)
         {
+            if (cts.IsCancellationRequested) return default;
+
             if (prediction_list.Any(a => a.probability_estimates == null || a.probability_estimates.Count == 0)) return default;
 
             // Assume binary classifier - get negative class id
@@ -543,7 +556,7 @@ namespace svm_fs_batch
             }).ToList())).ToList();
 
             // Calc confusion matrices at each threshold
-            var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(a.prediction_list, a.positive_threshold, positive_id, false)).ToList();
+            var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(cts, a.prediction_list, a.positive_threshold, positive_id, false)).ToList();
             threshold_confusion_matrix_list = threshold_confusion_matrix_list.Where(a => a.x_class_id == positive_id).ToList();
 
             //// Calc Brier

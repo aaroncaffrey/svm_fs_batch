@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -10,9 +11,11 @@ namespace svm_fs_batch
     {
         public const string module_name = nameof(cache_load);
 
-        internal static (index_data[] indexes_whole, index_data[] indexes_partition) get_unrolled_indexes_basic(dataset_loader dataset, string experiment_name, int iteration_index, /*string iteration_name,*/ int total_groups, int instance_index, int total_instances,
+        internal static (index_data[] indexes_whole, index_data[] indexes_partition) get_unrolled_indexes_basic(CancellationTokenSource cts, dataset_loader dataset, string experiment_name, int iteration_index, /*string iteration_name,*/ int total_groups, int instance_index, int total_instances,
              int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds, int[] selection_excluded_groups)
         {
+            if (cts.IsCancellationRequested) return default;
+
             var p = new unrolled_indexes_parameters()
             {
                 r_cv_series_start = repetitions,
@@ -31,11 +34,14 @@ namespace svm_fs_batch
                 group_series_end = total_groups < 0 ? total_groups : (total_groups > 0 ? total_groups - 1 : 0)
             };
 
-            return get_unrolled_indexes(dataset, experiment_name, iteration_index, total_groups, instance_index, total_instances, p, outer_cv_folds_to_run, selection_excluded_groups);
+            return get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, total_groups, instance_index, total_instances, p, outer_cv_folds_to_run, selection_excluded_groups);
         }
 
-        internal static (index_data[] indexes_whole, index_data[] indexes_partition) get_unrolled_indexes_check_bias(int search_type, dataset_loader dataset, string experiment_name, int iteration_index, int total_groups, int instance_index, int total_instances)
+        internal static (index_data[] indexes_whole, index_data[] indexes_partition) get_unrolled_indexes_check_bias(CancellationTokenSource cts, int search_type, dataset_loader dataset, string experiment_name, int iteration_index, int total_groups, int instance_index, int total_instances)
         {
+            if (cts.IsCancellationRequested) return default;
+
+
             // for a specific set of features (i.e. the final result from feature selection):
 
             // what happens to performance if we vary the scale & kernel (is it stable, does it increase, decrease, or randomise?)
@@ -69,7 +75,7 @@ namespace svm_fs_batch
                     }
                 };
 
-                var variations_1 = get_unrolled_indexes(dataset, experiment_name, iteration_index, /*iteration_name,*/ total_groups, instance_index, total_instances, p1);
+                var variations_1 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, /*iteration_name,*/ total_groups, instance_index, total_instances, p1);
                 return variations_1;
             }
             else if (search_type == 1)
@@ -102,7 +108,7 @@ namespace svm_fs_batch
                     i_cv_series_step = 1
                 };
 
-                var variations_2 = get_unrolled_indexes(dataset, experiment_name, iteration_index, /*iteration_name,*/ total_groups, instance_index, total_instances, p2);
+                var variations_2 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, /*iteration_name,*/ total_groups, instance_index, total_instances, p2);
 
                 return variations_2;
             }
@@ -153,7 +159,7 @@ namespace svm_fs_batch
                     }
                 }
 
-                var variations_3 = get_unrolled_indexes(dataset, experiment_name, iteration_index, /*iteration_name,*/ total_groups, instance_index, total_instances, p3);
+                var variations_3 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, /*iteration_name,*/ total_groups, instance_index, total_instances, p3);
 
                 return variations_3;
             }
@@ -192,6 +198,7 @@ namespace svm_fs_batch
 
         internal static (index_data[] indexes_whole, index_data[] indexes_partition) get_unrolled_indexes
         (
+            CancellationTokenSource cts,
             dataset_loader dataset,
             string experiment_name,
             int iteration_index,
@@ -252,7 +259,7 @@ namespace svm_fs_batch
                 for (var z_o_cv_series_index = 0; z_o_cv_series_index < o_cv_series.Length; z_o_cv_series_index++)//2
                 {
                     // for the current number of R and O, set the folds (which vary according to the values of R and O).
-                    var (class_folds, down_sampled_training_class_folds) = routines.folds(dataset.class_sizes, r_cv_series[z_r_cv_series_index], o_cv_series[z_o_cv_series_index] /*, outer_cv_folds_to_run*/);
+                    var (class_folds, down_sampled_training_class_folds) = routines.folds(cts, dataset.class_sizes, r_cv_series[z_r_cv_series_index], o_cv_series[z_o_cv_series_index] /*, outer_cv_folds_to_run*/);
 
                     for (var z_group_series_index = 0; z_group_series_index < group_series.Length; z_group_series_index++)//3
                     {
@@ -310,7 +317,7 @@ namespace svm_fs_batch
                 }
             }
 
-            var indexes_partition = indexes_whole.AsParallel().AsOrdered().Where(a => a.unrolled_instance_index == instance_index).ToArray();
+            var indexes_partition = indexes_whole.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(a => a.unrolled_instance_index == instance_index).ToArray();
 
             Parallel.For(0,
                 indexes_whole.Length,
@@ -329,6 +336,7 @@ namespace svm_fs_batch
         internal static (index_data[] indexes_whole, index_data[] indexes_partition, index_data[] indexes_loaded_whole, index_data[] indexes_loaded_partition, index_data[] indexes_missing_whole, index_data[] indexes_missing_partition)
             load_cache
             (
+                CancellationTokenSource cts,
                 int instance_index,
                 int iteration_index,
                 //string iteration_name,
@@ -343,6 +351,11 @@ namespace svm_fs_batch
                 (index_data id, confusion_matrix cm, score_data sd, rank_data rd) best_winner_cm_sd_rd
             )
         {
+            if (cts.IsCancellationRequested) return default;
+
+            const string summary_tag = @"_summary.cm.csv";
+            const string full_tag = @"_full.cm.csv";
+
             // a single group may have multiple tests... e.g. different number of inner-cv, outer-cv, class_weights, etc...
             // therefore, group_index existing isn't enough, must also have the various other parameters
 
@@ -364,7 +377,7 @@ namespace svm_fs_batch
             if (!loaded_state.indexes_missing_whole.Any()) return loaded_state;
 
 
-            var iteration_folder = program.get_iteration_folder(settings.results_root_folder, experiment_name, iteration_index/*, iteration_name*/);
+            var iteration_folder = program.get_iteration_folder(settings.results_root_folder, experiment_name, iteration_index);
 
             var cache_level_whole = (name: "whole", marker: 'z');
             var cache_level_partition = (name: "partition", marker: 'x');
@@ -394,21 +407,20 @@ namespace svm_fs_batch
                     var cache_files2 = cache_files1
                         .Select(a =>
                         {
-                            var summary = a.Contains("_summary.cm.csv") ? a : a.Replace(".cm.csv", "_summary.cm.csv");
-                            var full = a.Replace("_summary.cm.csv", ".cm.csv");
+                            var full = a.EndsWith(full_tag) ? a : a.Replace(summary_tag, full_tag);
+                            var summary = a.EndsWith(summary_tag) ? a : a.Replace(full_tag, summary_tag);
 
-                            return (summary, full);
+                            return (full, summary);
                         })
                         .Distinct()
                         .ToList();
 
                     cache_files1 = cache_files2.Select(a =>
                         {
-                            if (cache_files_already_loaded.Contains(a.summary)) return null;
                             if (cache_files_already_loaded.Contains(a.full)) return null;
+                            if (cache_files_already_loaded.Contains(a.summary)) return null;
 
                             if (cache_files1.Contains(a.full)) return a.full;
-
                             if (cache_files1.Contains(a.summary)) return a.summary;
 
                             return null;
@@ -423,13 +435,13 @@ namespace svm_fs_batch
                         var merge_files = loaded_state.indexes_missing_partition
                             .AsParallel()
                             .AsOrdered()
+                            .WithCancellation(cts.Token)
                             .Select(a =>
                             {
-                                var summary = $@"{Path.Combine(program.get_iteration_folder(settings.results_root_folder, experiment_name, a.iteration_index, /*iteration_name,*/ a.group_array_index), $@"m_{program.get_iteration_filename(new[] { a })}")}_summary.cm.csv";
-                                var full = $@"{Path.Combine(program.get_iteration_folder(settings.results_root_folder, experiment_name, a.iteration_index, /*iteration_name,*/ a.group_array_index), $@"m_{program.get_iteration_filename(new[] { a })}")}.cm.csv";
+                                var summary = $@"{Path.Combine(program.get_iteration_folder(settings.results_root_folder, experiment_name, a.iteration_index, /*iteration_name,*/ a.group_array_index), $@"m_{program.get_iteration_filename(new[] { a })}")}{summary_tag}";
+                                var full = $@"{Path.Combine(program.get_iteration_folder(settings.results_root_folder, experiment_name, a.iteration_index, /*iteration_name,*/ a.group_array_index), $@"m_{program.get_iteration_filename(new[] { a })}")}{full_tag}";
 
                                 if (cache_files1.Contains(full)) return full;
-
                                 if (cache_files1.Contains(summary)) return summary;
 
                                 return null;
@@ -444,11 +456,13 @@ namespace svm_fs_batch
                     var cache_files_cm_list = cache_files1
                         .AsParallel()
                         .AsOrdered()
+                        .WithCancellation(cts.Token)
                         .Select(cm_fn =>
                         {
-                            if (io_proxy.is_file_available(cm_fn))
+                            
+                            if (io_proxy.is_file_available(cts, cm_fn))
                             {
-                                var cm = confusion_matrix.load(cm_fn);
+                                var cm = confusion_matrix.load(cts, cm_fn);
 
                                 return cm;
                             }
@@ -476,6 +490,9 @@ namespace svm_fs_batch
                         {
                             // limit cm to those indexes not already loaded
                             var id_cm_sd_append = cache_files_cm_list_cms_index
+                                .AsParallel()
+                                .AsOrdered()
+                                .WithCancellation(cts.Token)
                                 .Select((cm, cm_index) =>
                                 {
                                     if (cm == null) return (null, null, null);
@@ -529,7 +546,7 @@ namespace svm_fs_batch
                     }
                 }
 
-                if (wait_for_cache && loaded_state.indexes_missing_whole.Any()) { Task.Delay(new TimeSpan(0, 0, 15)).Wait(); }
+                if (wait_for_cache && loaded_state.indexes_missing_whole.Any()) { Task.Delay(new TimeSpan(0, 0, 15), cts.Token).Wait(cts.Token); }
 
             } while (wait_for_cache && loaded_state.indexes_missing_whole.Any());
 

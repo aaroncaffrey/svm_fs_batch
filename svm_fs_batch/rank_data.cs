@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace svm_fs_batch
 {
@@ -31,22 +32,29 @@ namespace svm_fs_batch
 
         internal static (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] set_ranks
         (
+            CancellationTokenSource cts,
             ref List<(index_data id, confusion_matrix cm, score_data sd)> cm_sd_list_ref,
-            bool order_by_ppf,
+            //bool order_by_ppf,
             score_data last_winner,
             (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] last_iteration_cm_sd_rd_list
         )
         {
+            if (cts.IsCancellationRequested) return default;
             // ensure consistent reordering (i.e. for items with equal tied scores when processing may have been done out of order)
             var cm_sd_list = cm_sd_list_ref.OrderBy(a => a.sd.group_array_index).ThenBy(a => a.sd.class_id).ToList();
 
             // reorder by score, or score_ppf... descending so that highest score is first result.
-            cm_sd_list = cm_sd_list
-                .OrderByDescending((a => order_by_ppf ? a.sd.last_winner_score_ppf_increase : a.sd.last_winner_score_increase))
-                .ThenByDescending(a => !order_by_ppf ? a.sd.last_winner_score_ppf_increase : a.sd.last_winner_score_increase)
-                .ThenBy(a => a.sd.last_winner_num_columns_added)
-                .ToList();
+            //cm_sd_list = cm_sd_list
+            //    .OrderByDescending((a => order_by_ppf ? a.sd.last_winner_score_ppf_increase : a.sd.last_winner_score_increase))
+            //    .ThenByDescending(a => !order_by_ppf ? a.sd.last_winner_score_ppf_increase : a.sd.last_winner_score_increase)
+            //    .ThenBy(a => a.sd.last_winner_num_columns_added)
+            //    .ToList();
 
+
+            cm_sd_list = cm_sd_list
+                .OrderByDescending((a => a.sd.same_group_score.value))
+                .ThenBy(a => a.sd.num_columns)
+                .ToList();
 
             if (cm_sd_list[0].sd.group_array_index == (last_winner?.group_array_index ?? -1) && cm_sd_list.Count > 1)
             {
@@ -68,7 +76,11 @@ namespace svm_fs_batch
 
             // make rank_data instances, which track the ranks (performance) of each group over time, to allow for optimisation decisions and detection of variant features
 
-            var cm_sd_rd_list = cm_sd_list.AsParallel().AsOrdered().Select((a, index) =>
+            var cm_sd_rd_list = cm_sd_list
+                .AsParallel()
+                .AsOrdered()
+                .WithCancellation(cts.Token)
+                .Select((a, index) =>
                 {
                     var sd_last = last_iteration_cm_sd_rd_list?.FirstOrDefault
                     (a =>
@@ -140,7 +152,7 @@ namespace svm_fs_batch
             values.Add($@"_");
 #endif
 
-            var values_array = values.Select(a => a.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase)).ToArray();
+            var values_array = values.Select(a => a.Replace(",", ";", StringComparison.OrdinalIgnoreCase)).ToArray();
             return values_array;
         }
 

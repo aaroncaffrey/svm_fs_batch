@@ -2,7 +2,7 @@
   "profiles": {
     "svm_fs_batch": {
       "commandName": "Project",
-      "commandLineArgs": "-experiment_name test1 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 5 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 5"
+      "commandLineArgs": "-setup"
     }
   }
 }

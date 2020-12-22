@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -36,10 +37,12 @@ namespace svm_fs_batch
             } while (e != null);
         }
 
-        internal static bool is_file_available(string filename, string caller_module_name = "", string caller_method_name = "")
+        internal static bool is_file_available(CancellationTokenSource cts, string filename, string caller_module_name = "", string caller_method_name = "")
         {
             
             const string method_name = nameof(is_file_available);
+
+            if (cts.IsCancellationRequested) return default;
 
             try
             {
@@ -119,7 +122,7 @@ namespace svm_fs_batch
             }
             else if (path.Length > 0 && (path[0] == '\\' || path[0] == '/') && (path.Length == 1 || (path[1] != '\\' && path[1] != '/')))
             {
-                if (path.StartsWith("/home", StringComparison.InvariantCulture) || path.StartsWith("\\home", StringComparison.InvariantCulture)) path = path.Substring("/home".Length);
+                if (path.StartsWith("/home", StringComparison.Ordinal) || path.StartsWith("\\home", StringComparison.Ordinal)) path = path.Substring("/home".Length);
 
                 if (path.FirstOrDefault() == '/' || path.FirstOrDefault() == '\\') path = path.Substring(1);
 
@@ -131,12 +134,12 @@ namespace svm_fs_batch
 
         }
 
-        if (Path.DirectorySeparatorChar != '\\' && path.Contains('\\', StringComparison.InvariantCulture))
+        if (Path.DirectorySeparatorChar != '\\' && path.Contains('\\', StringComparison.Ordinal))
         {
             path = path.Replace('\\', Path.DirectorySeparatorChar);
         }
 
-        if (Path.DirectorySeparatorChar != '/' && path.Contains('/', StringComparison.InvariantCulture))
+        if (Path.DirectorySeparatorChar != '/' && path.Contains('/', StringComparison.Ordinal))
         {
             path = path.Replace('/', Path.DirectorySeparatorChar);
         }
@@ -144,7 +147,7 @@ namespace svm_fs_batch
         // remove invalid chars
         //var invalid = $"?%*|¦<>\"" + string.Join("", Enumerable.Range(0, 32).Select(a => (char)a).ToList()); // includes \0 \b \t \r \n, leaves /\\: as it is full paths input
         const string valid = ":\\/~.qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789_-+()[]";
-        path = string.Join("", path.Select(a => valid.Contains(a, StringComparison.InvariantCulture) ? a : '_').ToList());
+        path = string.Join("", path.Select(a => valid.Contains(a, StringComparison.Ordinal) ? a : '_').ToList());
 
         // make sure no part is more than 255 length
 
@@ -196,7 +199,7 @@ namespace svm_fs_batch
             return exists;
         }
 
-        internal static void Delete(string filename, string module_name = "", string method_name = "")
+        internal static void delete_file(string filename, string module_name = "", string method_name = "")
         {
             //filename = /*convert_path*/(filename);
 
@@ -209,7 +212,27 @@ namespace svm_fs_batch
             }
             catch (Exception e)
             {
-                log_exception(e, $@"{module_name}.{method_name} -> ( {filename} )", nameof(io_proxy), nameof(Delete));
+                log_exception(e, $@"{module_name}.{method_name} -> ( {filename} )", nameof(io_proxy), nameof(delete_file));
+
+                return;
+            }
+        }
+
+
+        internal static void delete_directory(string dir_name, string module_name = "", string method_name = "")
+        {
+            //filename = /*convert_path*/(filename);
+
+            //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} )", nameof(io_proxy), nameof(Delete));
+
+            try
+            {
+                Directory.Delete(dir_name);
+                return;
+            }
+            catch (Exception e)
+            {
+                log_exception(e, $@"{module_name}.{method_name} -> ( {dir_name} )", nameof(io_proxy), nameof(delete_directory));
 
                 return;
             }
@@ -217,7 +240,7 @@ namespace svm_fs_batch
 
 
 
-        internal static void Copy(string source, string dest, bool overwrite = true, string module_name = "", string method_name = "", int max_tries = 1_000_000)
+        internal static void Copy(CancellationTokenSource cts, string source, string dest, bool overwrite = true, string module_name = "", string method_name = "", int max_tries = 1_000_000)
         {
             //source = /*convert_path*/(source);
             //dest = /*convert_path*/(dest);
@@ -228,6 +251,8 @@ namespace svm_fs_batch
             {
                 try
                 {
+                    if (cts.IsCancellationRequested) return;
+
                     //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {source} , {dest} , {overwrite} ) {tries}", nameof(io_proxy), nameof(Copy));
 
                     tries++;
@@ -240,18 +265,18 @@ namespace svm_fs_batch
                 catch (Exception e1)
                 {
 
-                    log_exception(e1, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", nameof(io_proxy), nameof(Copy));
+                    log_exception(e1, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", module_name, method_name);
 
 
                     if (tries >= max_tries) throw;
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 15 + random.Next(0, 31))).Wait();
+                        Task.Delay(new TimeSpan(0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", nameof(io_proxy), nameof(Copy));
+                        log_exception(e2, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", module_name, method_name);
 
                     }
                 }
@@ -310,7 +335,7 @@ namespace svm_fs_batch
             }
         }
 
-        internal static string[] ReadAllLines(string filename, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
+        internal static string[] ReadAllLines(CancellationTokenSource cts, string filename, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
             //filename = /*convert_path*/(filename);
             const string method_name = nameof(ReadAllLines);
@@ -321,6 +346,8 @@ namespace svm_fs_batch
             {
                 try
                 {
+                    if (cts.IsCancellationRequested) return default;
+
                     io_proxy.WriteLine($"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     tries++;
@@ -337,7 +364,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31))).Wait();
+                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
                     }
                     catch (Exception e2)
                     {
@@ -349,9 +376,9 @@ namespace svm_fs_batch
 
 
 
-        internal static string ReadAllText(string filename, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
+        internal static string ReadAllText(CancellationTokenSource cts, string filename, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
-            //filename = /*convert_path*/(filename);
+            const string method_name = nameof(ReadAllText);
 
             int tries = 0;
 
@@ -359,6 +386,8 @@ namespace svm_fs_batch
             {
                 try
                 {
+                    if (cts.IsCancellationRequested) return default;
+
                     //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
 
                     tries++;
@@ -369,17 +398,17 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31))).Wait();
+                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)),cts.Token).Wait(cts.Token);
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     }
                 }
@@ -387,8 +416,9 @@ namespace svm_fs_batch
         }
 
 
-        internal static void WriteAllLines(string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
+        internal static void WriteAllLines(CancellationTokenSource cts, string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
+            const string method_name = nameof(WriteAllLines);
             //filename = /*convert_path*/(filename);
 
             CreateDirectory(filename, caller_module_name, caller_method_name);
@@ -399,6 +429,9 @@ namespace svm_fs_batch
             {
                 try
                 {
+                    if (cts.IsCancellationRequested) return;
+
+
                     //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllLines));
 
                     tries++;
@@ -409,17 +442,17 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllLines));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31))).Wait();
+                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllLines));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", module_name, method_name);
                     }
                 }
             }
@@ -428,9 +461,9 @@ namespace svm_fs_batch
 
   
 
-        internal static void AppendAllLines(string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
+        internal static void AppendAllLines(CancellationTokenSource cts, string filename, IEnumerable<string> lines, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
-            //filename = /*convert_path*/(filename);
+            const string method_name = nameof(AppendAllLines);
 
             CreateDirectory(filename, caller_module_name, caller_method_name);
 
@@ -439,6 +472,8 @@ namespace svm_fs_batch
             {
                 try
                 {
+                    if (cts.IsCancellationRequested) return;
+
                     //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
 
                     tries++;
@@ -447,25 +482,25 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31))).Wait();
+                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
                     }
                 }
             }
         }
 
-        internal static void AppendAllText(string filename, string text, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
+        internal static void AppendAllText(CancellationTokenSource cts, string filename, string text, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
-            //filename = /*convert_path*/(filename);
+            const string method_name = nameof(AppendAllText);
 
             CreateDirectory(filename, caller_module_name, caller_method_name);
 
@@ -474,6 +509,8 @@ namespace svm_fs_batch
             {
                 try
                 {
+                    if (cts.IsCancellationRequested) return;
+
                     //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
 
                     tries++;
@@ -482,25 +519,25 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31))).Wait();
+                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
                     }
                 }
             }
         }
 
-        internal static void WriteAllText(string filename, string text, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
+        internal static void WriteAllText(CancellationTokenSource cts, string filename, string text, string caller_module_name = "", string caller_method_name = "", int max_tries = 1_000_000)
         {
-            //filename = /*convert_path*/(filename);
+            const string method_name = nameof(WriteAllText);
 
             CreateDirectory(filename, caller_module_name, caller_method_name);
 
@@ -509,6 +546,8 @@ namespace svm_fs_batch
             {
                 try
                 {
+                    if (cts.IsCancellationRequested) return;
+
                     //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllText));
 
                     tries++;
@@ -518,18 +557,18 @@ namespace svm_fs_batch
                 catch (Exception e1)
                 {
 
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllText));
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
 
 
                     if (tries >= max_tries) throw;
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31))).Wait();
+                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(WriteAllText));
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
                     }
                 }
             }

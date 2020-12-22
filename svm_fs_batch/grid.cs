@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 
 namespace svm_fs_batch
 {
@@ -54,6 +55,7 @@ namespace svm_fs_batch
 
 
         internal static grid_point grid_parameter_search(
+            CancellationTokenSource cts,
                 string libsvm_train_exe,
                 string cache_train_grid_csv,
                 string training_file,
@@ -104,7 +106,7 @@ namespace svm_fs_batch
             
             //const string method_name = nameof(grid_parameter_search);
 
-            var cache_list = grid_cache_data.read_cache_file(cache_train_grid_csv);
+            var cache_list = grid_cache_data.read_cache_file(cts, cache_train_grid_csv);
 
             if (inner_cv_folds <= 1) throw new Exception();
 
@@ -269,6 +271,7 @@ namespace svm_fs_batch
             var results = search_grid_points
                 .AsParallel()
                 .AsOrdered()
+                .WithCancellation(cts.Token)
                 .Select((point, index) =>
             {
                 //var point = search_grid_points[index];
@@ -279,6 +282,7 @@ namespace svm_fs_batch
                 var model_filename = $@"{training_file}_{(model_index + 1)}.model";
 
                 var train_result = libsvm.train(
+                    cts,
                     libsvm_train_exe,
                     training_file,
                     model_filename,
@@ -362,7 +366,7 @@ namespace svm_fs_batch
                     }
                 ).ToList();
 
-                grid_cache_data.write_cache_file(cache_train_grid_csv, results_cache_format);
+                grid_cache_data.write_cache_file(cts, cache_train_grid_csv, results_cache_format);
 
                 //svm_type, svm_kernel, repetitions, repetitions_index, outer_cv_folds, outer_cv_index, inner_cv_folds, probability_estimates, shrinking_heuristics, results);
             }
@@ -382,15 +386,15 @@ namespace svm_fs_batch
 
             if (libsvm_result_lines == null || libsvm_result_lines.Count == 0) return -1;
 
-            var v_libsvm_default_cross_validation_index = libsvm_result_lines.FindIndex(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.InvariantCulture));
+            var v_libsvm_default_cross_validation_index = libsvm_result_lines.FindIndex(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.Ordinal));
 
             var v_libsvm_default_cross_validation_str = v_libsvm_default_cross_validation_index < 0 ? "" : libsvm_result_lines[v_libsvm_default_cross_validation_index].Split()[4];
 
             if (v_libsvm_default_cross_validation_index >= 0 && !string.IsNullOrWhiteSpace(v_libsvm_default_cross_validation_str))
             {
                 return v_libsvm_default_cross_validation_str.Last() == '%' ?
-                    double.Parse(v_libsvm_default_cross_validation_str[0..^1], NumberStyles.Float, CultureInfo.InvariantCulture) / (double)100
-                    : double.Parse(v_libsvm_default_cross_validation_str, NumberStyles.Float, CultureInfo.InvariantCulture);
+                    double.Parse(v_libsvm_default_cross_validation_str[0..^1], NumberStyles.Float, NumberFormatInfo.InvariantInfo) / (double)100
+                    : double.Parse(v_libsvm_default_cross_validation_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo);
             }
 
             return -1;

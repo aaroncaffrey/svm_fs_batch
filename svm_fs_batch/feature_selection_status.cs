@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace svm_fs_batch
 {
@@ -27,9 +28,11 @@ namespace svm_fs_batch
             
         }
 
-        internal static void save(string status_filename, IList<feature_selection_status> feature_selection_status_list)
+        internal static void save(CancellationTokenSource cts, string status_filename, IList<feature_selection_status> feature_selection_status_list)
         {
             const string method_name = nameof(save);
+
+            if (cts.IsCancellationRequested) return;
 
             var lines = new string[feature_selection_status_list.Count + 1];
             lines[0] = csv_header;
@@ -38,7 +41,7 @@ namespace svm_fs_batch
                 lines[i + 1] = feature_selection_status_list[i].csv_values();
             }
 
-            io_proxy.WriteAllLines(status_filename, lines, module_name, method_name);
+            io_proxy.WriteAllLines(cts, status_filename, lines, module_name, method_name);
         }
 
 
@@ -114,7 +117,7 @@ namespace svm_fs_batch
             array1.AddRange(best_winner_score_data.csv_values_array());
             array1.AddRange(new[] { $@"_" });
 
-            return array1.Select(a => a?.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase) ?? "").ToArray();
+            return array1.Select(a => a?.Replace(",", ";", StringComparison.OrdinalIgnoreCase) ?? "").ToArray();
         }
     }
 }

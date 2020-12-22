@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -13,7 +14,7 @@ namespace svm_fs_batch
 
         private static readonly Random random = new Random();
 
-        internal static (string cmd_line, string stdout, string stderr) train(string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int class_id, double weight)[] class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = true)
+        internal static (string cmd_line, string stdout, string stderr) train(CancellationTokenSource cts, string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int class_id, double weight)[] class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = true)
         {
             List<(string key, string value)> get_params()//string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
             {
@@ -37,6 +38,7 @@ namespace svm_fs_batch
                 return "";
             }
 
+            if (cts.IsCancellationRequested) return default;
 
             //libsvm_train_exe_file = (libsvm_train_exe_file);
             //train_file = (train_file);
@@ -126,12 +128,14 @@ namespace svm_fs_batch
 
                 try
                 {
+                    if (cts.IsCancellationRequested) return default;
+
                     using var process = Process.Start(start);
 
                     if (process == null)
                     {
                         retry = true;
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
+                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
 
                         continue;
                     }
@@ -152,7 +156,7 @@ namespace svm_fs_batch
 
                         retry = true;
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
+                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
 
                         continue;
                     }
@@ -172,9 +176,9 @@ namespace svm_fs_batch
                     //try { stdout_result = stdout?.Result; } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
                     //try { stderr_result = stderr?.Result; } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
 
-                    if (!string.IsNullOrWhiteSpace(stdout_file) && !string.IsNullOrWhiteSpace(stdout_result)) { io_proxy.AppendAllText(stdout_file, stdout_result); }
+                    if (!string.IsNullOrWhiteSpace(stdout_file) && !string.IsNullOrWhiteSpace(stdout_result)) { io_proxy.AppendAllText(cts, stdout_file, stdout_result); }
 
-                    if (!string.IsNullOrWhiteSpace(stderr_file) && !string.IsNullOrWhiteSpace(stderr_result)) { io_proxy.AppendAllText(stderr_file, stderr_result); }
+                    if (!string.IsNullOrWhiteSpace(stderr_file) && !string.IsNullOrWhiteSpace(stderr_result)) { io_proxy.AppendAllText(cts, stderr_file, stderr_result); }
 
                     if (exit_code == 0) { return (cmd_line, stdout_result, stderr_result); }
                     else
@@ -184,7 +188,7 @@ namespace svm_fs_batch
                         if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
                         if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
+                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
 
                         continue;
                     }
@@ -195,14 +199,14 @@ namespace svm_fs_batch
 
                     io_proxy.log_exception(e1, get_params_str(), nameof(libsvm), nameof(train));
 
-                    try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(train)); }
+                    try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(train)); }
                 }
             } while (retry && retry_index < 1_000_000);
 
             return (cmd_line, null, null);
         }
 
-        internal static (string cmd_line, string stdout, string stderr) predict(string libsvm_predict_exe_file, string test_file, string model_file, string predictions_out_file, bool probability_estimates, string stdout_file = null, string stderr_file = null, bool log = true)
+        internal static (string cmd_line, string stdout, string stderr) predict(CancellationTokenSource cts, string libsvm_predict_exe_file, string test_file, string model_file, string predictions_out_file, bool probability_estimates, string stdout_file = null, string stderr_file = null, bool log = true)
         {
             List<(string key, string value)> get_params()
             {
@@ -217,6 +221,8 @@ namespace svm_fs_batch
 
                 return "";
             }
+
+            if (cts.IsCancellationRequested) return default;
 
             var libsvm_params = new List<string>();
 
@@ -261,12 +267,15 @@ namespace svm_fs_batch
 
                 try
                 {
+                    if (cts.IsCancellationRequested) return default;
+
+
                     using var process = Process.Start(start);
 
                     if (process == null)
                     {
                         retry = true;
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
+                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
 
                         continue;
                     }
@@ -287,7 +296,7 @@ namespace svm_fs_batch
 
                         retry = true;
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
+                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
 
                         continue;
                     }
@@ -307,9 +316,9 @@ namespace svm_fs_batch
                     //try { stderr_result = stderr?.Result; } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
 
 
-                    if (!string.IsNullOrWhiteSpace(stdout_file) && !string.IsNullOrWhiteSpace(stdout_result)) { io_proxy.AppendAllText(stdout_file, stdout_result); }
+                    if (!string.IsNullOrWhiteSpace(stdout_file) && !string.IsNullOrWhiteSpace(stdout_result)) { io_proxy.AppendAllText(cts, stdout_file, stdout_result); }
 
-                    if (!string.IsNullOrWhiteSpace(stderr_file) && !string.IsNullOrWhiteSpace(stderr_result)) { io_proxy.AppendAllText(stderr_file, stderr_result); }
+                    if (!string.IsNullOrWhiteSpace(stderr_file) && !string.IsNullOrWhiteSpace(stderr_result)) { io_proxy.AppendAllText(cts, stderr_file, stderr_result); }
 
                     if (exit_code == 0) { return (cmd_line, stdout_result, stderr_result); }
                     else
@@ -319,7 +328,7 @@ namespace svm_fs_batch
                         if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
                         if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
+                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
 
                         continue;
                     }
@@ -328,7 +337,7 @@ namespace svm_fs_batch
                 {
                     retry = true;
                     io_proxy.log_exception(e1, get_params_str(), nameof(libsvm), nameof(predict));
-                    try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61))).Wait(); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(predict)); }
+                    try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(predict)); }
                 }
             } while (retry && retry_index < 1_000_000);
 

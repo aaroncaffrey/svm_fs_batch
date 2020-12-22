@@ -133,21 +133,21 @@ namespace svm_fs_batch
                 if (ReferenceEquals(x, null)) return false;
                 if (ReferenceEquals(y, null)) return false;
                 if (x.GetType() != y.GetType()) return false;
-                return string.Equals(x.file_tag, y.file_tag, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.alphabet, y.alphabet, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.stats, y.stats, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.dimension, y.dimension, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.category, y.category, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.source, y.source, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.@group, y.@group, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.member, y.member, StringComparison.InvariantCultureIgnoreCase) && string.Equals(x.perspective, y.perspective, StringComparison.InvariantCultureIgnoreCase);
+                return string.Equals(x.file_tag, y.file_tag, StringComparison.OrdinalIgnoreCase) && string.Equals(x.alphabet, y.alphabet, StringComparison.OrdinalIgnoreCase) && string.Equals(x.stats, y.stats, StringComparison.OrdinalIgnoreCase) && string.Equals(x.dimension, y.dimension, StringComparison.OrdinalIgnoreCase) && string.Equals(x.category, y.category, StringComparison.OrdinalIgnoreCase) && string.Equals(x.source, y.source, StringComparison.OrdinalIgnoreCase) && string.Equals(x.@group, y.@group, StringComparison.OrdinalIgnoreCase) && string.Equals(x.member, y.member, StringComparison.OrdinalIgnoreCase) && string.Equals(x.perspective, y.perspective, StringComparison.OrdinalIgnoreCase);
             }
 
             public int GetHashCode(dataset_group_key obj)
             {
                 var hashCode = new HashCode();
-                hashCode.Add(obj.file_tag, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.alphabet, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.stats, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.dimension, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.category, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.source, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.@group, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.member, StringComparer.InvariantCultureIgnoreCase);
-                hashCode.Add(obj.perspective, StringComparer.InvariantCultureIgnoreCase);
+                hashCode.Add(obj.file_tag, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.alphabet, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.stats, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.dimension, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.category, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.source, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.@group, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.member, StringComparer.OrdinalIgnoreCase);
+                hashCode.Add(obj.perspective, StringComparer.OrdinalIgnoreCase);
                 return hashCode.ToHashCode();
             }
         }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -75,11 +76,13 @@ namespace svm_fs_batch
         internal (int class_id, int class_size)[] class_sizes;
 
 
-        internal double[][] get_row_features((int class_id, int[] row_indexes)[] class_row_indexes, int[] column_indexes)
+        internal double[][] get_row_features(CancellationTokenSource cts, (int class_id, int[] row_indexes)[] class_row_indexes, int[] column_indexes)
         {
+            if (cts.IsCancellationRequested) return default;
+
             if (column_indexes.First() != 0) throw new Exception(); // class id missing
 
-            var class_rows = class_row_indexes.AsParallel().AsOrdered().Select(class_row_index => get_class_row_features(class_row_index.class_id, class_row_index.row_indexes, column_indexes)).ToList();
+            var class_rows = class_row_indexes.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(class_row_index => get_class_row_features(class_row_index.class_id, class_row_index.row_indexes, column_indexes)).ToList();
             var rows = class_rows.SelectMany(a => a.as_rows).ToArray();
 
             return rows;
@@ -142,8 +145,10 @@ namespace svm_fs_batch
             return (as_rows, as_cols);
         }
 
-        internal dataset_loader(string dataset_names = "[1i.aaindex]")//"2i,2n")//, bool split_by_file_tag = true, bool split_by_groups = true)
+        internal dataset_loader(CancellationTokenSource cts, string dataset_names)// = "[1i.aaindex]")//"2i,2n")//, bool split_by_file_tag = true, bool split_by_groups = true)
         {
+            if (cts.IsCancellationRequested) return;
+
             var required_default = false;
             var required_matches = new List<(bool required, string alphabet, string stats, string dimension, string category, string source, string group, string member, string perspective)>();
             //required_matches.Add((required: true, alphabet: null, dimension: null, category: null, source: null, group: null, member: null, perspective: null));
@@ -151,6 +156,7 @@ namespace svm_fs_batch
             // file tags: 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p (1d - linear, 2d - predicted, 3d - actual, interface, neighborhood, protein)
 
             load_dataset(
+                cts,
                 dataset_folder: settings.dataset_dir,
                 file_tags: dataset_names.Split(',', StringSplitOptions.RemoveEmptyEntries), // "2i"
                 class_names: settings.class_names,
@@ -162,9 +168,12 @@ namespace svm_fs_batch
         }
 
         private void load_dataset_headers(
+            CancellationTokenSource cts,
             List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> data_filenames
             )
         {
+            if (cts.IsCancellationRequested) return;
+
             const string method_name = nameof(load_dataset_headers);
 
             // 1. headers
@@ -175,12 +184,14 @@ namespace svm_fs_batch
                 .header_csv_filenames
                 .AsParallel()
                 .AsOrdered()
+                .WithCancellation(cts.Token)
                 .SelectMany((file_info, file_index) =>
                 {
-                    return io_proxy.ReadAllLines(file_info.filename, module_name, method_name)
+                    return io_proxy.ReadAllLines(cts, file_info.filename, module_name, method_name)
                         .Skip(file_index == 0 ? 1 : 2 /*skip header line, and if not first file, class id line too */)
                         .AsParallel()
                         .AsOrdered()
+                        .WithCancellation(cts.Token)
                         .Select((line, line_index) =>
                         {
                             var row = line.Split(',');
@@ -190,7 +201,7 @@ namespace svm_fs_batch
                                 return new dataset_group_key(
 
                                     //internal_column_index: -1, 
-                                    //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/,
+                                    //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
                                     file_tag: (file_index == 0 && line_index == 0 /* class id isn't associated with any particular file */ ? "" : file_info.file_tag),
                                     alphabet: row[1],
                                     stats: row[2],
@@ -206,7 +217,7 @@ namespace svm_fs_batch
                                 return new dataset_group_key(
 
                                     //internal_column_index: -1, 
-                                    //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture)*/,
+                                    //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
                                     file_tag: (file_index == 0 && line_index == 0 /* class id isn't associated with any particular file */ ? "" : file_info.file_tag),
                                     alphabet: row[1],
                                     stats: "",
@@ -236,6 +247,7 @@ namespace svm_fs_batch
         }
 
         private void load_dataset_comments(
+            CancellationTokenSource cts,
             List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> data_filenames
             )
         {
@@ -247,17 +259,19 @@ namespace svm_fs_batch
             sw_comment.Start();
             comment_list = data_filenames.AsParallel()
                 .AsOrdered()
+                .WithCancellation(cts.Token)
                 .Select(cl =>
                 {
 
-                    var comment_lines = io_proxy.ReadAllLines(cl.comment_csv_filenames.First().filename, module_name, method_name).AsParallel().AsOrdered().Select(line => line.Split(',')).ToArray();
+                    var comment_lines = io_proxy.ReadAllLines(cts, cl.comment_csv_filenames.First().filename, module_name, method_name).AsParallel().AsOrdered().WithCancellation(cts.Token).Select(line => line.Split(',')).ToArray();
                     var comment_header = comment_lines.First();
                     var cl_comment_list = comment_lines.Skip(1 /*skip header*/)
                         .AsParallel()
                         .AsOrdered()
+                        .WithCancellation(cts.Token)
                         .Select((row_split, row_index) =>
                         {
-                            var key_value_list = row_split.AsParallel().AsOrdered().Select((col_data, col_index) => (
+                            var key_value_list = row_split.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((col_data, col_index) => (
                                 row_index: row_index,
                                 col_index: col_index,
                                 comment_key: comment_header[col_index],
@@ -275,10 +289,12 @@ namespace svm_fs_batch
 
         }
 
-        private void load_dataset_values(
+        private void load_dataset_values(CancellationTokenSource cts,
             List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> data_filenames
         )
         {
+            if (cts.IsCancellationRequested) return;
+
             const string method_name = nameof(load_dataset_values);
 
             if (column_header_list == null || column_header_list.Length == 0) throw new Exception();
@@ -291,24 +307,28 @@ namespace svm_fs_batch
             value_list = data_filenames
                     .AsParallel()
                     .AsOrdered()
+                    .WithCancellation(cts.Token)
                     .Select((cl, cl_index) =>
                     {
                         // 3. experimental sample data
                         var vals_tag = cl.values_csv_filenames
                             .AsParallel()
                             .AsOrdered()
+                            .WithCancellation(cts.Token)
                             .Select((file_info, file_info_index) =>
-                                io_proxy.ReadAllLines(file_info.filename, module_name, method_name)
+                                io_proxy.ReadAllLines(cts, file_info.filename, module_name, method_name)
                                     .Skip(1 /*skip header - col index only*/)
                                     .AsParallel()
                                     .AsOrdered()
+                                    .WithCancellation(cts.Token)
                                     .Select
                                     ((row, row_index) =>
                                         row.Split(',')
                                         .Skip(file_info_index == 0 ? 0 : 1 /*skip class id*/)
                                         .AsParallel()
                                         .AsOrdered()
-                                        .Select((col, col_index) => double.Parse(col, NumberStyles.Float, CultureInfo.InvariantCulture))
+                                        .WithCancellation(cts.Token)
+                                        .Select((col, col_index) => double.Parse(col, NumberStyles.Float, NumberFormatInfo.InvariantInfo))
                                         .ToArray()
                                     )
                                 .ToArray())
@@ -324,6 +344,7 @@ namespace svm_fs_batch
 
                         var val_list = vals.AsParallel()
                             .AsOrdered()
+                            .WithCancellation(cts.Token)
                             .Select((row, row_index) =>
 
                                 (row_comment: comment_list[cl_index].cl_comment_list[row_index], row_columns: row.Select((col_val, col_index) => (
@@ -396,6 +417,7 @@ namespace svm_fs_batch
 
         private void load_dataset
         (
+            CancellationTokenSource cts,
             string dataset_folder,
             string[] file_tags,
             IList<(int class_id, string class_name)> class_names,
@@ -416,12 +438,12 @@ namespace svm_fs_batch
             check_data_files(data_filenames);
 
 
-            var t1 = Task.Run(() => load_dataset_headers(data_filenames));
-            var t2 = Task.Run(() => load_dataset_comments(data_filenames));
+            var t1 = Task.Run(() => load_dataset_headers(cts, data_filenames), cts.Token);
+            var t2 = Task.Run(() => load_dataset_comments(cts, data_filenames), cts.Token);
             t1.Wait();
             t2.Wait();
 
-            load_dataset_values(data_filenames);
+            load_dataset_values(cts, data_filenames);
 
             class_sizes = value_list.Select(a => (a.class_id, a.class_size)).ToArray();
         }
@@ -480,7 +502,7 @@ namespace svm_fs_batch
 //        //}
 
 
-//        var external_fid = int.Parse(row[0], NumberStyles.Integer, CultureInfo.InvariantCulture);
+//        var external_fid = int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
 //        //if (fid!=i) throw new Exception();
 
 
@@ -717,27 +739,27 @@ if (perform_integrity_checks)
     {
         return true;
     }
-    else if (search_pattern.StartsWith("*", StringComparison.InvariantCulture) && search_pattern.EndsWith("*", StringComparison.InvariantCulture))
+    else if (search_pattern.StartsWith("*", StringComparison.Ordinal) && search_pattern.EndsWith("*", StringComparison.Ordinal))
     {
         search_pattern = search_pattern[1..^1];
 
-        return text.Contains(search_pattern, StringComparison.InvariantCultureIgnoreCase);
+        return text.Contains(search_pattern, StringComparison.OrdinalIgnoreCase);
     }
-    else if (search_pattern.StartsWith("*", StringComparison.InvariantCulture))
+    else if (search_pattern.StartsWith("*", StringComparison.Ordinal))
     {
         search_pattern = search_pattern[1..];
 
-        return text.EndsWith(search_pattern, StringComparison.InvariantCultureIgnoreCase);
+        return text.EndsWith(search_pattern, StringComparison.OrdinalIgnoreCase);
     }
-    else if (search_pattern.EndsWith("*", StringComparison.InvariantCulture))
+    else if (search_pattern.EndsWith("*", StringComparison.Ordinal))
     {
         search_pattern = search_pattern[0..^1];
 
-        return text.StartsWith(search_pattern, StringComparison.InvariantCultureIgnoreCase);
+        return text.StartsWith(search_pattern, StringComparison.OrdinalIgnoreCase);
     }
     else
     {
-        return string.Equals(text, search_pattern, StringComparison.InvariantCultureIgnoreCase);
+        return string.Equals(text, search_pattern, StringComparison.OrdinalIgnoreCase);
     }
 }*/
 
@@ -1210,7 +1232,7 @@ internal static List<(int fid, double value)> parse_csv_line_doubles(string line
         {
             if ((required == null || required.Length == 0 || fid == 0) || (required != null && required.Length > fid && required[fid]))
             {
-                result.Add((fid, len == 0 ? 0d : double.Parse(line.Substring(start, len), NumberStyles.Float, CultureInfo.InvariantCulture)));
+                result.Add((fid, len == 0 ? 0d : double.Parse(line.Substring(start, len), NumberStyles.Float, NumberFormatInfo.InvariantInfo)));
             }
 
             fid++;
@@ -1269,13 +1291,13 @@ internal static List<(int fid, double value)> parse_csv_line_doubles(string line
     const string pos_infinity = "+∞";
     const string NaN = "NaN";
 
-    if (double.TryParse(double_value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value1)) return fix_double(value1);
+    if (double.TryParse(double_value, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var value1)) return fix_double(value1);
 
     if (double_value.Length == 1 && double_value[0] == infinity) return fix_double(double.PositiveInfinity);
-    else if (double_value.Contains(pos_infinity, StringComparison.InvariantCulture)) return fix_double(double.PositiveInfinity);
-    else if (double_value.Contains(neg_infinity, StringComparison.InvariantCulture)) return fix_double(double.NegativeInfinity);
-    else if (double_value.Contains(infinity, StringComparison.InvariantCulture)) return fix_double(double.PositiveInfinity);
-    else if (double_value.Contains(NaN, StringComparison.InvariantCulture)) return fix_double(double.NaN);
+    else if (double_value.Contains(pos_infinity, StringComparison.Ordinal)) return fix_double(double.PositiveInfinity);
+    else if (double_value.Contains(neg_infinity, StringComparison.Ordinal)) return fix_double(double.NegativeInfinity);
+    else if (double_value.Contains(infinity, StringComparison.Ordinal)) return fix_double(double.PositiveInfinity);
+    else if (double_value.Contains(NaN, StringComparison.Ordinal)) return fix_double(double.NaN);
     else return 0d;
 }*/
 

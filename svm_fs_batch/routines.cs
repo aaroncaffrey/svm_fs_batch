@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace svm_fs_batch
 {
@@ -54,9 +55,11 @@ namespace svm_fs_batch
         internal static (
             (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] class_folds,
             (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] down_sampled_training_class_folds
-            ) folds(IList<(int class_id, int class_size)> class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+            ) folds(CancellationTokenSource cts, IList<(int class_id, int class_size)> class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
-            var class_folds = class_sizes.AsParallel().AsOrdered().Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds/*, outer_cv_folds_to_run, fold_size_limit*/))).ToArray();
+            if (cts.IsCancellationRequested) return default;
+
+            var class_folds = class_sizes.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds/*, outer_cv_folds_to_run, fold_size_limit*/))).ToArray();
 
             var down_sampled_training_class_folds = class_folds.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: a.folds?.Select(b =>
                     {

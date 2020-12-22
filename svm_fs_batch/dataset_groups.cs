@@ -1,31 +1,58 @@
 ﻿using System.Linq;
+using System.Threading;
 
 namespace svm_fs_batch
 {
     internal class dataset_group_methods
     {
+        public const string module_name = nameof(dataset_group_methods);
         // note: group_index is usually the array group index, which may be different to the group number in file
 
-        internal static (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] get_main_groups(dataset_loader dataset, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member, bool perspective)
+        internal static (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] get_main_groups(CancellationTokenSource cts, dataset_loader dataset, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member, bool perspective)
         {
-            return get_main_groups(dataset.column_header_list.Skip(1 /* skip class id column - i.e. don't make a group for class id */).ToArray(), file_tag, alphabet, stats, dimension, category, source, @group, member, perspective);
+            const string method_name = nameof(get_main_groups);
+
+            if (cts.IsCancellationRequested) return default;
+
+            io_proxy.WriteLine("", module_name, method_name);
+            
+            return get_main_groups(cts, dataset.column_header_list.Skip(1 /* skip class id column - i.e. don't make a group for class id */).ToArray(), file_tag, alphabet, stats, dimension, category, source, @group, member, perspective);
         }
 
-        internal static dataset_group_key[] ungroup((dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[][] groups)
+        internal static dataset_group_key[] ungroup(CancellationTokenSource cts, (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[][] groups)
         {
+            const string method_name = nameof(ungroup);
+
+            if (cts.IsCancellationRequested) return default;
+
+            io_proxy.WriteLine("", module_name, method_name);
+
             return groups.SelectMany(a => a.SelectMany(b => b.group_column_headers).ToArray()).ToArray();
         }
 
-        internal static dataset_group_key[] ungroup((dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups)
+        internal static dataset_group_key[] ungroup(CancellationTokenSource cts, (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups)
         {
+            const string method_name = nameof(ungroup);
+
+            if (cts.IsCancellationRequested) return default;
+
+            io_proxy.WriteLine("", module_name, method_name);
+
             return groups.SelectMany(a => a.group_column_headers).ToArray();
         }
 
-        internal static (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] get_main_groups(dataset_group_key[] column_header_list, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member, bool perspective)
+        internal static (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] get_main_groups(CancellationTokenSource cts, dataset_group_key[] column_header_list, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member, bool perspective)
         {
+            const string method_name = nameof(get_main_groups);
+
+            if (cts.IsCancellationRequested) return default;
+
+            io_proxy.WriteLine("", module_name, method_name);
+
             return column_header_list
                 .AsParallel()
                 .AsOrdered()
+                .WithCancellation(cts.Token)
                 .GroupBy
                 (a =>
                     (
@@ -50,12 +77,19 @@ namespace svm_fs_batch
                 ).ToArray();
         }
 
-        internal static (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[][] get_sub_groups((dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] column_header_list, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member, bool perspective)
+        internal static (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[][] get_sub_groups(CancellationTokenSource cts, (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] column_header_list, bool file_tag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool @group, bool member, bool perspective)
         {
+            const string method_name = nameof(get_sub_groups);
+
+            if (cts.IsCancellationRequested) return default;
+
+            io_proxy.WriteLine("", module_name, method_name);
+
             return column_header_list
                 .AsParallel()
                 .AsOrdered()
-                .Select(a => get_main_groups(a.group_column_headers, file_tag, alphabet, stats, dimension, category, source, @group, member, perspective))
+                .WithCancellation(cts.Token)
+                .Select(a => get_main_groups(cts, a.group_column_headers, file_tag, alphabet, stats, dimension, category, source, @group, member, perspective))
                 .ToArray();
         }
     }

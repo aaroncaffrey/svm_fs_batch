@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -104,9 +105,11 @@ namespace svm_fs_batch
 
 
 
-        public static void save(string prediction_list_filename, /*string last_filename,*/ IList<confusion_matrix> cm_list)
+        public static void save(CancellationTokenSource cts, string prediction_list_filename, /*string last_filename,*/ IList<confusion_matrix> cm_list)
         {
             const string method_name = nameof(save);
+
+            if (cts.IsCancellationRequested) return;
 
             var pred_list = cm_list.SelectMany(a => a.predictions).ToList();
 
@@ -206,7 +209,7 @@ namespace svm_fs_batch
                             lines[cm_pred_index + 1] = string.Join($@",", values);
                         });
                 });
-            io_proxy.WriteAllLines(prediction_list_filename, lines, module_name, method_name);
+            io_proxy.WriteAllLines(cts, prediction_list_filename, lines, module_name, method_name);
         }
     }
 }

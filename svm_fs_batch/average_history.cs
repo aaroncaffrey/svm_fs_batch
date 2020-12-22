@@ -80,7 +80,7 @@ namespace svm_fs_batch
                 $@"{value_increase_sd:G17}",
 #endif
 
-            }.Select(a => a.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase)).ToArray();
+            }.Select(a => a.Replace(",", ";", StringComparison.OrdinalIgnoreCase)).ToArray();
         }
         public string csv_values()
         {

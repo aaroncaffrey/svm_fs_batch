@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace svm_fs_batch
@@ -12,25 +13,35 @@ namespace svm_fs_batch
 
         // note: load does not load the rd/sd part of the cm file.  this has to be recalculated after loading the cm.
 
-        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<confusion_matrix> x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, IList<confusion_matrix> x_list)
         {
-            save(cm_full_filename, cm_summary_filename, overwrite, null, x_list, null, null);
+            if (cts.IsCancellationRequested) return;
+
+            save(cts, cm_full_filename, cm_summary_filename, overwrite, null, x_list, null, null);
         }
 
-        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<(index_data id, confusion_matrix cm, score_data sd)> x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, IList<(index_data id, confusion_matrix cm, score_data sd)> x_list)
         {
-            save(cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), null);
+            if (cts.IsCancellationRequested) return;
+
+            save(cts, cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), null);
         }
 
-        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<(index_data id, confusion_matrix cm, score_data sd, rank_data rd)> x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, IList<(index_data id, confusion_matrix cm, score_data sd, rank_data rd)> x_list)
         {
-            save(cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), x_list.Select(a => a.rd).ToArray());
+            if (cts.IsCancellationRequested) return;
+
+            save(cts, cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), x_list.Select(a => a.rd).ToArray());
         }
 
 
-        internal static void save(string cm_full_filename, string cm_summary_filename, bool overwrite, IList<index_data> id_list, IList<confusion_matrix> cm_list, IList<score_data> sd_list, IList<rank_data> rd_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, IList<index_data> id_list, IList<confusion_matrix> cm_list, IList<score_data> sd_list, IList<rank_data> rd_list)
         {
             const string method_name = nameof(save);
+
+            if (cts.IsCancellationRequested) return;
+
+            if (cm_full_filename == cm_summary_filename) throw new Exception($@"Filenames are the same.");
 
             var save_full_req = !string.IsNullOrWhiteSpace(cm_full_filename);
             var save_summary_req = !string.IsNullOrWhiteSpace(cm_summary_filename);
@@ -41,13 +52,12 @@ namespace svm_fs_batch
             if (lens.Length == 0 || lens_distinct_count > 1) throw new Exception($@"Array length of {nameof(cm_list)}, {nameof(sd_list)}, and {nameof(rd_list)} do not match.");
             var lens_max = lens.Max();
 
-            var save_full = save_full_req && (overwrite || !io_proxy.is_file_available(cm_full_filename, module_name, method_name));
-            var save_summary = save_summary_req && (overwrite || !io_proxy.is_file_available(cm_summary_filename, module_name, method_name));
+            var save_full = save_full_req && (overwrite || !io_proxy.is_file_available(cts, cm_full_filename, module_name, method_name));
+            var save_summary = save_summary_req && (overwrite || !io_proxy.is_file_available(cts, cm_summary_filename, module_name, method_name));
 
             if (save_full_req && !save_full)
             {
                 io_proxy.WriteLine($@"Not overwriting file: {cm_full_filename}", module_name, method_name);
-
             }
 
             if (save_summary_req && !save_summary)
@@ -124,20 +134,22 @@ namespace svm_fs_batch
 
             if (lines1 != null && lines1.Length > 0)
             {
-                io_proxy.WriteAllLines(cm_full_filename, lines1, module_name, method_name);
+                io_proxy.WriteAllLines(cts, cm_full_filename, lines1, module_name, method_name);
                 io_proxy.WriteLine($@"Saved: {cm_full_filename} ({lines1.Length} lines)", module_name, method_name);
             }
 
             if (lines2 != null && lines2.Length > 0)
             {
-                io_proxy.WriteAllLines(cm_summary_filename, lines2, module_name, method_name);
+                io_proxy.WriteAllLines(cts, cm_summary_filename, lines2, module_name, method_name);
                 io_proxy.WriteLine($@"Saved: {cm_summary_filename} ({lines2.Length} lines)", module_name, method_name);
             }
         }
 
-        internal static List<confusion_matrix> load(string filename, int column_offset = -1)
+        internal static List<confusion_matrix> load(CancellationTokenSource cts, string filename, int column_offset = -1)
         {
-            var lines = io_proxy.ReadAllLines(filename).ToList();
+            if (cts.IsCancellationRequested) return default;
+
+            var lines = io_proxy.ReadAllLines(cts, filename).ToList();
             var ret = load(lines, column_offset);//, filename);
             return ret;
         }
@@ -190,8 +202,8 @@ namespace svm_fs_batch
 
                     var s_all = line.Split(',').ToList();
 
-                    var x_double = s_all.AsParallel().AsOrdered().Select(a => double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out var out_double) ? out_double : (double?)null).ToList();
-                    var x_int = s_all.AsParallel().AsOrdered().Select((a, j) => int.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out var out_int) ? out_int : (int?)null).ToList();
+                    var x_double = s_all.AsParallel().AsOrdered().Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_double) ? out_double : (double?)null).ToList();
+                    var x_int = s_all.AsParallel().AsOrdered().Select((a, j) => int.TryParse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : (int?)null).ToList();
                     var x_bool = s_all.AsParallel().AsOrdered().Select((a, j) =>
                     {
                         if (x_int[j] == 0) return (bool?)false;
@@ -597,8 +609,10 @@ namespace svm_fs_batch
 
 
 
-        internal void calculate_metrics(metrics_box metrics, bool calculate_auc, IList<prediction> prediction_list)
+        internal void calculate_metrics(CancellationTokenSource cts, metrics_box metrics, bool calculate_auc, IList<prediction> prediction_list)
         {
+            if (cts.IsCancellationRequested) return;
+
             if (x_class_id != null && prediction_list != null && prediction_list.Count > 0 && prediction_list.Any(a => a.probability_estimates != null && a.probability_estimates.Count > 0))
             {
                 var p_brier_score_all = perf.brier(prediction_list, x_class_id.Value);
@@ -609,8 +623,8 @@ namespace svm_fs_batch
                     //var (p_brier_score_all, p_roc_auc_all, p_roc_auc2_all, p_pr_auc_all, p_pri_auc_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, class_id.Value, false);
                     //var (p_brier_score_11p, p_roc_auc_11p, p_roc_auc2_11p, p_pr_auc_11p, p_pri_auc_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, class_id.Value, true);
 
-                    var (p_roc_auc_approx_all, p_roc_auc_actual_all, p_pr_auc_approx_all, p_pri_auc_approx_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = perf.Calculate_ROC_PR_AUC(prediction_list, x_class_id.Value, perf.threshold_type.all_thresholds);
-                    var (p_roc_auc_approx_11p, p_roc_auc_actual_11p, p_pr_auc_approx_11p, p_pri_auc_approx_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = perf.Calculate_ROC_PR_AUC(prediction_list, x_class_id.Value, perf.threshold_type.eleven_points);
+                    var (p_roc_auc_approx_all, p_roc_auc_actual_all, p_pr_auc_approx_all, p_pri_auc_approx_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = perf.Calculate_ROC_PR_AUC(cts, prediction_list, x_class_id.Value, perf.threshold_type.all_thresholds);
+                    var (p_roc_auc_approx_11p, p_roc_auc_actual_11p, p_pr_auc_approx_11p, p_pri_auc_approx_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = perf.Calculate_ROC_PR_AUC(cts, prediction_list, x_class_id.Value, perf.threshold_type.eleven_points);
 
 
                     metrics.ROC_AUC_Approx_All = p_roc_auc_approx_all;
@@ -1692,7 +1706,7 @@ namespace svm_fs_batch
                     !summary ? pri_xy_str_11p ?? "" : "",
                     !summary ? string.Join(';',thresholds?.Select(a=> $"{a:G17}").ToArray() ?? Array.Empty<string>()) : "",
                     !summary ? string.Join(";", predictions?.Select(a=> a?.str() ?? "").ToArray() ?? Array.Empty<string>()) : "",
-            }.Select(a => a?.Replace(",", ";", StringComparison.InvariantCultureIgnoreCase) ?? "").ToArray();
+            }.Select(a => a?.Replace(",", ";", StringComparison.OrdinalIgnoreCase) ?? "").ToArray();
         }
 
         public string csv_values()

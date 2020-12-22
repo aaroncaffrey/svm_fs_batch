@@ -19,6 +19,8 @@ namespace svm_fs_batch
 
         internal static void close_notifications(CancellationTokenSource cts = null)
         {
+            if (cts.IsCancellationRequested) return;
+
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
                 io_proxy.WriteLine($@"Console.CancelKeyPress", nameof(program), nameof(close_notifications));
