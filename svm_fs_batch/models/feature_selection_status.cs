@@ -35,10 +35,11 @@ namespace svm_fs_batch
             if (cts.IsCancellationRequested) return;
 
             var lines = new string[feature_selection_status_list.Count + 1];
-            lines[0] = csv_header;
+            lines[0] = csv_header_string;
+
             for (var i = 0; i < feature_selection_status_list.Count; i++)
             {
-                lines[i + 1] = feature_selection_status_list[i].csv_values();
+                lines[i + 1] = feature_selection_status_list[i].csv_values_string();
             }
 
             io_proxy.WriteAllLines(cts, status_filename, lines, module_name, method_name);
@@ -46,7 +47,7 @@ namespace svm_fs_batch
 
 
 
-        internal static readonly string[] csv_header_values = new string[]
+        internal static readonly string[] csv_header_values_array = new string[]
             {
                 $@"fs_{nameof(scoring_metrics)}",
                 $@"fs_{nameof(scoring_class_ids)}",
@@ -67,18 +68,18 @@ namespace svm_fs_batch
                 $@"this_winner_key_perspective",
                 $@"_",
             }
-            .Concat(score_data.csv_header_values.Select(a => $@"this_winner_{a}").ToArray())
+            .Concat(score_data.csv_header_values_array.Select(a => $@"this_winner_{a}").ToArray())
             .Concat(new[] { $@"_" })
-            .Concat(score_data.csv_header_values.Select(a => $@"last_winner_{a}").ToArray())
+            .Concat(score_data.csv_header_values_array.Select(a => $@"last_winner_{a}").ToArray())
             .Concat(new[] { $@"_" })
-            .Concat(score_data.csv_header_values.Select(a => $@"best_winner_{a}").ToArray())
+            .Concat(score_data.csv_header_values_array.Select(a => $@"best_winner_{a}").ToArray())
             .Concat(new[] { $@"_" })
             .ToArray();
         
 
-        internal static readonly string csv_header = string.Join(",", csv_header_values);
+        internal static readonly string csv_header_string = string.Join(",", csv_header_values_array);
 
-        internal string csv_values()
+        internal string csv_values_string()
         {
             return string.Join(",", csv_values_array());
         }

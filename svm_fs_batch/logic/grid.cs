@@ -364,7 +364,7 @@ namespace svm_fs_batch
                         shrinking_heuristics = shrinking_heuristics,
                         grid_point = new grid_point(a)
                     }
-                ).ToList();
+                ).ToArray();
 
                 grid_cache_data.write_cache_file(cts, cache_train_grid_csv, results_cache_format);
 

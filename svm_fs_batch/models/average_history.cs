@@ -45,7 +45,7 @@ namespace svm_fs_batch
 #endif
         }
 
-        public static readonly string[] csv_header_values = new string[]
+        public static readonly string[] csv_header_values_array = new string[]
        {
             nameof(is_value_higher),
             nameof(value),
@@ -61,7 +61,7 @@ namespace svm_fs_batch
 
        };
 
-        public static readonly string csv_header = string.Join(",", csv_header_values);
+        public static readonly string csv_header_string = string.Join(",", csv_header_values_array);
 
 
         public string[] csv_values_array()
@@ -82,7 +82,7 @@ namespace svm_fs_batch
 
             }.Select(a => a.Replace(",", ";", StringComparison.OrdinalIgnoreCase)).ToArray();
         }
-        public string csv_values()
+        public string csv_values_string()
         {
             return string.Join(",", csv_values_array());
         }

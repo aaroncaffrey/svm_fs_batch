@@ -19,22 +19,23 @@ namespace svm_fs_batch
 
         internal static void close_notifications(CancellationTokenSource cts = null)
         {
-            if (cts.IsCancellationRequested) return;
+            const string method_name = nameof(close_notifications);
+            if (cts != null && cts.IsCancellationRequested) return;
 
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
-                io_proxy.WriteLine($@"Console.CancelKeyPress", nameof(program), nameof(close_notifications));
-                cts?.Cancel();
+                io_proxy.WriteLine($@"Console.CancelKeyPress", module_name, method_name);
+                if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
             AssemblyLoadContext.Default.Unloading += context =>
             {
-                io_proxy.WriteLine($@"AssemblyLoadContext.Default.Unloading", nameof(program), nameof(close_notifications));
-                cts?.Cancel();
+                io_proxy.WriteLine($@"AssemblyLoadContext.Default.Unloading", module_name, method_name);
+                if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
             AppDomain.CurrentDomain.ProcessExit += (sender, eventArgs) =>
             {
-                io_proxy.WriteLine($@"AppDomain.CurrentDomain.ProcessExit", nameof(program), nameof(close_notifications));
-                cts?.Cancel();
+                io_proxy.WriteLine($@"AppDomain.CurrentDomain.ProcessExit", module_name, method_name);
+                if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
         }
 

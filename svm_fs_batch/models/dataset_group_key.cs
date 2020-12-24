@@ -1,12 +1,37 @@
 ﻿using System;
+using System.Globalization;
 
 namespace svm_fs_batch
 {
     internal class dataset_group_key : IEquatable<dataset_group_key>
     {
-        internal int column_index = -1; // note: column_index not used for equality checking.
+        internal int column_index = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
 
         internal (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value;
+
+        public dataset_group_key(string[] values)
+        {
+            if (values == null || values.Length == 0) return;
+            
+            var k = 0;
+
+            if (values.Length > k) value.file_tag = values[k++];
+            if (values.Length > k) value.alphabet = values[k++];
+            if (values.Length > k) value.stats = values[k++];
+            if (values.Length > k) value.dimension = values[k++];
+            if (values.Length > k) value.category = values[k++];
+            if (values.Length > k) value.source = values[k++];
+            if (values.Length > k) value.@group = values[k++];
+            if (values.Length > k) value.member = values[k++];
+            if (values.Length > k) value.perspective = values[k++];
+            if (values.Length > k) column_index = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+        }
+
+        public dataset_group_key(dataset_group_key group_key)
+        {
+            this.value = group_key.value;
+            this.column_index = group_key.column_index;
+        }
 
         public dataset_group_key((string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value, int column_index = -1)
         {
@@ -27,6 +52,46 @@ namespace svm_fs_batch
             this.value.perspective = perspective;
             this.column_index = column_index;
         }
+
+        internal static readonly string[] csv_header_values_array = new string[]
+        {
+            nameof(dataset_group_key.value.file_tag),
+            nameof(dataset_group_key.value.alphabet),
+            nameof(dataset_group_key.value.stats),
+            nameof(dataset_group_key.value.dimension),
+            nameof(dataset_group_key.value.category),
+            nameof(dataset_group_key.value.source),
+            nameof(dataset_group_key.value.@group),
+            nameof(dataset_group_key.value.member),
+            nameof(dataset_group_key.value.perspective),
+            nameof(column_index),
+        };
+
+        internal static readonly string csv_header_string = string.Join(",", csv_header_values_array);
+
+
+        internal string[] csv_values_array()
+        {
+            return new string[]
+            {
+               $@"{value.file_tag}",
+               $@"{value.alphabet}",
+               $@"{value.stats}",
+               $@"{value.dimension}",
+               $@"{value.category}",
+               $@"{value.source}",
+               $@"{value.@group}",
+               $@"{value.member}",
+               $@"{value.perspective}",
+               $@"{column_index}",
+            };
+        }
+
+        internal string csv_values_string()
+        {
+            return string.Join(",", csv_values_array());
+        }
+
 
         public bool Equals(dataset_group_key other)
         {

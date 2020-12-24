@@ -33,29 +33,117 @@ namespace svm_fs_batch
 
         //internal static Random this_threads_random => _local ?? (_local = new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId)));
 
-        internal static void shuffle<T>(this IList<T> list, Random random)// = null)
+        //internal static int get_instance_id(int whole_array_index_first, int whole_array_index_last, int whole_array_step_size, int partition_array_index_first, int partition_array_index_last)
+        //{
+        //    var instance_id = -1;
+        //
+        //    //for (var whole_array_index = program_args.whole_array_index_first; whole_array_index <= program_args.partition_array_index_first; whole_array_index += program_args.whole_array_step_size) { instance_id++; }
+        //    for (var whole_array_index = (whole_array_index_first <= whole_array_index_last ? whole_array_index_first : whole_array_index_last); !is_in_range(partition_array_index_first, partition_array_index_last, whole_array_index); whole_array_index += whole_array_step_size) instance_id++;
+        //
+        //    return instance_id;
+        //}
+
+        public static int for_iterations(int first, int last, int step)
         {
-            //if (random == null) random = this_threads_random;
+            return (step > 0 && last >= first) || (step < 0 && first >= last) ? ((last - first) / step) + 1 : 0;
+        }
 
-            //var k_list = new List<int>();
+        internal static bool is_in_range(int range_first, int range_last, int value)
+        {
+            return (value >= range_first && value <= range_last) || (value >= range_last && value <= range_first);
+        }
 
-            for (var n = list.Count - 1; n >= 0; n--)
+        public static List<(int from, int to, int step)> find_ranges(List<int> ids)
+        {
+            if (ids == null || ids.Count == 0) return new List<(int @from, int to, int step)>();
+
+            ids = ids.OrderBy(a => a).Distinct().ToList();
+
+            if (ids.Count == 1) return new List<(int @from, int to, int step)>() { (ids[0], ids[0], 0) };
+
+            var ranges = new List<(int @from, int to, int step)>();
+
+            var step = ids[1] - ids[0];
+            var step_start_index = 0;
+
+            for (var i = 1; i < ids.Count; i++)
             {
-                var k = random.Next(0, list.Count - 1);
-                //k_list.Add(k);
+                // if step has changed, save last
+                if (ids[i] - ids[i - 1] != step)
+                {
+                    ranges.Add((ids[step_start_index], ids[step_start_index] + (step * (i - step_start_index - 1)), step));
 
-                var value = list[k];
-                list[k] = list[n];
-                list[n] = value;
+                    step = ids[i] - ids[i - 1];
+                    step_start_index = i - 1;
+                    i--;
+                    continue;
+                }
+
+                if (i == ids.Count - 1)
+                {
+                    step = step_start_index == i ? 1 : step;
+                    ranges.Add((ids[step_start_index], ids[step_start_index] + (step * (i - step_start_index)), step));
+                }
             }
 
-            // if (program.write_console_log) program.WriteLine(string.Join(",",k_list));
+            return ranges;
+        }
+
+        public static string find_ranges_str(List<int> ids)
+        {
+            var ranges = find_ranges(ids);
+
+            return string.Join("_", ranges.Select(range => $@"{range.@from}" + (range.@from != range.to ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1 ? $@";{range.step}" : $@"") : $@"")).ToList());
+        }
+
+        public static int[] range(int start, int end, int step)
+        {
+            var ix = for_iterations(start, end, step);
+
+            var ret = new int[ix];
+
+            var step_sum = start;
+
+            for (var i = 0; i < ix; i++)
+            {
+                ret[i] = step_sum;
+
+                step_sum += step;
+            }
+
+            return ret;
+        }
+
+        //internal static void shuffle<T>(List<T> list, Random random)
+        //{
+        //    for (var n = list.Count - 1; n >= 0; n--)
+        //    {
+        //        var k = random.Next(0, list.Count - 1);
+        //
+        //        var value = list[k];
+        //        list[k] = list[n];
+        //        list[n] = value;
+        //    }
+        //}
+
+        internal static void shuffle(this int[] values, Random random)
+        {
+            var max_index = values.Length - 1;
+
+            for (var n = max_index; n >= 0; n--)
+            {
+                var k = random.Next(0, max_index);
+
+                var value = values[k];
+                values[k] = values[n];
+                values[n] = value;
+            }
         }
 
         internal static (
-            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] class_folds,
-            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] indexes)[] folds)[] down_sampled_training_class_folds
-            ) folds(CancellationTokenSource cts, IList<(int class_id, int class_size)> class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] class_folds,
+            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_training_class_folds
+            ) folds(CancellationTokenSource cts, (int class_id, int class_size)[] class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             if (cts.IsCancellationRequested) return default;
 
@@ -108,7 +196,7 @@ namespace svm_fs_batch
             // use same seed to ensure all calls to fold() are deterministic
             var rand = new Random(1);
 
-            var indexes_pool = Enumerable.Range(0, num_class_samples).ToList();
+            var indexes_pool = Enumerable.Range(0, num_class_samples).ToArray();
 
             var fold_indexes = new List<(int randomisation, int outer_cv_index, int[] indexes)>();
 
@@ -132,22 +220,22 @@ namespace svm_fs_batch
         }
 
 
-        internal static double standard_deviation_population(IList<double> values)
+        internal static double standard_deviation_population(double[] values)
         {
-            if (values == null || values.Count < 2) return 0;
+            if (values == null || values.Length < 2) return 0;
 
             var mean = values.Average();
 
-            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Count));
+            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length));
         }
 
-        internal static double standard_deviation_sample(IList<double> values)
+        internal static double standard_deviation_sample(double[] values)
         {
-            if (values == null || values.Count < 2) return 0;
+            if (values == null || values.Length < 2) return 0;
 
             var mean = values.Average();
 
-            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Count - 1));
+            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
 
@@ -183,7 +271,7 @@ namespace svm_fs_batch
         //    return (variance, stdev);
         //}
 
-        //internal static double sqrt_sumofsqrs(IList<double> list) { return list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+        //internal static double sqrt_sumofsqrs(double[] list) { return list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
 
       
 

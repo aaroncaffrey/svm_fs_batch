@@ -75,6 +75,77 @@ namespace svm_fs_batch
 
         internal (int class_id, int class_size)[] class_sizes;
 
+        internal static int[] remove_duplicate_columns(CancellationTokenSource cts, dataset_loader dataset, int[] query_cols)
+        {
+            const string method_name = nameof(remove_duplicate_columns);
+            // remove duplicate columns (may exist in separate groups)
+            //var query_col_dupe_check = idr.dataset_instance_list_grouped.SelectMany(a => a.examples).SelectMany(a => query_cols.Select(b => (query_col: b, fv: a.feature_data[b].fv)).ToList()).GroupBy(b => b.query_col).Select(b => (query_col: b.Key, values: b.Select(c => c.fv).ToList())).ToList();
+
+            if (query_cols == null || query_cols.Length <= 1) return query_cols; //throw new ArgumentOutOfRangeException(nameof(query_cols));
+            //if (query_cols.Length <= 1) return query_cols;
+
+            var query_col_dupe_check = query_cols.Select(col_index => dataset
+                .value_list
+                .SelectMany(class_values => class_values.val_list.Select((row, row_index) =>
+                {
+                    var rc = row.row_columns[col_index];
+
+                    if (rc.col_index != col_index || rc.row_index != row_index) throw new Exception();
+
+                    return rc.row_column_val;
+                }).ToArray()).ToArray()).ToArray();
+
+
+            var start_index = query_cols[0] == 0 ? 1 : 0;
+
+            var index_pairs = new (int x, int y)[(query_col_dupe_check.Length * (query_col_dupe_check.Length - 1)) / 2];
+            var k = 0;
+            for (var i = start_index; i < query_col_dupe_check.Length; i++)
+            {
+                for (var j = start_index; j < query_col_dupe_check.Length; j++)
+                {
+                    if (i <= j) continue;
+
+                    index_pairs[k++] = (i, j);
+                }
+            }
+
+            var seq_eq = index_pairs.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(a => query_col_dupe_check[a.x].SequenceEqual(query_col_dupe_check[a.y])).ToArray();
+            var dupe_clusters = new List<List<int>>();
+
+            for (k = 0; k < index_pairs.Length; k++)
+            {
+                if (seq_eq[k])
+                {
+                    var cluster = new List<int>() { query_cols[index_pairs[k].x], query_cols[index_pairs[k].y] };
+                    var existing_clusters = dupe_clusters.Where(a => a.Any(b => cluster.Any(c => b == c))).ToArray();
+
+                    for (var e = 0; e < existing_clusters.Length; e++)
+                    {
+                        cluster.AddRange(existing_clusters[e]);
+                        dupe_clusters.Remove(existing_clusters[e]);
+                    }
+
+                    cluster = cluster.OrderBy(a => a).Distinct().ToList();
+                    dupe_clusters.Add(cluster);
+                }
+            }
+
+            var indexes_to_remove = dupe_clusters.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray();
+
+            if (indexes_to_remove.Length > 0)
+            {
+                var ret = query_cols.Except(indexes_to_remove).ToArray();
+#if DEBUG
+                io_proxy.WriteLine($"Removed duplicate columns: [{string.Join(", ", indexes_to_remove)}].", program.module_name, method_name);
+                io_proxy.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program.module_name, method_name);
+                io_proxy.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program.module_name, method_name);
+#endif
+                return ret;
+            }
+
+            return query_cols;
+        }
 
         internal double[][] get_row_features(CancellationTokenSource cts, (int class_id, int[] row_indexes)[] class_row_indexes, int[] column_indexes)
         {
@@ -150,7 +221,7 @@ namespace svm_fs_batch
             if (cts.IsCancellationRequested) return;
 
             var required_default = false;
-            var required_matches = new List<(bool required, string alphabet, string stats, string dimension, string category, string source, string group, string member, string perspective)>();
+            var required_matches = new List<(bool required, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)>();
             //required_matches.Add((required: true, alphabet: null, dimension: null, category: null, source: null, group: null, member: null, perspective: null));
 
             // file tags: 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p (1d - linear, 2d - predicted, 3d - actual, interface, neighborhood, protein)
@@ -208,7 +279,7 @@ namespace svm_fs_batch
                                     dimension: row[3],
                                     category: row[4],
                                     source: row[5],
-                                    group: row[6],
+                                    @group: row[6],
                                     member: row[7],
                                     perspective: row[8]);
                             }
@@ -224,7 +295,7 @@ namespace svm_fs_batch
                                     dimension: row[2],
                                     category: row[3],
                                     source: row[4],
-                                    group: row[5],
+                                    @group: row[5],
                                     member: row[6],
                                     perspective: row[7]);
                             } else throw new Exception();
@@ -364,8 +435,7 @@ namespace svm_fs_batch
         }
 
         private
-            List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)>
-        get_data_filenames(
+            List<(int class_id, string class_name, List<(string file_tag, int class_id, string class_name, string filename)> values_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> header_csv_filenames, List<(string file_tag, int class_id, string class_name, string filename)> comment_csv_filenames)> get_data_filenames(
             string dataset_folder,
             string[] file_tags,
             IList<(int class_id, string class_name)> class_names
@@ -918,7 +988,6 @@ internal static void remove_duplicate_groups(dataset dataset)
             var cluster_fids_to_remove = groups_to_remove.SelectMany(a => a.Select(b => b.fid).ToList()).ToList();
             fids_to_remove.AddRange(cluster_fids_to_remove);
 
-            // todo: loop through each column of group to keep, find sequence equal in the groups to remove, to get the correct new header names
             //
             var alphabets = new List<string>();
             var dimensions = new List<string>();

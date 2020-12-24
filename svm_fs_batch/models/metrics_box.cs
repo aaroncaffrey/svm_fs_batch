@@ -8,6 +8,7 @@ namespace svm_fs_batch
     internal class metrics_box
     {
         public const string module_name = nameof(metrics_box);
+        internal static readonly metrics_box empty = new metrics_box();
 
         internal double P;
         internal double N;
@@ -147,7 +148,7 @@ namespace svm_fs_batch
             F1B_09 = metrics.F1B_09;
             F1B_10 = metrics.F1B_10;
 
-            if (divisor != null)
+            if (divisor != null && divisor.Value != 0)
             {
                 divide(divisor.Value);
             }
@@ -221,11 +222,77 @@ namespace svm_fs_batch
             F1B_10 /= divisor;
         }
 
+        internal metrics_box(metrics_box[] metrics_boxes)
+        {
+            if (metrics_boxes == null || metrics_boxes.Length == 0 || metrics_boxes.All(a => a == null)) return;
+            
+            P = metrics_boxes.Where(a => a != null).Select(a => a.P).DefaultIfEmpty(0).Average();
+            N = metrics_boxes.Where(a => a != null).Select(a => a.N).DefaultIfEmpty(0).Average();
+            TP = metrics_boxes.Where(a => a != null).Select(a => a.TP).DefaultIfEmpty(0).Average();
+            FP = metrics_boxes.Where(a => a != null).Select(a => a.FP).DefaultIfEmpty(0).Average();
+            TN = metrics_boxes.Where(a => a != null).Select(a => a.TN).DefaultIfEmpty(0).Average();
+            FN = metrics_boxes.Where(a => a != null).Select(a => a.FN).DefaultIfEmpty(0).Average();
+            TPR = metrics_boxes.Where(a => a != null).Select(a => a.TPR).DefaultIfEmpty(0).Average();
+            TNR = metrics_boxes.Where(a => a != null).Select(a => a.TNR).DefaultIfEmpty(0).Average();
+            PPV = metrics_boxes.Where(a => a != null).Select(a => a.PPV).DefaultIfEmpty(0).Average();
+            Precision = metrics_boxes.Where(a => a != null).Select(a => a.Precision).DefaultIfEmpty(0).Average();
+            Prevalence = metrics_boxes.Where(a => a != null).Select(a => a.Prevalence).DefaultIfEmpty(0).Average();
+            MCR = metrics_boxes.Where(a => a != null).Select(a => a.MCR).DefaultIfEmpty(0).Average();
+            ER = metrics_boxes.Where(a => a != null).Select(a => a.ER).DefaultIfEmpty(0).Average();
+            NER = metrics_boxes.Where(a => a != null).Select(a => a.NER).DefaultIfEmpty(0).Average();
+            CNER = metrics_boxes.Where(a => a != null).Select(a => a.CNER).DefaultIfEmpty(0).Average();
+            Kappa = metrics_boxes.Where(a => a != null).Select(a => a.Kappa).DefaultIfEmpty(0).Average();
+            Overlap = metrics_boxes.Where(a => a != null).Select(a => a.Overlap).DefaultIfEmpty(0).Average();
+            RND_ACC = metrics_boxes.Where(a => a != null).Select(a => a.RND_ACC).DefaultIfEmpty(0).Average();
+            Support = metrics_boxes.Where(a => a != null).Select(a => a.Support).DefaultIfEmpty(0).Average();
+            BaseRate = metrics_boxes.Where(a => a != null).Select(a => a.BaseRate).DefaultIfEmpty(0).Average();
+            YoudenIndex = metrics_boxes.Where(a => a != null).Select(a => a.YoudenIndex).DefaultIfEmpty(0).Average();
+            NPV = metrics_boxes.Where(a => a != null).Select(a => a.NPV).DefaultIfEmpty(0).Average();
+            FNR = metrics_boxes.Where(a => a != null).Select(a => a.FNR).DefaultIfEmpty(0).Average();
+            FPR = metrics_boxes.Where(a => a != null).Select(a => a.FPR).DefaultIfEmpty(0).Average();
+            FDR = metrics_boxes.Where(a => a != null).Select(a => a.FDR).DefaultIfEmpty(0).Average();
+            FOR = metrics_boxes.Where(a => a != null).Select(a => a.FOR).DefaultIfEmpty(0).Average();
+            ACC = metrics_boxes.Where(a => a != null).Select(a => a.ACC).DefaultIfEmpty(0).Average();
+            GMean = metrics_boxes.Where(a => a != null).Select(a => a.GMean).DefaultIfEmpty(0).Average();
+            F1S = metrics_boxes.Where(a => a != null).Select(a => a.F1S).DefaultIfEmpty(0).Average();
+            G1S = metrics_boxes.Where(a => a != null).Select(a => a.G1S).DefaultIfEmpty(0).Average();
+            MCC = metrics_boxes.Where(a => a != null).Select(a => a.MCC).DefaultIfEmpty(0).Average();
+            Informedness = metrics_boxes.Where(a => a != null).Select(a => a.Informedness).DefaultIfEmpty(0).Average();
+            Markedness = metrics_boxes.Where(a => a != null).Select(a => a.Markedness).DefaultIfEmpty(0).Average();
+            BalancedAccuracy = metrics_boxes.Where(a => a != null).Select(a => a.BalancedAccuracy).DefaultIfEmpty(0).Average();
+            ROC_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.ROC_AUC_Approx_All).DefaultIfEmpty(0).Average();
+            ROC_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.ROC_AUC_Approx_11p).DefaultIfEmpty(0).Average();
+            ROC_AUC_All = metrics_boxes.Where(a => a != null).Select(a => a.ROC_AUC_All).DefaultIfEmpty(0).Average();
+            PR_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.PR_AUC_Approx_All).DefaultIfEmpty(0).Average();
+            PR_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.PR_AUC_Approx_11p).DefaultIfEmpty(0).Average();
+            PRI_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.PRI_AUC_Approx_All).DefaultIfEmpty(0).Average();
+            PRI_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.PRI_AUC_Approx_11p).DefaultIfEmpty(0).Average();
+            AP_All = metrics_boxes.Where(a => a != null).Select(a => a.AP_All).DefaultIfEmpty(0).Average();
+            AP_11p = metrics_boxes.Where(a => a != null).Select(a => a.AP_11p).DefaultIfEmpty(0).Average();
+            API_All = metrics_boxes.Where(a => a != null).Select(a => a.API_All).DefaultIfEmpty(0).Average();
+            API_11p = metrics_boxes.Where(a => a != null).Select(a => a.API_11p).DefaultIfEmpty(0).Average();
+            Brier_Inverse_All = metrics_boxes.Where(a => a != null).Select(a => a.Brier_Inverse_All).DefaultIfEmpty(0).Average();
+            LRP = metrics_boxes.Where(a => a != null).Select(a => a.LRP).DefaultIfEmpty(0).Average();
+            LRN = metrics_boxes.Where(a => a != null).Select(a => a.LRN).DefaultIfEmpty(0).Average();
+            DOR = metrics_boxes.Where(a => a != null).Select(a => a.DOR).DefaultIfEmpty(0).Average();
+            PrevalenceThreshold = metrics_boxes.Where(a => a != null).Select(a => a.PrevalenceThreshold).DefaultIfEmpty(0).Average();
+            CriticalSuccessIndex = metrics_boxes.Where(a => a != null).Select(a => a.CriticalSuccessIndex).DefaultIfEmpty(0).Average();
+            F1B_00 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_00).DefaultIfEmpty(0).Average();
+            F1B_01 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_01).DefaultIfEmpty(0).Average();
+            F1B_02 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_02).DefaultIfEmpty(0).Average();
+            F1B_03 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_03).DefaultIfEmpty(0).Average();
+            F1B_04 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_04).DefaultIfEmpty(0).Average();
+            F1B_05 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_05).DefaultIfEmpty(0).Average();
+            F1B_06 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_06).DefaultIfEmpty(0).Average();
+            F1B_07 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_07).DefaultIfEmpty(0).Average();
+            F1B_08 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_08).DefaultIfEmpty(0).Average();
+            F1B_09 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_09).DefaultIfEmpty(0).Average();
+            F1B_10 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_10).DefaultIfEmpty(0).Average();
+        }
+
         internal static double fbeta2(double PPV, double TPR, double fbeta)
         {
-            var fb = (PPV == 0.0 || TPR == 0.0) ? (double)0.0 : (double)(1 / (fbeta * (1 / PPV) + (1 - fbeta) * (1 / TPR)));
-
-            return fb;
+            return (double.IsNaN(PPV) || double.IsNaN(TPR) || PPV == 0.0d || TPR == 0.0d) ? 0.0d : (double)(1 / (fbeta * (1 / PPV) + (1 - fbeta) * (1 / TPR)));
         }
 
         internal double get_value_by_name(string name)
@@ -302,70 +369,66 @@ namespace svm_fs_batch
 
             if (cross_validation_metrics == 0) throw new Exception();
 
-            var metrics = this;
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TP)) { metric_values.Add(metrics.TP); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FP)) { metric_values.Add(metrics.FP); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TN)) { metric_values.Add(metrics.TN); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FN)) { metric_values.Add(metrics.FN); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TPR)) { metric_values.Add(metrics.TPR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TNR)) { metric_values.Add(metrics.TNR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PPV)) { metric_values.Add(metrics.PPV); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Precision)) { metric_values.Add(metrics.Precision); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Prevalence)) { metric_values.Add(metrics.Prevalence); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCR)) { metric_values.Add(metrics.MCR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ER)) { metric_values.Add(metrics.ER); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NER)) { metric_values.Add(metrics.NER); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CNER)) { metric_values.Add(metrics.CNER); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Kappa)) { metric_values.Add(metrics.Kappa); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Overlap)) { metric_values.Add(metrics.Overlap); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.RND_ACC)) { metric_values.Add(metrics.RND_ACC); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Support)) { metric_values.Add(metrics.Support); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BaseRate)) { metric_values.Add(metrics.BaseRate); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.YoudenIndex)) { metric_values.Add(metrics.YoudenIndex); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NPV)) { metric_values.Add(metrics.NPV); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FNR)) { metric_values.Add(metrics.FNR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FPR)) { metric_values.Add(metrics.FPR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FDR)) { metric_values.Add(metrics.FDR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FOR)) { metric_values.Add(metrics.FOR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ACC)) { metric_values.Add(metrics.ACC); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.GM)) { metric_values.Add(metrics.GMean); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1S)) { metric_values.Add(metrics.F1S); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.G1S)) { metric_values.Add(metrics.G1S); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCC)) { metric_values.Add(metrics.MCC); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Informedness)) { metric_values.Add(metrics.Informedness); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Markedness)) { metric_values.Add(metrics.Markedness); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BalancedAccuracy)) { metric_values.Add(metrics.BalancedAccuracy); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_All)) { metric_values.Add(metrics.ROC_AUC_Approx_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_11p)) { metric_values.Add(metrics.ROC_AUC_Approx_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_All)) { metric_values.Add(metrics.ROC_AUC_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_All)) { metric_values.Add(metrics.PR_AUC_Approx_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_11p)) { metric_values.Add(metrics.PR_AUC_Approx_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_All)) { metric_values.Add(metrics.PRI_AUC_Approx_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_11p)) { metric_values.Add(metrics.PRI_AUC_Approx_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_All)) { metric_values.Add(metrics.AP_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_11p)) { metric_values.Add(metrics.AP_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_All)) { metric_values.Add(metrics.API_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_11p)) { metric_values.Add(metrics.API_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Brier_Inverse_All)) { metric_values.Add(metrics.Brier_Inverse_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRP)) { metric_values.Add(metrics.LRP); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRN)) { metric_values.Add(metrics.LRN); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.DOR)) { metric_values.Add(metrics.DOR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PrevalenceThreshold)) { metric_values.Add(metrics.PrevalenceThreshold); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CriticalSuccessIndex)) { metric_values.Add(metrics.CriticalSuccessIndex); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_00)) { metric_values.Add(metrics.F1B_00); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_01)) { metric_values.Add(metrics.F1B_01); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_02)) { metric_values.Add(metrics.F1B_02); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_03)) { metric_values.Add(metrics.F1B_03); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_04)) { metric_values.Add(metrics.F1B_04); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_05)) { metric_values.Add(metrics.F1B_05); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_06)) { metric_values.Add(metrics.F1B_06); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_07)) { metric_values.Add(metrics.F1B_07); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_08)) { metric_values.Add(metrics.F1B_08); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_09)) { metric_values.Add(metrics.F1B_09); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_10)) { metric_values.Add(metrics.F1B_10); }
-
-            //if (cross_validation_metrics.HasFlag(performance_measure.confusion_matrix.cross_validation_metrics.ROC_AUC2_11p)) { metric_values.Add(this.ROC_AUC_11p); }
-            //if (cross_validation_metrics.HasFlag(performance_measure.confusion_matrix.cross_validation_metrics.Brier_11p)) { metric_values.Add(this.Brier_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TP)) { metric_values.Add(TP); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FP)) { metric_values.Add(FP); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TN)) { metric_values.Add(TN); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FN)) { metric_values.Add(FN); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TPR)) { metric_values.Add(TPR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TNR)) { metric_values.Add(TNR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PPV)) { metric_values.Add(PPV); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Precision)) { metric_values.Add(Precision); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Prevalence)) { metric_values.Add(Prevalence); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCR)) { metric_values.Add(MCR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ER)) { metric_values.Add(ER); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NER)) { metric_values.Add(NER); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CNER)) { metric_values.Add(CNER); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Kappa)) { metric_values.Add(Kappa); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Overlap)) { metric_values.Add(Overlap); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.RND_ACC)) { metric_values.Add(RND_ACC); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Support)) { metric_values.Add(Support); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BaseRate)) { metric_values.Add(BaseRate); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.YoudenIndex)) { metric_values.Add(YoudenIndex); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NPV)) { metric_values.Add(NPV); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FNR)) { metric_values.Add(FNR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FPR)) { metric_values.Add(FPR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FDR)) { metric_values.Add(FDR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FOR)) { metric_values.Add(FOR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ACC)) { metric_values.Add(ACC); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.GM)) { metric_values.Add(GMean); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1S)) { metric_values.Add(F1S); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.G1S)) { metric_values.Add(G1S); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCC)) { metric_values.Add(MCC); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Informedness)) { metric_values.Add(Informedness); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Markedness)) { metric_values.Add(Markedness); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BalancedAccuracy)) { metric_values.Add(BalancedAccuracy); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_All)) { metric_values.Add(ROC_AUC_Approx_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_11p)) { metric_values.Add(ROC_AUC_Approx_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_All)) { metric_values.Add(ROC_AUC_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_All)) { metric_values.Add(PR_AUC_Approx_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_11p)) { metric_values.Add(PR_AUC_Approx_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_All)) { metric_values.Add(PRI_AUC_Approx_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_11p)) { metric_values.Add(PRI_AUC_Approx_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_All)) { metric_values.Add(AP_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_11p)) { metric_values.Add(AP_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_All)) { metric_values.Add(API_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_11p)) { metric_values.Add(API_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Brier_Inverse_All)) { metric_values.Add(Brier_Inverse_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRP)) { metric_values.Add(LRP); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRN)) { metric_values.Add(LRN); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.DOR)) { metric_values.Add(DOR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PrevalenceThreshold)) { metric_values.Add(PrevalenceThreshold); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CriticalSuccessIndex)) { metric_values.Add(CriticalSuccessIndex); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_00)) { metric_values.Add(F1B_00); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_01)) { metric_values.Add(F1B_01); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_02)) { metric_values.Add(F1B_02); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_03)) { metric_values.Add(F1B_03); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_04)) { metric_values.Add(F1B_04); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_05)) { metric_values.Add(F1B_05); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_06)) { metric_values.Add(F1B_06); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_07)) { metric_values.Add(F1B_07); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_08)) { metric_values.Add(F1B_08); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_09)) { metric_values.Add(F1B_09); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_10)) { metric_values.Add(F1B_10); }
 
             return metric_values;
         }
@@ -509,8 +572,8 @@ namespace svm_fs_batch
             //ROC_AUC_11p = 1UL << 36,
         }
 
-        
-        public static readonly string[] csv_header_values = new string[]
+
+        public static readonly string[] csv_header_values_array = new string[]
             {
                 nameof(P),
                 nameof(N),
@@ -576,16 +639,11 @@ namespace svm_fs_batch
                 nameof(F1B_10),
             };
 
-        public static readonly string csv_header = string.Join(",", csv_header_values);
-
-        public string csv_values()
-        {
-            return string.Join(",", csv_values_array());
-        }
+        public static readonly string csv_header_string = string.Join(",", csv_header_values_array);
 
         public string[] csv_values_array()
         {
-            return new string[] 
+            return new string[]
             {
                 P.ToString("G17", NumberFormatInfo.InvariantInfo),
                 N.ToString("G17", NumberFormatInfo.InvariantInfo),
@@ -650,6 +708,11 @@ namespace svm_fs_batch
                 F1B_09.ToString("G17", NumberFormatInfo.InvariantInfo),
                 F1B_10.ToString("G17", NumberFormatInfo.InvariantInfo),
             }.Select(a => a.Replace(",", ";", StringComparison.OrdinalIgnoreCase)).ToArray();
+        }
+
+        public string csv_values_string()
+        {
+            return string.Join(",", csv_values_array());
         }
     }
 }

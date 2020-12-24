@@ -25,7 +25,7 @@ namespace svm_fs_batch
 
         
 
-        public static readonly string[] csv_header_values = new string[] {
+        public static readonly string[] csv_header_values_array = new string[] {
                     nameof(svm_type),
                     nameof(svm_kernel),
                     nameof(repetitions),
@@ -44,9 +44,9 @@ namespace svm_fs_batch
                     nameof(svm_fs_batch.grid_point.cv_rate),
                 };
 
-        public static readonly string csv_header = string.Join(",", csv_header_values);
+        public static readonly string csv_header_string = string.Join(",", csv_header_values_array);
 
-        public string csv_values()
+        public string csv_values_string()
         {
             return string.Join(",", csv_values_array());
         }
@@ -79,7 +79,7 @@ namespace svm_fs_batch
 
         }
 
-        public grid_cache_data(IList<string> line)
+        public grid_cache_data(string[] line)
         {
             var k = -1;
 
@@ -103,13 +103,13 @@ namespace svm_fs_batch
             };
         }
 
-        internal static List<grid_cache_data> read_cache_file(CancellationTokenSource cts, string cache_train_grid_csv)
+        internal static grid_cache_data[] read_cache_file(CancellationTokenSource cts, string cache_train_grid_csv)
         {
             const string method_name = nameof(read_cache_file);
 
             if (cts.IsCancellationRequested) return default;
 
-            var cache = new List<grid_cache_data>();
+            var cache = Array.Empty<grid_cache_data>();
 
             if (io_proxy.is_file_available(cts, cache_train_grid_csv, module_name, method_name))
             {
@@ -117,7 +117,7 @@ namespace svm_fs_batch
                 {
                     try
                     {
-                        var line = a.Split(',').ToList();
+                        var line = a.Split(',');
 
                         return new grid_cache_data(line);
                     }
@@ -126,25 +126,26 @@ namespace svm_fs_batch
                         io_proxy.log_exception(e, "", module_name, method_name);
                         return default;
                     }
-                }).ToList();
+                }).ToArray();
             }
 
-            cache = cache.Where(a => a.grid_point.cv_rate > 0).ToList();
+            cache = cache.Where(a => a.grid_point.cv_rate > 0).ToArray();
 
             return cache;
         }
 
-        internal static void write_cache_file(CancellationTokenSource cts, string cache_train_grid_csv, IList<grid_cache_data> grid_cache_data_list)
+        internal static void write_cache_file(CancellationTokenSource cts, string cache_train_grid_csv, grid_cache_data[] grid_cache_data_list)
         {
             const string method_name = nameof(write_cache_file);
 
             if (cts.IsCancellationRequested) return;
 
-            var lines = new string[grid_cache_data_list.Count+1];
-            lines[0]=csv_header;
-            for (var i = 0; i < grid_cache_data_list.Count; i++)
+            var lines = new string[grid_cache_data_list.Length + 1];
+            lines[0]=csv_header_string;
+
+            for (var i = 0; i < grid_cache_data_list.Length; i++)
             {
-                lines[i + 1] = grid_cache_data_list[i].csv_values();
+                lines[i + 1] = grid_cache_data_list[i].csv_values_string();
             }
 
             io_proxy.WriteAllLines(cts, cache_train_grid_csv, lines, module_name, method_name);

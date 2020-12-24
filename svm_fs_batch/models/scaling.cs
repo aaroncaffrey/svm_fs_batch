@@ -33,18 +33,18 @@ namespace svm_fs_batch
             this.column_max = y_col.Max();
         }
 
-        internal static double sqrt_sumofsqrs(IList<double> list)
+        internal static double sqrt_sumofsqrs(double[] list)
         {
-            return list == null || list.Count == 0 ? 0d : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
+            return list == null || list.Length == 0 ? 0d : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
         }
 
-        internal static double standard_deviation_sample(IList<double> values)
+        internal static double standard_deviation_sample(double[] values)
         {
-            if (values.Count < 2) return 0;
+            if (values.Length < 2) return 0;
 
             var mean = values.Average();
 
-            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Count - 1));
+            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
         internal double[] scale(double[] values, scaling.scale_function scale_function)

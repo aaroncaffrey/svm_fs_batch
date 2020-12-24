@@ -41,7 +41,7 @@ namespace svm_fs_batch
         {
             if (cts.IsCancellationRequested) return default;
             // ensure consistent reordering (i.e. for items with equal tied scores when processing may have been done out of order)
-            var cm_sd_list = cm_sd_list_ref.OrderBy(a => a.sd.group_array_index).ThenBy(a => a.sd.class_id).ToList();
+            var cm_sd_list = cm_sd_list_ref.OrderBy(a => a.sd.index_data.group_array_index).ThenBy(a => a.sd.class_id).ToList();
 
             // reorder by score, or score_ppf... descending so that highest score is first result.
             //cm_sd_list = cm_sd_list
@@ -53,10 +53,10 @@ namespace svm_fs_batch
 
             cm_sd_list = cm_sd_list
                 .OrderByDescending((a => a.sd.same_group_score.value))
-                .ThenBy(a => a.sd.num_columns)
+                .ThenBy(a => a.sd.index_data.num_columns)
                 .ToList();
 
-            if (cm_sd_list[0].sd.group_array_index == (last_winner?.group_array_index ?? -1) && cm_sd_list.Count > 1)
+            if (cm_sd_list[0].sd.index_data.group_array_index == (last_winner?.index_data.group_array_index ?? -1) && cm_sd_list.Count > 1)
             {
                 // edge case, if winner is the same as last time (due to random variance), then take the next group instead.
                 var ix0 = cm_sd_list[0];
@@ -84,8 +84,8 @@ namespace svm_fs_batch
                 {
                     var sd_last = last_iteration_cm_sd_rd_list?.FirstOrDefault
                     (a =>
-                        a.sd.iteration_index == cm_sd_list[index].sd.iteration_index &&
-                        a.sd.group_array_index == cm_sd_list[index].sd.group_array_index &&
+                        a.sd.index_data.iteration_index == cm_sd_list[index].sd.index_data.iteration_index &&
+                        a.sd.index_data.group_array_index == cm_sd_list[index].sd.index_data.group_array_index &&
                         a.sd.class_id == cm_sd_list[index].sd.class_id
                     ) ?? default;
 
@@ -107,27 +107,27 @@ namespace svm_fs_batch
             return cm_sd_rd_list;
         }
 
-        public static readonly string[] csv_header_values = new string[]
+        public static readonly string[] csv_header_values_array = new string[]
         {
             nameof(max_rank),
             $@"_"
         }
-        .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_number)}_{a}").ToArray())
+        .Concat(average_history.csv_header_values_array.Select(a => $@"{nameof(rank_number)}_{a}").ToArray())
         .Concat(new[] { $@"_" })
-        .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_score)}_{a}").ToArray())
+        .Concat(average_history.csv_header_values_array.Select(a => $@"{nameof(rank_score)}_{a}").ToArray())
         .Concat(new[] { $@"_" })
 
 #if RD_EXTRA
-        .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_number_pct)}_{a}").ToArray())
+        .Concat(average_history.csv_header_values_array.Select(a => $@"{nameof(rank_number_pct)}_{a}").ToArray())
         .Concat(new[] { $@"_" })
 
-        .Concat(average_history.csv_header_values.Select(a => $@"{nameof(rank_score_ppf)}_{a}").ToArray())
+        .Concat(average_history.csv_header_values_array.Select(a => $@"{nameof(rank_score_ppf)}_{a}").ToArray())
         .Concat(new[] { $@"_" })
 #endif
         .ToArray();
 
 
-        public static readonly string csv_header = string.Join(",", csv_header_values);
+        public static readonly string csv_header_string = string.Join(",", csv_header_values_array);
 
 
 
@@ -156,7 +156,7 @@ namespace svm_fs_batch
             return values_array;
         }
 
-        public string csv_values()
+        public string csv_values_string()
         {
             return string.Join(",", csv_values_array());
         }
