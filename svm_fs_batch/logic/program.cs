@@ -111,9 +111,11 @@ namespace svm_fs_batch
             ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)[] prediction_data_list
         )
         {
+            const string method_name = nameof(update_merged_cm);
+
             if (cts.IsCancellationRequested) return;
 
-            if (prediction_file_data.cm_list == null) throw new ArgumentOutOfRangeException(nameof(prediction_file_data.cm_list));
+            if (prediction_file_data.cm_list == null) throw new ArgumentOutOfRangeException(nameof(prediction_file_data),$@"{module_name}.{method_name}.{nameof(prediction_file_data)}.{nameof(prediction_file_data.cm_list)}");
 
             Parallel.ForEach(prediction_file_data.cm_list,
                 cm =>

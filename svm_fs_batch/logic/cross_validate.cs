@@ -158,12 +158,14 @@ namespace svm_fs_batch
             bool save_summary = false
         )
         {
+            const string method_name = nameof(outer_cross_validation);
+
             if (cts.IsCancellationRequested) return default;
 
             if (dataset == null) throw new ArgumentOutOfRangeException(nameof(dataset));
             //if (string.IsNullOrWhiteSpace(experiment_name)) throw new ArgumentOutOfRangeException(nameof(experiment_name));
             if (unrolled_index_data == null) throw new ArgumentOutOfRangeException(nameof(unrolled_index_data));
-            if (unrolled_index_data.column_array_indexes == null || unrolled_index_data.column_array_indexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index_data.column_array_indexes));
+            if (unrolled_index_data.column_array_indexes == null || unrolled_index_data.column_array_indexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index_data), $@"{module_name}.{method_name}.{nameof(unrolled_index_data)}.{nameof(unrolled_index_data.column_array_indexes)}");
             //if (selection_test_info == null) throw new ArgumentOutOfRangeException(nameof(selection_test_info));
             //if (group_key == null) throw new ArgumentOutOfRangeException(nameof(group_key));
 
@@ -254,14 +256,16 @@ namespace svm_fs_batch
                 index_data unrolled_index
                 )
         {
+            const string method_name = nameof(make_outer_cv_inputs);
+
             if (cts.IsCancellationRequested) return default;
 
             const bool preserve_fid = false; // whether to keep the original FID in the libsvm training/testing files (note: if not, bear in mind that features with zero values are removed, so this must not distort the ordering...).
 
-            if (unrolled_index.column_array_indexes == null || unrolled_index.column_array_indexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index.column_array_indexes));
-            if (unrolled_index.repetitions <= 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index), nameof(unrolled_index.repetitions));
-            if (unrolled_index.outer_cv_folds <= 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index), nameof(unrolled_index.repetitions));
-            if (unrolled_index.outer_cv_folds_to_run > unrolled_index.outer_cv_folds) throw new ArgumentOutOfRangeException(nameof(unrolled_index), nameof(unrolled_index.outer_cv_folds_to_run));
+            if (unrolled_index.column_array_indexes == null || unrolled_index.column_array_indexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index), $@"{module_name}.{method_name}.{nameof(unrolled_index)}.{nameof(unrolled_index.column_array_indexes)}");
+            if (unrolled_index.repetitions <= 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index), $@"{module_name}.{method_name}.{nameof(unrolled_index)}.{nameof(unrolled_index.repetitions)}");
+            if (unrolled_index.outer_cv_folds <= 0) throw new ArgumentOutOfRangeException(nameof(unrolled_index), $@"{module_name}.{method_name}.{nameof(unrolled_index)}.{nameof(unrolled_index.outer_cv_folds)}");
+            if (unrolled_index.outer_cv_folds_to_run < 0 || unrolled_index.outer_cv_folds_to_run > unrolled_index.outer_cv_folds) throw new ArgumentOutOfRangeException(nameof(unrolled_index), $@"{module_name}.{method_name}.{nameof(unrolled_index)}.{nameof(unrolled_index.outer_cv_folds_to_run)}");
 
 
             // ensure columns in correct order, and has class id

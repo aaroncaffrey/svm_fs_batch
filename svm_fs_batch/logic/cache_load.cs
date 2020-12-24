@@ -33,8 +33,8 @@ namespace svm_fs_batch
                 int[] group_indexes_to_test,
                 int[] selected_group_indexes,
                 int? previous_winner_group_index,
-                int[] selection_excluded_group_indexes,
-                int[] selected_columns
+                int[] selection_excluded_group_indexes//,
+                //int[] selected_columns
             )
         {
             if (cts.IsCancellationRequested) return default;

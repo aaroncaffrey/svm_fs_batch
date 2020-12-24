@@ -297,7 +297,7 @@ namespace svm_fs_batch
                 //var job_group_indexes = cache_load.get_feature_selection_instructions(cts, dataset, groups, base_group_indexes, group_indexes_to_test, selected_groups, previous_winner_group_index, selection_excluded_groups, selected_columns);
                 //var index_data_container = cache_load.get_feature_selection_instructions(cts, dataset, groups, selected_groups, selected_columns, experiment_name, iteration_id, calibrate ? -1 : total_groups, instance_id, total_instances, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds, selection_excluded_groups2);
 
-                var index_data_container = cache_load.get_feature_selection_instructions(cts, dataset, groups, experiment_name, iteration_index, total_groups, instance_id, total_instances, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds, base_group_indexes, group_indexes_to_test, selected_groups, previous_winner_group_index, selection_excluded_groups2, selected_columns);
+                var index_data_container = cache_load.get_feature_selection_instructions(cts, dataset, groups, experiment_name, iteration_index, total_groups, instance_id, total_instances, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds, base_group_indexes, group_indexes_to_test, selected_groups, previous_winner_group_index, selection_excluded_groups2);//, selected_columns);
 
                 var total_whole_indexes = unrolled_indexes.indexes_whole.Length;
                 var total_partition_indexes = unrolled_indexes.indexes_partition.Length;
