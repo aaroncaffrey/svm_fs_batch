@@ -12,7 +12,12 @@ namespace svm_fs_batch
 
         // each group has an associated score_data
 
-        private static readonly score_data empty = new score_data();
+        private static readonly score_data empty = new score_data()
+        {
+            index_data = index_data.empty,
+            same_group_score = average_history.empty,
+            same_group_score_ppf = average_history.empty
+        };
 
         internal index_data index_data;
         internal int class_id;

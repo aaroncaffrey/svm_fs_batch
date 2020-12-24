@@ -89,9 +89,9 @@ namespace svm_fs_batch
 
         public string[] csv_values_array()
         {
-            return
-                group_key.csv_values_array()
-                    .Concat(new string[]
+            var x1 = group_key.csv_values_array();
+
+            var x2 = new string[]
             {
                 $@"{group_array_index          }",
                 $@"{total_groups               }",
@@ -121,12 +121,14 @@ namespace svm_fs_batch
                 $@"{num_columns                }",
                 $@"{string.Join(";", group_array_indexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";", column_array_indexes ?? Array.Empty<int>())}",
-                $@"{string.Join(";",class_weights.Select(a=> $"{a.class_id}:{a.class_weight:G17}").ToArray())}",
+                $@"{string.Join(";",class_weights?.Select(a=> $"{a.class_id}:{a.class_weight:G17}").ToArray() ?? Array.Empty<string>())}",
                 $@"{string.Join(";",class_folds.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray())}",
                 $@"{string.Join(";",down_sampled_training_class_folds.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray())}",
-            })
-                .Select(a => a.Replace(',', ';'))
-                .ToArray();
+            };
+
+            var x3 = x1.Concat(x2).Select(a => a == null ? "" : a.Replace(',', ';')).ToArray();
+
+            return x3;
         }
 
         public index_data(string csv_line, int column_offset = 0) : this(csv_line.Split(','), column_offset)

@@ -45,7 +45,7 @@ namespace svm_fs_batch
             var groups1 = dataset_group_methods.get_main_groups(cts, dataset, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: false, perspective: false);
 
             // Limit for testing
-            //groups1 = groups1.Take(11).ToArray();
+            groups1 = groups1.Take(11).ToArray();
 
             // Feature select within each group first, to reduce number of columns
             if (find_best_group_features_first)
