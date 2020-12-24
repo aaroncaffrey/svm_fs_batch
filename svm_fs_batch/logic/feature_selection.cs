@@ -260,7 +260,7 @@ namespace svm_fs_batch
                 if (cts.IsCancellationRequested) return default;
 
                 // get list of work to do this iteration
-                (index_data[] indexes_whole, index_data[] indexes_partition) unrolled_indexes = default;
+                //(index_data[] indexes_whole, index_data[] indexes_partition) unrolled_indexes = default;
 
                 var selected_groups = last_winner_cm_sd_rd.sd?.index_data.group_array_indexes?.ToArray() ?? Array.Empty<int>();
                 var selected_columns = last_winner_cm_sd_rd.sd?.index_data.column_array_indexes?.ToArray() ?? Array.Empty<int>();
@@ -299,8 +299,8 @@ namespace svm_fs_batch
 
                 var index_data_container = cache_load.get_feature_selection_instructions(cts, dataset, groups, experiment_name, iteration_index, total_groups, instance_id, total_instances, repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds, base_group_indexes, group_indexes_to_test, selected_groups, previous_winner_group_index, selection_excluded_groups2);//, selected_columns);
 
-                var total_whole_indexes = unrolled_indexes.indexes_whole.Length;
-                var total_partition_indexes = unrolled_indexes.indexes_partition.Length;
+                var total_whole_indexes = index_data_container.indexes_whole.Length;
+                var total_partition_indexes = index_data_container.indexes_partition.Length;
                 io_proxy.WriteLine($"[{instance_id}/{total_instances}] {experiment_name}: iteration: {iteration_index}, total_whole_indexes = {total_whole_indexes}, total_partition_indexes = {total_partition_indexes}.");
 
                 // iteration_all_cm is a list of all merged results (i.e. the individual outer-cross-validation partitions merged)
@@ -308,10 +308,10 @@ namespace svm_fs_batch
 
                 // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
                 var iteration_folder = program.get_iteration_folder(settings.results_root_folder, experiment_name, iteration_index /*, iteration_name*/);
-                var iteration_whole_cm_filename1 = cache_full ? Path.Combine(iteration_folder, $@"z_{program.get_iteration_filename(unrolled_indexes.indexes_whole)}_full.cm.csv") : null;
-                var iteration_whole_cm_filename2 = cache_summary ? Path.Combine(iteration_folder, $@"z_{program.get_iteration_filename(unrolled_indexes.indexes_whole)}_summary.cm.csv") : null;
-                var iteration_partition_cm_filename1 = cache_full ? Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(unrolled_indexes.indexes_partition)}_full.cm.csv") : null;
-                var iteration_partition_cm_filename2 = cache_summary ? Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(unrolled_indexes.indexes_partition)}_summary.cm.csv") : null;
+                var iteration_whole_cm_filename1 = cache_full ? Path.Combine(iteration_folder, $@"z_{program.get_iteration_filename(index_data_container.indexes_whole)}_full.cm.csv") : null;
+                var iteration_whole_cm_filename2 = cache_summary ? Path.Combine(iteration_folder, $@"z_{program.get_iteration_filename(index_data_container.indexes_whole)}_summary.cm.csv") : null;
+                var iteration_partition_cm_filename1 = cache_full ? Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(index_data_container.indexes_partition)}_full.cm.csv") : null;
+                var iteration_partition_cm_filename2 = cache_summary ? Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(index_data_container.indexes_partition)}_summary.cm.csv") : null;
 
 
                 // load cache (first try whole iteration, then try partition, then try individual work items)

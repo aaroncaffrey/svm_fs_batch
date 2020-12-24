@@ -136,11 +136,11 @@ namespace svm_fs_batch
             if (indexes_to_remove.Length > 0)
             {
                 var ret = query_cols.Except(indexes_to_remove).ToArray();
-#if DEBUG
-                io_proxy.WriteLine($"Removed duplicate columns: [{string.Join(", ", indexes_to_remove)}].", program.module_name, method_name);
-                io_proxy.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program.module_name, method_name);
-                io_proxy.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program.module_name, method_name);
-#endif
+//#if DEBUG
+//                io_proxy.WriteLine($"Removed duplicate columns: [{string.Join(", ", indexes_to_remove)}].", program.module_name, method_name);
+//                io_proxy.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program.module_name, method_name);
+//                io_proxy.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program.module_name, method_name);
+//#endif
                 return ret;
             }
 
