@@ -295,6 +295,11 @@ namespace svm_fs_batch
             return (double.IsNaN(PPV) || double.IsNaN(TPR) || PPV == 0.0d || TPR == 0.0d) ? 0.0d : (double)(1 / (fbeta * (1 / PPV) + (1 - fbeta) * (1 / TPR)));
         }
 
+        internal double[] get_values_by_names(string[] names)
+        {
+            return names.Select(a => get_value_by_name(a)).ToArray();
+        }
+        
         internal double get_value_by_name(string name)
         {
             var metrics = this;

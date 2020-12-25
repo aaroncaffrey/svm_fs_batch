@@ -32,7 +32,8 @@ namespace svm_fs_batch
             init.set_gc_mode();
             init.set_thread_counts();
 
-            var fake_args = $"-experiment_name=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
+            //var fake_args = $"-experiment_name=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
+            var fake_args = $"-experiment_name=test -whole_array_index_first=0 -whole_array_index_last=0 -whole_array_step_size=1 -whole_array_length=1 -partition_array_index_first=0 -partition_array_index_last=0";
             args = fake_args.Split();
 
             var program_args = new program_args(args);

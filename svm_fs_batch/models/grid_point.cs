@@ -36,13 +36,24 @@ namespace svm_fs_batch
         internal grid_point(grid_point[] grid_points)
         {
             if (grid_points == null || grid_points.Length == 0) return;
-            
-            this.cost = grid_points.Where(a => a?.cost != null).Select(a => a.cost).DefaultIfEmpty(0).Average();
-            this.gamma = grid_points.Where(a => a?.gamma != null).Select(a => a.gamma).DefaultIfEmpty(0).Average();
-            this.epsilon = grid_points.Where(a => a?.epsilon != null).Select(a => a.epsilon).DefaultIfEmpty(0).Average();
-            this.coef0 = grid_points.Where(a => a?.coef0 != null).Select(a => a.coef0).DefaultIfEmpty(0).Average();
-            this.degree = grid_points.Where(a => a?.degree != null).Select(a => a.degree).DefaultIfEmpty(0).Average();
-            this.cv_rate = grid_points.Where(a => a?.cv_rate != null).Select(a => a.cv_rate).DefaultIfEmpty(0).Average();
+
+            var cost2 = grid_points.Where(a => a?.cost != null).Select(a => a.cost).ToArray();
+            this.cost = cost2.Length > 0 ? cost2.Average() : null;
+
+            var gamma2 = grid_points.Where(a => a?.gamma != null).Select(a => a.gamma).ToArray();
+            this.gamma = gamma2.Length > 0 ? gamma2.Average() : null;
+
+            var epsilon2 = grid_points.Where(a => a?.epsilon != null).Select(a => a.epsilon).ToArray();
+            this.epsilon = epsilon2.Length > 0 ? epsilon2.Average() : null;
+
+            var coef02 = grid_points.Where(a => a?.coef0 != null).Select(a => a.coef0).ToArray();
+            this.coef0 = coef02.Length > 0 ? coef02.Average() : null;
+
+            var degree2 = grid_points.Where(a => a?.degree != null).Select(a => a.degree).ToArray();
+            this.degree = degree2.Length > 0 ? degree2.Average() : null;
+
+            var cv_rate2 = grid_points.Where(a => a?.cv_rate != null).Select(a => a.cv_rate).ToArray();
+            this.cv_rate = cv_rate2.Length > 0 ? cv_rate2.Average() : null;
         }
 
         internal static readonly string[] csv_header_values_array = new string[]

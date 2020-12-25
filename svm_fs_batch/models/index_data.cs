@@ -89,7 +89,7 @@ namespace svm_fs_batch
 
         public string[] csv_values_array()
         {
-            var x1 = group_key.csv_values_array();
+            var x1 = group_key?.csv_values_array() ?? dataset_group_key.empty.csv_values_array();
 
             var x2 = new string[]
             {
@@ -122,8 +122,8 @@ namespace svm_fs_batch
                 $@"{string.Join(";", group_array_indexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";", column_array_indexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";",class_weights?.Select(a=> $"{a.class_id}:{a.class_weight:G17}").ToArray() ?? Array.Empty<string>())}",
-                $@"{string.Join(";",class_folds.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray())}",
-                $@"{string.Join(";",down_sampled_training_class_folds.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray())}",
+                $@"{string.Join(";",class_folds?.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray()?? Array.Empty<string>())}",
+                $@"{string.Join(";",down_sampled_training_class_folds?.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
             };
 
             var x3 = x1.Concat(x2).Select(a => a == null ? "" : a.Replace(',', ';')).ToArray();

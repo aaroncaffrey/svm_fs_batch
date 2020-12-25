@@ -18,8 +18,8 @@ namespace svm_fs_batch
         internal string x_duration_testing;
         internal double? x_prediction_threshold = -1;
         internal double? x_prediction_threshold_class;
-        internal int x_repetitions_index;
-        internal int x_outer_cv_index;
+        internal int x_repetitions_index = -1;
+        internal int x_outer_cv_index = -1;
         internal int? x_class_id;
         internal double? x_class_weight;
         internal string x_class_name;
@@ -42,25 +42,31 @@ namespace svm_fs_batch
         {
             if (cts.IsCancellationRequested) return;
 
-            save(cts, cm_full_filename, cm_summary_filename, overwrite, null, x_list, null, null);
+            save(cts, cm_full_filename, cm_summary_filename, overwrite, null, x_list, null);
         }
 
-        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm, score_data sd)[] x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm, rank_score rs)[] x_list)
         {
             if (cts.IsCancellationRequested) return;
 
-            save(cts, cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), null);
+            save(cts, cm_full_filename, cm_summary_filename, overwrite,
+                x_list.Select(a => a.id).ToArray(),
+                x_list.Select(a => a.cm).ToArray(),
+                x_list.Select(a => a.rs).ToArray());
         }
 
-        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm)[] x_list)
         {
             if (cts.IsCancellationRequested) return;
 
-            save(cts, cm_full_filename, cm_summary_filename, overwrite, x_list.Select(a => a.id).ToArray(), x_list.Select(a => a.cm).ToArray(), x_list.Select(a => a.sd).ToArray(), x_list.Select(a => a.rd).ToArray());
+            save(cts, cm_full_filename, cm_summary_filename, overwrite,
+                x_list.Select(a => a.id).ToArray(),
+                x_list.Select(a => a.cm).ToArray(),
+                null);
         }
 
 
-        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, index_data[] id_list, confusion_matrix[] cm_list, score_data[] sd_list, rank_data[] rd_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, index_data[] id_list, confusion_matrix[] cm_list, rank_score[] rs_list)
         {
             const string method_name = nameof(save);
 
@@ -72,9 +78,9 @@ namespace svm_fs_batch
             var save_summary_req = !string.IsNullOrWhiteSpace(cm_summary_filename);
             if (!save_full_req && !save_summary_req) throw new Exception($@"No filenames provided to save data to.");
 
-            var lens = new int[] { cm_list?.Length ?? 0, sd_list?.Length ?? 0, rd_list?.Length ?? 0 }.Where(a => a > 0).ToArray();
+            var lens = new int[] { id_list?.Length ??0, cm_list?.Length ?? 0, rs_list?.Length ?? 0 }.Where(a => a > 0).ToArray();
             var lens_distinct_count = lens.Distinct().Count();
-            if (lens.Length == 0 || lens_distinct_count > 1) throw new Exception($@"Array length of {nameof(cm_list)}, {nameof(sd_list)}, and {nameof(rd_list)} do not match.");
+            if (lens.Length == 0 || lens_distinct_count > 1) throw new Exception($@"Array length of {nameof(id_list)}, {nameof(cm_list)}, and {nameof(rs_list)} do not match.");
             var lens_max = lens.Max();
 
             var save_full = save_full_req && (overwrite || !io_proxy.is_file_available(cts, cm_full_filename, module_name, method_name));
@@ -100,13 +106,13 @@ namespace svm_fs_batch
             var lines2 = save_summary ? new string[lens.Max() + 1] : null;
 
             var csv_header_values_array = new List<string>();
+            if (rs_list != null && rs_list.Length > 0) { csv_header_values_array.AddRange(rank_score.csv_header_values_array);  }
+            if (id_list != null && id_list.Length > 0) { csv_header_values_array.AddRange(index_data.csv_header_values_array);  }
+            if (cm_list != null && cm_list.Length > 0) { csv_header_values_array.AddRange(confusion_matrix.csv_header_values_array);  }
 
-            if (sd_list != null && sd_list.Length > 0) { csv_header_values_array.AddRange(score_data.csv_header_values_array); csv_header_values_array.Add($@"_"); }
-            if (rd_list != null && rd_list.Length > 0) { csv_header_values_array.AddRange(rank_data.csv_header_values_array); csv_header_values_array.Add($@"_"); }
-            if (cm_list != null && cm_list.Length > 0) { csv_header_values_array.AddRange(confusion_matrix.csv_header_values_array); csv_header_values_array.Add($@"_"); }
-
-            if (lines1 != null) lines1[0] = string.Join(",", csv_header_values_array);
-            if (lines2 != null) lines2[0] = string.Join(",", csv_header_values_array);
+            var csv_header_values_string = string.Join(",", csv_header_values_array);
+            if (lines1 != null) lines1[0] = csv_header_values_string;
+            if (lines2 != null) lines2[0] = csv_header_values_string;
 
 
 
@@ -117,20 +123,17 @@ namespace svm_fs_batch
                     var values1 = lines1 != null ? new List<string>() : null;
                     if (values1 != null)
                     {
-                        if (sd_list != null && sd_list.Length > 0)
+                        if (rs_list != null && rs_list.Length > 0)
                         {
-                            values1?.AddRange(sd_list[i].csv_values_array());
-                            values1?.Add($@"_");
+                            values1?.AddRange(rs_list[i].csv_values_array());
                         }
-                        if (rd_list != null && rd_list.Length > 0)
+                        if (id_list != null && id_list.Length > 0)
                         {
-                            values1?.AddRange(rd_list[i].csv_values_array());
-                            values1?.Add($@"_");
+                            values1?.AddRange(id_list[i].csv_values_array());
                         }
                         if (cm_list != null && cm_list.Length > 0)
                         {
                             values1?.AddRange(cm_list[i].csv_values_array(false));
-                            values1?.Add($@"_");
                         }
                         if (lines1 != null) lines1[i + 1] = string.Join(",", values1);
                     }
@@ -138,20 +141,17 @@ namespace svm_fs_batch
                     var values2 = lines2 != null ? new List<string>() : null;
                     if (values2 != null)
                     {
-                        if (sd_list != null && sd_list.Length > 0)
+                        if (rs_list != null && rs_list.Length > 0)
                         {
-                            values2.AddRange(sd_list[i].csv_values_array());
-                            values2.Add($@"_");
+                            values2.AddRange(rs_list[i].csv_values_array());
                         }
-                        if (rd_list != null && rd_list.Length > 0)
+                        if (id_list != null && id_list.Length > 0)
                         {
-                            values2.AddRange(rd_list[i].csv_values_array());
-                            values2.Add($@"_");
+                            values2.AddRange(id_list[i].csv_values_array());
                         }
                         if (cm_list != null && cm_list.Length > 0)
                         {
                             values2.AddRange(cm_list[i].csv_values_array(true));
-                            values2.Add($@"_");
                         }
                         if (lines2 != null) lines2[i + 1] = string.Join(",", values2);
                     }

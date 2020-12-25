@@ -333,11 +333,11 @@ namespace svm_fs_batch
                 string experiment_name,
                 bool wait_for_cache,
                 List<string> cache_files_already_loaded,
-                List<(index_data id, confusion_matrix cm, score_data sd)> iteration_cm_sd_list,
+                List<(index_data id, confusion_matrix cm)> iteration_cm_sd_list,
                 index_data_container index_data_container,
-                (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] last_iteration_cm_sd_rd_list,
-                (index_data id, confusion_matrix cm, score_data sd, rank_data rd) last_winner_cm_sd_rd,
-                (index_data id, confusion_matrix cm, score_data sd, rank_data rd) best_winner_cm_sd_rd
+                (index_data id, confusion_matrix cm, rank_score rs)[] last_iteration_id_cm_rs,
+                (index_data id, confusion_matrix cm, rank_score rs) last_winner_id_cm_rs,
+                (index_data id, confusion_matrix cm, rank_score rs) best_winner_id_cm_rs
             )
         {
             const string method_name = nameof(load_cache);
@@ -357,9 +357,9 @@ namespace svm_fs_batch
             if (string.IsNullOrWhiteSpace(experiment_name)) throw new ArgumentOutOfRangeException(nameof(experiment_name), $@"{module_name}.{method_name}");
             if (cache_files_already_loaded == null) throw new ArgumentOutOfRangeException(nameof(cache_files_already_loaded), $@"{module_name}.{method_name}");
             if (iteration_cm_sd_list == null) throw new ArgumentOutOfRangeException(nameof(iteration_cm_sd_list), $@"{module_name}.{method_name}");
-            if (last_iteration_cm_sd_rd_list == null && iteration_index != 0) throw new ArgumentOutOfRangeException(nameof(last_iteration_cm_sd_rd_list), $@"{module_name}.{method_name}");
-            if (last_winner_cm_sd_rd == default && iteration_index != 0) throw new ArgumentOutOfRangeException(nameof(last_winner_cm_sd_rd), $@"{module_name}.{method_name}");
-            if (best_winner_cm_sd_rd == default && iteration_index != 0) throw new ArgumentOutOfRangeException(nameof(best_winner_cm_sd_rd), $@"{module_name}.{method_name}");
+            if (last_iteration_id_cm_rs == null && iteration_index != 0) throw new ArgumentOutOfRangeException(nameof(last_iteration_id_cm_rs), $@"{module_name}.{method_name}");
+            if (last_winner_id_cm_rs == default && iteration_index != 0) throw new ArgumentOutOfRangeException(nameof(last_winner_id_cm_rs), $@"{module_name}.{method_name}");
+            if (best_winner_id_cm_rs == default && iteration_index != 0) throw new ArgumentOutOfRangeException(nameof(best_winner_id_cm_rs), $@"{module_name}.{method_name}");
 
             // check which indexes are missing.
             update_missing(cts, instance_index, iteration_cm_sd_list, index_data_container);
@@ -445,10 +445,10 @@ namespace svm_fs_batch
                     }
 
 
-                    load_cache_file_list(cts, instance_index, cache_files_already_loaded, iteration_cm_sd_list, index_data_container, last_iteration_cm_sd_rd_list, last_winner_cm_sd_rd, best_winner_cm_sd_rd, cache_files1);
+                    load_cache_file_list(cts, instance_index, cache_files_already_loaded, iteration_cm_sd_list, index_data_container, last_iteration_id_cm_rs, last_winner_id_cm_rs, best_winner_id_cm_rs, cache_files1);
                 }
 
-                if (wait_for_cache && index_data_container.indexes_missing_whole.Any()) { Task.Delay(new TimeSpan(0, 0, 15), cts.Token).Wait(cts.Token); }
+                if (wait_for_cache && index_data_container.indexes_missing_whole.Any()) { io_proxy.wait(cts, 15, 15); }
 
             } while (wait_for_cache && index_data_container.indexes_missing_whole.Any());
 
@@ -461,15 +461,18 @@ namespace svm_fs_batch
                 CancellationTokenSource cts,
                 int instance_id,
                 List<string> cache_files_already_loaded,
-                List<(index_data id, confusion_matrix cm, score_data sd)> iteration_cm_sd_list,
+                List<(index_data id, confusion_matrix cm)> iteration_id_cm,
                 index_data_container index_data_container,
-                (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] last_iteration_cm_sd_rd_list,
-                (index_data id, confusion_matrix cm, score_data sd, rank_data rd) last_winner_cm_sd_rd,
-                (index_data id, confusion_matrix cm, score_data sd, rank_data rd) best_winner_cm_sd_rd,
+                (index_data id, confusion_matrix cm, rank_score rs)[] last_iteration_id_cm_rs,
+                (index_data id, confusion_matrix cm, rank_score rs) last_winner_id_cm_rs,
+                (index_data id, confusion_matrix cm, rank_score rs) best_winner_id_cm_rs,
                 string[] cache_files
             )
         {
             const string method_name = nameof(load_cache_file_list);
+
+            if (cts.IsCancellationRequested) return;
+            if (cache_files == null || cache_files.Length == 0) return;
 
             // load and parse cm files
             var cache_files_cm_list = cache_files
@@ -483,6 +486,37 @@ namespace svm_fs_batch
                     if (io_proxy.is_file_available(cts, cm_fn))
                     {
                         var cm = confusion_matrix.load(cts, cm_fn);
+
+                        if (cm != null && cm.Length > 0)
+                        {
+                            for (var cm_i = 0; cm_i < cm.Length; cm_i++)
+                            {
+                                if (cm[cm_i].unrolled_index_data != null)
+                                {
+                                    var id = index_data_container
+                                        .indexes_whole
+                                        .FirstOrDefault(a=>
+                                            a.group_array_index == cm[cm_i].unrolled_index_data.group_array_index &&
+                                            a.iteration_index == cm[cm_i].unrolled_index_data.iteration_index &&
+                                            a.svm_type == cm[cm_i].unrolled_index_data.svm_type &&
+                                            a.svm_kernel == cm[cm_i].unrolled_index_data.svm_kernel &&
+                                            a.scale_function == cm[cm_i].unrolled_index_data.scale_function &&
+
+                                            a.repetitions == cm[cm_i].unrolled_index_data.repetitions &&
+                                            a.outer_cv_folds == cm[cm_i].unrolled_index_data.outer_cv_folds &&
+                                            a.outer_cv_folds_to_run == cm[cm_i].unrolled_index_data.outer_cv_folds_to_run &&
+                                            a.inner_cv_folds == cm[cm_i].unrolled_index_data.inner_cv_folds &&
+                                            a.group_key == cm[cm_i].unrolled_index_data.group_key &&
+                                            a.group_array_indexes.SequenceEqual(cm[cm_i].unrolled_index_data.group_array_indexes) &&
+                                            a.column_array_indexes.SequenceEqual(cm[cm_i].unrolled_index_data.column_array_indexes)
+                                        );
+
+                                    if (id == null) throw new Exception();
+
+                                    cm[cm_i].unrolled_index_data = id;
+                                }
+                            }
+                        }
 
                         return cm;
                     }
@@ -517,11 +551,10 @@ namespace svm_fs_batch
                         {
                             if (cm == null) return default;
 
-                            var id1 = index_data_container
+                            // find proper index_data instance for this newly loaded confusion_matrix instance
+                            var id = index_data_container
                                 .indexes_missing_whole
-                                .FirstOrDefault(id2 => 
-                                    cm != null && 
-                                    id2 != null && 
+                                .FirstOrDefault(id2 => // cm & id2 should never be null
                                     id2.iteration_index == cm.unrolled_index_data.iteration_index &&
                                     id2.group_array_index == cm.unrolled_index_data.group_array_index && 
                                     id2.total_groups == cm.unrolled_index_data.total_groups && 
@@ -534,26 +567,26 @@ namespace svm_fs_batch
                                     id2.inner_cv_folds == cm.unrolled_index_data.inner_cv_folds
                                     );
 
-                            if (id1 == null) return default;
+                            if (id == null) return default;
 
-                            var same_group = last_iteration_cm_sd_rd_list.FirstOrDefault(a => a.sd.index_data.group_array_index == cm.unrolled_index_data.group_array_index && a.sd.index_data.iteration_index + 1 == cm.unrolled_index_data.iteration_index && a.sd.class_id == cm.x_class_id.Value);
+                            //var same_group = last_iteration_id_cm_rs.FirstOrDefault(a => a.id.group_array_index == cm.unrolled_index_data.group_array_index && a.id.iteration_index + 1 == cm.unrolled_index_data.iteration_index && a.cm.x_class_id == cm.x_class_id.Value);
+                            //var sd = new score_data(id: id1, cm: cm, same_group: same_group.sd, last_winner: last_winner_id_cm_rs.sd, best_winner: best_winner_id_cm_rs.sd);
+                            //return (id: id1, cm: cm, sd: sd);
 
-                            var sd = new score_data(id: id1, cm: cm, same_group: same_group.sd, last_winner: last_winner_cm_sd_rd.sd, best_winner: best_winner_cm_sd_rd.sd);
-
-                            return (id: id1, cm: cm, sd: sd);
+                            return (id: id, cm: cm);
                         })
-                        .Where(a => a.id != null && a.cm != null && a.sd != null)
+                        .Where(a => a.id != null && a.cm != null)// && a.sd != null)
                         .ToArray();
 
 
                     if (id_cm_sd_append.Any())
                     {
-                        iteration_cm_sd_list.AddRange(id_cm_sd_append);
+                        iteration_id_cm.AddRange(id_cm_sd_append);
 
-                        update_missing(cts, instance_id, iteration_cm_sd_list, index_data_container);
+                        update_missing(cts, instance_id, iteration_id_cm, index_data_container);
 
                         //io_proxy.WriteLine($@"Loaded {cache_level} cache: {cm_file}. id_cm_sd_append: {id_cm_sd_append.Length}. iteration_cm_all: {iteration_cm_sd_list.Count}. indexes_loaded_whole: {loaded_state.indexes_loaded_whole.Length}. indexes_loaded_partition: {loaded_state.indexes_loaded_partition.Length}. indexes_missing_whole: {loaded_state.indexes_missing_whole.Length}. indexes_missing_partition: {loaded_state.indexes_missing_partition.Length}.", module_name, method_name);
-                        io_proxy.WriteLine($@"Loaded cache: {cm_file}. id_cm_sd_append: {id_cm_sd_append.Length}. iteration_cm_all: {iteration_cm_sd_list.Count}. indexes_loaded_whole: {index_data_container.indexes_loaded_whole.Length}. indexes_loaded_partition: {index_data_container.indexes_loaded_partition.Length}. indexes_missing_whole: {index_data_container.indexes_missing_whole.Length}. indexes_missing_partition: {index_data_container.indexes_missing_partition.Length}.", module_name, method_name);
+                        io_proxy.WriteLine($@"Loaded cache: {cm_file}. id_cm_sd_append: {id_cm_sd_append.Length}. iteration_cm_all: {iteration_id_cm.Count}. indexes_loaded_whole: {index_data_container.indexes_loaded_whole.Length}. indexes_loaded_partition: {index_data_container.indexes_loaded_partition.Length}. indexes_missing_whole: {index_data_container.indexes_missing_whole.Length}. indexes_missing_partition: {index_data_container.indexes_missing_partition.Length}.", module_name, method_name);
                     }
                 }
             }
@@ -565,7 +598,7 @@ namespace svm_fs_batch
             update_missing(
                 CancellationTokenSource cts,
                 int instance_id,
-                List<(index_data index_data, confusion_matrix cm, score_data sd)> iteration_cm_all,
+                List<(index_data id, confusion_matrix cm)> iteration_cm_all,
                 index_data_container index_data_container
             )
         {
@@ -582,18 +615,18 @@ namespace svm_fs_batch
                 (id => iteration_cm_all
                     .Any
                     (ica =>
-                        ica.index_data != default &&
+                        ica.id != default &&
                         id != default &&
-                        id.iteration_index == ica.index_data.iteration_index &&
-                        id.group_array_index == ica.index_data.group_array_index &&
-                        id.total_groups == ica.index_data.total_groups &&
-                        id.calc_11p_thresholds == ica.index_data.calc_11p_thresholds &&
-                        id.repetitions == ica.index_data.repetitions &&
-                        id.outer_cv_folds == ica.index_data.outer_cv_folds &&
-                        id.svm_type == ica.index_data.svm_type &&
-                        id.svm_kernel == ica.index_data.svm_kernel &&
-                        id.scale_function == ica.index_data.scale_function &&
-                        id.inner_cv_folds == ica.index_data.inner_cv_folds
+                        id.iteration_index == ica.id.iteration_index &&
+                        id.group_array_index == ica.id.group_array_index &&
+                        id.total_groups == ica.id.total_groups &&
+                        id.calc_11p_thresholds == ica.id.calc_11p_thresholds &&
+                        id.repetitions == ica.id.repetitions &&
+                        id.outer_cv_folds == ica.id.outer_cv_folds &&
+                        id.svm_type == ica.id.svm_type &&
+                        id.svm_kernel == ica.id.svm_kernel &&
+                        id.scale_function == ica.id.scale_function &&
+                        id.inner_cv_folds == ica.id.inner_cv_folds
                     )
                 ).ToArray();
             index_data_container.indexes_missing_whole = index_data_container.indexes_whole.Except(index_data_container.indexes_loaded_whole).ToArray();

@@ -21,6 +21,17 @@ namespace svm_fs_batch
             WriteLine($@"entered lock ({lock_name})");
         }
 
+        internal static void wait(CancellationTokenSource cts, int secs, int rnd_secs)
+        {
+            const string method_name = nameof(wait);
+
+            var ts = new TimeSpan(0, 0, 0, secs + random.Next(0, rnd_secs));
+            io_proxy.WriteLine($"Waiting for {ts.Seconds} seconds", module_name, method_name);
+            
+            //try { Task.Delay(ts, cts.Token).Wait(cts.Token); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(train)); }
+            Task.Delay(ts, cts.Token).Wait(cts.Token);
+        }
+
         internal static void log_exception(Exception e, string msg, string caller_module_name, string caller_method_name)
         {
             do
@@ -272,7 +283,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
+                        io_proxy.wait(cts, 15, 31);
                     }
                     catch (Exception e2)
                     {
@@ -364,7 +375,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
+                        wait(cts, 15, 31);
                     }
                     catch (Exception e2)
                     {
@@ -404,7 +415,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)),cts.Token).Wait(cts.Token);
+                        wait(cts, 15, 31);
                     }
                     catch (Exception e2)
                     {
@@ -448,7 +459,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
+                        wait(cts, 15, 31);
                     }
                     catch (Exception e2)
                     {
@@ -488,7 +499,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
+                        wait(cts, 15, 31);
                     }
                     catch (Exception e2)
                     {
@@ -525,7 +536,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
+                        wait(cts, 15, 31);
                     }
                     catch (Exception e2)
                     {
@@ -564,7 +575,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        Task.Delay(new TimeSpan(0, 0, 0, 15 + random.Next(0, 31)), cts.Token).Wait(cts.Token);
+                        wait(cts, 15, 31);
                     }
                     catch (Exception e2)
                     {

@@ -77,7 +77,7 @@ namespace svm_fs_batch
 
         internal static int[] remove_duplicate_columns(CancellationTokenSource cts, dataset_loader dataset, int[] query_cols)
         {
-            const string method_name = nameof(remove_duplicate_columns);
+            //const string method_name = nameof(remove_duplicate_columns);
             // remove duplicate columns (may exist in separate groups)
             //var query_col_dupe_check = idr.dataset_instance_list_grouped.SelectMany(a => a.examples).SelectMany(a => query_cols.Select(b => (query_col: b, fv: a.feature_data[b].fv)).ToList()).GroupBy(b => b.query_col).Select(b => (query_col: b.Key, values: b.Select(c => c.fv).ToList())).ToList();
 

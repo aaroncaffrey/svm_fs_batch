@@ -168,10 +168,10 @@ namespace svm_fs_batch
         }
 
 
-        internal static prediction[] load_prediction_file_regression_values(CancellationTokenSource cts, (string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files)
+        internal static prediction[] load_prediction_file_probability_values(CancellationTokenSource cts, (string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files)
         {
             // method untested
-            const string method_name = nameof(load_prediction_file_regression_values);
+            const string method_name = nameof(load_prediction_file_probability_values);
 
             if (cts.IsCancellationRequested) return default;
 
@@ -211,13 +211,13 @@ namespace svm_fs_batch
             var test_class_sample_id_list = lines.Where(a => a.test_class_sample_id_list_lines != null).SelectMany(a => a.test_class_sample_id_list_lines).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
             if (test_class_sample_id_list.Length == 0) test_class_sample_id_list = null;
 
-            return load_prediction_file_regression_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
+            return load_prediction_file_probability_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static prediction[] load_prediction_file_regression_values(CancellationTokenSource cts, string test_file, string test_comments_file, string prediction_file, string test_sample_id_list_file = null)
+        internal static prediction[] load_prediction_file_probability_values(CancellationTokenSource cts, string test_file, string test_comments_file, string prediction_file, string test_sample_id_list_file = null)
         {
 
-            const string method_name = nameof(load_prediction_file_regression_values);
+            const string method_name = nameof(load_prediction_file_probability_values);
 
             if (cts.IsCancellationRequested) return default;
 
@@ -250,10 +250,10 @@ namespace svm_fs_batch
             var test_sample_id_list_lines = !string.IsNullOrWhiteSpace(test_sample_id_list_file) ? io_proxy.ReadAllLines(cts, test_sample_id_list_file, module_name, method_name) : null;
             var test_class_sample_id_list = test_sample_id_list_lines?.Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
 
-            return load_prediction_file_regression_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
+            return load_prediction_file_probability_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static prediction[] load_prediction_file_regression_values_from_text(CancellationTokenSource cts, string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, int[] test_class_sample_id_list)
+        internal static prediction[] load_prediction_file_probability_values_from_text(CancellationTokenSource cts, string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, int[] test_class_sample_id_list)
         {
             if (cts.IsCancellationRequested) return default;
 
@@ -391,7 +391,7 @@ namespace svm_fs_batch
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
-            var prediction_list = load_prediction_file_regression_values(cts, test_file, test_comments_file, prediction_file);
+            var prediction_list = load_prediction_file_probability_values(cts, test_file, test_comments_file, prediction_file);
             var cm_list = load_prediction_file(cts, prediction_list, calc_11p_thresholds);
 
             return (prediction_list, cm_list);
@@ -412,7 +412,7 @@ namespace svm_fs_batch
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
-            var prediction_list = load_prediction_file_regression_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
+            var prediction_list = load_prediction_file_probability_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
             var cm_list = load_prediction_file(cts, prediction_list, calc_11p_thresholds);
 
             return (prediction_list, cm_list);

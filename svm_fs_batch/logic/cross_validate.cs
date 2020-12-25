@@ -97,15 +97,15 @@ namespace svm_fs_batch
             return ((sw_grid_dur, sw_train_dur, sw_predict_dur), train_grid_search_result, predict_text);
         }
 
-        internal static (index_data id, confusion_matrix cm, score_data sd)[] parallel_index_run(
+        internal static (index_data id, confusion_matrix cm)[] cross_validate_performance(
            CancellationTokenSource cts,
            dataset_loader dataset,
            //(dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups,
            string experiment_name,
            index_data unrolled_index_data,
-           (index_data id, confusion_matrix cm, score_data sd, rank_data rd)[] last_iteration_cm_sd_rd_list,
-           (index_data id, confusion_matrix cm, score_data sd, rank_data rd) last_winner_cm_sd_rd,
-           (index_data id, confusion_matrix cm, score_data sd, rank_data rd) best_winner_cm_sd_rd,
+           (index_data id, confusion_matrix cm, rank_score rs)[] last_iteration_id_cm_rs,
+           (index_data id, confusion_matrix cm, rank_score rs) last_winner_id_cm_rs,
+           (index_data id, confusion_matrix cm, rank_score rs) best_winner_id_cm_rs,
            bool make_outer_cv_confusion_matrices = false,
            bool overwrite_cache = false,
            bool save_group_cache = false,
@@ -129,11 +129,11 @@ namespace svm_fs_batch
 
             var group_cm_sd_list = ocv_result.mcv_cm.Select(cm =>
             {
-                var same_group = last_iteration_cm_sd_rd_list.FirstOrDefault(a => a.sd.index_data.group_array_index == cm.unrolled_index_data.group_array_index && a.sd.index_data.iteration_index + 1 == cm.unrolled_index_data.iteration_index && a.sd.class_id == cm.x_class_id.Value);
+                //var same_group = last_iteration_id_cm_rs.FirstOrDefault(a => a.id.group_array_index == cm.unrolled_index_data.group_array_index && a.id.iteration_index + 1 == cm.unrolled_index_data.iteration_index && a.cm.x_class_id == cm.x_class_id.Value);
 
-                var sd = new score_data(unrolled_index_data, cm, same_group: same_group.sd, last_winner: last_winner_cm_sd_rd.sd, best_winner: best_winner_cm_sd_rd.sd);
+                //var sd = new score_data(unrolled_index_data, cm, same_group: same_group.sd, last_winner: last_winner_id_cm_rs.sd, best_winner: best_winner_id_cm_rs.sd);
 
-                return (unrolled_index_data, cm, sd);
+                return (unrolled_index_data, cm);
             })
                 .ToArray();
 
@@ -201,6 +201,8 @@ namespace svm_fs_batch
             var merged_test_class_sample_id_list = merged_cv_input.test_fold_indexes.SelectMany(a => a.test_indexes).ToArray();
 
             var prediction_file_data = performance_measure.load_prediction_file(cts, merged_cv_input.test_text, null, merged_prediction_text, unrolled_index_data.calc_11p_thresholds, merged_test_class_sample_id_list);
+            for (var cm_index = 0; cm_index < prediction_file_data.cm_list.Length; cm_index++) { prediction_file_data.cm_list[cm_index].unrolled_index_data = unrolled_index_data; }
+
             var mcv_cm = prediction_file_data.cm_list;
 
             // add any missing details to the confusion-matrix
@@ -448,6 +450,7 @@ namespace svm_fs_batch
 
                 // convert text results to confusion matrix and performance metrics
                 var ocv_prediction_file_data = performance_measure.load_prediction_file(cts, outer_cv_input.test_text, null, prediction_data.predict_text, unrolled_index_data.calc_11p_thresholds, ocv_test_class_sample_id_list);
+                for (var cm_index = 0; cm_index < ocv_prediction_file_data.cm_list.Length; cm_index++) { ocv_prediction_file_data.cm_list[cm_index].unrolled_index_data = unrolled_index_data; }
 
                 // add any missing meta details to the confusion-matrix
                 program.update_merged_cm(cts: cts, dataset: dataset, prediction_file_data: ocv_prediction_file_data, unrolled_index_data: unrolled_index_data, merged_cv_input: outer_cv_input, prediction_data_list: new[] { prediction_data });

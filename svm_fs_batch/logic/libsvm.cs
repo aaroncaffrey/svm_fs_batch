@@ -135,7 +135,7 @@ namespace svm_fs_batch
                     if (process == null)
                     {
                         retry = true;
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
+                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
 
                         continue;
                     }
@@ -156,7 +156,7 @@ namespace svm_fs_batch
 
                         retry = true;
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
+                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
 
                         continue;
                     }
@@ -188,7 +188,7 @@ namespace svm_fs_batch
                         if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
                         if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
+                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(train)); }
 
                         continue;
                     }
@@ -199,7 +199,7 @@ namespace svm_fs_batch
 
                     io_proxy.log_exception(e1, get_params_str(), nameof(libsvm), nameof(train));
 
-                    try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(train)); }
+                    try { io_proxy.wait(cts, 30, 61); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(train)); }
                 }
             } while (retry && retry_index < 1_000_000);
 
@@ -275,7 +275,7 @@ namespace svm_fs_batch
                     if (process == null)
                     {
                         retry = true;
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
+                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
 
                         continue;
                     }
@@ -296,7 +296,7 @@ namespace svm_fs_batch
 
                         retry = true;
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
+                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
 
                         continue;
                     }
@@ -328,7 +328,7 @@ namespace svm_fs_batch
                         if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
                         if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
 
-                        try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
+                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
 
                         continue;
                     }
@@ -337,7 +337,7 @@ namespace svm_fs_batch
                 {
                     retry = true;
                     io_proxy.log_exception(e1, get_params_str(), nameof(libsvm), nameof(predict));
-                    try { Task.Delay(new TimeSpan(0, 0, 0, 30 + random.Next(0, 61)), cts.Token).Wait(cts.Token); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(predict)); }
+                    try { io_proxy.wait(cts, 30, 61); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(predict)); }
                 }
             } while (retry && retry_index < 1_000_000);
 

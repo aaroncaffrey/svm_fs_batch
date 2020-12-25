@@ -5,6 +5,8 @@ namespace svm_fs_batch
 {
     internal class dataset_group_key : IEquatable<dataset_group_key>
     {
+        internal static readonly dataset_group_key empty = new dataset_group_key("", "", "", "", "", "", "", "", "", -1);
+
         internal int column_index = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
 
         internal (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value;

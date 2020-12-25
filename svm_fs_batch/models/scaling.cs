@@ -20,6 +20,11 @@ namespace svm_fs_batch
         internal double column_min;
         internal double column_max;
 
+        public scaling(int[] y_col) : this(y_col.Select(a=>(double)a).ToArray())
+        {
+
+        }
+
         public scaling(double[] y_col)
         {
             if (y_col == null || y_col.Length == 0) return;
