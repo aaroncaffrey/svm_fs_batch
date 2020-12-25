@@ -10,6 +10,7 @@ namespace svm_fs_batch
     internal class confusion_matrix
     {
         public const string module_name = nameof(confusion_matrix);
+        internal static readonly confusion_matrix empty = new confusion_matrix() { unrolled_index_data = index_data.empty, grid_point = grid_point.empty, metrics = metrics_box.empty };
 
         internal index_data unrolled_index_data;
         internal grid_point grid_point;
@@ -78,7 +79,7 @@ namespace svm_fs_batch
             var save_summary_req = !string.IsNullOrWhiteSpace(cm_summary_filename);
             if (!save_full_req && !save_summary_req) throw new Exception($@"No filenames provided to save data to.");
 
-            var lens = new int[] { id_list?.Length ??0, cm_list?.Length ?? 0, rs_list?.Length ?? 0 }.Where(a => a > 0).ToArray();
+            var lens = new int[] { id_list?.Length ?? 0, cm_list?.Length ?? 0, rs_list?.Length ?? 0 }.Where(a => a > 0).ToArray();
             var lens_distinct_count = lens.Distinct().Count();
             if (lens.Length == 0 || lens_distinct_count > 1) throw new Exception($@"Array length of {nameof(id_list)}, {nameof(cm_list)}, and {nameof(rs_list)} do not match.");
             var lens_max = lens.Max();
@@ -106,9 +107,9 @@ namespace svm_fs_batch
             var lines2 = save_summary ? new string[lens.Max() + 1] : null;
 
             var csv_header_values_array = new List<string>();
-            if (rs_list != null && rs_list.Length > 0) { csv_header_values_array.AddRange(rank_score.csv_header_values_array);  }
-            if (id_list != null && id_list.Length > 0) { csv_header_values_array.AddRange(index_data.csv_header_values_array);  }
-            if (cm_list != null && cm_list.Length > 0) { csv_header_values_array.AddRange(confusion_matrix.csv_header_values_array);  }
+            if (rs_list != null && rs_list.Length > 0) { csv_header_values_array.AddRange(rank_score.csv_header_values_array); }
+            if (id_list != null && id_list.Length > 0) { csv_header_values_array.AddRange(index_data.csv_header_values_array); }
+            if (cm_list != null && cm_list.Length > 0) { csv_header_values_array.AddRange(confusion_matrix.csv_header_values_array); }
 
             var csv_header_values_string = string.Join(",", csv_header_values_array);
             if (lines1 != null) lines1[0] = csv_header_values_string;
@@ -123,36 +124,20 @@ namespace svm_fs_batch
                     var values1 = lines1 != null ? new List<string>() : null;
                     if (values1 != null)
                     {
-                        if (rs_list != null && rs_list.Length > 0)
-                        {
-                            values1?.AddRange(rs_list[i].csv_values_array());
-                        }
-                        if (id_list != null && id_list.Length > 0)
-                        {
-                            values1?.AddRange(id_list[i].csv_values_array());
-                        }
-                        if (cm_list != null && cm_list.Length > 0)
-                        {
-                            values1?.AddRange(cm_list[i].csv_values_array(false));
-                        }
+                        values1?.AddRange(rs_list != null && rs_list.Length > i ? rs_list[i].csv_values_array() : rank_score.empty.csv_values_array());
+                        values1?.AddRange(id_list != null && id_list.Length > i ? id_list[i].csv_values_array() : index_data.empty.csv_values_array());
+                        values1?.AddRange(cm_list != null && cm_list.Length > i ? cm_list[i].csv_values_array(false) : confusion_matrix.empty.csv_values_array(false));
+
                         if (lines1 != null) lines1[i + 1] = string.Join(",", values1);
                     }
 
                     var values2 = lines2 != null ? new List<string>() : null;
                     if (values2 != null)
                     {
-                        if (rs_list != null && rs_list.Length > 0)
-                        {
-                            values2.AddRange(rs_list[i].csv_values_array());
-                        }
-                        if (id_list != null && id_list.Length > 0)
-                        {
-                            values2.AddRange(id_list[i].csv_values_array());
-                        }
-                        if (cm_list != null && cm_list.Length > 0)
-                        {
-                            values2.AddRange(cm_list[i].csv_values_array(true));
-                        }
+                        values2?.AddRange(rs_list != null && rs_list.Length > i ? rs_list[i].csv_values_array() : rank_score.empty.csv_values_array());
+                        values2?.AddRange(id_list != null && id_list.Length > i ? id_list[i].csv_values_array() : index_data.empty.csv_values_array());
+                        values2?.AddRange(cm_list != null && cm_list.Length > i ? cm_list[i].csv_values_array(true) : confusion_matrix.empty.csv_values_array(true));
+
                         if (lines2 != null) lines2[i + 1] = string.Join(",", values2);
                     }
                 });
@@ -242,21 +227,21 @@ namespace svm_fs_batch
 
                     var k = 0;
 
+                    // skip and don't load rank_score values
+                    k += rank_score.csv_header_values_array.Length;
+
+                    // load index_data to be able to later match this confusion_matrix instance with its index_data instance 
+                    var unrolled_index_data = new index_data(x_type, k);
                     k += index_data.csv_header_values_array.Length;
+
+                    var grid_point = new grid_point() { cost = x_type[k++].as_double, gamma = x_type[k++].as_double, epsilon = x_type[k++].as_double, coef0 = x_type[k++].as_double, degree = x_type[k++].as_double, cv_rate = x_type[k++].as_double, };
 
                     var cm = new confusion_matrix()
                     {
-                        unrolled_index_data = new index_data(x_type),
 
-                        grid_point = new grid_point()
-                        {
-                            cost = x_type[k++].as_double,
-                            gamma = x_type[k++].as_double,
-                            epsilon = x_type[k++].as_double,
-                            coef0 = x_type[k++].as_double,
-                            degree = x_type[k++].as_double,
-                            cv_rate = x_type[k++].as_double,
-                        },
+                        unrolled_index_data = unrolled_index_data,
+
+                        grid_point = grid_point,
 
                         x_duration_grid_search = x_type[k++].as_str,
                         x_duration_training = x_type[k++].as_str,
@@ -539,7 +524,7 @@ namespace svm_fs_batch
                     nameof(x_class_training_size),
                     nameof(x_class_testing_size),
                 })
-                .Concat(metrics_box.csv_header_values_array.Select(a=>$"m_{a}").ToArray())
+                .Concat(metrics_box.csv_header_values_array.Select(a => $"m_{a}").ToArray())
                 .Concat(new string[]
                 {
                     nameof(roc_xy_str_all),

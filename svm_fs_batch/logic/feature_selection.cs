@@ -351,9 +351,9 @@ namespace svm_fs_batch
                                 dataset: dataset, 
                                 experiment_name: experiment_name, 
                                 unrolled_index_data: unrolled_index_data, 
-                                last_iteration_id_cm_rs: last_iteration_id_cm_rs, 
-                                last_winner_id_cm_rs: last_winner_id_cm_rs,
-                                best_winner_id_cm_rs: best_winner_id_cm_rs, 
+                                //last_iteration_id_cm_rs: last_iteration_id_cm_rs, 
+                                //last_winner_id_cm_rs: last_winner_id_cm_rs,
+                                //best_winner_id_cm_rs: best_winner_id_cm_rs, 
                                 make_outer_cv_confusion_matrices: make_outer_cv_confusion_matrices)
                         )
                         .ToList();
@@ -508,7 +508,7 @@ namespace svm_fs_batch
                 {
                     {
                         // Save the CM ranked for the current iteration (winner rank #0)
-                        var iteration_cm_ranks_fn1 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}.csv");
+                        var iteration_cm_ranks_fn1 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}_full.csv");
                         var iteration_cm_ranks_fn2 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}_summary.csv");
                         if (io_proxy.is_file_available(cts, iteration_cm_ranks_fn1) && io_proxy.is_file_available(cts, iteration_cm_ranks_fn2))
                         {
@@ -524,7 +524,7 @@ namespace svm_fs_batch
 
                     {
                         // Save the CM of winners from all iterations
-                        var winners_cm_fn1 = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}.csv");
+                        var winners_cm_fn1 = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}_full.csv");
                         var winners_cm_fn2 = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}_summary.csv");
                         if (io_proxy.is_file_available(cts, winners_cm_fn1) && io_proxy.is_file_available(cts, winners_cm_fn2))
                         {
@@ -548,7 +548,7 @@ namespace svm_fs_batch
                         else
                         {
                             io_proxy.WriteLine($@"[{instance_id}/{total_instances}] {experiment_name}: Unavailable for iteration {(iteration_index)}. File: {prediction_list_filename}.");
-                            prediction.save(cts, prediction_list_filename, Enumerable.Select<(index_data id, confusion_matrix cm, rank_score rs), confusion_matrix>(iteration_whole_results_fixed_with_ranks, a => a.cm).ToArray());
+                            prediction.save(cts, prediction_list_filename, iteration_whole_results_fixed_with_ranks.Select<(index_data id, confusion_matrix cm, rank_score rs), confusion_matrix>(a => a.cm).ToArray());
                             io_proxy.WriteLine($@"[{instance_id}/{total_instances}] {experiment_name}: Saved for iteration {(iteration_index)}. File: {prediction_list_filename}.");
                         }
 

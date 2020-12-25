@@ -2,6 +2,8 @@
 {
     internal class rank_score
     {
+        internal static readonly rank_score empty = new rank_score();
+
         internal int    iteration_index;
         internal int    group_array_index;
 

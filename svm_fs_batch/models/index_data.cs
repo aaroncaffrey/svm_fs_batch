@@ -155,14 +155,14 @@ namespace svm_fs_batch
                 .ToArray());
         }
 
-        internal index_data((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type)
+        internal index_data((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type, int column_offset = 0)
         {
-            set_values(x_type);
+            set_values(x_type, column_offset);
         }
 
-        internal void set_values((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type)
+        internal void set_values((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type, int column_offset = 0)
         {
-            var k = 0;
+            var k = column_offset;
             
             group_key = new dataset_group_key(x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, int.Parse(x_type[k++].as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo));
             group_array_index = x_type[k++].as_int ?? -1;
