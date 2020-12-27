@@ -12,13 +12,13 @@ namespace svm_fs_batch
 
         internal static grid_point get_best_rate(List<grid_point> grid_search_results)
         {
-            
+
             //const string method_name = nameof(get_best_rate);
 
             // libsvm grid.py: if ((rate > best_rate) || (rate == best_rate && g == best_g && c < best_c))
 
-            var grid_point_best = new grid_point() {cv_rate = -1};
-            
+            var grid_point_best = new grid_point() { cv_rate = -1 };
+
             foreach (var result in grid_search_results)
             {
                 var is_rate_better = ((grid_point_best.cv_rate <= 0) || (result.cv_rate > -1 && result.cv_rate > grid_point_best.cv_rate));
@@ -55,7 +55,8 @@ namespace svm_fs_batch
 
 
         internal static grid_point grid_parameter_search(
-            CancellationTokenSource cts,
+                CancellationTokenSource cts,
+                bool as_parallel,
                 string libsvm_train_exe,
                 string cache_train_grid_csv,
                 string training_file,
@@ -103,7 +104,7 @@ namespace svm_fs_batch
 
             )
         {
-            
+
             //const string method_name = nameof(grid_parameter_search);
 
             var cache_list = grid_cache_data.read_cache_file(cts, cache_train_grid_csv);
@@ -268,75 +269,44 @@ namespace svm_fs_batch
 
 
 
-            var results = search_grid_points
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cts.Token)
-                .Select((point, index) =>
-            {
-                //var point = search_grid_points[index];
-                
+            var results =
+                as_parallel ?
+                    search_grid_points
+                        .AsParallel()
+                        .AsOrdered()
+                        .WithCancellation(cts.Token)
+                        .Select((point, model_index) =>
+                        {
+                            var model_filename = $@"{training_file}_{(model_index + 1)}.model";
 
-                var model_index = index;
+                            var train_result = libsvm.train(cts, libsvm_train_exe, training_file, model_filename, train_stdout_file, train_stderr_file, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, point_max_time, quiet_mode, memory_limit_mb);
 
-                var model_filename = $@"{training_file}_{(model_index + 1)}.model";
+                            var train_result_lines = train_result.stdout?.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToArray();
 
-                var train_result = libsvm.train(
-                    cts,
-                    libsvm_train_exe,
-                    training_file,
-                    model_filename,
-                    train_stdout_file,
-                    train_stderr_file,
-                    point.cost,
-                    point.gamma,
-                    point.epsilon,
-                    point.coef0,
-                    point.degree,
-                    class_weights,
-                    svm_type,
-                    svm_kernel,
-                    inner_cv_folds,
-                    probability_estimates,
-                    shrinking_heuristics,
-                    point_max_time,
-                    quiet_mode,
-                    memory_limit_mb);
+                            var cv_rate = libsvm_cv_perf(train_result_lines);
 
-                //if (!string.IsNullOrWhiteSpace(train_result.cmd_line)) io_proxy.WriteLine(train_result.cmd_line, nameof(svm_wkr), nameof(grid_parameter_search));
-                //if (!string.IsNullOrWhiteSpace(train_result.stdout)) io_proxy.WriteLine(train_result.stdout, nameof(svm_wkr), nameof(grid_parameter_search));
-                //if (!string.IsNullOrWhiteSpace(train_result.stderr)) io_proxy.WriteLine(train_result.stderr, nameof(svm_wkr), nameof(grid_parameter_search));
+                            var grid_point = new grid_point(cost: point.cost, gamma: point.gamma, epsilon: point.epsilon, coef0: point.coef0, degree: point.degree, cv_rate: cv_rate);
 
-                var train_result_lines = train_result.stdout?.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                            return grid_point;
+                        }).ToList()
+                    :
+                    search_grid_points
+                        .Select((point, model_index) =>
+                        {
+                            var model_filename = $@"{training_file}_{(model_index + 1)}.model";
 
-                var cv_rate = libsvm_cv_perf(train_result_lines);
+                            var train_result = libsvm.train(cts, libsvm_train_exe, training_file, model_filename, train_stdout_file, train_stderr_file, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, point_max_time, quiet_mode, memory_limit_mb);
 
-                var grid_point = new grid_point()
-                {
-                    cost = point.cost,
-                    gamma = point.gamma,
-                    epsilon = point.epsilon,
-                    coef0 = point.coef0,
-                    degree = point.degree,
-                    cv_rate = cv_rate
-                };
+                            var train_result_lines = train_result.stdout?.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToArray();
 
-                return grid_point;//(point, cv_rate);
+                            var cv_rate = libsvm_cv_perf(train_result_lines);
 
-            }).ToList();
+                            var grid_point = new grid_point(cost: point.cost, gamma: point.gamma, epsilon: point.epsilon, coef0: point.coef0, degree: point.degree, cv_rate: cv_rate);
 
-            foreach (var cache_item in cache_list)
-            {
-                results.Add(cache_item.grid_point);
-                //((
-                //    cache_item.grid_point.cost,
-                //    cache_item.grid_point.gamma,
-                //    cache_item.grid_point.epsilon,
-                //    cache_item.grid_point.coef0,
-                //    cache_item.grid_point.degree),
-                //    cache_item.grid_point.cv_rate??0
-                //    ));
-            }
+                            return grid_point;
+                        }).ToList();
+
+            results.AddRange(cache_list.Select(cache_item => cache_item.grid_point));
 
             results = results
                 .Distinct()
@@ -379,25 +349,26 @@ namespace svm_fs_batch
 
 
 
-        internal static double libsvm_cv_perf(List<string> libsvm_result_lines)
+        internal static double libsvm_cv_perf(string[] libsvm_result_lines)
         {
-            
             //const string method_name = nameof(libsvm_cv_perf);
 
-            if (libsvm_result_lines == null || libsvm_result_lines.Count == 0) return -1;
+            //var v_libsvm_default_cross_validation_index = libsvm_result_lines.FindIndex(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.Ordinal));
+            //var v_libsvm_default_cross_validation_str = v_libsvm_default_cross_validation_index < 0 ? "" : libsvm_result_lines[v_libsvm_default_cross_validation_index].Split()[4];
 
-            var v_libsvm_default_cross_validation_index = libsvm_result_lines.FindIndex(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.Ordinal));
+            if (libsvm_result_lines == null || libsvm_result_lines.Length == 0) return -1;
 
-            var v_libsvm_default_cross_validation_str = v_libsvm_default_cross_validation_index < 0 ? "" : libsvm_result_lines[v_libsvm_default_cross_validation_index].Split()[4];
+            var cv_accuracy_line = libsvm_result_lines.FirstOrDefault(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.OrdinalIgnoreCase));
 
-            if (v_libsvm_default_cross_validation_index >= 0 && !string.IsNullOrWhiteSpace(v_libsvm_default_cross_validation_str))
-            {
-                return v_libsvm_default_cross_validation_str.Last() == '%' ?
-                    double.Parse(v_libsvm_default_cross_validation_str[0..^1], NumberStyles.Float, NumberFormatInfo.InvariantInfo) / (double)100
-                    : double.Parse(v_libsvm_default_cross_validation_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo);
-            }
+            if (string.IsNullOrWhiteSpace(cv_accuracy_line)) return -1;
 
-            return -1;
+            var cv_accuracy_line_split = cv_accuracy_line.Split();
+
+            var cv_accuracy_str = cv_accuracy_line_split[4];
+
+            return cv_accuracy_str.Last() == '%' ?
+                double.Parse(cv_accuracy_str[0..^1], NumberStyles.Float, NumberFormatInfo.InvariantInfo) / (double)100
+                : double.Parse(cv_accuracy_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo);
         }
     }
 }

@@ -33,7 +33,23 @@ namespace svm_fs_batch
             init.set_thread_counts();
 
             //var fake_args = $"-experiment_name=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
-            var fake_args = $"-experiment_name=test -whole_array_index_first=0 -whole_array_index_last=0 -whole_array_step_size=1 -whole_array_length=1 -partition_array_index_first=0 -partition_array_index_last=0";
+            var fake_args_list = new List<(string name, string value)>()
+            {
+                ("experiment_name", "test"),
+                ("whole_array_index_first", "0"),
+                ("whole_array_index_last", "0"),
+                ("whole_array_step_size", "1"),
+                ("whole_array_length", "1"),
+                ("partition_array_index_first", "0"),
+                ("partition_array_index_last", "0"),
+                
+                (nameof(svm_fs_batch.program_args.inner_folds), "1"),
+                (nameof(svm_fs_batch.program_args.outer_cv_folds), "5"),
+                (nameof(svm_fs_batch.program_args.outer_cv_folds_to_run), "5"),
+                (nameof(svm_fs_batch.program_args.repetitions), "5"),
+            };
+
+            var fake_args = string.Join(" ", fake_args_list.Select(a => $"-{a.name}={a.value}").ToArray());
             args = fake_args.Split();
 
             var program_args = new program_args(args);
@@ -109,7 +125,8 @@ namespace svm_fs_batch
             (prediction[] prediction_list, confusion_matrix[] cm_list) prediction_file_data,
             index_data unrolled_index_data,
             (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int training_size)[] train_sizes, (int class_id, int testing_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) merged_cv_input,
-            ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)[] prediction_data_list
+            ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)[] prediction_data_list,
+            bool as_parallel = false
         )
         {
             const string method_name = nameof(update_merged_cm);
@@ -118,30 +135,40 @@ namespace svm_fs_batch
 
             if (prediction_file_data.cm_list == null) throw new ArgumentOutOfRangeException(nameof(prediction_file_data),$@"{module_name}.{method_name}.{nameof(prediction_file_data)}.{nameof(prediction_file_data.cm_list)}");
 
-            Parallel.ForEach(prediction_file_data.cm_list,
-                cm =>
+            if (as_parallel)
+            {
+                Parallel.ForEach(prediction_file_data.cm_list, cm =>
                 {
-                    if (cts.IsCancellationRequested) return;
+                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, prediction_data_list, cm); 
 
-                    if (cm.grid_point == null)
-                    {
-                        cm.grid_point = new grid_point(prediction_data_list?.Select(a => a.grid_point).ToArray());
-                    }
-
-                    cm.x_class_name = settings.class_names?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_name;
-                    cm.x_class_size = dataset.class_sizes?.First(b => b.class_id == cm.x_class_id).class_size ?? -1;
-                    cm.x_class_testing_size = merged_cv_input.test_sizes?.First(b => b.class_id == cm.x_class_id).testing_size ?? -1;
-                    cm.x_class_training_size = merged_cv_input.train_sizes?.First(b => b.class_id == cm.x_class_id).training_size ?? -1;
-                    cm.x_class_weight = unrolled_index_data.class_weights?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_weight;
-                    cm.x_duration_grid_search = prediction_data_list?.Select(a => a.dur.grid_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
-                    cm.x_duration_testing = prediction_data_list?.Select(a => a.dur.predict_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
-                    cm.x_duration_training = prediction_data_list?.Select(a => a.dur.train_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
-                    cm.x_outer_cv_index = merged_cv_input.outer_cv_index;
-                    cm.x_repetitions_index = merged_cv_input.repetitions_index;
                 });
+            } else
+            {
+                foreach (var cm in prediction_file_data.cm_list)
+                {
+                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, prediction_data_list, cm);
+                }
+            }
         }
 
-        
+        private static void update_merged_cm_single(CancellationTokenSource cts, dataset_loader dataset, index_data unrolled_index_data, (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int training_size)[] train_sizes, (int class_id, int testing_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) merged_cv_input, ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)[] prediction_data_list, confusion_matrix cm)
+        {
+            if (cts.IsCancellationRequested) return;
+
+            if (cm.grid_point == null) { cm.grid_point = new grid_point(prediction_data_list?.Select(a => a.grid_point).ToArray()); }
+
+            cm.x_class_name = settings.class_names?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_name;
+            cm.x_class_size = dataset.class_sizes?.First(b => b.class_id == cm.x_class_id).class_size ?? -1;
+            cm.x_class_testing_size = merged_cv_input.test_sizes?.First(b => b.class_id == cm.x_class_id).testing_size ?? -1;
+            cm.x_class_training_size = merged_cv_input.train_sizes?.First(b => b.class_id == cm.x_class_id).training_size ?? -1;
+            cm.x_class_weight = unrolled_index_data.class_weights?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_weight;
+            cm.x_duration_grid_search = prediction_data_list?.Select(a => a.dur.grid_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
+            cm.x_duration_testing = prediction_data_list?.Select(a => a.dur.predict_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
+            cm.x_duration_training = prediction_data_list?.Select(a => a.dur.train_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
+            cm.x_outer_cv_index = merged_cv_input.outer_cv_index;
+            cm.x_repetitions_index = merged_cv_input.repetitions_index;
+        }
+
 
         internal enum direction { none, forwards, neutral, backwards }
 

@@ -17,7 +17,8 @@ namespace svm_fs_batch
             prediction[] prediction_list,
             double? threshold = null,
             int? threshold_class = null,
-            bool calculate_auc = true
+            bool calculate_auc = true,
+            bool as_parallel=false
             )
         {
             if (cts.IsCancellationRequested) return default;
@@ -86,63 +87,19 @@ namespace svm_fs_batch
                 }
             }
 
-
-            Parallel.ForEach(confusion_matrix_list,
-                cm =>
-                //foreach (var cm in confusion_matrix_list)
+            if (as_parallel)
+            {
+                Parallel.ForEach(confusion_matrix_list, cm =>
                 {
                     cm.calculate_metrics(cts, cm.metrics, calculate_auc, prediction_list);
-                    //if (calculate_auc)
-                    //{
-                    //    var (brier_score, roc_auc, roc_auc2, pr_auc, ap, api, roc_xy, pr_xy) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, cm.class_id.Value);
-                    //    cm.Brier = brier_score;
-
-                    //    cm.ROC_AUC_Approx = roc_auc;
-                    //    cm.ROC_AUC2 = roc_auc2;
-
-                    //    cm.PR_AUC_Approx = pr_auc;
-                    //    cm.AP = ap;
-                    //    cm.API = api;
-
-                    //    cm.pr_xy_str = string.Join("/",pr_xy.Select(a => $"{Math.Round(a.x,6)};{Math.Round(a.y,6)}").ToList());
-                    //    cm.roc_xy_str = string.Join("/",roc_xy.Select(a => $"{Math.Round(a.x,6)};{Math.Round(a.y,6)}").ToList());
-                    //}
-
-
-                    //cm.TPR = (cm.TP + cm.FN) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP) / (double) (cm.TP + cm.FN);
-                    //cm.TNR = (cm.TN + cm.FP) == (double) 0.0 ? (double) 0.0 : (double) (cm.TN) / (double) (cm.TN + cm.FP);
-                    //cm.PPV = (cm.TP + cm.FP) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP) / (double) (cm.TP + cm.FP);
-                    //cm.NPV = (cm.TN + cm.FN) == (double) 0.0 ? (double) 0.0 : (double) (cm.TN) / (double) (cm.TN + cm.FN);
-                    //cm.FNR = (cm.FN + cm.TP) == (double) 0.0 ? (double) 0.0 : (double) (cm.FN) / (double) (cm.FN + cm.TP);
-                    //cm.FPR = (cm.FP + cm.TN) == (double) 0.0 ? (double) 0.0 : (double) (cm.FP) / (double) (cm.FP + cm.TN);
-                    //cm.FDR = (cm.FP + cm.TP) == (double) 0.0 ? (double) 0.0 : (double) (cm.FP) / (double) (cm.FP + cm.TP);
-                    //cm.FOR = (cm.FN + cm.TN) == (double) 0.0 ? (double) 0.0 : (double) (cm.FN) / (double) (cm.FN + cm.TN);
-                    //cm.ACC = (cm.P + cm.N) == (double) 0.0 ? (double) 0.0 : (double) (cm.TP + cm.TN) / (double) (cm.P + cm.N);
-                    //cm.F1S = (cm.PPV + cm.TPR) == (double) 0.0 ? (double) 0.0 : (double) (2 * cm.PPV * cm.TPR) / (double) (cm.PPV + cm.TPR);
-                    //cm.G1S = (cm.PPV + cm.TPR) == (double) 0.0 ? (double) 0.0 : (double) Math.Sqrt((double) (cm.PPV * cm.TPR));
-                    //cm.MCC = ((double) Math.Sqrt((double) ((cm.TP + cm.FP) * (cm.TP + cm.FN) * (cm.TN + cm.FP) * (cm.TN + cm.FN))) == (double) 0.0) ? (double) 0.0 : ((cm.TP * cm.TN) - (cm.FP * cm.FN)) / (double) Math.Sqrt((double) ((cm.TP + cm.FP) * (cm.TP + cm.FN) * (cm.TN + cm.FP) * (cm.TN + cm.FN)));
-                    //cm.Informedness = (cm.TPR + cm.TNR) - (double) 1.0;
-                    //cm.Markedness = (cm.PPV + cm.NPV) - (double) 1.0;
-                    //cm.BalancedAccuracy = (double) (cm.TPR + cm.TNR) / (double) 2.0;
-
-                    //cm.LRP = (1 - cm.TNR)== (double)0.0 ? (double)0.0 : (cm.TPR) / (1 - cm.TNR);
-                    //cm.LRN = (cm.TNR)==(double)0.0?(double)0.0:(1 - cm.TPR) / (cm.TNR);
-
-
-                    //cm.F1B_00 = fbeta2(cm.PPV, cm.TPR, (double) 0.0);
-                    //cm.F1B_01 = fbeta2(cm.PPV, cm.TPR, (double) 0.1);
-                    //cm.F1B_02 = fbeta2(cm.PPV, cm.TPR, (double) 0.2);
-                    //cm.F1B_03 = fbeta2(cm.PPV, cm.TPR, (double) 0.3);
-                    //cm.F1B_04 = fbeta2(cm.PPV, cm.TPR, (double) 0.4);
-                    //cm.F1B_05 = fbeta2(cm.PPV, cm.TPR, (double) 0.5);
-                    //cm.F1B_06 = fbeta2(cm.PPV, cm.TPR, (double) 0.6);
-                    //cm.F1B_07 = fbeta2(cm.PPV, cm.TPR, (double) 0.7);
-                    //cm.F1B_08 = fbeta2(cm.PPV, cm.TPR, (double) 0.8);
-                    //cm.F1B_09 = fbeta2(cm.PPV, cm.TPR, (double) 0.9);
-                    //cm.F1B_10 = fbeta2(cm.PPV, cm.TPR, (double) 1.0);
-
-                    //cm.calculate_ppf();
                 });
+            } else
+            {
+                foreach (var cm in confusion_matrix_list)
+                {
+                    cm.calculate_metrics(cts, cm.metrics, calculate_auc, prediction_list);
+                }
+            }
 
             return confusion_matrix_list;
         }
@@ -168,20 +125,30 @@ namespace svm_fs_batch
         }
 
 
-        internal static prediction[] load_prediction_file_probability_values(CancellationTokenSource cts, (string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files)
+        internal static prediction[] load_prediction_file_probability_values(CancellationTokenSource cts, (string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files, bool as_parallel=false)
         {
             // method untested
             const string method_name = nameof(load_prediction_file_probability_values);
 
             if (cts.IsCancellationRequested) return default;
 
-            var lines = files.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((a, i) =>
-                (
-                    test_file_lines: io_proxy.ReadAllLines(cts, a.test_file, module_name, method_name).ToArray(),
-                    test_comments_file_lines: io_proxy.ReadAllLines(cts, a.test_comments_file, module_name, method_name).ToArray(),
-                    prediction_file_lines: io_proxy.ReadAllLines(cts, a.prediction_file, module_name, method_name).ToArray(),
-                    test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? io_proxy.ReadAllLines(cts, a.test_class_sample_id_list_file, module_name, method_name).ToArray() : null
-                )).ToArray();
+            var lines =
+                as_parallel ?
+                    files.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((a, i) =>
+                    (
+                        test_file_lines: io_proxy.ReadAllLines(cts, a.test_file, module_name, method_name).ToArray(),
+                        test_comments_file_lines: io_proxy.ReadAllLines(cts, a.test_comments_file, module_name, method_name).ToArray(),
+                        prediction_file_lines: io_proxy.ReadAllLines(cts, a.prediction_file, module_name, method_name).ToArray(),
+                        test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? io_proxy.ReadAllLines(cts, a.test_class_sample_id_list_file, module_name, method_name).ToArray() : null
+                    )).ToArray()
+                :
+                    files.Select((a, i) =>
+                    (
+                        test_file_lines: io_proxy.ReadAllLines(cts, a.test_file, module_name, method_name).ToArray(),
+                        test_comments_file_lines: io_proxy.ReadAllLines(cts, a.test_comments_file, module_name, method_name).ToArray(),
+                        prediction_file_lines: io_proxy.ReadAllLines(cts, a.prediction_file, module_name, method_name).ToArray(),
+                        test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? io_proxy.ReadAllLines(cts, a.test_class_sample_id_list_file, module_name, method_name).ToArray() : null
+                    )).ToArray();
 
             // prediction file MAY have a header, but only if probability estimates are enabled
 
@@ -197,12 +164,20 @@ namespace svm_fs_batch
                 if (lines.Select(a => a.prediction_file_lines.FirstOrDefault()).Distinct().Count() != 1) { throw new ArgumentOutOfRangeException(nameof(files)); }
             }
 
-            lines = lines.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((a, i) => (
+            lines = as_parallel?
+                
+                lines.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((a, i) => (
                 a.test_file_lines,
                 a.test_comments_file_lines.Skip(1 /* skip header */).ToArray(),
                 a.prediction_file_lines.Skip(i > 0 && prediction_has_headers ? 1 : 0).ToArray(),
                 a.test_class_sample_id_list_lines
-            )).ToArray();
+            )).ToArray() :
+                lines.Select((a, i) => (
+                    a.test_file_lines,
+                    a.test_comments_file_lines.Skip(1 /* skip header */).ToArray(),
+                    a.prediction_file_lines.Skip(i > 0 && prediction_has_headers ? 1 : 0).ToArray(),
+                    a.test_class_sample_id_list_lines
+                )).ToArray();
 
             var test_file_lines = lines.SelectMany(a => a.test_file_lines).ToArray();
             var test_comments_file_lines = lines.SelectMany(a => a.test_comments_file_lines).ToArray();
@@ -253,7 +228,7 @@ namespace svm_fs_batch
             return load_prediction_file_probability_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static prediction[] load_prediction_file_probability_values_from_text(CancellationTokenSource cts, string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, int[] test_class_sample_id_list)
+        internal static prediction[] load_prediction_file_probability_values_from_text(CancellationTokenSource cts, string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, int[] test_class_sample_id_list, bool as_parallel=false)
         {
             if (cts.IsCancellationRequested) return default;
 
@@ -337,32 +312,60 @@ namespace svm_fs_batch
             var total_predictions = test_file_data.Length;
 
 
-            var prediction_list = Enumerable.Range(0, total_predictions).AsParallel().AsOrdered().WithCancellation(cts.Token).Select(prediction_index =>
-            {
-                var probability_estimates = prediction_file_data[prediction_index].Length <= 1 ?
-                    Array.Empty<(int class_id, double probability_estimate)>()
-                    :
-                    prediction_file_data[prediction_index]
-                        .Skip(1 /* skip predicted class id */)
-                        .Select((a, i) => (class_id: probability_estimate_class_labels[i], probability_estimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var pe_out) ? pe_out : default))
-                        .OrderBy(a => a.class_id)
-                        .ToArray();
-
-                //var probability_estimates_stated = probability_estimates != null && probability_estimates.Count > 0 && probability_estimate_class_labels != null && probability_estimate_class_labels.Count > 0;
-
-                var prediction = new prediction()
+            var prediction_list =
+                as_parallel ?
+                Enumerable.Range(0, total_predictions).AsParallel().AsOrdered().WithCancellation(cts.Token).Select(prediction_index =>
                 {
-                    prediction_index = prediction_index,
-                    class_sample_id = test_class_sample_id_list != null && test_class_sample_id_list.Length - 1 >= prediction_index ? test_class_sample_id_list[prediction_index] : -1,
-                    comment = test_comments_file_lines != null && test_comments_file_lines.Length > 0 ? test_comments_file_lines[prediction_index].Split(',').Select((a, i) => (comment_header: ((test_file_comments_header?.Length ?? 0) - 1 >= i ? test_file_comments_header[i] : ""), comment_value: a)).ToArray() : Array.Empty<(string comment_header, string comment_value)>(),
-                    real_class_id = int.TryParse(test_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_real_class_id) ? out_real_class_id : default,
-                    predicted_class_id = int.TryParse(prediction_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_predicted_class_id) ? out_predicted_class_id : default,
-                    probability_estimates = probability_estimates,
-                    //test_row_vector = test_file_data[prediction_index].Skip(1/* skip class id column */).ToArray(),
-                };
+                    var probability_estimates = prediction_file_data[prediction_index].Length <= 1 ?
+                        Array.Empty<(int class_id, double probability_estimate)>()
+                        :
+                        prediction_file_data[prediction_index]
+                            .Skip(1 /* skip predicted class id */)
+                            .Select((a, i) => (class_id: probability_estimate_class_labels[i], probability_estimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var pe_out) ? pe_out : default))
+                            .OrderBy(a => a.class_id)
+                            .ToArray();
 
-                return prediction;
-            }).ToArray();
+                    //var probability_estimates_stated = probability_estimates != null && probability_estimates.Count > 0 && probability_estimate_class_labels != null && probability_estimate_class_labels.Count > 0;
+
+                    var prediction = new prediction()
+                    {
+                        prediction_index = prediction_index,
+                        class_sample_id = test_class_sample_id_list != null && test_class_sample_id_list.Length - 1 >= prediction_index ? test_class_sample_id_list[prediction_index] : -1,
+                        comment = test_comments_file_lines != null && test_comments_file_lines.Length > 0 ? test_comments_file_lines[prediction_index].Split(',').Select((a, i) => (comment_header: ((test_file_comments_header?.Length ?? 0) - 1 >= i ? test_file_comments_header[i] : ""), comment_value: a)).ToArray() : Array.Empty<(string comment_header, string comment_value)>(),
+                        real_class_id = int.TryParse(test_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_real_class_id) ? out_real_class_id : default,
+                        predicted_class_id = int.TryParse(prediction_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_predicted_class_id) ? out_predicted_class_id : default,
+                        probability_estimates = probability_estimates,
+                        //test_row_vector = test_file_data[prediction_index].Skip(1/* skip class id column */).ToArray(),
+                    };
+
+                    return prediction;
+                }).ToArray():
+                Enumerable.Range(0, total_predictions).Select(prediction_index =>
+                {
+                    var probability_estimates = prediction_file_data[prediction_index].Length <= 1 ?
+                        Array.Empty<(int class_id, double probability_estimate)>()
+                        :
+                        prediction_file_data[prediction_index]
+                            .Skip(1 /* skip predicted class id */)
+                            .Select((a, i) => (class_id: probability_estimate_class_labels[i], probability_estimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var pe_out) ? pe_out : default))
+                            .OrderBy(a => a.class_id)
+                            .ToArray();
+
+                    //var probability_estimates_stated = probability_estimates != null && probability_estimates.Count > 0 && probability_estimate_class_labels != null && probability_estimate_class_labels.Count > 0;
+
+                    var prediction = new prediction()
+                    {
+                        prediction_index = prediction_index,
+                        class_sample_id = test_class_sample_id_list != null && test_class_sample_id_list.Length - 1 >= prediction_index ? test_class_sample_id_list[prediction_index] : -1,
+                        comment = test_comments_file_lines != null && test_comments_file_lines.Length > 0 ? test_comments_file_lines[prediction_index].Split(',').Select((a, i) => (comment_header: ((test_file_comments_header?.Length ?? 0) - 1 >= i ? test_file_comments_header[i] : ""), comment_value: a)).ToArray() : Array.Empty<(string comment_header, string comment_value)>(),
+                        real_class_id = int.TryParse(test_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_real_class_id) ? out_real_class_id : default,
+                        predicted_class_id = int.TryParse(prediction_file_data[prediction_index][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_predicted_class_id) ? out_predicted_class_id : default,
+                        probability_estimates = probability_estimates,
+                        //test_row_vector = test_file_data[prediction_index].Skip(1/* skip class id column */).ToArray(),
+                    };
+
+                    return prediction;
+                }).ToArray();
 
             return prediction_list;
         }

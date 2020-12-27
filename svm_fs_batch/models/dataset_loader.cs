@@ -75,7 +75,7 @@ namespace svm_fs_batch
 
         internal (int class_id, int class_size)[] class_sizes;
 
-        internal static int[] remove_duplicate_columns(CancellationTokenSource cts, dataset_loader dataset, int[] query_cols)
+        internal static int[] remove_duplicate_columns(CancellationTokenSource cts, dataset_loader dataset, int[] query_cols, bool as_parallel = false)
         {
             //const string method_name = nameof(remove_duplicate_columns);
             // remove duplicate columns (may exist in separate groups)
@@ -84,7 +84,17 @@ namespace svm_fs_batch
             if (query_cols == null || query_cols.Length <= 1) return query_cols; //throw new ArgumentOutOfRangeException(nameof(query_cols));
             //if (query_cols.Length <= 1) return query_cols;
 
-            var query_col_dupe_check = query_cols.Select(col_index => dataset
+            var query_col_dupe_check = as_parallel ? query_cols.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(col_index => dataset
+                .value_list
+                .SelectMany(class_values => class_values.val_list.Select((row, row_index) =>
+                {
+                    var rc = row.row_columns[col_index];
+
+                    if (rc.col_index != col_index || rc.row_index != row_index) throw new Exception();
+
+                    return rc.row_column_val;
+                }).ToArray()).ToArray()).ToArray() :
+            query_cols.Select(col_index => dataset
                 .value_list
                 .SelectMany(class_values => class_values.val_list.Select((row, row_index) =>
                 {
@@ -110,7 +120,9 @@ namespace svm_fs_batch
                 }
             }
 
-            var seq_eq = index_pairs.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(a => query_col_dupe_check[a.x].SequenceEqual(query_col_dupe_check[a.y])).ToArray();
+            var seq_eq = as_parallel ?
+                index_pairs.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(a => query_col_dupe_check[a.x].SequenceEqual(query_col_dupe_check[a.y])).ToArray():
+                index_pairs.Select(a => query_col_dupe_check[a.x].SequenceEqual(query_col_dupe_check[a.y])).ToArray();
             var dupe_clusters = new List<List<int>>();
 
             for (k = 0; k < index_pairs.Length; k++)
@@ -131,7 +143,10 @@ namespace svm_fs_batch
                 }
             }
 
-            var indexes_to_remove = dupe_clusters.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray();
+            var indexes_to_remove = as_parallel ?
+                dupe_clusters.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray() :
+                dupe_clusters.Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray() ;
+
 
             if (indexes_to_remove.Length > 0)
             {
@@ -147,13 +162,17 @@ namespace svm_fs_batch
             return query_cols;
         }
 
-        internal double[][] get_row_features(CancellationTokenSource cts, (int class_id, int[] row_indexes)[] class_row_indexes, int[] column_indexes)
+        internal double[][] get_row_features(CancellationTokenSource cts, (int class_id, int[] row_indexes)[] class_row_indexes, int[] column_indexes, bool as_parallel = false)
         {
             if (cts.IsCancellationRequested) return default;
 
             if (column_indexes.First() != 0) throw new Exception(); // class id missing
 
-            var class_rows = class_row_indexes.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(class_row_index => get_class_row_features(class_row_index.class_id, class_row_index.row_indexes, column_indexes)).ToList();
+            var class_rows = 
+                as_parallel ?
+                class_row_indexes.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(class_row_index => get_class_row_features(class_row_index.class_id, class_row_index.row_indexes, column_indexes)).ToList() :
+                class_row_indexes.Select(class_row_index => get_class_row_features(class_row_index.class_id, class_row_index.row_indexes, column_indexes)).ToList();
+
             var rows = class_rows.SelectMany(a => a.as_rows).ToArray();
 
             return rows;
@@ -328,7 +347,8 @@ namespace svm_fs_batch
             io_proxy.WriteLine($@"Start: reading comments.", module_name, method_name);
             var sw_comment = new Stopwatch();
             sw_comment.Start();
-            comment_list = data_filenames.AsParallel()
+            comment_list = data_filenames
+                .AsParallel()
                 .AsOrdered()
                 .WithCancellation(cts.Token)
                 .Select(cl =>

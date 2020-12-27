@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
 
 namespace svm_fs_batch
 {
     internal class dataset_group_key : IEquatable<dataset_group_key>
     {
-        internal static readonly dataset_group_key empty = new dataset_group_key("", "", "", "", "", "", "", "", "", -1);
+        internal static readonly dataset_group_key empty = new dataset_group_key(null, null, null, null, null, null, null, null, null, -1);
 
         internal int column_index = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
 
@@ -17,17 +18,19 @@ namespace svm_fs_batch
             
             var k = 0;
 
-            if (values.Length > k) value.file_tag = values[k++];
-            if (values.Length > k) value.alphabet = values[k++];
-            if (values.Length > k) value.stats = values[k++];
-            if (values.Length > k) value.dimension = values[k++];
-            if (values.Length > k) value.category = values[k++];
-            if (values.Length > k) value.source = values[k++];
-            if (values.Length > k) value.@group = values[k++];
-            if (values.Length > k) value.member = values[k++];
-            if (values.Length > k) value.perspective = values[k++];
-            if (values.Length > k) column_index = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+            if (values.Length > k && values[k++].Length>0) value.file_tag = values[k];
+            if (values.Length > k && values[k++].Length>0) value.alphabet = values[k];
+            if (values.Length > k && values[k++].Length>0) value.stats = values[k];
+            if (values.Length > k && values[k++].Length>0) value.dimension = values[k];
+            if (values.Length > k && values[k++].Length>0) value.category = values[k];
+            if (values.Length > k && values[k++].Length>0) value.source = values[k];
+            if (values.Length > k && values[k++].Length>0) value.@group = values[k];
+            if (values.Length > k && values[k++].Length>0) value.member = values[k];
+            if (values.Length > k && values[k++].Length>0) value.perspective = values[k];
+            if (values.Length > k && values[k++].Length>0) column_index = int.Parse(values[k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
         }
+
+    
 
         public dataset_group_key(dataset_group_key group_key)
         {
@@ -43,30 +46,30 @@ namespace svm_fs_batch
 
         public dataset_group_key(string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective, int column_index = -1)
         {
-            this.value.file_tag = file_tag;
-            this.value.alphabet = alphabet;
-            this.value.stats = stats;
-            this.value.dimension = dimension;
-            this.value.category = category;
-            this.value.source = source;
-            this.value.@group = @group;
-            this.value.member = member;
-            this.value.perspective = perspective;
+            if (!string.IsNullOrEmpty(file_tag   )) this.value.file_tag = file_tag;
+            if (!string.IsNullOrEmpty(alphabet   )) this.value.alphabet = alphabet;
+            if (!string.IsNullOrEmpty(stats      )) this.value.stats = stats;
+            if (!string.IsNullOrEmpty(dimension  )) this.value.dimension = dimension;
+            if (!string.IsNullOrEmpty(category   )) this.value.category = category;
+            if (!string.IsNullOrEmpty(source     )) this.value.source = source;
+            if (!string.IsNullOrEmpty(@group     )) this.value.@group = @group;
+            if (!string.IsNullOrEmpty(member     )) this.value.member = member;
+            if (!string.IsNullOrEmpty(perspective)) this.value.perspective = perspective;
             this.column_index = column_index;
         }
 
         internal static readonly string[] csv_header_values_array = new string[]
         {
-            nameof(dataset_group_key.value.file_tag),
-            nameof(dataset_group_key.value.alphabet),
-            nameof(dataset_group_key.value.stats),
-            nameof(dataset_group_key.value.dimension),
-            nameof(dataset_group_key.value.category),
-            nameof(dataset_group_key.value.source),
-            nameof(dataset_group_key.value.@group),
-            nameof(dataset_group_key.value.member),
-            nameof(dataset_group_key.value.perspective),
-            nameof(column_index),
+            "gk_"+nameof(dataset_group_key.value.file_tag),
+            "gk_"+nameof(dataset_group_key.value.alphabet),
+            "gk_"+nameof(dataset_group_key.value.stats),
+            "gk_"+nameof(dataset_group_key.value.dimension),
+            "gk_"+nameof(dataset_group_key.value.category),
+            "gk_"+nameof(dataset_group_key.value.source),
+            "gk_"+nameof(dataset_group_key.value.@group),
+            "gk_"+nameof(dataset_group_key.value.member),
+            "gk_"+nameof(dataset_group_key.value.perspective),
+            "gk_"+nameof(column_index),
         };
 
         internal static readonly string csv_header_string = string.Join(",", csv_header_values_array);
@@ -76,16 +79,16 @@ namespace svm_fs_batch
         {
             return new string[]
             {
-               $@"{value.file_tag}",
-               $@"{value.alphabet}",
-               $@"{value.stats}",
-               $@"{value.dimension}",
-               $@"{value.category}",
-               $@"{value.source}",
-               $@"{value.@group}",
-               $@"{value.member}",
-               $@"{value.perspective}",
-               $@"{column_index}",
+               $@"{value.file_tag             }",
+               $@"{value.alphabet             }",
+               $@"{value.stats                }",
+               $@"{value.dimension            }",
+               $@"{value.category             }",
+               $@"{value.source               }",
+               $@"{value.@group               }",
+               $@"{value.member               }",
+               $@"{value.perspective          }",
+               $@"{column_index               }",
             };
         }
 
@@ -99,7 +102,18 @@ namespace svm_fs_batch
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return value.Equals(other.value);
+            //return value.Equals(other.value);
+
+            return
+                ((value.file_tag    ?? "") == (other.value.file_tag    ?? "")) &&
+                ((value.alphabet    ?? "") == (other.value.alphabet    ?? "")) &&
+                ((value.stats       ?? "") == (other.value.stats       ?? "")) &&
+                ((value.dimension   ?? "") == (other.value.dimension   ?? "")) &&
+                ((value.category    ?? "") == (other.value.category    ?? "")) &&
+                ((value.source      ?? "") == (other.value.source      ?? "")) &&
+                ((value.@group      ?? "") == (other.value.@group      ?? "")) &&
+                ((value.member      ?? "") == (other.value.member      ?? "")) &&
+                ((value.perspective ?? "") == (other.value.perspective ?? ""));
         }
 
         public override bool Equals(object obj)

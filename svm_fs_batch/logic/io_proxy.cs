@@ -264,7 +264,7 @@ namespace svm_fs_batch
                 {
                     if (cts.IsCancellationRequested) return;
 
-                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {source} , {dest} , {overwrite} ) {tries}", nameof(io_proxy), nameof(Copy));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {source} , {dest} , {overwrite} ){(tries > 0 ? $@" {nameof(tries)} = {tries}.":"")}", nameof(io_proxy), nameof(Copy));
 
                     tries++;
 
@@ -276,7 +276,7 @@ namespace svm_fs_batch
                 catch (Exception e1)
                 {
 
-                    log_exception(e1, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", module_name, method_name);
+                    log_exception(e1, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} ){(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
 
                     if (tries >= max_tries) throw;
@@ -287,7 +287,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} )", module_name, method_name);
+                        log_exception(e2, $@"{module_name}.{method_name} -> ( {source}, {dest}, {overwrite} ){(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
                     }
                 }
@@ -359,7 +359,7 @@ namespace svm_fs_batch
                 {
                     if (cts.IsCancellationRequested) return default;
 
-                    io_proxy.WriteLine($"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                    io_proxy.WriteLine($"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}.":"")}", module_name, method_name);
 
                     tries++;
 
@@ -369,7 +369,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
@@ -379,7 +379,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
                     }
                 }
             }
@@ -399,7 +399,7 @@ namespace svm_fs_batch
                 {
                     if (cts.IsCancellationRequested) return default;
 
-                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(ReadAllText));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}.":"")}", nameof(io_proxy), nameof(ReadAllText));
 
                     tries++;
 
@@ -409,7 +409,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
@@ -419,7 +419,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
                     }
                 }
@@ -443,7 +443,7 @@ namespace svm_fs_batch
                     if (cts.IsCancellationRequested) return;
 
 
-                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllLines));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ){(tries > 0 ? $@" {nameof(tries)} = {tries}.":"")}", nameof(io_proxy), nameof(WriteAllLines));
 
                     tries++;
 
@@ -453,7 +453,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", module_name, method_name);
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
@@ -463,7 +463,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ). {nameof(tries)} = {tries}.", module_name, method_name);
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( ""{Path.GetDirectoryName(filename)}"" > ""{filename}"" ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
                     }
                 }
             }
@@ -485,7 +485,7 @@ namespace svm_fs_batch
                 {
                     if (cts.IsCancellationRequested) return;
 
-                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllLines));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}.":"")}", nameof(io_proxy), nameof(AppendAllLines));
 
                     tries++;
                     File.AppendAllLines(filename, lines);
@@ -493,7 +493,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
@@ -503,7 +503,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
                     }
                 }
             }
@@ -522,7 +522,7 @@ namespace svm_fs_batch
                 {
                     if (cts.IsCancellationRequested) return;
 
-                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", nameof(io_proxy), nameof(AppendAllText));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}.":"")}", nameof(io_proxy), nameof(AppendAllText));
 
                     tries++;
                     File.AppendAllText(filename, text);
@@ -530,7 +530,7 @@ namespace svm_fs_batch
                 }
                 catch (Exception e1)
                 {
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
                     if (tries >= max_tries) throw;
 
@@ -540,7 +540,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
                     }
                 }
             }
@@ -559,7 +559,7 @@ namespace svm_fs_batch
                 {
                     if (cts.IsCancellationRequested) return;
 
-                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ) {tries}", nameof(io_proxy), nameof(WriteAllText));
+                    //io_proxy.WriteLine($"{module_name}.{method_name} -> ( {filename} ){(tries > 0 ? $@" {nameof(tries)} = {tries}.":"")}"", nameof(io_proxy), nameof(WriteAllText));
 
                     tries++;
                     File.WriteAllText(filename, text);
@@ -568,7 +568,7 @@ namespace svm_fs_batch
                 catch (Exception e1)
                 {
 
-                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                    log_exception(e1, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
 
 
                     if (tries >= max_tries) throw;
@@ -579,7 +579,7 @@ namespace svm_fs_batch
                     }
                     catch (Exception e2)
                     {
-                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ). {nameof(tries)} = {tries}.", module_name, method_name);
+                        log_exception(e2, $@"{caller_module_name}.{caller_method_name} -> ( {filename} ).{(tries > 0 ? $@" {nameof(tries)} = {tries}." : "")}", module_name, method_name);
                     }
                 }
             }

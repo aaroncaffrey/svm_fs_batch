@@ -39,35 +39,45 @@ namespace svm_fs_batch
 
         // note: load does not load the rd/sd part of the cm file.  this has to be recalculated after loading the cm.
 
-        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, confusion_matrix[] x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, confusion_matrix[] x_list, bool as_parallel = true)
         {
             if (cts.IsCancellationRequested) return;
 
-            save(cts, cm_full_filename, cm_summary_filename, overwrite, null, x_list, null);
+            save(cts, cm_full_filename, cm_summary_filename, overwrite, null, x_list, null, as_parallel);
         }
 
-        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm, rank_score rs)[] x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm, rank_score rs)[] x_list, bool as_parallel = true)
         {
             if (cts.IsCancellationRequested) return;
 
-            save(cts, cm_full_filename, cm_summary_filename, overwrite,
-                x_list.Select(a => a.id).ToArray(),
-                x_list.Select(a => a.cm).ToArray(),
-                x_list.Select(a => a.rs).ToArray());
+            save(
+                cts: cts,
+                cm_full_filename: cm_full_filename,
+                cm_summary_filename: cm_summary_filename,
+                overwrite: overwrite,
+                id_list: x_list.Select(a => a.id).ToArray(),
+                cm_list: x_list.Select(a => a.cm).ToArray(),
+                rs_list: x_list.Select(a => a.rs).ToArray()
+                , as_parallel);
         }
 
-        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm)[] x_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, (index_data id, confusion_matrix cm)[] x_list, bool as_parallel = true)
         {
             if (cts.IsCancellationRequested) return;
 
-            save(cts, cm_full_filename, cm_summary_filename, overwrite,
-                x_list.Select(a => a.id).ToArray(),
-                x_list.Select(a => a.cm).ToArray(),
-                null);
+            save(
+                cts: cts,
+                cm_full_filename: cm_full_filename,
+                cm_summary_filename: cm_summary_filename,
+                overwrite: overwrite,
+                id_list: x_list.Select(a => a.id).ToArray(),
+                cm_list: x_list.Select(a => a.cm).ToArray(),
+                rs_list: null
+                , as_parallel);
         }
 
 
-        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, index_data[] id_list, confusion_matrix[] cm_list, rank_score[] rs_list)
+        internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, index_data[] id_list, confusion_matrix[] cm_list, rank_score[] rs_list, bool as_parallel = true)
         {
             const string method_name = nameof(save);
 
@@ -103,68 +113,77 @@ namespace svm_fs_batch
             }
 
 
-            var lines1 = save_full ? new string[lens.Max() + 1] : null;
-            var lines2 = save_summary ? new string[lens.Max() + 1] : null;
+            var lines_full = save_full ? new string[lens.Max() + 1] : null;
+            var lines_summary = save_summary ? new string[lens.Max() + 1] : null;
 
             var csv_header_values_array = new List<string>();
-            if (rs_list != null && rs_list.Length > 0) { csv_header_values_array.AddRange(rank_score.csv_header_values_array); }
-            if (id_list != null && id_list.Length > 0) { csv_header_values_array.AddRange(index_data.csv_header_values_array); }
-            if (cm_list != null && cm_list.Length > 0) { csv_header_values_array.AddRange(confusion_matrix.csv_header_values_array); }
+            //if (rs_list != null && rs_list.Length > 0) { csv_header_values_array.AddRange(rank_score.csv_header_values_array); }
+            //if (id_list != null && id_list.Length > 0) { csv_header_values_array.AddRange(index_data.csv_header_values_array); }
+            //if (cm_list != null && cm_list.Length > 0) { csv_header_values_array.AddRange(confusion_matrix.csv_header_values_array); }
+
+            csv_header_values_array.AddRange(rank_score.csv_header_values_array);
+            csv_header_values_array.AddRange(index_data.csv_header_values_array);
+            csv_header_values_array.AddRange(confusion_matrix.csv_header_values_array);
 
             var csv_header_values_string = string.Join(",", csv_header_values_array);
-            if (lines1 != null) lines1[0] = csv_header_values_string;
-            if (lines2 != null) lines2[0] = csv_header_values_string;
+            if (lines_full != null) lines_full[0] = csv_header_values_string;
+            if (lines_summary != null) lines_summary[0] = csv_header_values_string;
 
 
-
-            Parallel.For(0,
-                lens_max,
-                i =>
-                {
-                    var values1 = lines1 != null ? new List<string>() : null;
-                    if (values1 != null)
+            if (as_parallel)
+            {
+                Parallel.For(0,
+                    lens_max,
+                    i =>
                     {
+                        var values1 = new List<string>();
+
                         values1?.AddRange(rs_list != null && rs_list.Length > i ? rs_list[i].csv_values_array() : rank_score.empty.csv_values_array());
                         values1?.AddRange(id_list != null && id_list.Length > i ? id_list[i].csv_values_array() : index_data.empty.csv_values_array());
-                        values1?.AddRange(cm_list != null && cm_list.Length > i ? cm_list[i].csv_values_array(false) : confusion_matrix.empty.csv_values_array(false));
+                        values1?.AddRange(cm_list != null && cm_list.Length > i ? cm_list[i].csv_values_array() : confusion_matrix.empty.csv_values_array());
 
-                        if (lines1 != null) lines1[i + 1] = string.Join(",", values1);
-                    }
-
-                    var values2 = lines2 != null ? new List<string>() : null;
-                    if (values2 != null)
-                    {
-                        values2?.AddRange(rs_list != null && rs_list.Length > i ? rs_list[i].csv_values_array() : rank_score.empty.csv_values_array());
-                        values2?.AddRange(id_list != null && id_list.Length > i ? id_list[i].csv_values_array() : index_data.empty.csv_values_array());
-                        values2?.AddRange(cm_list != null && cm_list.Length > i ? cm_list[i].csv_values_array(true) : confusion_matrix.empty.csv_values_array(true));
-
-                        if (lines2 != null) lines2[i + 1] = string.Join(",", values2);
-                    }
-                });
-
-            if (lines1 != null && lines1.Length > 0)
+                        if (lines_full != null) lines_full[i + 1] = string.Join(",", values1);
+                        if (lines_summary != null) lines_summary[i + 1] = string.Join(",", values1.Select(a => a.Length <= 255 ? a : "").ToArray());
+                    });
+            }
+            else
             {
-                io_proxy.WriteAllLines(cts, cm_full_filename, lines1, module_name, method_name);
-                io_proxy.WriteLine($@"Saved: {cm_full_filename} ({lines1.Length} lines)", module_name, method_name);
+                for (var i = 0; i < lens_max; i++)
+                {
+                    var values1 = new List<string>();
+
+                    values1?.AddRange(rs_list != null && rs_list.Length > i ? rs_list[i].csv_values_array() : rank_score.empty.csv_values_array());
+                    values1?.AddRange(id_list != null && id_list.Length > i ? id_list[i].csv_values_array() : index_data.empty.csv_values_array());
+                    values1?.AddRange(cm_list != null && cm_list.Length > i ? cm_list[i].csv_values_array() : confusion_matrix.empty.csv_values_array());
+
+                    if (lines_full != null) lines_full[i + 1] = string.Join(",", values1);
+                    if (lines_summary != null) lines_summary[i + 1] = string.Join(",", values1.Select(a => a.Length <= 255 ? a : "").ToArray());
+                }
             }
 
-            if (lines2 != null && lines2.Length > 0)
+            if (lines_full != null && lines_full.Length > 0)
             {
-                io_proxy.WriteAllLines(cts, cm_summary_filename, lines2, module_name, method_name);
-                io_proxy.WriteLine($@"Saved: {cm_summary_filename} ({lines2.Length} lines)", module_name, method_name);
+                io_proxy.WriteAllLines(cts, cm_full_filename, lines_full, module_name, method_name);
+                io_proxy.WriteLine($@"Saved: {cm_full_filename} ({lines_full.Length} lines)", module_name, method_name);
+            }
+
+            if (lines_summary != null && lines_summary.Length > 0)
+            {
+                io_proxy.WriteAllLines(cts, cm_summary_filename, lines_summary, module_name, method_name);
+                io_proxy.WriteLine($@"Saved: {cm_summary_filename} ({lines_summary.Length} lines)", module_name, method_name);
             }
         }
 
-        internal static confusion_matrix[] load(CancellationTokenSource cts, string filename, int column_offset = -1)
+        internal static confusion_matrix[] load(CancellationTokenSource cts, string filename, int column_offset = -1, bool as_parallel = true)
         {
             if (cts.IsCancellationRequested) return default;
 
             var lines = io_proxy.ReadAllLines(cts, filename);
-            var ret = load(cts, lines, column_offset);//, filename);
+            var ret = load(cts, lines, column_offset, as_parallel);//, filename);
             return ret;
         }
 
-        internal static confusion_matrix[] load(CancellationTokenSource cts, string[] lines, int column_offset = -1)//, string cm_fn = null)
+        internal static confusion_matrix[] load(CancellationTokenSource cts, string[] lines, int column_offset = -1, bool as_parallel = true)
         {
             if (cts.IsCancellationRequested) return default;
 
@@ -177,7 +196,7 @@ namespace svm_fs_batch
                 // find column position in csv of the header, and set column_offset accordingly
                 for (var i = 0; i <= (line_header.Length - csv_header_values_array.Length); i++)
                 {
-                    if (line_header.Skip(i).Take(csv_header_values_array.Length).SequenceEqual(csv_header_values_array))
+                    if (line_header.Skip(i).Take(csv_header_values_array.Length).SequenceEqual(csv_header_values_array, StringComparer.OrdinalIgnoreCase))
                     {
                         has_header_line = true;
                         column_offset = i;
@@ -192,157 +211,152 @@ namespace svm_fs_batch
             }
 
 
-            var cm_list = lines
-                .Skip(has_header_line ? 1 : 0)
-                .Where(a => !string.IsNullOrWhiteSpace(a))
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cts.Token)
-                .Select(line =>
-                {
-                    if (cts.IsCancellationRequested) return default;
+            var cm_list =
+                as_parallel
+                ?
+                    lines
+                    .Skip(has_header_line ? 1 : 0)
+                    .Where(a => !string.IsNullOrWhiteSpace(a))
+                    .AsParallel()
+                    .AsOrdered()
+                    .WithCancellation(cts.Token)
+                    .Select(line => load_line(cts, column_offset, line))
+                    .Where(a => a != null)
+                    .ToArray()
+                :
+                    lines
+                    .Skip(has_header_line ? 1 : 0)
+                    .Where(a => !string.IsNullOrWhiteSpace(a))
+                    .Select(line => load_line(cts, column_offset, line))
+                    .Where(a => a != null)
+                    .ToArray();
 
-                    var s_all = line.Split(',');
-
-                    var column_count = s_all.Length - column_offset;
-
-                    if (column_count < csv_header_values_array.Length) return null;
-
-                    var x_type = s_all
-                        .Skip(column_offset)
-                        .AsParallel()
-                        .AsOrdered()
-                        .WithCancellation(cts.Token)
-                        .Select(as_str =>
-                        {
-                            var as_double = double.TryParse(as_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_double) ? out_double : (double?)null;
-                            var as_int = int.TryParse(as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : (int?)null;
-                            var as_bool = as_int == 1 && as_double == 1 ? (bool?)true : (as_int == 0 && as_double == 0 ? (bool?)false : (bool?)null);
-                            if (as_bool == null && bool.TryParse(as_str, out var out_bool)) as_bool = (bool?)out_bool;
-
-                            return (as_str, as_int, as_double, as_bool);
-                        })
-                        .ToArray();
-
-
-                    var k = 0;
-
-                    // skip and don't load rank_score values
-                    k += rank_score.csv_header_values_array.Length;
-
-                    // load index_data to be able to later match this confusion_matrix instance with its index_data instance 
-                    var unrolled_index_data = new index_data(x_type, k);
-                    k += index_data.csv_header_values_array.Length;
-
-                    var grid_point = new grid_point() { cost = x_type[k++].as_double, gamma = x_type[k++].as_double, epsilon = x_type[k++].as_double, coef0 = x_type[k++].as_double, degree = x_type[k++].as_double, cv_rate = x_type[k++].as_double, };
-
-                    var cm = new confusion_matrix()
-                    {
-
-                        unrolled_index_data = unrolled_index_data,
-
-                        grid_point = grid_point,
-
-                        x_duration_grid_search = x_type[k++].as_str,
-                        x_duration_training = x_type[k++].as_str,
-                        x_duration_testing = x_type[k++].as_str,
-                        x_prediction_threshold = x_type[k++].as_double,
-                        x_prediction_threshold_class = x_type[k++].as_double,
-                        x_repetitions_index = x_type[k++].as_int ?? 0,
-                        x_outer_cv_index = x_type[k++].as_int ?? 0,
-
-                        x_class_id = x_type[k++].as_int,
-                        x_class_weight = x_type[k++].as_double,
-                        x_class_name = x_type[k++].as_str,
-                        x_class_size = x_type[k++].as_double ?? 0,
-                        x_class_training_size = x_type[k++].as_double ?? 0,
-                        x_class_testing_size = x_type[k++].as_double ?? 0,
-
-                        metrics = new metrics_box()
-                        {
-                            P = x_type[k++].as_double ?? 0,
-                            N = x_type[k++].as_double ?? 0,
-                            TP = x_type[k++].as_double ?? 0,
-                            FP = x_type[k++].as_double ?? 0,
-                            TN = x_type[k++].as_double ?? 0,
-                            FN = x_type[k++].as_double ?? 0,
-                            TPR = x_type[k++].as_double ?? 0,
-                            TNR = x_type[k++].as_double ?? 0,
-                            PPV = x_type[k++].as_double ?? 0,
-                            Precision = x_type[k++].as_double ?? 0,
-                            Prevalence = x_type[k++].as_double ?? 0,
-                            MCR = x_type[k++].as_double ?? 0,
-                            ER = x_type[k++].as_double ?? 0,
-                            NER = x_type[k++].as_double ?? 0,
-                            CNER = x_type[k++].as_double ?? 0,
-                            Kappa = x_type[k++].as_double ?? 0,
-                            Overlap = x_type[k++].as_double ?? 0,
-                            RND_ACC = x_type[k++].as_double ?? 0,
-                            Support = x_type[k++].as_double ?? 0,
-                            BaseRate = x_type[k++].as_double ?? 0,
-                            YoudenIndex = x_type[k++].as_double ?? 0,
-                            NPV = x_type[k++].as_double ?? 0,
-                            FNR = x_type[k++].as_double ?? 0,
-                            FPR = x_type[k++].as_double ?? 0,
-                            FDR = x_type[k++].as_double ?? 0,
-                            FOR = x_type[k++].as_double ?? 0,
-                            ACC = x_type[k++].as_double ?? 0,
-                            GMean = x_type[k++].as_double ?? 0,
-                            F1S = x_type[k++].as_double ?? 0,
-                            G1S = x_type[k++].as_double ?? 0,
-                            MCC = x_type[k++].as_double ?? 0,
-                            Informedness = x_type[k++].as_double ?? 0,
-                            Markedness = x_type[k++].as_double ?? 0,
-                            BalancedAccuracy = x_type[k++].as_double ?? 0,
-                            ROC_AUC_Approx_All = x_type[k++].as_double ?? 0,
-                            ROC_AUC_Approx_11p = x_type[k++].as_double ?? 0,
-                            ROC_AUC_All = x_type[k++].as_double ?? 0,
-                            PR_AUC_Approx_All = x_type[k++].as_double ?? 0,
-                            PR_AUC_Approx_11p = x_type[k++].as_double ?? 0,
-                            PRI_AUC_Approx_All = x_type[k++].as_double ?? 0,
-                            PRI_AUC_Approx_11p = x_type[k++].as_double ?? 0,
-                            AP_All = x_type[k++].as_double ?? 0,
-                            AP_11p = x_type[k++].as_double ?? 0,
-                            API_All = x_type[k++].as_double ?? 0,
-                            API_11p = x_type[k++].as_double ?? 0,
-                            Brier_Inverse_All = x_type[k++].as_double ?? 0,
-                            LRP = x_type[k++].as_double ?? 0,
-                            LRN = x_type[k++].as_double ?? 0,
-                            DOR = x_type[k++].as_double ?? 0,
-                            PrevalenceThreshold = x_type[k++].as_double ?? 0,
-                            CriticalSuccessIndex = x_type[k++].as_double ?? 0,
-                            F1B_00 = x_type[k++].as_double ?? 0,
-                            F1B_01 = x_type[k++].as_double ?? 0,
-                            F1B_02 = x_type[k++].as_double ?? 0,
-                            F1B_03 = x_type[k++].as_double ?? 0,
-                            F1B_04 = x_type[k++].as_double ?? 0,
-                            F1B_05 = x_type[k++].as_double ?? 0,
-                            F1B_06 = x_type[k++].as_double ?? 0,
-                            F1B_07 = x_type[k++].as_double ?? 0,
-                            F1B_08 = x_type[k++].as_double ?? 0,
-                            F1B_09 = x_type[k++].as_double ?? 0,
-                            F1B_10 = x_type[k++].as_double ?? 0,
-                        },
-
-                        roc_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
-                        roc_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
-                        pr_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
-                        pr_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
-                        pri_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
-                        pri_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
-                        thresholds = x_type.Length > k ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : -1).ToArray() : null,
-                        predictions = x_type.Length > k ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new prediction(a.Split('|'))).ToArray() : null,
-                    };
-
-                    return cm;
-                })
-                .Where(a => a != null)
-                .ToArray();
 
             return cm_list;
         }
 
+        private static confusion_matrix load_line(CancellationTokenSource cts, int column_offset, string line)
+        {
+            if (cts.IsCancellationRequested) return default;
 
+            var s_all = line.Split(',');
+
+            var column_count = s_all.Length - column_offset;
+
+            //todo: check why confusion matrix is missing from 'line'
+            if (column_count < csv_header_values_array.Length) return null;
+
+            var x_type = routines.x_types(cts, s_all, true);
+
+
+            var k = 0;
+
+            // skip and don't load rank_score values
+            k += rank_score.csv_header_values_array.Length;
+
+            // load index_data to be able to later match this confusion_matrix instance with its index_data instance 
+            var unrolled_index_data = new index_data(x_type, k);
+            k += index_data.csv_header_values_array.Length;
+
+
+            k = column_offset;
+
+            var grid_point = new grid_point() { cost = x_type[k++].as_double, gamma = x_type[k++].as_double, epsilon = x_type[k++].as_double, coef0 = x_type[k++].as_double, degree = x_type[k++].as_double, cv_rate = x_type[k++].as_double, };
+
+            var cm = new confusion_matrix()
+            {
+                unrolled_index_data = unrolled_index_data,
+                grid_point = grid_point,
+                x_duration_grid_search = x_type[k++].as_str,
+                x_duration_training = x_type[k++].as_str,
+                x_duration_testing = x_type[k++].as_str,
+                x_prediction_threshold = x_type[k++].as_double,
+                x_prediction_threshold_class = x_type[k++].as_double,
+                x_repetitions_index = x_type[k++].as_int ?? 0,
+                x_outer_cv_index = x_type[k++].as_int ?? 0,
+                x_class_id = x_type[k++].as_int,
+                x_class_weight = x_type[k++].as_double,
+                x_class_name = x_type[k++].as_str,
+                x_class_size = x_type[k++].as_double ?? 0,
+                x_class_training_size = x_type[k++].as_double ?? 0,
+                x_class_testing_size = x_type[k++].as_double ?? 0,
+                metrics = new metrics_box()
+                {
+                    P = x_type[k++].as_double ?? 0,
+                    N = x_type[k++].as_double ?? 0,
+                    TP = x_type[k++].as_double ?? 0,
+                    FP = x_type[k++].as_double ?? 0,
+                    TN = x_type[k++].as_double ?? 0,
+                    FN = x_type[k++].as_double ?? 0,
+                    TPR = x_type[k++].as_double ?? 0,
+                    TNR = x_type[k++].as_double ?? 0,
+                    PPV = x_type[k++].as_double ?? 0,
+                    Precision = x_type[k++].as_double ?? 0,
+                    Prevalence = x_type[k++].as_double ?? 0,
+                    MCR = x_type[k++].as_double ?? 0,
+                    ER = x_type[k++].as_double ?? 0,
+                    NER = x_type[k++].as_double ?? 0,
+                    CNER = x_type[k++].as_double ?? 0,
+                    Kappa = x_type[k++].as_double ?? 0,
+                    Overlap = x_type[k++].as_double ?? 0,
+                    RND_ACC = x_type[k++].as_double ?? 0,
+                    Support = x_type[k++].as_double ?? 0,
+                    BaseRate = x_type[k++].as_double ?? 0,
+                    YoudenIndex = x_type[k++].as_double ?? 0,
+                    NPV = x_type[k++].as_double ?? 0,
+                    FNR = x_type[k++].as_double ?? 0,
+                    FPR = x_type[k++].as_double ?? 0,
+                    FDR = x_type[k++].as_double ?? 0,
+                    FOR = x_type[k++].as_double ?? 0,
+                    ACC = x_type[k++].as_double ?? 0,
+                    GMean = x_type[k++].as_double ?? 0,
+                    F1S = x_type[k++].as_double ?? 0,
+                    G1S = x_type[k++].as_double ?? 0,
+                    MCC = x_type[k++].as_double ?? 0,
+                    Informedness = x_type[k++].as_double ?? 0,
+                    Markedness = x_type[k++].as_double ?? 0,
+                    BalancedAccuracy = x_type[k++].as_double ?? 0,
+                    ROC_AUC_Approx_All = x_type[k++].as_double ?? 0,
+                    ROC_AUC_Approx_11p = x_type[k++].as_double ?? 0,
+                    ROC_AUC_All = x_type[k++].as_double ?? 0,
+                    PR_AUC_Approx_All = x_type[k++].as_double ?? 0,
+                    PR_AUC_Approx_11p = x_type[k++].as_double ?? 0,
+                    PRI_AUC_Approx_All = x_type[k++].as_double ?? 0,
+                    PRI_AUC_Approx_11p = x_type[k++].as_double ?? 0,
+                    AP_All = x_type[k++].as_double ?? 0,
+                    AP_11p = x_type[k++].as_double ?? 0,
+                    API_All = x_type[k++].as_double ?? 0,
+                    API_11p = x_type[k++].as_double ?? 0,
+                    Brier_Inverse_All = x_type[k++].as_double ?? 0,
+                    LRP = x_type[k++].as_double ?? 0,
+                    LRN = x_type[k++].as_double ?? 0,
+                    DOR = x_type[k++].as_double ?? 0,
+                    PrevalenceThreshold = x_type[k++].as_double ?? 0,
+                    CriticalSuccessIndex = x_type[k++].as_double ?? 0,
+                    F1B_00 = x_type[k++].as_double ?? 0,
+                    F1B_01 = x_type[k++].as_double ?? 0,
+                    F1B_02 = x_type[k++].as_double ?? 0,
+                    F1B_03 = x_type[k++].as_double ?? 0,
+                    F1B_04 = x_type[k++].as_double ?? 0,
+                    F1B_05 = x_type[k++].as_double ?? 0,
+                    F1B_06 = x_type[k++].as_double ?? 0,
+                    F1B_07 = x_type[k++].as_double ?? 0,
+                    F1B_08 = x_type[k++].as_double ?? 0,
+                    F1B_09 = x_type[k++].as_double ?? 0,
+                    F1B_10 = x_type[k++].as_double ?? 0,
+                },
+                roc_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
+                roc_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
+                pr_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
+                pr_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
+                pri_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
+                pri_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
+                thresholds = x_type.Length > k ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : -1).ToArray() : null,
+                predictions = x_type.Length > k ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new prediction(a.Split('|'))).ToArray() : null,
+            };
+
+            return cm;
+        }
 
 
         internal void calculate_metrics(CancellationTokenSource cts, metrics_box metrics, bool calculate_auc, prediction[] prediction_list)
@@ -504,8 +518,9 @@ namespace svm_fs_batch
 
 
         internal static readonly string[] csv_header_values_array =
-                index_data.csv_header_values_array.Select(a => $"id_{a}").ToArray()
-                .Concat(grid_point.csv_header_values_array.Select(a => $"gp_{a}").ToArray())
+                //index_data.csv_header_values_array.Select(a => $"id_{a}").ToArray()
+                //.Concat(grid_point.csv_header_values_array.Select(a => $"gp_{a}").ToArray())
+                (grid_point.csv_header_values_array.Select(a => $"gp_{a}").ToArray())
                 .Concat(
                 new string[]
                 {
@@ -541,11 +556,13 @@ namespace svm_fs_batch
         internal static readonly string csv_header_string = string.Join(",", csv_header_values_array);
 
 
-        internal string[] csv_values_array(bool summary = false)
+        internal string[] csv_values_array()//bool summary = false)
         {
+            const bool summary = false;
             return
-                (unrolled_index_data?.csv_values_array() ?? index_data.empty.csv_values_array())
-                .Concat(grid_point?.csv_values_array() ?? grid_point.empty.csv_values_array())
+                //(unrolled_index_data?.csv_values_array() ?? index_data.empty.csv_values_array())
+                //.Concat(grid_point?.csv_values_array() ?? grid_point.empty.csv_values_array())
+                (grid_point?.csv_values_array() ?? grid_point.empty.csv_values_array())
                 .Concat(new string[]
                 {
                     x_duration_grid_search ?? "",
@@ -553,10 +570,10 @@ namespace svm_fs_batch
                     x_duration_testing ?? "",
                     x_prediction_threshold?.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_prediction_threshold_class?.ToString("G17", NumberFormatInfo.InvariantInfo),
-                    x_repetitions_index.ToString(CultureInfo.InvariantCulture),
-                    x_outer_cv_index.ToString(CultureInfo.InvariantCulture),
+                    x_repetitions_index.ToString(NumberFormatInfo.InvariantInfo),
+                    x_outer_cv_index.ToString(NumberFormatInfo.InvariantInfo),
 
-                    x_class_id?.ToString(CultureInfo.InvariantCulture),
+                    x_class_id?.ToString(NumberFormatInfo.InvariantInfo),
                     x_class_weight?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                     x_class_name ?? "",
                     x_class_size.ToString("G17", NumberFormatInfo.InvariantInfo),
@@ -572,7 +589,7 @@ namespace svm_fs_batch
                     !summary ? pri_xy_str_all ?? "" : "",
                     !summary ? pri_xy_str_11p ?? "" : "",
                     !summary ? string.Join(';',thresholds?.Select(a=> $"{a:G17}").ToArray() ?? Array.Empty<string>()) : "",
-                    !summary ? string.Join(";", predictions?.Select(a=> string.Join("|", a?.csv_values_array() ?? prediction.empty.csv_values_array())).ToArray() ?? Array.Empty<string>()) : "",
+                    !summary ? string.Join(";", predictions?.Select(a=> string.Join("|", (a?.csv_values_array() ?? prediction.empty.csv_values_array()))).ToArray() ?? Array.Empty<string>()) : "",
                 })
                 .Select(a => a?.Replace(",", ";", StringComparison.OrdinalIgnoreCase) ?? "")
                 .ToArray();

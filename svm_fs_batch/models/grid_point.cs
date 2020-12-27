@@ -21,6 +21,26 @@ namespace svm_fs_batch
 
         }
 
+        public grid_point(double? cost, double? gamma, double? epsilon, double? coef0, double? degree, double? cv_rate)
+        {
+            this.cost = cost;
+            this.gamma = gamma;
+            this.epsilon = epsilon;
+            this.coef0 = coef0;
+            this.degree = degree;
+            this.cv_rate = cv_rate;
+        }
+
+        //public grid_point((double? cost, double? gamma, double? epsilon, double? coef0, double? degree, double? cv_rate) point)
+        //{
+        //    this.cost = point.cost;
+        //    this.gamma = point.gamma;
+        //    this.epsilon = point.epsilon;
+        //    this.coef0 = point.coef0;
+        //    this.degree = point.degree;
+        //    this.cv_rate = point.cv_rate;
+        //}
+
         internal grid_point(grid_point grid_point)
         {
             if (grid_point == null) return;

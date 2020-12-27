@@ -10,77 +10,62 @@ namespace svm_fs_batch
         internal static readonly index_data empty = new index_data();
 
         internal dataset_group_key group_key;
+        internal int iteration_index = -1;
         internal int group_array_index = -1;
         internal int total_groups = -1;
-        internal string group_folder;
-
-        //internal bool is_job_completed;
         internal program.direction selection_direction;
         internal string experiment_name;
-        internal int unrolled_whole_index = -1;
-        internal int unrolled_partition_index = -1;
-        internal int unrolled_instance_id = -1;
-        internal int iteration_index = -1;
-        
-        internal bool calc_11p_thresholds = false;
         internal int repetitions = 5;
         internal int outer_cv_folds = 5;
         internal int outer_cv_folds_to_run = 1;
         internal int inner_cv_folds = 5;
-
         internal routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc;
         internal routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf;
         internal scaling.scale_function scale_function = scaling.scale_function.rescale;
-
-        internal int total_whole_indexes = -1;
-        internal int total_partition_indexes = -1;
-        internal int total_instances = -1;
-
+        internal bool calc_11p_thresholds = false;
         internal int num_groups;
         internal int num_columns;
         internal int[] group_array_indexes;
         internal int[] column_array_indexes;
-        internal (int class_id, double class_weight)[] class_weights = null;
+        internal (int class_id, double class_weight)[] class_weights;
         internal (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] class_folds;
         internal (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_training_class_folds;
 
 
+        internal string group_folder;
+        internal int unrolled_whole_index = -1;
+        internal int unrolled_partition_index = -1;
+        internal int unrolled_instance_id = -1;
+        internal int total_whole_indexes = -1;
+        internal int total_partition_indexes = -1;
+        internal int total_instances = -1;
+
+
         public static readonly string[] csv_header_values_array =
-            dataset_group_key.csv_header_values_array.Select(a => $@"gk_{a}").ToArray()
+            dataset_group_key.csv_header_values_array.Select(a=>"id_"+a).ToArray()
                 .Concat(
             new string[]
            {
-               nameof(group_array_index),
-               nameof(total_groups),
-               nameof(group_folder),
-
-               //nameof(is_job_completed),
-               nameof(selection_direction),
-               nameof(experiment_name),
-               nameof(unrolled_whole_index),
-               nameof(unrolled_partition_index),
-               nameof(unrolled_instance_id),
-               nameof(iteration_index),
-               
-               
-               nameof(calc_11p_thresholds),
-               nameof(repetitions),
-               nameof(outer_cv_folds),
-               nameof(outer_cv_folds_to_run),
-               nameof(inner_cv_folds),
-               nameof(svm_type),
-               nameof(svm_kernel),
-               nameof(scale_function),
-               nameof(total_whole_indexes),
-               nameof(total_partition_indexes),
-               nameof(total_instances),
-               nameof(num_groups),
-               nameof(num_columns),
-               nameof(group_array_indexes),
-               nameof(column_array_indexes),
-               nameof(class_weights),
-               nameof(class_folds),
-               nameof(down_sampled_training_class_folds),
+               "id_"+nameof(iteration_index                        ),
+               "id_"+nameof(group_array_index                      ),
+               "id_"+nameof(total_groups                           ),
+               "id_"+nameof(selection_direction                    ),
+               "id_"+nameof(experiment_name                        ),
+               "id_"+nameof(repetitions                            ),
+               "id_"+nameof(outer_cv_folds                         ),
+               "id_"+nameof(outer_cv_folds_to_run                  ),
+               "id_"+nameof(inner_cv_folds                         ),
+               "id_"+nameof(svm_type                               ),
+               "id_"+nameof(svm_kernel                             ),
+               "id_"+nameof(scale_function                         ),
+               "id_"+nameof(calc_11p_thresholds                    ),
+               "id_"+nameof(num_groups                             ),
+               "id_"+nameof(num_columns                            ),
+               "id_"+nameof(group_array_indexes                    ),
+               "id_"+nameof(column_array_indexes                   ),
+               "id_"+nameof(class_weights                          ),
+               "id_"+nameof(class_folds                            ),
+               "id_"+nameof(down_sampled_training_class_folds      ),
            })
                 .ToArray();
 
@@ -89,36 +74,25 @@ namespace svm_fs_batch
 
         public string[] csv_values_array()
         {
-            var x1 = group_key?.csv_values_array() ?? dataset_group_key.empty.csv_values_array();
+            var x1 = (group_key?.csv_values_array() ?? dataset_group_key.empty.csv_values_array());
 
             var x2 = new string[]
             {
-                $@"{group_array_index          }",
-                $@"{total_groups               }",
-                $@"{group_folder               }",
-
-                //$@"{(is_job_completed?1:0)     }"     ,
-                $@"{selection_direction        }",
-                $@"{experiment_name      }",
-                $@"{unrolled_whole_index       }",
-                $@"{unrolled_partition_index   }",
-                $@"{unrolled_instance_id       }",
-                $@"{iteration_index            }",
-                
-                
-                $@"{(calc_11p_thresholds?1:0)  }",
-                $@"{repetitions                }",
-                $@"{outer_cv_folds             }",
-                $@"{outer_cv_folds_to_run      }",
-                $@"{inner_cv_folds             }",
-                $@"{svm_type                   }",
-                $@"{svm_kernel                 }",
-                $@"{scale_function             }",
-                $@"{total_whole_indexes        }",
-                $@"{total_partition_indexes    }",
-                $@"{total_instances            }",
-                $@"{num_groups                 }",
-                $@"{num_columns                }",
+                $@"{iteration_index                  }",
+                $@"{group_array_index                }",
+                $@"{total_groups                     }",
+                $@"{selection_direction              }",
+                $@"{experiment_name                  }",
+                $@"{repetitions                      }",
+                $@"{outer_cv_folds                   }",
+                $@"{outer_cv_folds_to_run            }",
+                $@"{inner_cv_folds                   }",
+                $@"{svm_type                         }",
+                $@"{svm_kernel                       }",
+                $@"{scale_function                   }",
+                $@"{(calc_11p_thresholds?1:0)        }",
+                $@"{num_groups                       }",
+                $@"{num_columns                      }",
                 $@"{string.Join(";", group_array_indexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";", column_array_indexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";",class_weights?.Select(a=> $"{a.class_id}:{a.class_weight:G17}").ToArray() ?? Array.Empty<string>())}",
@@ -138,21 +112,7 @@ namespace svm_fs_batch
 
         public index_data(string[] csv_line, int column_offset = 0)
         {
-            set_values(csv_line
-                .Skip(column_offset)
-                .AsParallel()
-                .AsOrdered()
-                //.WithCancellation(cts.Token)
-                .Select(as_str =>
-                {
-                    var as_double = double.TryParse(as_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_double) ? out_double : (double?)null;
-                    var as_int = int.TryParse(as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : (int?)null;
-                    var as_bool = as_int == 1 && as_double == 1 ? (bool?)true : (as_int == 0 && as_double == 0 ? (bool?)false : (bool?)null);
-                    if (as_bool == null && bool.TryParse(as_str, out var out_bool)) as_bool = (bool?)out_bool;
-
-                    return (as_str, as_int, as_double, as_bool);
-                })
-                .ToArray());
+            set_values(routines.x_types(null, csv_line.Skip(column_offset).ToArray(), false), 0);
         }
 
         internal index_data((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type, int column_offset = 0)
@@ -163,39 +123,28 @@ namespace svm_fs_batch
         internal void set_values((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type, int column_offset = 0)
         {
             var k = column_offset;
-            
+
+            // todo: lookup actual group key instance
             group_key = new dataset_group_key(x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, int.Parse(x_type[k++].as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo));
+            if (group_key.value == default) group_key = null;
+
+            iteration_index = x_type[k++].as_int ?? -1;
             group_array_index = x_type[k++].as_int ?? -1;
             total_groups = x_type[k++].as_int ?? -1;
-            group_folder = x_type[k++].as_str;
-
-            //is_job_completed = x_type[k++].as_bool ?? default;
             selection_direction = Enum.Parse<program.direction>(x_type[k++].as_str, true);
             experiment_name = x_type[k++].as_str;
-            unrolled_whole_index = x_type[k++].as_int ?? -1;
-            unrolled_partition_index = x_type[k++].as_int ?? -1;
-            unrolled_instance_id = x_type[k++].as_int ?? -1;
-            iteration_index = x_type[k++].as_int ?? -1;
-            
-            calc_11p_thresholds = x_type[k++].as_bool ?? default;
             repetitions = x_type[k++].as_int ?? -1;
             outer_cv_folds = x_type[k++].as_int ?? -1;
             outer_cv_folds_to_run = x_type[k++].as_int ?? -1;
             inner_cv_folds = x_type[k++].as_int ?? -1;
-
             svm_type = Enum.Parse<routines.libsvm_svm_type>(x_type[k++].as_str, true);
             svm_kernel = Enum.Parse<routines.libsvm_kernel_type>(x_type[k++].as_str, true);
             scale_function = Enum.Parse<scaling.scale_function>(x_type[k++].as_str, true);
-            
-            total_whole_indexes = x_type[k++].as_int ?? -1;
-            total_partition_indexes = x_type[k++].as_int ?? -1;
-            total_instances = x_type[k++].as_int ?? -1;
-
+            calc_11p_thresholds = x_type[k++].as_bool ?? default;
             num_groups = x_type[k++].as_int ?? -1;
             num_columns = x_type[k++].as_int ?? -1;
             group_array_indexes = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
             column_array_indexes = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
-
             class_weights = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => { var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries); return (int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), double.Parse(b[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo)); }).ToArray();
 
             //  ;:|~/
@@ -285,6 +234,86 @@ namespace svm_fs_batch
             return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : "")).ToList()) + $@"]";
         }
 
+        internal static index_data find_reference(index_data[] list, index_data data)
+        {
+            if (data == null) return null;
+
+            // find proper index_data instance for this newly loaded confusion_matrix instance
+            var id = list
+                .FirstOrDefault(id2 =>
+                    id2.iteration_index == data.iteration_index &&
+                    id2.group_array_index == data.group_array_index &&
+                    id2.total_groups == data.total_groups &&
+                    id2.selection_direction == data.selection_direction &&
+                    id2.calc_11p_thresholds == data.calc_11p_thresholds &&
+                    id2.svm_type == data.svm_type &&
+                    id2.svm_kernel == data.svm_kernel &&
+                    id2.scale_function == data.scale_function &&
+                    id2.repetitions == data.repetitions &&
+                    id2.outer_cv_folds == data.outer_cv_folds &&
+                    id2.outer_cv_folds_to_run == data.outer_cv_folds_to_run &&
+                    id2.inner_cv_folds == data.inner_cv_folds &&
+                    id2.group_key == data.group_key &&
+                    id2.experiment_name == data.experiment_name &&
+                    id2.num_groups == data.num_groups &&
+                    id2.num_columns == data.num_columns &&
+                    (((id2.group_array_indexes == null || id2.group_array_indexes.Length == 0) && (data.group_array_indexes == null || data.group_array_indexes.Length == 0)) || (id2.group_array_indexes ?? Array.Empty<int>()).SequenceEqual(data.group_array_indexes)) &&
+                    (((id2.column_array_indexes == null || id2.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || (id2.column_array_indexes ?? Array.Empty<int>()).SequenceEqual(data.column_array_indexes)) &&
+                    (((id2.class_weights == null || id2.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || (id2.class_weights ?? Array.Empty<(int class_id, double class_weight)>()).SequenceEqual(data.class_weights))
+                );
+//#if DEBUG
+//
+//            if (id == null)
+//            {
+//                var idx = list
+//                    .Select((id2, i) =>
+//                        (
+//                            index: i,
+//                            sum:
+//                                (id2.iteration_index == data.iteration_index ? 1 : 0) +
+//                                (id2.group_array_index == data.group_array_index ? 1 : 0) +
+//                                (id2.total_groups == data.total_groups ? 1 : 0) +
+//                                (id2.selection_direction == data.selection_direction ? 1 : 0) +
+//                                (id2.calc_11p_thresholds == data.calc_11p_thresholds ? 1 : 0) +
+//                                (id2.svm_type == data.svm_type ? 1 : 0) +
+//                                (id2.svm_kernel == data.svm_kernel ? 1 : 0) +
+//                                (id2.scale_function == data.scale_function ? 1 : 0) +
+//                                (id2.repetitions == data.repetitions ? 1 : 0) +
+//                                (id2.outer_cv_folds == data.outer_cv_folds ? 1 : 0) +
+//                                (id2.outer_cv_folds_to_run == data.outer_cv_folds_to_run ? 1 : 0) +
+//                                (id2.inner_cv_folds == data.inner_cv_folds ? 1 : 0) +
+//                                (id2.group_key == data.group_key ? 1 : 0) +
+//                                ((((id2.group_array_indexes == null || id2.group_array_indexes.Length == 0) && (data.group_array_indexes == null || data.group_array_indexes.Length == 0)) || id2.group_array_indexes.SequenceEqual(data.group_array_indexes)) ? 1 : 0) +
+//                                ((((id2.column_array_indexes == null || id2.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || id2.column_array_indexes.SequenceEqual(data.column_array_indexes)) ? 1 : 0) +
+//                                ((((id2.class_weights == null || id2.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || id2.class_weights.SequenceEqual(data.class_weights)) ? 1 : 0)
+//                        )
+//                    )
+//                    .ToArray();
+//                var max_id = list[idx.OrderByDescending(a => a.sum).First().index];
+//
+//                if (!(max_id.group_key == data.group_key)) throw new Exception();
+//
+//                if (!(max_id.iteration_index == data.iteration_index)) throw new Exception();
+//                if (!(max_id.group_array_index == data.group_array_index)) throw new Exception();
+//                if (!(max_id.total_groups == data.total_groups)) throw new Exception();
+//                if (!(max_id.selection_direction == data.selection_direction)) throw new Exception();
+//                if (!(max_id.calc_11p_thresholds == data.calc_11p_thresholds)) throw new Exception();
+//                if (!(max_id.svm_type == data.svm_type)) throw new Exception();
+//                if (!(max_id.svm_kernel == data.svm_kernel)) throw new Exception();
+//                if (!(max_id.scale_function == data.scale_function)) throw new Exception();
+//                if (!(max_id.repetitions == data.repetitions)) throw new Exception();
+//                if (!(max_id.outer_cv_folds == data.outer_cv_folds)) throw new Exception();
+//                if (!(max_id.outer_cv_folds_to_run == data.outer_cv_folds_to_run)) throw new Exception();
+//                if (!(max_id.inner_cv_folds == data.inner_cv_folds)) throw new Exception();
+//
+//                if (!((((max_id.group_array_indexes == null || max_id.group_array_indexes.Length == 0) && (data.group_array_indexes == null || data.group_array_indexes.Length == 0)) || max_id.group_array_indexes.SequenceEqual(data.group_array_indexes)))) throw new Exception();
+//                if (!((((max_id.column_array_indexes == null || max_id.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || max_id.column_array_indexes.SequenceEqual(data.column_array_indexes)))) throw new Exception();
+//                if (!((((max_id.class_weights == null || max_id.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || max_id.class_weights.SequenceEqual(data.class_weights)))) throw new Exception();
+//            }
+//#endif
+            return id;
+        }
+
         public index_data()
         {
 
@@ -296,7 +325,9 @@ namespace svm_fs_batch
         {
             if (index_data == null) return;
 
-            group_key = new dataset_group_key(index_data.group_key);
+            if (index_data.group_key!=null) group_key = new dataset_group_key(index_data.group_key);
+            if (group_key.value == default) group_key = null;
+
             group_array_index = index_data.group_array_index;
             total_groups = index_data.total_groups;
             group_folder = index_data.group_folder;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 
@@ -126,6 +127,37 @@ namespace svm_fs_batch
         //    }
         //}
 
+        internal static (string as_str, int? as_int, double? as_double, bool? as_bool)[] x_types(CancellationTokenSource cts, string[] values, bool as_parallel = false)
+        {
+            var x_type = as_parallel ? values
+                .AsParallel()
+                .AsOrdered()
+                .WithCancellation(cts.Token)
+                .Select(as_str =>
+                {
+                    var as_double = double.TryParse(as_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_double) ? out_double : (double?)null;
+                    var as_int = int.TryParse(as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : (int?)null;
+                    var as_bool = as_int == 1 && as_double == 1 ? (bool?)true : (as_int == 0 && as_double == 0 ? (bool?)false : (bool?)null);
+                    if (as_bool == null && bool.TryParse(as_str, out var out_bool)) as_bool = (bool?)out_bool;
+
+                    return (as_str, as_int, as_double, as_bool);
+                })
+                .ToArray() :
+            values
+                .Select(as_str =>
+                {
+                    var as_double = double.TryParse(as_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_double) ? out_double : (double?)null;
+                    var as_int = int.TryParse(as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : (int?)null;
+                    var as_bool = as_int == 1 && as_double == 1 ? (bool?)true : (as_int == 0 && as_double == 0 ? (bool?)false : (bool?)null);
+                    if (as_bool == null && bool.TryParse(as_str, out var out_bool)) as_bool = (bool?)out_bool;
+
+                    return (as_str, as_int, as_double, as_bool);
+                })
+                .ToArray();
+
+            return x_type;
+        }
+
         internal static void shuffle(this int[] values, Random random)
         {
             var max_index = values.Length - 1;
@@ -143,11 +175,15 @@ namespace svm_fs_batch
         internal static (
             (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] class_folds,
             (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_training_class_folds
-            ) folds(CancellationTokenSource cts, (int class_id, int class_size)[] class_sizes, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+            ) folds(CancellationTokenSource cts, (int class_id, int class_size)[] class_sizes, int repetitions, int outer_cv_folds, bool as_parallel = false)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             if (cts.IsCancellationRequested) return default;
 
-            var class_folds = class_sizes.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds/*, outer_cv_folds_to_run, fold_size_limit*/))).ToArray();
+            var class_folds = as_parallel
+                ?
+                class_sizes.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds))).ToArray()
+                :
+                class_sizes.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds))).ToArray();
 
             var down_sampled_training_class_folds = class_folds.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: a.folds?.Select(b =>
                     {

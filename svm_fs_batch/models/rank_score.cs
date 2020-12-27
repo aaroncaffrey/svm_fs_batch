@@ -16,12 +16,12 @@
 
         internal static readonly string[] csv_header_values_array = new string[]
         {
-            nameof(iteration_index),
-            nameof(group_array_index),
-            nameof(fs_score),
-            nameof(fs_score_percentile),
-            nameof(fs_rank_index),
-            nameof(fs_rank_index_percentile),
+            "rs_"+nameof(iteration_index),
+            "rs_"+nameof(group_array_index),
+            "rs_"+nameof(fs_score),
+            "rs_"+nameof(fs_score_percentile),
+            "rs_"+nameof(fs_rank_index),
+            "rs_"+nameof(fs_rank_index_percentile),
         };
 
         internal string[] csv_values_array()

@@ -43,21 +43,22 @@ namespace svm_fs_batch
                     var train_grid_stderr_file = "";
 
                     train_grid_search_result = grid.grid_parameter_search(
-                        cts,
-                        settings.libsvm_train_runtime,
-                        input.grid_fn,
-                        input.train_fn,
-                        train_grid_stdout_file,
-                        train_grid_stderr_file,
-                        unrolled_index.class_weights,
-                        unrolled_index.svm_type,
-                        unrolled_index.svm_kernel,
-                        unrolled_index.repetitions,
-                        input.repetitions_index,
-                        unrolled_index.outer_cv_folds,
-                        input.outer_cv_index,
-                        unrolled_index.inner_cv_folds,
-                        libsvm_train_probability_estimates);
+                        cts: cts,
+                        as_parallel: true,
+                        libsvm_train_exe: settings.libsvm_train_runtime,
+                        cache_train_grid_csv: input.grid_fn,
+                        training_file: input.train_fn,
+                        train_stdout_file: train_grid_stdout_file,
+                        train_stderr_file: train_grid_stderr_file,
+                        class_weights: unrolled_index.class_weights,
+                        svm_type: unrolled_index.svm_type,
+                        svm_kernel: unrolled_index.svm_kernel,
+                        repetitions: unrolled_index.repetitions,
+                        repetitions_index: input.repetitions_index,
+                        outer_cv_folds: unrolled_index.outer_cv_folds,
+                        outer_cv_index: input.outer_cv_index,
+                        inner_cv_folds: unrolled_index.inner_cv_folds,
+                        probability_estimates: libsvm_train_probability_estimates);
                 }
 
                 sw_grid.Stop();
@@ -155,7 +156,8 @@ namespace svm_fs_batch
             bool overwrite_cache = false,
             bool save_group_cache = false,
             bool save_full = false,
-            bool save_summary = false
+            bool save_summary = false,
+            bool as_parallel = true
         )
         {
             const string method_name = nameof(outer_cross_validation);
@@ -180,13 +182,21 @@ namespace svm_fs_batch
 
 
             // 2. run libsvm
-            var outer_cv_inputs_result = outer_cv_inputs
-                .Where(a => a.outer_cv_index != -1 && a.repetitions_index != -1)
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cts.Token)
-                .Select(outer_cv_input => outer_cross_validation_single(cts, dataset, unrolled_index_data, outer_cv_input, make_outer_cv_confusion_matrices, overwrite_cache, save_group_cache, save_full, save_summary))
-                .ToArray();
+            var outer_cv_inputs_result =
+                as_parallel
+                    ?
+                    outer_cv_inputs
+                        .Where(a => a.outer_cv_index != -1 && a.repetitions_index != -1)
+                        .AsParallel()
+                        .AsOrdered()
+                        .WithCancellation(cts.Token)
+                        .Select(outer_cv_input => outer_cross_validation_single(cts, dataset, unrolled_index_data, outer_cv_input, make_outer_cv_confusion_matrices, overwrite_cache, save_group_cache, save_full, save_summary))
+                        .ToArray()
+                    :
+                    outer_cv_inputs
+                        .Where(a => a.outer_cv_index != -1 && a.repetitions_index != -1)
+                        .Select(outer_cv_input => outer_cross_validation_single(cts, dataset, unrolled_index_data, outer_cv_input, make_outer_cv_confusion_matrices, overwrite_cache, save_group_cache, save_full, save_summary))
+                        .ToArray();
 
             // 1a. the ocvi index -1 is merged data
             var merged_cv_input = outer_cv_inputs.First(a => a.outer_cv_index == -1);
@@ -201,7 +211,7 @@ namespace svm_fs_batch
             var merged_test_class_sample_id_list = merged_cv_input.test_fold_indexes.SelectMany(a => a.test_indexes).ToArray();
 
             var prediction_file_data = performance_measure.load_prediction_file(cts, merged_cv_input.test_text, null, merged_prediction_text, unrolled_index_data.calc_11p_thresholds, merged_test_class_sample_id_list);
-            for (var cm_index = 0; cm_index < prediction_file_data.cm_list.Length; cm_index++) { prediction_file_data.cm_list[cm_index].unrolled_index_data = unrolled_index_data; }
+            //for (var cm_index = 0; cm_index < prediction_file_data.cm_list.Length; cm_index++) { prediction_file_data.cm_list[cm_index].unrolled_index_data = unrolled_index_data; }
 
             var mcv_cm = prediction_file_data.cm_list;
 
@@ -255,7 +265,8 @@ namespace svm_fs_batch
                 dataset_loader dataset,
                 //int[] column_indexes,
                 //string group_folder,
-                index_data unrolled_index
+                index_data unrolled_index,
+                bool as_parallel = false
                 )
         {
             const string method_name = nameof(make_outer_cv_inputs);
@@ -293,82 +304,39 @@ namespace svm_fs_batch
             }
             if (r_o_indexes_index < r_o_indexes.Length) throw new Exception();
 
-            var ocv_data = r_o_indexes
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cts.Token)
-                .Select(r_o_index =>
-                {
-                    var repetitions_index = r_o_index.repetitions_index;
-                    var outer_cv_index = r_o_index.outer_cv_index;
-
-                    var filename = Path.Combine(unrolled_index.group_folder, $@"o_{program.get_item_filename(unrolled_index, repetitions_index, outer_cv_index)}");
-                    var train_fn = $@"{filename}.train.libsvm";
-                    var grid_fn = $@"{filename}.grid.libsvm";
-                    var model_fn = $@"{filename}.model.libsvm";
-                    var test_fn = $@"{filename}.test.libsvm";
-                    var predict_fn = $@"{filename}.predict.libsvm";
-                    var cm_fn1 = $@"{filename}_full.cm.csv";
-                    var cm_fn2 = $@"{filename}_summary.cm.csv";
-
-                    var train_fold_indexes = unrolled_index.down_sampled_training_class_folds/* down sample for training */
+            var ocv_data =
+                as_parallel ?
+                    r_o_indexes
                         .AsParallel()
                         .AsOrdered()
                         .WithCancellation(cts.Token)
-                        .Select(a =>
-                            (
-                                a.class_id,
-                                train_indexes: a.folds
-                                    .Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index != outer_cv_index/* do not select test fold */)
-                                    .SelectMany(b => b.class_sample_indexes)
-                                    .OrderBy(b => b)
-                                    .ToArray()
-                            )
-                        ).ToArray();
+                        .Select(r_o_index => make_outer_cv_inputs_single(cts, dataset, unrolled_index, as_parallel, r_o_index, preserve_fid))
+                        .ToArray()
+                :
+                    r_o_indexes
+                        .Select(r_o_index => make_outer_cv_inputs_single(cts, dataset, unrolled_index, as_parallel, r_o_index, preserve_fid))
+                        .ToArray();
 
-                    var train_sizes = train_fold_indexes.Select(a => (class_id: a.class_id, train_size: a.train_indexes?.Length ?? 0)).ToArray();
-                    var train_row_values = dataset.get_row_features(cts, train_fold_indexes, unrolled_index.column_array_indexes);
-                    var train_scaling = dataset_loader.get_scaling_params(train_row_values, unrolled_index.column_array_indexes);
-                    var train_row_scaled_values = dataset_loader.get_scaled_rows(train_row_values, /*column_indexes,*/ train_scaling, unrolled_index.scale_function);
-                    var train_text = train_row_scaled_values.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? unrolled_index.column_array_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+            if (as_parallel)
+            {
+                Parallel.ForEach(ocv_data,
+                    item =>
+                    {
+                        if (cts.IsCancellationRequested) return;
 
-                    //var v = train_fold_indexes.Select(a => a.indexes.Select(ix => dataset.value_list.First(b => b.class_id == a.class_id).val_list[ix].row_comment).ToArray()).ToArray();
-
-
-                    var test_fold_indexes = unrolled_index
-                        .class_folds/* natural distribution for testing */
-                        .AsParallel()
-                        .AsOrdered()
-                        .WithCancellation(cts.Token)
-                        .Select(a =>
-                            (
-                                a.class_id,
-                                test_indexes: a.folds
-                                    .Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index == outer_cv_index/* select only test fold */)
-                                    .SelectMany(b => b.class_sample_indexes)
-                                    .OrderBy(b => b)
-                                    .ToArray()
-                            )
-                        ).ToArray();
-
-                    var test_sizes = test_fold_indexes.Select(a => (class_id: a.class_id, test_size: a.test_indexes?.Length ?? 0)).ToArray();
-                    var test_row_values = dataset.get_row_features(cts, test_fold_indexes, unrolled_index.column_array_indexes);
-                    var test_scaling = train_scaling; /* scale test data with training data */
-                    var test_row_scaled_values = dataset_loader.get_scaled_rows(test_row_values, /*column_indexes,*/ test_scaling, unrolled_index.scale_function);
-                    var test_text = test_row_scaled_values.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? unrolled_index.column_array_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
-
-                    return (repetitions_index, outer_cv_index, train_fn, grid_fn, model_fn, test_fn, predict_fn, cm_fn1, cm_fn2, train_text, test_text, train_sizes, test_sizes, train_fold_indexes, test_fold_indexes);
-                })
-                .ToArray();
-
-            Parallel.ForEach(ocv_data,
-                item =>
+                        io_proxy.WriteAllLines(cts, item.train_fn, item.train_text);
+                        io_proxy.WriteAllLines(cts, item.test_fn, item.test_text);
+                    });
+            } else
+            {
+                foreach (var item in ocv_data)
                 {
-                    if (cts.IsCancellationRequested) return;
+                    if (cts.IsCancellationRequested) break;
 
                     io_proxy.WriteAllLines(cts, item.train_fn, item.train_text);
                     io_proxy.WriteAllLines(cts, item.test_fn, item.test_text);
-                });
+                }
+            }
 
             var merged_train_text = ocv_data.SelectMany(a => a.train_text).ToArray();
             var merged_test_text = ocv_data.SelectMany(a => a.test_text).ToArray();
@@ -423,6 +391,66 @@ namespace svm_fs_batch
             return ocv_data;
         }
 
+        private static (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int train_size)[] train_sizes, (int class_id, int test_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) make_outer_cv_inputs_single(CancellationTokenSource cts, dataset_loader dataset, index_data unrolled_index, bool as_parallel, (int repetitions_index, int outer_cv_index) r_o_index, bool preserve_fid)
+        {
+            var repetitions_index = r_o_index.repetitions_index;
+            var outer_cv_index = r_o_index.outer_cv_index;
+
+            var filename = Path.Combine(unrolled_index.group_folder, $@"o_{program.get_item_filename(unrolled_index, repetitions_index, outer_cv_index)}");
+            var train_fn = $@"{filename}.train.libsvm";
+            var grid_fn = $@"{filename}.grid.libsvm";
+            var model_fn = $@"{filename}.model.libsvm";
+            var test_fn = $@"{filename}.test.libsvm";
+            var predict_fn = $@"{filename}.predict.libsvm";
+            var cm_fn1 = $@"{filename}_full.cm.csv";
+            var cm_fn2 = $@"{filename}_summary.cm.csv";
+
+            var train_fold_indexes = as_parallel
+                ? unrolled_index.down_sampled_training_class_folds /* down sample for training */
+                    .AsParallel()
+                    .AsOrdered()
+                    .WithCancellation(cts.Token)
+                    .Select(a => (a.class_id, train_indexes: a.folds.Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index != outer_cv_index /* do not select test fold */).SelectMany(b => b.class_sample_indexes).OrderBy(b => b).ToArray()))
+                    .ToArray()
+                : unrolled_index.down_sampled_training_class_folds /* down sample for training */
+                    .Select(a => (a.class_id, train_indexes: a.folds.Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index != outer_cv_index /* do not select test fold */).SelectMany(b => b.class_sample_indexes).OrderBy(b => b).ToArray()))
+                    .ToArray();
+
+            var train_sizes = train_fold_indexes.Select(a => (class_id: a.class_id, train_size: a.train_indexes?.Length ?? 0)).ToArray();
+            var train_row_values = dataset.get_row_features(cts, train_fold_indexes, unrolled_index.column_array_indexes);
+            var train_scaling = dataset_loader.get_scaling_params(train_row_values, unrolled_index.column_array_indexes);
+            var train_row_scaled_values = dataset_loader.get_scaled_rows(train_row_values, /*column_indexes,*/ train_scaling, unrolled_index.scale_function);
+            var train_text = as_parallel ? 
+                train_row_scaled_values.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(row => $@"{(int) row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? unrolled_index.column_array_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray() 
+                : 
+                train_row_scaled_values.Select(row => $@"{(int) row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? unrolled_index.column_array_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+
+            //var v = train_fold_indexes.Select(a => a.indexes.Select(ix => dataset.value_list.First(b => b.class_id == a.class_id).val_list[ix].row_comment).ToArray()).ToArray();
+
+
+            var test_fold_indexes = as_parallel
+                ? unrolled_index.class_folds /* natural distribution for testing */
+                    .AsParallel()
+                    .AsOrdered()
+                    .WithCancellation(cts.Token)
+                    .Select(a => (a.class_id, test_indexes: a.folds.Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index == outer_cv_index /* select only test fold */).SelectMany(b => b.class_sample_indexes).OrderBy(b => b).ToArray()))
+                    .ToArray()
+                : unrolled_index.class_folds /* natural distribution for testing */
+                    .Select(a => (a.class_id, test_indexes: a.folds.Where(b => b.repetitions_index == repetitions_index && b.outer_cv_index == outer_cv_index /* select only test fold */).SelectMany(b => b.class_sample_indexes).OrderBy(b => b).ToArray()))
+                    .ToArray();
+
+            var test_sizes = test_fold_indexes.Select(a => (class_id: a.class_id, test_size: a.test_indexes?.Length ?? 0)).ToArray();
+            var test_row_values = dataset.get_row_features(cts, test_fold_indexes, unrolled_index.column_array_indexes);
+            var test_scaling = train_scaling; /* scale test data with training data */
+            var test_row_scaled_values = dataset_loader.get_scaled_rows(test_row_values, /*column_indexes,*/ test_scaling, unrolled_index.scale_function);
+            var test_text = as_parallel ? 
+                test_row_scaled_values.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(row => $@"{(int) row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? unrolled_index.column_array_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray() 
+                :
+                test_row_scaled_values.Select(row => $@"{(int) row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((col_val, x_index) => col_val != 0 ? $@"{(preserve_fid ? unrolled_index.column_array_indexes[x_index] : (x_index + 1))}:{col_val:G17}" : $@"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+
+            return (repetitions_index, outer_cv_index, train_fn, grid_fn, model_fn, test_fn, predict_fn, cm_fn1, cm_fn2, train_text, test_text, train_sizes, test_sizes, train_fold_indexes, test_fold_indexes);
+        }
+
 
         private static (((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text) prediction_data, confusion_matrix[] ocv_cm)
             outer_cross_validation_single
@@ -450,7 +478,7 @@ namespace svm_fs_batch
 
                 // convert text results to confusion matrix and performance metrics
                 var ocv_prediction_file_data = performance_measure.load_prediction_file(cts, outer_cv_input.test_text, null, prediction_data.predict_text, unrolled_index_data.calc_11p_thresholds, ocv_test_class_sample_id_list);
-                for (var cm_index = 0; cm_index < ocv_prediction_file_data.cm_list.Length; cm_index++) { ocv_prediction_file_data.cm_list[cm_index].unrolled_index_data = unrolled_index_data; }
+                //for (var cm_index = 0; cm_index < ocv_prediction_file_data.cm_list.Length; cm_index++) { ocv_prediction_file_data.cm_list[cm_index].unrolled_index_data = unrolled_index_data; }
 
                 // add any missing meta details to the confusion-matrix
                 program.update_merged_cm(cts: cts, dataset: dataset, prediction_file_data: ocv_prediction_file_data, unrolled_index_data: unrolled_index_data, merged_cv_input: outer_cv_input, prediction_data_list: new[] { prediction_data });

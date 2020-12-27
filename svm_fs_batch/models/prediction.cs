@@ -147,39 +147,37 @@ namespace svm_fs_batch
 
 
 
-        public static void save(CancellationTokenSource cts, string prediction_list_filename, /*string last_filename,*/ confusion_matrix[] cm_list)
+        public static void save(CancellationTokenSource cts, string prediction_list_filename, (index_data id, confusion_matrix cm, rank_score rs)[] cm_list)
         {
             const string method_name = nameof(save);
 
             if (cts.IsCancellationRequested) return;
 
-            var pred_list = cm_list.SelectMany(a => a.predictions).ToList();
+            var pred_list = cm_list.SelectMany(a => a.cm.predictions).ToList();
 
-            var total_lines = cm_list.Sum(a => a.predictions.Length) + 1;
+            var total_lines = cm_list.Sum(a => a.cm.predictions.Length) + 1;
 
             var lines = new string[total_lines];
-
-            var header_csv_values = new List<string>()
-            {
-                "perf_"+nameof(confusion_matrix.unrolled_index_data.iteration_index),
-                "perf_"+nameof(confusion_matrix.unrolled_index_data.group_array_index),
-                "perf_"+nameof(confusion_matrix.x_class_id),
-                "perf_"+nameof(confusion_matrix.x_class_name),
-                nameof(prediction_index),
-                nameof(class_sample_id),
-                nameof(real_class_id),
-                nameof(predicted_class_id),
-                $@"_"
-            };
 
             var prob_classes = pred_list.Where(a => a != null && a.probability_estimates != null && a.probability_estimates.Length > 0).SelectMany(a => a.probability_estimates.Select(b => b.class_id).ToList()).Distinct().OrderBy(a => a).ToArray();
             var prob_comments = pred_list.Where(a => a != null && a.comment != null && a.comment.Length > 0).SelectMany(a => a.comment.Select(b => b.comment_header).ToList()).Distinct().OrderBy(a => a).ToArray();
 
-            header_csv_values.AddRange(prob_classes.Select(a => $@"prob_{a:+#;-#;+0}").ToArray());
-            header_csv_values.Add($@"_");
 
+            var header_csv_values = new List<string>()
+            {
+                "perf_"+nameof(index_data.iteration_index),
+                "perf_"+nameof(index_data.group_array_index),
+                "perf_"+nameof(confusion_matrix.x_class_id),
+                "perf_"+nameof(confusion_matrix.x_class_name),
+
+                nameof(prediction_index),
+                nameof(class_sample_id),
+                nameof(real_class_id),
+                nameof(predicted_class_id),
+            };
+            header_csv_values.AddRange(prob_classes.Select(a => $@"prob_{a:+#;-#;+0}").ToArray());
             header_csv_values.AddRange(prob_comments);
-            header_csv_values.Add($@"_");
+            
 
             lines[0] = string.Join($@",", header_csv_values);
 
@@ -188,41 +186,41 @@ namespace svm_fs_batch
                 cm_list_index =>
                 {
                     Parallel.For(0,
-                        cm_list[cm_list_index].predictions.Length,
+                        cm_list[cm_list_index].cm.predictions.Length,
                         cm_pred_index =>
                         {
                             var k = 0;
 
                             var values = new string[header_csv_values.Count];
 
-                            values[k++] = $@"{cm_list[cm_list_index].unrolled_index_data.iteration_index}";
-                            values[k++] = $@"{cm_list[cm_list_index].unrolled_index_data.group_array_index}";
-                            values[k++] = $@"{cm_list[cm_list_index].x_class_id}";
-                            values[k++] = $@"{cm_list[cm_list_index].x_class_name}";
+                            values[k++] = $@"{cm_list[cm_list_index].id.iteration_index}";
+                            values[k++] = $@"{cm_list[cm_list_index].id.group_array_index}";
+                            values[k++] = $@"{cm_list[cm_list_index].cm.x_class_id}";
+                            values[k++] = $@"{cm_list[cm_list_index].cm.x_class_name}";
 
-                            values[k++] = $@"{cm_list[cm_list_index].predictions[cm_pred_index].prediction_index}";
-                            values[k++] = $@"{cm_list[cm_list_index].predictions[cm_pred_index].class_sample_id}";
-                            values[k++] = $@"{cm_list[cm_list_index].predictions[cm_pred_index].real_class_id:+#;-#;+0}";
-                            values[k++] = $@"{cm_list[cm_list_index].predictions[cm_pred_index].predicted_class_id:+#;-#;+0}";
-                            values[k++] = $"_";
+                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].prediction_index}";
+                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].class_sample_id}";
+                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].real_class_id:+#;-#;+0}";
+                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].predicted_class_id:+#;-#;+0}";
+                            
 
-                            if (cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates != null && cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Length > 0)
+                            if (cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates != null && cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates.Length > 0)
                             {
-                                for (var probability_estimates_index = 0; probability_estimates_index < cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Length; probability_estimates_index++)
+                                for (var probability_estimates_index = 0; probability_estimates_index < cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates.Length; probability_estimates_index++)
                                 {
-                                    var values_index = header_csv_values.IndexOf($@"prob_{cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates[probability_estimates_index].class_id:+#;-#;+0}", k);
-                                    values[values_index] = $"{cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates[probability_estimates_index].probability_estimate:G17}";
+                                    var values_index = header_csv_values.IndexOf($@"prob_{cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates[probability_estimates_index].class_id:+#;-#;+0}", k);
+                                    values[values_index] = $"{cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates[probability_estimates_index].probability_estimate:G17}";
                                 }
 
-                                k += cm_list[cm_list_index].predictions[cm_pred_index].probability_estimates.Length + 1;
+                                k += cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates.Length + 1;
                             }
 
-                            if (cm_list[cm_list_index].predictions[cm_pred_index].comment != null && cm_list[cm_list_index].predictions[cm_pred_index].comment.Length > 0)
+                            if (cm_list[cm_list_index].cm.predictions[cm_pred_index].comment != null && cm_list[cm_list_index].cm.predictions[cm_pred_index].comment.Length > 0)
                             {
-                                for (var comment_index = 0; comment_index < cm_list[cm_list_index].predictions[cm_pred_index].comment.Length; comment_index++)
+                                for (var comment_index = 0; comment_index < cm_list[cm_list_index].cm.predictions[cm_pred_index].comment.Length; comment_index++)
                                 {
-                                    var values_index = header_csv_values.IndexOf(cm_list[cm_list_index].predictions[cm_pred_index].comment[comment_index].comment_header, k);
-                                    values[values_index] = cm_list[cm_list_index].predictions[cm_pred_index].comment[comment_index].comment_value;
+                                    var values_index = header_csv_values.IndexOf(cm_list[cm_list_index].cm.predictions[cm_pred_index].comment[comment_index].comment_header, k);
+                                    values[values_index] = cm_list[cm_list_index].cm.predictions[cm_pred_index].comment[comment_index].comment_value;
                                 }
                             }
 
