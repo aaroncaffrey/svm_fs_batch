@@ -111,7 +111,7 @@ namespace svm_fs_batch
 
             var cache = Array.Empty<grid_cache_data>();
 
-            if (io_proxy.is_file_available(cts, cache_train_grid_csv, module_name, method_name))
+            if (io_proxy.is_file_available(cts, cache_train_grid_csv, false, module_name, method_name))
             {
                 cache = io_proxy.ReadAllLines(cts, cache_train_grid_csv, module_name, method_name).Skip(1 /* skip header line */).Select(a =>
                 {

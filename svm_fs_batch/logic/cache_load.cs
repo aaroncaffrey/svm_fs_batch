@@ -503,7 +503,7 @@ namespace svm_fs_batch
                     load_cache_file_list(cts, instance_index, cache_files_already_loaded, iteration_cm_sd_list, index_data_container, cache_files1, as_parallel); //last_iteration_id_cm_rs, last_winner_id_cm_rs, best_winner_id_cm_rs,
                 }
 
-                if (wait_for_cache && index_data_container.indexes_missing_whole.Any()) { io_proxy.wait(cts, 15, 15); }
+                if (wait_for_cache && index_data_container.indexes_missing_whole.Any()) { io_proxy.wait(cts, 15, 30); }
 
             } while (wait_for_cache && index_data_container.indexes_missing_whole.Any());
 
@@ -540,7 +540,7 @@ namespace svm_fs_batch
                         .Select(cm_fn =>
                         {
                             if (cts.IsCancellationRequested) return null;
-                            if (io_proxy.is_file_available(cts, cm_fn))
+                            if (io_proxy.is_file_available(cts, cm_fn, false, module_name, method_name))
                             {
                                 var cm = confusion_matrix.load(cts, cm_fn);
                                 if (cm != null && cm.Length > 0)
@@ -564,7 +564,7 @@ namespace svm_fs_batch
                         .Select(cm_fn =>
                         {
                             if (cts.IsCancellationRequested) return null;
-                            if (io_proxy.is_file_available(cts, cm_fn))
+                            if (io_proxy.is_file_available(cts, cm_fn, false, module_name, method_name))
                             {
                                 var cm = confusion_matrix.load(cts, cm_fn);
                                 if (cm != null && cm.Length > 0)

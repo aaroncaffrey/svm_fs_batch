@@ -538,7 +538,7 @@ namespace svm_fs_batch
                         // Save the CM ranked for the current iteration (winner rank #0)
                         var iteration_cm_ranks_fn1 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}_full.csv");
                         var iteration_cm_ranks_fn2 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{iteration_index}_summary.csv");
-                        if (io_proxy.is_file_available(cts, iteration_cm_ranks_fn1) && io_proxy.is_file_available(cts, iteration_cm_ranks_fn2))
+                        if (io_proxy.is_file_available(cts, iteration_cm_ranks_fn1, false, module_name, method_name) && io_proxy.is_file_available(cts, iteration_cm_ranks_fn2, false, module_name, method_name))
                         {
                             io_proxy.WriteLine($@"[{instance_id}/{total_instances}] {experiment_name}: Already saved for iteration {(iteration_index)}. Files: {iteration_cm_ranks_fn1}, {iteration_cm_ranks_fn2}.");
                         }
@@ -554,7 +554,7 @@ namespace svm_fs_batch
                         // Save the CM of winners from all iterations
                         var winners_cm_fn1 = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}_full.csv");
                         var winners_cm_fn2 = Path.Combine(iteration_folder, $@"winners_cm_{iteration_index}_summary.csv");
-                        if (io_proxy.is_file_available(cts, winners_cm_fn1) && io_proxy.is_file_available(cts, winners_cm_fn2))
+                        if (io_proxy.is_file_available(cts, winners_cm_fn1, false, module_name, method_name) && io_proxy.is_file_available(cts, winners_cm_fn2, false, module_name, method_name))
                         {
                             io_proxy.WriteLine($@"[{instance_id}/{total_instances}] {experiment_name}: Already saved for iteration {(iteration_index)}. Files: {winners_cm_fn1}, {winners_cm_fn2}.");
                         }
@@ -569,7 +569,7 @@ namespace svm_fs_batch
                     {
                         // Save the prediction list for misclassification analysis
                         var prediction_list_filename = Path.Combine(iteration_folder, $@"iteration_prediction_list_{iteration_index}.csv");
-                        if (io_proxy.is_file_available(cts, prediction_list_filename))
+                        if (io_proxy.is_file_available(cts, prediction_list_filename, false, module_name, method_name))
                         {
                             io_proxy.WriteLine($@"[{instance_id}/{total_instances}] {experiment_name}: Already saved for iteration {(iteration_index)}. File: {prediction_list_filename}.");
                         }

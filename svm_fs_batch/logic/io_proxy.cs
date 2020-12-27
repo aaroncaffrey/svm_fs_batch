@@ -21,14 +21,15 @@ namespace svm_fs_batch
             WriteLine($@"entered lock ({lock_name})");
         }
 
-        internal static void wait(CancellationTokenSource cts, int secs, int rnd_secs)
+        internal static void wait(CancellationTokenSource cts, int min_secs, int max_secs)
         {
             const string method_name = nameof(wait);
 
-            var ts = new TimeSpan(0, 0, 0, secs + random.Next(0, rnd_secs));
+            cts ??= new CancellationTokenSource();
+
+            var ts = TimeSpan.FromSeconds(min_secs + random.Next(0, Math.Abs((max_secs+1) - min_secs)));
             io_proxy.WriteLine($"Waiting for {ts.Seconds} seconds", module_name, method_name);
             
-            //try { Task.Delay(ts, cts.Token).Wait(cts.Token); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), nameof(libsvm), nameof(train)); }
             Task.Delay(ts, cts.Token).Wait(cts.Token);
         }
 
@@ -48,27 +49,25 @@ namespace svm_fs_batch
             } while (e != null);
         }
 
-        internal static bool is_file_available(CancellationTokenSource cts, string filename, string caller_module_name = "", string caller_method_name = "")
+        internal static bool is_file_available(CancellationTokenSource cts, string filename, bool get_lock, string caller_module_name = "", string caller_method_name = "")
         {
-            
             const string method_name = nameof(is_file_available);
 
             if (cts.IsCancellationRequested) return default;
 
             try
             {
-                //filename = (filename);
+                if (string.IsNullOrWhiteSpace(filename)) return false;
 
-                if (String.IsNullOrWhiteSpace(filename)) return false;
-
-                if (!io_proxy.Exists(filename/*, module_name, method_name*/)) return false;
+                if (!io_proxy.Exists(filename)) return false;
 
                 if (new FileInfo(filename).Length <= 0) return false;
 
-                using (var fs = File.Open(filename, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+                if (get_lock)
                 {
-                    try { fs.Close(); } catch (Exception) { }
-                    try { fs.Dispose(); } catch (Exception) { }
+                    using var fs = File.Open(filename, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+                    try { fs?.Close(); } catch (Exception) { }
+                    try { fs?.Dispose(); } catch (Exception) { }
                 }
 
                 return true;
@@ -283,7 +282,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        io_proxy.wait(cts, 15, 31);
+                        io_proxy.wait(cts, 15, 30);
                     }
                     catch (Exception e2)
                     {
@@ -375,7 +374,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        wait(cts, 15, 31);
+                        wait(cts, 15, 30);
                     }
                     catch (Exception e2)
                     {
@@ -415,7 +414,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        wait(cts, 15, 31);
+                        wait(cts, 15, 30);
                     }
                     catch (Exception e2)
                     {
@@ -459,7 +458,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        wait(cts, 15, 31);
+                        wait(cts, 15, 30);
                     }
                     catch (Exception e2)
                     {
@@ -499,7 +498,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        wait(cts, 15, 31);
+                        wait(cts, 15, 30);
                     }
                     catch (Exception e2)
                     {
@@ -536,7 +535,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        wait(cts, 15, 31);
+                        wait(cts, 15, 30);
                     }
                     catch (Exception e2)
                     {
@@ -575,7 +574,7 @@ namespace svm_fs_batch
 
                     try
                     {
-                        wait(cts, 15, 31);
+                        wait(cts, 15, 30);
                     }
                     catch (Exception e2)
                     {

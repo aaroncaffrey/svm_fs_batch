@@ -94,8 +94,8 @@ namespace svm_fs_batch
             if (lens.Length == 0 || lens_distinct_count > 1) throw new Exception($@"Array length of {nameof(id_list)}, {nameof(cm_list)}, and {nameof(rs_list)} do not match.");
             var lens_max = lens.Max();
 
-            var save_full = save_full_req && (overwrite || !io_proxy.is_file_available(cts, cm_full_filename, module_name, method_name));
-            var save_summary = save_summary_req && (overwrite || !io_proxy.is_file_available(cts, cm_summary_filename, module_name, method_name));
+            var save_full = save_full_req && (overwrite || !io_proxy.is_file_available(cts, cm_full_filename, false, module_name, method_name));
+            var save_summary = save_summary_req && (overwrite || !io_proxy.is_file_available(cts, cm_summary_filename,false, module_name, method_name));
 
             if (save_full_req && !save_full)
             {

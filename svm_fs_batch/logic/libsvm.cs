@@ -134,7 +134,7 @@ namespace svm_fs_batch
                     if (process == null)
                     {
                         retry = true;
-                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
+                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
 
                         continue;
                     }
@@ -155,7 +155,7 @@ namespace svm_fs_batch
 
                         retry = true;
 
-                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
+                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
 
                         continue;
                     }
@@ -187,7 +187,7 @@ namespace svm_fs_batch
                         if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
                         if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
 
-                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
+                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
 
                         continue;
                     }
@@ -198,7 +198,7 @@ namespace svm_fs_batch
 
                     io_proxy.log_exception(e1, get_params_str(), module_name, method_name);
 
-                    try { io_proxy.wait(cts, 30, 61); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), module_name, method_name); }
+                    try { io_proxy.wait(cts, 25, 50); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), module_name, method_name); }
                 }
             } while (retry && retry_index < 1_000_000);
 
@@ -276,7 +276,7 @@ namespace svm_fs_batch
                     if (process == null)
                     {
                         retry = true;
-                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
+                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
 
                         continue;
                     }
@@ -297,7 +297,7 @@ namespace svm_fs_batch
 
                         retry = true;
 
-                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
+                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
 
                         continue;
                     }
@@ -329,7 +329,7 @@ namespace svm_fs_batch
                         if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
                         if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
 
-                        try { io_proxy.wait(cts, 30, 61); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
+                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
 
                         continue;
                     }
@@ -338,7 +338,7 @@ namespace svm_fs_batch
                 {
                     retry = true;
                     io_proxy.log_exception(e1, get_params_str(), module_name, method_name);
-                    try { io_proxy.wait(cts, 30, 61); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), module_name, method_name); }
+                    try { io_proxy.wait(cts, 25, 50); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), module_name, method_name); }
                 }
             } while (retry && retry_index < 1_000_000);
 
