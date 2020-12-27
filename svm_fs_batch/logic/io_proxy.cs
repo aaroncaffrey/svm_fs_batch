@@ -38,12 +38,12 @@ namespace svm_fs_batch
             {
                 io_proxy.WriteLine($@"Error: ""{msg}"" ""{e.GetType()}"" ""{e.Source}"" ""{e.Message}"" ""{e.StackTrace}""", caller_module_name, caller_method_name);
 
-#if DEBUG
-                if (e.InnerException == null || e == e.InnerException)
-                {
-                    throw e;
-                }
-#endif
+//#if DEBUG
+//                if (e.InnerException == null || e == e.InnerException)
+//                {
+//                    throw e;
+//                }
+//#endif
                 e = e != e?.InnerException ? e?.InnerException : null;
             } while (e != null);
         }

@@ -97,9 +97,9 @@ namespace svm_fs_batch
             //io_proxy.WriteLine($@"Loaded {input.predict_fn}");
 
             return (
-                sw_grid?.Elapsed != TimeSpan.Zero ? (TimeSpan?)sw_grid.Elapsed : (TimeSpan?)null,
-                sw_train?.Elapsed != TimeSpan.Zero ? (TimeSpan?)sw_train.Elapsed : (TimeSpan?)null,
-                sw_predict?.Elapsed != TimeSpan.Zero ? (TimeSpan?)sw_predict.Elapsed : (TimeSpan?)null,
+                sw_grid != null && sw_grid.Elapsed != TimeSpan.Zero ? (TimeSpan?)sw_grid.Elapsed : (TimeSpan?)null,
+                sw_train != null && sw_train.Elapsed != TimeSpan.Zero ? (TimeSpan?)sw_train.Elapsed : (TimeSpan?)null,
+                sw_predict != null && sw_predict.Elapsed != TimeSpan.Zero ? (TimeSpan?)sw_predict.Elapsed : (TimeSpan?)null,
                 train_grid_search_result,
                 predict_text
                 );

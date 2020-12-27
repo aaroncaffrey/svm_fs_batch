@@ -171,9 +171,9 @@ namespace svm_fs_batch
         {
             if (cm.grid_point == null) { cm.grid_point = new grid_point(prediction_data_list?.Select(a => a.grid_point).ToArray()); }
 
-            if (cm.x_time_grid == null || cm.x_time_grid == TimeSpan.Zero) cm.x_time_grid = new TimeSpan(prediction_data_list?.Select(a => a.grid_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
-            if (cm.x_time_test == null || cm.x_time_test == TimeSpan.Zero) cm.x_time_test = new TimeSpan(prediction_data_list?.Select(a => a.predict_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
-            if (cm.x_time_train == null || cm.x_time_train == TimeSpan.Zero) cm.x_time_train = new TimeSpan(prediction_data_list?.Select(a => a.train_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.x_time_grid == null  || cm.x_time_grid == TimeSpan.Zero) &&  (prediction_data_list?.Any(a => a.grid_dur != null) ?? false)) cm.x_time_grid = new TimeSpan(prediction_data_list?.Select(a => a.grid_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.x_time_train == null || cm.x_time_train == TimeSpan.Zero) && (prediction_data_list?.Any(a => a.train_dur != null) ?? false)) cm.x_time_train = new TimeSpan(prediction_data_list?.Select(a => a.train_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.x_time_test == null  || cm.x_time_test == TimeSpan.Zero) &&  (prediction_data_list?.Any(a => a.predict_dur != null) ?? false)) cm.x_time_test = new TimeSpan(prediction_data_list?.Select(a => a.predict_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
         }
 
         internal static void update_merged_cm_single

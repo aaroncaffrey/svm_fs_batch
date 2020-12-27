@@ -460,9 +460,12 @@ namespace svm_fs_batch
 
 
                 var available_groups = Enumerable.Range(0, groups.Length).ToArray();
-                available_groups = available_groups.Except(this_iteration_winner_id_cm_rs.id.group_array_indexes).ToArray();
-                if (base_group_indexes != null && base_group_indexes.Length > 0) available_groups = available_groups.Except(base_group_indexes).ToArray();
-                if (selection_excluded_groups != null && selection_excluded_groups.Count > 0) available_groups = available_groups.Except(selection_excluded_groups).ToArray();
+                if (!calibrate)
+                {
+                    available_groups = available_groups.Except(this_iteration_winner_id_cm_rs.id.group_array_indexes).ToArray();
+                    if (base_group_indexes != null && base_group_indexes.Length > 0) available_groups = available_groups.Except(base_group_indexes).ToArray();
+                    if (selection_excluded_groups != null && selection_excluded_groups.Count > 0) available_groups = available_groups.Except(selection_excluded_groups).ToArray();
+                }
                 var num_available_groups = available_groups.Length;
 
 
