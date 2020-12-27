@@ -83,7 +83,7 @@ namespace svm_fs_batch
         }
 
         internal static group_series_index job_group_series_index_single(CancellationTokenSource cts, dataset_loader dataset, (dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups, string experiment_name, int iteration_index, int[] base_group_indexes, int[] selected_group_indexes, int? previous_winner_group_index, int[] selection_excluded_group_indexes, List<int[]> previous_group_tests, int group_array_index)
-        { 
+        {
             //var test_selected_groups = selected_groups.OrderBy(group_index => group_index).ToArray();
             //var test_selected_columns = selected_columns.OrderBy(col_index => col_index).ToArray();
             var gsi = new group_series_index();
@@ -194,7 +194,7 @@ namespace svm_fs_batch
 
             var unrolled_whole_index = 0;
             //var unrolled_partition_indexes = new int[total_instances];
-            //var unrolled_instance_index = 0;
+            //var unrolled_instance_id = 0;
 
             var r_cv_series_len = uip.r_cv_series.Length;
             var o_cv_series_len = uip.o_cv_series.Length;
@@ -232,8 +232,8 @@ namespace svm_fs_batch
                                         {
                                             var index_data = new index_data()
                                             {
-                                                //unrolled_partition_index = unrolled_partition_indexes[unrolled_instance_index],
-                                                //unrolled_instance_id = unrolled_instance_index,
+                                                //unrolled_partition_index = unrolled_partition_indexes[unrolled_instance_id],
+                                                //unrolled_instance_id = unrolled_instance_id,
 
                                                 group_array_index = uip.group_series[z_group_series_index].group_array_index,
                                                 selection_direction = uip.group_series[z_group_series_index].selection_direction,
@@ -271,9 +271,9 @@ namespace svm_fs_batch
 
                                             indexes_whole[unrolled_whole_index++] = index_data;
 
-                                            //unrolled_partition_indexes[unrolled_instance_index++]++;
+                                            //unrolled_partition_indexes[unrolled_instance_id++]++;
 
-                                            //if (unrolled_instance_index >= total_instances) unrolled_instance_index = 0;
+                                            //if (unrolled_instance_id >= total_instances) unrolled_instance_id = 0;
                                         }
                                     }
                                 }
@@ -308,22 +308,22 @@ namespace svm_fs_batch
 
             var unrolled_whole_index = 0;
             var unrolled_partition_indexes = new int[total_instances];
-            var unrolled_instance_index = 0;
+            var unrolled_instance_id = 0;
 
             for (var x = 0; x < index_data_container.indexes_whole.Length; x++)
             {
                 // unique id for index_data
                 index_data_container.indexes_whole[x].unrolled_whole_index = unrolled_whole_index++;
-                index_data_container.indexes_whole[x].unrolled_partition_index = unrolled_partition_indexes[unrolled_instance_index];
+                index_data_container.indexes_whole[x].unrolled_partition_index = unrolled_partition_indexes[unrolled_instance_id];
                 index_data_container.indexes_whole[x].total_whole_indexes = index_data_container.indexes_whole.Length;
 
                 // instance id
                 index_data_container.indexes_whole[x].total_instances = total_instances;
-                index_data_container.indexes_whole[x].unrolled_instance_id = unrolled_instance_index;
+                index_data_container.indexes_whole[x].unrolled_instance_id = unrolled_instance_id;
 
-                unrolled_partition_indexes[unrolled_instance_index++]++;
+                unrolled_partition_indexes[unrolled_instance_id++]++;
 
-                if (unrolled_instance_index >= total_instances) unrolled_instance_index = 0;
+                if (unrolled_instance_id >= total_instances) unrolled_instance_id = 0;
             }
 
             if (as_parallel)
@@ -361,21 +361,20 @@ namespace svm_fs_batch
 
 
 
-        internal static void
-            load_cache
-            (
-                CancellationTokenSource cts,
-                int instance_index,
-                int iteration_index,
-                string experiment_name,
-                bool wait_for_cache,
-                List<string> cache_files_already_loaded,
-                List<(index_data id, confusion_matrix cm)> iteration_cm_sd_list,
-                index_data_container index_data_container,
-                (index_data id, confusion_matrix cm, rank_score rs)[] last_iteration_id_cm_rs,
-                (index_data id, confusion_matrix cm, rank_score rs) last_winner_id_cm_rs,
-                (index_data id, confusion_matrix cm, rank_score rs) best_winner_id_cm_rs,
-                bool as_parallel=true
+        internal static void load_cache(
+            CancellationTokenSource cts, 
+            //(dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups, 
+            int instance_id, 
+            int iteration_index,
+            string experiment_name,
+            bool wait_for_cache, 
+            List<string> cache_files_already_loaded, 
+            List<(index_data id, confusion_matrix cm)> iteration_cm_sd_list,
+            index_data_container index_data_container,
+            (index_data id, confusion_matrix cm, rank_score rs)[] last_iteration_id_cm_rs,
+            (index_data id, confusion_matrix cm, rank_score rs) last_winner_id_cm_rs, 
+            (index_data id, confusion_matrix cm, rank_score rs) best_winner_id_cm_rs,
+            bool as_parallel = true
             )
         {
             const string method_name = nameof(load_cache);
@@ -390,7 +389,7 @@ namespace svm_fs_batch
 
 
 
-            if (instance_index < 0) throw new ArgumentOutOfRangeException(nameof(instance_index), $@"{module_name}.{method_name}");
+            if (instance_id < 0) throw new ArgumentOutOfRangeException(nameof(instance_id), $@"{module_name}.{method_name}");
             if (iteration_index < 0) throw new ArgumentOutOfRangeException(nameof(iteration_index), $@"{module_name}.{method_name}");
             if (string.IsNullOrWhiteSpace(experiment_name)) throw new ArgumentOutOfRangeException(nameof(experiment_name), $@"{module_name}.{method_name}");
             if (cache_files_already_loaded == null) throw new ArgumentOutOfRangeException(nameof(cache_files_already_loaded), $@"{module_name}.{method_name}");
@@ -400,7 +399,7 @@ namespace svm_fs_batch
             if (best_winner_id_cm_rs == default && iteration_index != 0) throw new ArgumentOutOfRangeException(nameof(best_winner_id_cm_rs), $@"{module_name}.{method_name}");
 
             // check which indexes are missing.
-            update_missing(cts, instance_index, iteration_cm_sd_list, index_data_container);
+            update_missing(cts, instance_id, iteration_cm_sd_list, index_data_container);
 
             // if all indexes loaded, return
             if (!index_data_container.indexes_missing_whole.Any()) return;// index_data_container;
@@ -480,7 +479,7 @@ namespace svm_fs_batch
                                         return null;
                                     })
                                     .Where(a => a != null)
-                                    .ToList():
+                                    .ToList() :
                                 index_data_container.indexes_missing_partition
                                     .Select(a =>
                                     {
@@ -500,7 +499,7 @@ namespace svm_fs_batch
                     }
 
 
-                    load_cache_file_list(cts, instance_index, cache_files_already_loaded, iteration_cm_sd_list, index_data_container, cache_files1, as_parallel); //last_iteration_id_cm_rs, last_winner_id_cm_rs, best_winner_id_cm_rs,
+                    load_cache_file_list(cts, /*groups,*/ instance_id, cache_files_already_loaded, iteration_cm_sd_list, index_data_container, cache_files1, as_parallel); //last_iteration_id_cm_rs, last_winner_id_cm_rs, best_winner_id_cm_rs,
                 }
 
                 if (wait_for_cache && index_data_container.indexes_missing_whole.Any()) { io_proxy.wait(cts, 15, 30); }
@@ -514,6 +513,7 @@ namespace svm_fs_batch
             load_cache_file_list
             (
                 CancellationTokenSource cts,
+                //(dataset_group_key group_key, dataset_group_key[] group_column_headers, int[] columns)[] groups,
                 int instance_id,
                 List<string> cache_files_already_loaded,
                 List<(index_data id, confusion_matrix cm)> iteration_id_cm,
@@ -522,7 +522,7 @@ namespace svm_fs_batch
                 //(index_data id, confusion_matrix cm, rank_score rs) last_winner_id_cm_rs,
                 //(index_data id, confusion_matrix cm, rank_score rs) best_winner_id_cm_rs,
                 string[] cache_files,
-                bool as_parallel=true
+                bool as_parallel = true
             )
         {
             const string method_name = nameof(load_cache_file_list);
@@ -530,9 +530,11 @@ namespace svm_fs_batch
             if (cts.IsCancellationRequested) return;
             if (cache_files == null || cache_files.Length == 0) return;
 
+            //var gk_list1 = groups.Select(a => a.group_key).ToArray();
+            //var gk_list2 = groups.SelectMany(a => a.group_column_headers).ToArray();
             // load and parse cm files
             var cache_files_cm_list =
-                as_parallel?
+                as_parallel ?
                     cache_files
                         .AsParallel()
                         .AsOrdered()
@@ -552,6 +554,10 @@ namespace svm_fs_batch
                                             var id = index_data.find_reference(index_data_container.indexes_whole, cm[cm_index].unrolled_index_data);
                                             if (id == null) throw new Exception();
                                             cm[cm_index].unrolled_index_data = id;
+
+                                            //var gk = dataset_group_key.find_reference(gk_list1, cm[cm_index].unrolled_index_data.group_key);
+                                            //if (gk == null) gk = dataset_group_key.find_reference(gk_list2, cm[cm_index].unrolled_index_data.group_key);
+                                            //if (gk != null) cm[cm_index].unrolled_index_data.group_key = gk;
                                         }
                                     }
                                 }
@@ -559,7 +565,7 @@ namespace svm_fs_batch
                             }
                             return null;
                         })
-                        .ToArray():
+                        .ToArray() :
                     cache_files
                         .Select(cm_fn =>
                         {
@@ -604,7 +610,7 @@ namespace svm_fs_batch
                 //lock (iteration_cm_sd_list)
                 {
                     // limit cm to those indexes not already loaded
-                    var id_cm_sd_append = as_parallel?
+                    var id_cm_sd_append = as_parallel ?
                         cache_files_cm_list_cms_index
                             .AsParallel()
                             .AsOrdered()
@@ -647,9 +653,14 @@ namespace svm_fs_batch
             //var iteration_cm_all_cm = iteration_cm_all.Select(a => a.cm).ToArray();
 
             // find loaded indexes
-            index_data_container.indexes_loaded_whole = as_parallel ?
-                index_data_container.indexes_whole.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(id => index_data.find_reference(iteration_cm_all_id, id) != null).ToArray() :
-                index_data_container.indexes_whole.Where(id => index_data.find_reference(iteration_cm_all_id, id) != null).ToArray();
+            index_data_container.indexes_loaded_whole =
+                iteration_cm_all_id == null || iteration_cm_all_id.Length == 0 ?
+                    Array.Empty<index_data>() :
+                (
+                    as_parallel ?
+                    index_data_container.indexes_whole.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(id => index_data.find_reference(iteration_cm_all_id, id) != null).ToArray() :
+                    index_data_container.indexes_whole.Where(id => index_data.find_reference(iteration_cm_all_id, id) != null).ToArray()
+                );
 
             index_data_container.indexes_missing_whole = index_data_container.indexes_whole.Except(index_data_container.indexes_loaded_whole).ToArray();
 
@@ -667,7 +678,7 @@ namespace svm_fs_batch
         }
     }
 }
-/*internal static (index_data[] indexes_whole, index_data[] indexes_partition) get_unrolled_indexes_check_bias(CancellationTokenSource cts, int search_type, dataset_loader dataset, string experiment_name, int iteration_index, int total_groups, int instance_index, int total_instances)
+/*internal static (index_data[] indexes_whole, index_data[] indexes_partition) get_unrolled_indexes_check_bias(CancellationTokenSource cts, int search_type, dataset_loader dataset, string experiment_name, int iteration_index, int total_groups, int instance_id, int total_instances)
         {
             if (cts.IsCancellationRequested) return default;
 
@@ -705,7 +716,7 @@ namespace svm_fs_batch
                     }
                 };
 
-                var variations_1 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, total_groups, instance_index, total_instances, p1);
+                var variations_1 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, total_groups, instance_id, total_instances, p1);
                 return variations_1;
             }
             else if (search_type == 1)
@@ -738,7 +749,7 @@ namespace svm_fs_batch
                     i_cv_series_step = 1
                 };
 
-                var variations_2 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index,total_groups, instance_index, total_instances, p2);
+                var variations_2 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index,total_groups, instance_id, total_instances, p2);
 
                 return variations_2;
             }
@@ -789,7 +800,7 @@ namespace svm_fs_batch
                     }
                 }
 
-                var variations_3 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, total_groups, instance_index, total_instances, p3);
+                var variations_3 = get_unrolled_indexes(cts, dataset, experiment_name, iteration_index, total_groups, instance_id, total_instances, p3);
 
                 return variations_3;
             }

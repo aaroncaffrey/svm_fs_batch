@@ -227,30 +227,20 @@ namespace svm_fs_batch
             (index_data id, confusion_matrix cm, rank_score rs) last_winner_id_cm_rs = default;
 
             var all_winners_id_cm_rs = new List<(index_data id, confusion_matrix cm, rank_score rs)>();
-            //var last_iteration_id_cm_rs = Array.Empty<(index_data id, confusion_matrix cm, rank_score rs)>();
-
             var all_iteration_id_cm_rs = new List<(index_data id, confusion_matrix cm, rank_score rs)[]>();
-            var previous_group_tests = new List<int[]>();
 
+            
             var cache_files_loaded = new List<string>();
-            //var deep_search_index = -1;
             var feature_selection_finished = false;
             var iteration_index = 0;
-            //var iteration_name = "";
             var iterations_not_higher_than_best = 0;
             var iterations_not_higher_than_last = 0;
-            //var last_iteration_folder = "";
-
-            //var all_iterations_winners_cm = new List<confusion_matrix>();
-            //var feature_selection_status_list = new List<feature_selection_status>();
-
+            var previous_group_tests = new List<int[]>();
             var selection_excluded_groups = new List<int>();
 
-            //io_proxy.WriteLine($@"{experiment_name}: Groups: (array indexes: [{(array_index_start)}..{(array_index_last)}]). Total groups: {total_groups}. (This instance #{(instance_index)}/#{total_instances}. array indexes: [{(array_index_start)}..{(array_index_last)}]). All indexes: [0..{(total_groups - 1)}].)", module_name, method_name);
+
             io_proxy.WriteLine($@"[{instance_id}/{total_instances}] {experiment_name}: Total groups: {(groups?.Length ?? 0)}.", module_name, method_name);
             var calibrate = false;
-
-
 
 
             while (!feature_selection_finished)
@@ -330,12 +320,13 @@ namespace svm_fs_batch
                 var iteration_partition_cm_filename_full = Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(index_data_container.indexes_partition)}_full.cm.csv");
                 var iteration_partition_cm_filename_summary = Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(index_data_container.indexes_partition)}_summary.cm.csv");
 
-
+                
 
                 // load cache (first try whole iteration, then try partition, then try individual work items)
                 cache_load.load_cache(
                     cts: cts,
-                    instance_index: instance_id,
+                    //groups: groups,
+                    instance_id: instance_id,
                     iteration_index: iteration_index,
                     experiment_name: experiment_name,
                     wait_for_cache: false,
@@ -588,6 +579,7 @@ namespace svm_fs_batch
 
                 last_winner_id_cm_rs = this_iteration_winner_id_cm_rs;
                 all_iteration_id_cm_rs.Add(iteration_whole_results_fixed_with_ranks);
+                foreach (var iteration_whole_results_fixed_with_rank in iteration_whole_results_fixed_with_ranks.Skip(1)) { iteration_whole_results_fixed_with_rank.cm.clear_supplemental();  }
                 iteration_index++;
                 calibrate = false;
                 preselect_all_groups = false;
@@ -616,6 +608,45 @@ namespace svm_fs_batch
             //var winner_groups_ret = (best_grouped_keys, best_column_keys, best_column_internal_column_indexes);
 
             var best_winner_groups = best_winner_id_cm_rs.id.group_array_indexes.Select(group_index => groups[group_index]).ToArray();
+
+            if (instance_id == 0)
+            {
+                var experiment_folder = program.get_iteration_folder(settings.results_root_folder, experiment_name);
+                var best_winner_fn = Path.Combine(experiment_folder, $"{experiment_name}_best_winner.csv");
+
+                
+
+                var best_winner_text = new List<string>();
+                best_winner_text.Add("Last best winner score data:");
+                best_winner_text.Add("");
+                best_winner_text.Add(string.Join(",", index_data.csv_header_values_array));
+                best_winner_text.Add(string.Join(",", best_winner_id_cm_rs.id?.csv_values_array() ?? index_data.empty.csv_values_array()));
+                best_winner_text.Add("");
+
+                best_winner_text.Add(string.Join(",", rank_score.csv_header_values_array));
+                best_winner_text.Add(string.Join(",", best_winner_id_cm_rs.rs?.csv_values_array() ?? rank_score.empty.csv_values_array()));
+                best_winner_text.Add("");
+
+                best_winner_text.Add(string.Join(",", confusion_matrix.csv_header_values_array));
+                best_winner_text.Add(string.Join(",", best_winner_id_cm_rs.cm?.csv_values_array() ?? confusion_matrix.empty.csv_values_array()));
+                best_winner_text.Add("");
+                best_winner_text.Add("");
+
+                best_winner_text.Add("Last best winner group keys:");
+                best_winner_text.Add("");
+                best_winner_text.AddRange(best_winner_groups.Select(a => $"{string.Join(",", a.group_key?.csv_values_array() ?? dataset_group_key.empty.csv_values_array())},{string.Join(";", a.columns ?? Array.Empty<int>())}").ToList());
+                best_winner_text.Add("");
+                best_winner_text.Add("");
+
+                best_winner_text.Add("Last best winner group column keys:");
+                best_winner_text.Add("");
+                best_winner_text.AddRange(best_winner_groups.SelectMany(a => a.group_column_headers.Select(b => string.Join(",", b.csv_values_array() ?? dataset_group_key.empty.csv_values_array())).ToList()).ToList());
+                best_winner_text.Add("");
+                best_winner_text.Add("");
+
+
+                io_proxy.WriteAllLines(cts, best_winner_fn, best_winner_text, module_name, method_name);
+            }
 
             return (best_winner_groups, best_winner_id_cm_rs, all_winners_id_cm_rs);
         }

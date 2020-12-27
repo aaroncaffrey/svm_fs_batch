@@ -15,22 +15,22 @@ namespace svm_fs_batch
         public dataset_group_key(string[] values)
         {
             if (values == null || values.Length == 0) return;
-            
+
             var k = 0;
 
-            if (values.Length > k && values[k++].Length>0) value.file_tag = values[k];
-            if (values.Length > k && values[k++].Length>0) value.alphabet = values[k];
-            if (values.Length > k && values[k++].Length>0) value.stats = values[k];
-            if (values.Length > k && values[k++].Length>0) value.dimension = values[k];
-            if (values.Length > k && values[k++].Length>0) value.category = values[k];
-            if (values.Length > k && values[k++].Length>0) value.source = values[k];
-            if (values.Length > k && values[k++].Length>0) value.@group = values[k];
-            if (values.Length > k && values[k++].Length>0) value.member = values[k];
-            if (values.Length > k && values[k++].Length>0) value.perspective = values[k];
-            if (values.Length > k && values[k++].Length>0) column_index = int.Parse(values[k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+            if (values.Length > k && values[k++].Length > 0) value.file_tag = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.alphabet = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.stats = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.dimension = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.category = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.source = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.@group = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.member = values[k];
+            if (values.Length > k && values[k++].Length > 0) value.perspective = values[k];
+            if (values.Length > k && values[k++].Length > 0) column_index = int.Parse(values[k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
         }
 
-    
+
 
         public dataset_group_key(dataset_group_key group_key)
         {
@@ -46,16 +46,53 @@ namespace svm_fs_batch
 
         public dataset_group_key(string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective, int column_index = -1)
         {
-            if (!string.IsNullOrEmpty(file_tag   )) this.value.file_tag = file_tag;
-            if (!string.IsNullOrEmpty(alphabet   )) this.value.alphabet = alphabet;
-            if (!string.IsNullOrEmpty(stats      )) this.value.stats = stats;
-            if (!string.IsNullOrEmpty(dimension  )) this.value.dimension = dimension;
-            if (!string.IsNullOrEmpty(category   )) this.value.category = category;
-            if (!string.IsNullOrEmpty(source     )) this.value.source = source;
-            if (!string.IsNullOrEmpty(@group     )) this.value.@group = @group;
-            if (!string.IsNullOrEmpty(member     )) this.value.member = member;
+            if (!string.IsNullOrEmpty(file_tag)) this.value.file_tag = file_tag;
+            if (!string.IsNullOrEmpty(alphabet)) this.value.alphabet = alphabet;
+            if (!string.IsNullOrEmpty(stats)) this.value.stats = stats;
+            if (!string.IsNullOrEmpty(dimension)) this.value.dimension = dimension;
+            if (!string.IsNullOrEmpty(category)) this.value.category = category;
+            if (!string.IsNullOrEmpty(source)) this.value.source = source;
+            if (!string.IsNullOrEmpty(@group)) this.value.@group = @group;
+            if (!string.IsNullOrEmpty(member)) this.value.member = member;
             if (!string.IsNullOrEmpty(perspective)) this.value.perspective = perspective;
             this.column_index = column_index;
+        }
+
+        public dataset_group_key(string[] line_header, x_types[] line, int column_offset = 0)
+        {
+            var header_indexes = csv_header_values_array.Select((h, i) => (header: h, index: (line_header.Length > 0 ? Array.FindIndex(line_header, a => a.EndsWith(h)) : column_offset + i))).ToArray();
+
+            int hi(string name)
+            {
+                return header_indexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+            }
+
+            var file_tag = line[hi(nameof(value.file_tag))].as_str;
+            var alphabet = line[hi(nameof(value.alphabet))].as_str;
+            var stats = line[hi(nameof(value.stats))].as_str;
+            var dimension = line[hi(nameof(value.dimension))].as_str;
+            var category = line[hi(nameof(value.category))].as_str;
+            var source = line[hi(nameof(value.source))].as_str;
+            var @group = line[hi(nameof(value.@group))].as_str;
+            var member = line[hi(nameof(value.member))].as_str;
+            var perspective = line[hi(nameof(value.perspective))].as_str;
+            var column_index = line[hi(nameof(this.column_index))].as_int;
+
+            if (!string.IsNullOrEmpty(file_tag)) this.value.file_tag = file_tag;
+            if (!string.IsNullOrEmpty(alphabet)) this.value.alphabet = alphabet;
+            if (!string.IsNullOrEmpty(stats)) this.value.stats = stats;
+            if (!string.IsNullOrEmpty(dimension)) this.value.dimension = dimension;
+            if (!string.IsNullOrEmpty(category)) this.value.category = category;
+            if (!string.IsNullOrEmpty(source)) this.value.source = source;
+            if (!string.IsNullOrEmpty(@group)) this.value.@group = @group;
+            if (!string.IsNullOrEmpty(member)) this.value.member = member;
+            if (!string.IsNullOrEmpty(perspective)) this.value.perspective = perspective;
+            if (column_index != null) this.column_index = column_index.Value;
+        }
+
+        internal static dataset_group_key find_reference(dataset_group_key[] list, dataset_group_key item)
+        {
+            return list.FirstOrDefault(a => a == item);
         }
 
         internal static readonly string[] csv_header_values_array = new string[]
@@ -105,14 +142,14 @@ namespace svm_fs_batch
             //return value.Equals(other.value);
 
             return
-                ((value.file_tag    ?? "") == (other.value.file_tag    ?? "")) &&
-                ((value.alphabet    ?? "") == (other.value.alphabet    ?? "")) &&
-                ((value.stats       ?? "") == (other.value.stats       ?? "")) &&
-                ((value.dimension   ?? "") == (other.value.dimension   ?? "")) &&
-                ((value.category    ?? "") == (other.value.category    ?? "")) &&
-                ((value.source      ?? "") == (other.value.source      ?? "")) &&
-                ((value.@group      ?? "") == (other.value.@group      ?? "")) &&
-                ((value.member      ?? "") == (other.value.member      ?? "")) &&
+                ((value.file_tag ?? "") == (other.value.file_tag ?? "")) &&
+                ((value.alphabet ?? "") == (other.value.alphabet ?? "")) &&
+                ((value.stats ?? "") == (other.value.stats ?? "")) &&
+                ((value.dimension ?? "") == (other.value.dimension ?? "")) &&
+                ((value.category ?? "") == (other.value.category ?? "")) &&
+                ((value.source ?? "") == (other.value.source ?? "")) &&
+                ((value.@group ?? "") == (other.value.@group ?? "")) &&
+                ((value.member ?? "") == (other.value.member ?? "")) &&
                 ((value.perspective ?? "") == (other.value.perspective ?? ""));
         }
 
@@ -121,7 +158,7 @@ namespace svm_fs_batch
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj.GetType() != this.GetType()) return false;
-            return Equals((dataset_group_key) obj);
+            return Equals((dataset_group_key)obj);
         }
 
         public override int GetHashCode()

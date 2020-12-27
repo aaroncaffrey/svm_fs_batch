@@ -34,10 +34,27 @@ namespace svm_fs_batch
         internal (double x, double y)[] pr_xy_str_11p;
         internal (double x, double y)[] pri_xy_str_all;
         internal (double x, double y)[] pri_xy_str_11p;
-        internal double[] thresholds;
+        internal double[]     thresholds;
         internal prediction[] predictions;
 
         // note: load does not load the rd/sd part of the cm file.  this has to be recalculated after loading the cm.
+
+        internal void clear_supplemental()
+        {
+            unrolled_index_data = null;
+            grid_point = null;
+            x_time_grid = null;
+            x_time_train = null;
+            x_time_test = null;
+            roc_xy_str_all = null;
+            roc_xy_str_11p = null;
+            pr_xy_str_all = null;
+            pr_xy_str_11p = null;
+            pri_xy_str_all = null;
+            pri_xy_str_11p = null;
+            thresholds = null;
+            predictions = null;
+        }
 
         internal static void save(CancellationTokenSource cts, string cm_full_filename, string cm_summary_filename, bool overwrite, confusion_matrix[] x_list, bool as_parallel = true)
         {
@@ -95,7 +112,7 @@ namespace svm_fs_batch
             var lens_max = lens.Max();
 
             var save_full = save_full_req && (overwrite || !io_proxy.is_file_available(cts, cm_full_filename, false, module_name, method_name));
-            var save_summary = save_summary_req && (overwrite || !io_proxy.is_file_available(cts, cm_summary_filename,false, module_name, method_name));
+            var save_summary = save_summary_req && (overwrite || !io_proxy.is_file_available(cts, cm_summary_filename, false, module_name, method_name));
 
             if (save_full_req && !save_full)
             {
@@ -203,13 +220,14 @@ namespace svm_fs_batch
                         break;
                     }
                 }
-//#if DEBUG
-//                if (column_offset == -1) { throw new ArgumentOutOfRangeException(nameof(column_offset)); }
-//#endif
+                //#if DEBUG
+                //                if (column_offset == -1) { throw new ArgumentOutOfRangeException(nameof(column_offset)); }
+                //#endif
 
                 if (column_offset == -1) column_offset = 0;
             }
 
+            if (!has_header_line) line_header = null;
 
             var cm_list =
                 as_parallel
@@ -220,14 +238,14 @@ namespace svm_fs_batch
                     .AsParallel()
                     .AsOrdered()
                     .WithCancellation(cts.Token)
-                    .Select(line => load_line(cts, column_offset, line))
+                    .Select(line => load_line(cts, column_offset, line_header, line, as_parallel))
                     .Where(a => a != null)
                     .ToArray()
                 :
                     lines
                     .Skip(has_header_line ? 1 : 0)
                     .Where(a => !string.IsNullOrWhiteSpace(a))
-                    .Select(line => load_line(cts, column_offset, line))
+                    .Select(line => load_line(cts, column_offset, line_header, line, as_parallel))
                     .Where(a => a != null)
                     .ToArray();
 
@@ -235,8 +253,10 @@ namespace svm_fs_batch
             return cm_list;
         }
 
-        private static confusion_matrix load_line(CancellationTokenSource cts, int column_offset, string line)
+        private static confusion_matrix load_line(CancellationTokenSource cts, int column_offset, string[] line_header, string line, bool as_parallel = true)
         {
+
+
             if (cts.IsCancellationRequested) return default;
 
             var s_all = line.Split(',');
@@ -246,114 +266,225 @@ namespace svm_fs_batch
             //todo: check why confusion matrix is missing from 'line'
             if (column_count < csv_header_values_array.Length) return null;
 
-            var x_type = x_types.get_x_types(s_all, cts, true); //routines.x_types(cts, s_all, true);
+            var x_type = x_types.get_x_types(s_all, cts, as_parallel); //routines.x_types(cts, s_all, true);
 
+            var header_indexes = csv_header_values_array.Select((h, i) => (header: h, index: (line_header.Length > 0 ? Array.FindIndex(line_header, a => a.EndsWith(h)) : column_offset + i))).ToArray();
 
-            var k = 0;
+            int hi(string name)
+            {
+                return header_indexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+            }
+
+            //var k = 0;
 
             // skip and don't load rank_score values
-            k += rank_score.csv_header_values_array.Length;
-
-            // load index_data to be able to later match this confusion_matrix instance with its index_data instance 
-            var unrolled_index_data = new index_data(x_type, k);
-            k += index_data.csv_header_values_array.Length;
-
-
-            k = column_offset;
-
-            var grid_point = new grid_point() { cost = x_type[k++].as_double, gamma = x_type[k++].as_double, epsilon = x_type[k++].as_double, coef0 = x_type[k++].as_double, degree = x_type[k++].as_double, cv_rate = x_type[k++].as_double, };
+            //k += rank_score.csv_header_values_array.Length;
 
             var cm = new confusion_matrix();
 
-            cm.unrolled_index_data = unrolled_index_data;
-            cm.grid_point = grid_point;
-            cm.x_time_grid = !string.IsNullOrWhiteSpace(x_type[k].as_str) ? (TimeSpan.TryParseExact(x_type[k++].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result1) ? (TimeSpan?)ts_result1 : (TimeSpan?)null) : (TimeSpan?)null;
-            cm.x_time_train = !string.IsNullOrWhiteSpace(x_type[k].as_str) ? (TimeSpan.TryParseExact(x_type[k++].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result2) ? (TimeSpan?)ts_result2 : (TimeSpan?)null) : (TimeSpan?)null;
-            cm.x_time_test = !string.IsNullOrWhiteSpace(x_type[k].as_str) ? (TimeSpan.TryParseExact(x_type[k++].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result3) ? (TimeSpan?)ts_result3 : (TimeSpan?)null) : (TimeSpan?)null;
-            cm.x_prediction_threshold = x_type[k++].as_double;
-            cm.x_prediction_threshold_class = x_type[k++].as_double;
-            cm.x_repetitions_index = x_type[k++].as_int ?? 0;
-            cm.x_outer_cv_index = x_type[k++].as_int ?? 0;
-            cm.x_class_id = x_type[k++].as_int;
-            cm.x_class_weight = x_type[k++].as_double;
-            cm.x_class_name = x_type[k++].as_str;
-            cm.x_class_size = x_type[k++].as_double ?? 0;
-            cm.x_class_train_size = x_type[k++].as_double ?? 0;
-            cm.x_class_test_size = x_type[k++].as_double ?? 0;
+            //// load index_data to be able to later match this confusion_matrix instance with its index_data instance 
+            //var unrolled_index_data = new index_data(line_header, x_type, 0 /*k*/);
+            
+            ////k += index_data.csv_header_values_array.Length;
+            ////k = column_offset;
+
+            //var grid_point = new grid_point()
+            //{
+            //    cost = x_type[hi(nameof(cm.grid_point.cost))].as_double, 
+            //    gamma = x_type[hi(nameof(cm.grid_point.gamma))].as_double,
+            //    epsilon = x_type[hi(nameof(cm.grid_point.epsilon))].as_double, 
+            //    coef0 = x_type[hi(nameof(cm.grid_point.coef0))].as_double, 
+            //    degree = x_type[hi(nameof(cm.grid_point.degree))].as_double, 
+            //    cv_rate = x_type[hi(nameof(cm.grid_point.cv_rate))].as_double,
+            //};
+
+            
+
+
+            cm.unrolled_index_data = new index_data(line_header, x_type, 0 /*k*/); ;
+            cm.grid_point = new grid_point()
+            {
+                cost = x_type[hi(nameof(cm.grid_point.cost))].as_double,
+                gamma = x_type[hi(nameof(cm.grid_point.gamma))].as_double,
+                epsilon = x_type[hi(nameof(cm.grid_point.epsilon))].as_double,
+                coef0 = x_type[hi(nameof(cm.grid_point.coef0))].as_double,
+                degree = x_type[hi(nameof(cm.grid_point.degree))].as_double,
+                cv_rate = x_type[hi(nameof(cm.grid_point.cv_rate))].as_double,
+            }; ;
+            cm.x_time_grid = !string.IsNullOrWhiteSpace(x_type[hi(nameof(x_time_grid))].as_str) ? (TimeSpan.TryParseExact(x_type[hi(nameof(x_time_grid))].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result1) ? (TimeSpan?)ts_result1 : (TimeSpan?)null) : (TimeSpan?)null;
+            cm.x_time_train = !string.IsNullOrWhiteSpace(x_type[hi(nameof(x_time_train))].as_str) ? (TimeSpan.TryParseExact(x_type[hi(nameof(x_time_train))].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result2) ? (TimeSpan?)ts_result2 : (TimeSpan?)null) : (TimeSpan?)null;
+            cm.x_time_test = !string.IsNullOrWhiteSpace(x_type[hi(nameof(x_time_test))].as_str) ? (TimeSpan.TryParseExact(x_type[hi(nameof(x_time_test))].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result3) ? (TimeSpan?)ts_result3 : (TimeSpan?)null) : (TimeSpan?)null;
+            cm.x_prediction_threshold = x_type[hi(nameof(x_prediction_threshold))].as_double;
+            cm.x_prediction_threshold_class = x_type[hi(nameof(x_prediction_threshold_class))].as_double;
+            cm.x_repetitions_index = x_type[hi(nameof(x_repetitions_index))].as_int ?? 0;
+            cm.x_outer_cv_index = x_type[hi(nameof(x_outer_cv_index))].as_int ?? 0;
+            cm.x_class_id = x_type[hi(nameof(x_class_id))].as_int;
+            cm.x_class_weight = x_type[hi(nameof(x_class_weight))].as_double;
+            cm.x_class_name = x_type[hi(nameof(x_class_name))].as_str;
+            cm.x_class_size = x_type[hi(nameof(x_class_size))].as_double ?? 0;
+            cm.x_class_train_size = x_type[hi(nameof(x_class_train_size))].as_double ?? 0;
+            cm.x_class_test_size = x_type[hi(nameof(x_class_test_size))].as_double ?? 0;
+
             cm.metrics = new metrics_box();
+            cm.metrics.cm_P = x_type[hi(nameof(cm.metrics.cm_P))].as_double ?? 0;
+            cm.metrics.cm_N = x_type[hi(nameof(cm.metrics.cm_N))].as_double ?? 0;
+            cm.metrics.cm_P_TP = x_type[hi(nameof(cm.metrics.cm_P_TP))].as_double ?? 0;
+            cm.metrics.cm_P_FN = x_type[hi(nameof(cm.metrics.cm_P_FN))].as_double ?? 0;
+            cm.metrics.cm_N_TN = x_type[hi(nameof(cm.metrics.cm_N_TN))].as_double ?? 0;
+            cm.metrics.cm_N_FP = x_type[hi(nameof(cm.metrics.cm_N_FP))].as_double ?? 0;
+            cm.metrics.p_TPR = x_type[hi(nameof(cm.metrics.p_TPR))].as_double ?? 0;
+            cm.metrics.p_TNR = x_type[hi(nameof(cm.metrics.p_TNR))].as_double ?? 0;
+            cm.metrics.p_PPV = x_type[hi(nameof(cm.metrics.p_PPV))].as_double ?? 0;
+            cm.metrics.p_Precision = x_type[hi(nameof(cm.metrics.p_Precision))].as_double ?? 0;
+            cm.metrics.p_Prevalence = x_type[hi(nameof(cm.metrics.p_Prevalence))].as_double ?? 0;
+            cm.metrics.p_MCR = x_type[hi(nameof(cm.metrics.p_MCR))].as_double ?? 0;
+            cm.metrics.p_ER = x_type[hi(nameof(cm.metrics.p_ER))].as_double ?? 0;
+            cm.metrics.p_NER = x_type[hi(nameof(cm.metrics.p_NER))].as_double ?? 0;
+            cm.metrics.p_CNER = x_type[hi(nameof(cm.metrics.p_CNER))].as_double ?? 0;
+            cm.metrics.p_Kappa = x_type[hi(nameof(cm.metrics.p_Kappa))].as_double ?? 0;
+            cm.metrics.p_Overlap = x_type[hi(nameof(cm.metrics.p_Overlap))].as_double ?? 0;
+            cm.metrics.p_RND_ACC = x_type[hi(nameof(cm.metrics.p_RND_ACC))].as_double ?? 0;
+            cm.metrics.p_Support = x_type[hi(nameof(cm.metrics.p_Support))].as_double ?? 0;
+            cm.metrics.p_BaseRate = x_type[hi(nameof(cm.metrics.p_BaseRate))].as_double ?? 0;
+            cm.metrics.p_YoudenIndex = x_type[hi(nameof(cm.metrics.p_YoudenIndex))].as_double ?? 0;
+            cm.metrics.p_NPV = x_type[hi(nameof(cm.metrics.p_NPV))].as_double ?? 0;
+            cm.metrics.p_FNR = x_type[hi(nameof(cm.metrics.p_FNR))].as_double ?? 0;
+            cm.metrics.p_FPR = x_type[hi(nameof(cm.metrics.p_FPR))].as_double ?? 0;
+            cm.metrics.p_FDR = x_type[hi(nameof(cm.metrics.p_FDR))].as_double ?? 0;
+            cm.metrics.p_FOR = x_type[hi(nameof(cm.metrics.p_FOR))].as_double ?? 0;
+            cm.metrics.p_ACC = x_type[hi(nameof(cm.metrics.p_ACC))].as_double ?? 0;
+            cm.metrics.p_GMean = x_type[hi(nameof(cm.metrics.p_GMean))].as_double ?? 0;
+            cm.metrics.p_F1S = x_type[hi(nameof(cm.metrics.p_F1S))].as_double ?? 0;
+            cm.metrics.p_G1S = x_type[hi(nameof(cm.metrics.p_G1S))].as_double ?? 0;
+            cm.metrics.p_MCC = x_type[hi(nameof(cm.metrics.p_MCC))].as_double ?? 0;
+            cm.metrics.p_Informedness = x_type[hi(nameof(cm.metrics.p_Informedness))].as_double ?? 0;
+            cm.metrics.p_Markedness = x_type[hi(nameof(cm.metrics.p_Markedness))].as_double ?? 0;
+            cm.metrics.p_BalancedAccuracy = x_type[hi(nameof(cm.metrics.p_BalancedAccuracy))].as_double ?? 0;
+            cm.metrics.p_ROC_AUC_Approx_All = x_type[hi(nameof(cm.metrics.p_ROC_AUC_Approx_All))].as_double ?? 0;
+            cm.metrics.p_ROC_AUC_Approx_11p = x_type[hi(nameof(cm.metrics.p_ROC_AUC_Approx_11p))].as_double ?? 0;
+            cm.metrics.p_ROC_AUC_All = x_type[hi(nameof(cm.metrics.p_ROC_AUC_All))].as_double ?? 0;
+            cm.metrics.p_PR_AUC_Approx_All = x_type[hi(nameof(cm.metrics.p_PR_AUC_Approx_All))].as_double ?? 0;
+            cm.metrics.p_PR_AUC_Approx_11p = x_type[hi(nameof(cm.metrics.p_PR_AUC_Approx_11p))].as_double ?? 0;
+            cm.metrics.p_PRI_AUC_Approx_All = x_type[hi(nameof(cm.metrics.p_PRI_AUC_Approx_All))].as_double ?? 0;
+            cm.metrics.p_PRI_AUC_Approx_11p = x_type[hi(nameof(cm.metrics.p_PRI_AUC_Approx_11p))].as_double ?? 0;
+            cm.metrics.p_AP_All = x_type[hi(nameof(cm.metrics.p_AP_All))].as_double ?? 0;
+            cm.metrics.p_AP_11p = x_type[hi(nameof(cm.metrics.p_AP_11p))].as_double ?? 0;
+            cm.metrics.p_API_All = x_type[hi(nameof(cm.metrics.p_API_All))].as_double ?? 0;
+            cm.metrics.p_API_11p = x_type[hi(nameof(cm.metrics.p_API_11p))].as_double ?? 0;
+            cm.metrics.p_Brier_Inverse_All = x_type[hi(nameof(cm.metrics.p_Brier_Inverse_All))].as_double ?? 0;
+            cm.metrics.p_LRP = x_type[hi(nameof(cm.metrics.p_LRP))].as_double ?? 0;
+            cm.metrics.p_LRN = x_type[hi(nameof(cm.metrics.p_LRN))].as_double ?? 0;
+            cm.metrics.p_DOR = x_type[hi(nameof(cm.metrics.p_DOR))].as_double ?? 0;
+            cm.metrics.p_PrevalenceThreshold = x_type[hi(nameof(cm.metrics.p_PrevalenceThreshold))].as_double ?? 0;
+            cm.metrics.p_CriticalSuccessIndex = x_type[hi(nameof(cm.metrics.p_CriticalSuccessIndex))].as_double ?? 0;
+            cm.metrics.p_F1B_00 = x_type[hi(nameof(cm.metrics.p_F1B_00))].as_double ?? 0;
+            cm.metrics.p_F1B_01 = x_type[hi(nameof(cm.metrics.p_F1B_01))].as_double ?? 0;
+            cm.metrics.p_F1B_02 = x_type[hi(nameof(cm.metrics.p_F1B_02))].as_double ?? 0;
+            cm.metrics.p_F1B_03 = x_type[hi(nameof(cm.metrics.p_F1B_03))].as_double ?? 0;
+            cm.metrics.p_F1B_04 = x_type[hi(nameof(cm.metrics.p_F1B_04))].as_double ?? 0;
+            cm.metrics.p_F1B_05 = x_type[hi(nameof(cm.metrics.p_F1B_05))].as_double ?? 0;
+            cm.metrics.p_F1B_06 = x_type[hi(nameof(cm.metrics.p_F1B_06))].as_double ?? 0;
+            cm.metrics.p_F1B_07 = x_type[hi(nameof(cm.metrics.p_F1B_07))].as_double ?? 0;
+            cm.metrics.p_F1B_08 = x_type[hi(nameof(cm.metrics.p_F1B_08))].as_double ?? 0;
+            cm.metrics.p_F1B_09 = x_type[hi(nameof(cm.metrics.p_F1B_09))].as_double ?? 0;
+            cm.metrics.p_F1B_10 = x_type[hi(nameof(cm.metrics.p_F1B_10))].as_double ?? 0;
 
-            cm.metrics.cm_P = x_type[k++].as_double ?? 0;
-            cm.metrics.cm_N = x_type[k++].as_double ?? 0;
-            cm.metrics.cm_P_TP = x_type[k++].as_double ?? 0;
-            cm.metrics.cm_N_FP = x_type[k++].as_double ?? 0;
-            cm.metrics.cm_N_TN = x_type[k++].as_double ?? 0;
-            cm.metrics.cm_P_FN = x_type[k++].as_double ?? 0;
-            cm.metrics.p_TPR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_TNR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_PPV = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Precision = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Prevalence = x_type[k++].as_double ?? 0;
-            cm.metrics.p_MCR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_ER = x_type[k++].as_double ?? 0;
-            cm.metrics.p_NER = x_type[k++].as_double ?? 0;
-            cm.metrics.p_CNER = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Kappa = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Overlap = x_type[k++].as_double ?? 0;
-            cm.metrics.p_RND_ACC = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Support = x_type[k++].as_double ?? 0;
-            cm.metrics.p_BaseRate = x_type[k++].as_double ?? 0;
-            cm.metrics.p_YoudenIndex = x_type[k++].as_double ?? 0;
-            cm.metrics.p_NPV = x_type[k++].as_double ?? 0;
-            cm.metrics.p_FNR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_FPR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_FDR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_FOR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_ACC = x_type[k++].as_double ?? 0;
-            cm.metrics.p_GMean = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1S = x_type[k++].as_double ?? 0;
-            cm.metrics.p_G1S = x_type[k++].as_double ?? 0;
-            cm.metrics.p_MCC = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Informedness = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Markedness = x_type[k++].as_double ?? 0;
-            cm.metrics.p_BalancedAccuracy = x_type[k++].as_double ?? 0;
-            cm.metrics.p_ROC_AUC_Approx_All = x_type[k++].as_double ?? 0;
-            cm.metrics.p_ROC_AUC_Approx_11p = x_type[k++].as_double ?? 0;
-            cm.metrics.p_ROC_AUC_All = x_type[k++].as_double ?? 0;
-            cm.metrics.p_PR_AUC_Approx_All = x_type[k++].as_double ?? 0;
-            cm.metrics.p_PR_AUC_Approx_11p = x_type[k++].as_double ?? 0;
-            cm.metrics.p_PRI_AUC_Approx_All = x_type[k++].as_double ?? 0;
-            cm.metrics.p_PRI_AUC_Approx_11p = x_type[k++].as_double ?? 0;
-            cm.metrics.p_AP_All = x_type[k++].as_double ?? 0;
-            cm.metrics.p_AP_11p = x_type[k++].as_double ?? 0;
-            cm.metrics.p_API_All = x_type[k++].as_double ?? 0;
-            cm.metrics.p_API_11p = x_type[k++].as_double ?? 0;
-            cm.metrics.p_Brier_Inverse_All = x_type[k++].as_double ?? 0;
-            cm.metrics.p_LRP = x_type[k++].as_double ?? 0;
-            cm.metrics.p_LRN = x_type[k++].as_double ?? 0;
-            cm.metrics.p_DOR = x_type[k++].as_double ?? 0;
-            cm.metrics.p_PrevalenceThreshold = x_type[k++].as_double ?? 0;
-            cm.metrics.p_CriticalSuccessIndex = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_00 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_01 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_02 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_03 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_04 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_05 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_06 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_07 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_08 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_09 = x_type[k++].as_double ?? 0;
-            cm.metrics.p_F1B_10 = x_type[k++].as_double ?? 0;
+            cm.roc_xy_str_all = !string.IsNullOrWhiteSpace(x_type[hi(nameof(roc_xy_str_all))].as_str) ? x_type[hi(nameof(roc_xy_str_all))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            cm.roc_xy_str_11p = !string.IsNullOrWhiteSpace(x_type[hi(nameof(roc_xy_str_11p))].as_str) ? x_type[hi(nameof(roc_xy_str_11p))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            cm.pr_xy_str_all = !string.IsNullOrWhiteSpace(x_type[hi(nameof(pr_xy_str_all))].as_str) ? x_type[hi(nameof(pr_xy_str_all))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            cm.pr_xy_str_11p = !string.IsNullOrWhiteSpace(x_type[hi(nameof(pr_xy_str_11p))].as_str) ? x_type[hi(nameof(pr_xy_str_11p))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            cm.pri_xy_str_all = !string.IsNullOrWhiteSpace(x_type[hi(nameof(pri_xy_str_all))].as_str) ? x_type[hi(nameof(pri_xy_str_all))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            cm.pri_xy_str_11p = !string.IsNullOrWhiteSpace(x_type[hi(nameof(pri_xy_str_11p))].as_str) ? x_type[hi(nameof(pri_xy_str_11p))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            cm.thresholds = !string.IsNullOrWhiteSpace(x_type[hi(nameof(thresholds))].as_str) ? x_type[hi(nameof(thresholds))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : -1).ToArray() : null;
+            cm.predictions = !string.IsNullOrWhiteSpace(x_type[hi(nameof(predictions))].as_str) ? x_type[hi(nameof(predictions))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new prediction(a.Split('|'))).ToArray() : null;
 
 
-            cm.roc_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
-            cm.roc_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
-            cm.pr_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy =  a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
-            cm.pr_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy =  a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
-            cm.pri_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
-            cm.pri_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
-            cm.thresholds = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : -1).ToArray() : null;
-            cm.predictions = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k].as_str) ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new prediction(a.Split('|'))).ToArray() : null;
+            //cm.unrolled_index_data = unrolled_index_data;
+            //cm.grid_point = grid_point;
+            //cm.x_time_grid = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? (TimeSpan.TryParseExact(x_type[k - 1].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result1) ? (TimeSpan?)ts_result1 : (TimeSpan?)null) : (TimeSpan?)null;
+            //cm.x_time_train = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? (TimeSpan.TryParseExact(x_type[k - 1].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result2) ? (TimeSpan?)ts_result2 : (TimeSpan?)null) : (TimeSpan?)null;
+            //cm.x_time_test = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? (TimeSpan.TryParseExact(x_type[k - 1].as_str, "G", DateTimeFormatInfo.InvariantInfo, out var ts_result3) ? (TimeSpan?)ts_result3 : (TimeSpan?)null) : (TimeSpan?)null;
+            //cm.x_prediction_threshold = x_type[k++].as_double;
+            //cm.x_prediction_threshold_class = x_type[k++].as_double;
+            //cm.x_repetitions_index = x_type[k++].as_int ?? 0;
+            //cm.x_outer_cv_index = x_type[k++].as_int ?? 0;
+            //cm.x_class_id = x_type[k++].as_int;
+            //cm.x_class_weight = x_type[k++].as_double;
+            //cm.x_class_name = x_type[k++].as_str;
+            //cm.x_class_size = x_type[k++].as_double ?? 0;
+            //cm.x_class_train_size = x_type[k++].as_double ?? 0;
+            //cm.x_class_test_size = x_type[k++].as_double ?? 0;
+            //cm.metrics = new metrics_box();
+            //cm.metrics.cm_P = x_type[k++].as_double ?? 0;
+            //cm.metrics.cm_N = x_type[k++].as_double ?? 0;
+            //cm.metrics.cm_P_TP = x_type[k++].as_double ?? 0;
+            //cm.metrics.cm_P_FN = x_type[k++].as_double ?? 0;
+            //cm.metrics.cm_N_TN = x_type[k++].as_double ?? 0;
+            //cm.metrics.cm_N_FP = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_TPR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_TNR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_PPV = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Precision = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Prevalence = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_MCR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_ER = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_NER = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_CNER = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Kappa = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Overlap = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_RND_ACC = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Support = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_BaseRate = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_YoudenIndex = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_NPV = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_FNR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_FPR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_FDR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_FOR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_ACC = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_GMean = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1S = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_G1S = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_MCC = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Informedness = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Markedness = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_BalancedAccuracy = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_ROC_AUC_Approx_All = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_ROC_AUC_Approx_11p = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_ROC_AUC_All = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_PR_AUC_Approx_All = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_PR_AUC_Approx_11p = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_PRI_AUC_Approx_All = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_PRI_AUC_Approx_11p = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_AP_All = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_AP_11p = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_API_All = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_API_11p = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_Brier_Inverse_All = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_LRP = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_LRN = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_DOR = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_PrevalenceThreshold = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_CriticalSuccessIndex = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_00 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_01 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_02 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_03 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_04 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_05 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_06 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_07 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_08 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_09 = x_type[k++].as_double ?? 0;
+            //cm.metrics.p_F1B_10 = x_type[k++].as_double ?? 0;
+            //cm.roc_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            //cm.roc_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            //cm.pr_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            //cm.pr_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            //cm.pri_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            //cm.pri_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (x: xy[0], y: xy[1]); }).ToArray() : null;
+            //cm.thresholds = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : -1).ToArray() : null;
+            //cm.predictions = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k - 1].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new prediction(a.Split('|'))).ToArray() : null;
 
 
             return cm;

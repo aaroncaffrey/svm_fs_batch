@@ -105,51 +105,61 @@ namespace svm_fs_batch
             return x3;
         }
 
-        public index_data(string csv_line, int column_offset = 0) : this(csv_line.Split(','), column_offset)
+        public index_data(string[] line_header, string csv_line, int column_offset = 0) : this(line_header, csv_line.Split(','), column_offset)
         {
 
         }
 
-        public index_data(string[] csv_line, int column_offset = 0)
+        public index_data(string[] line_header, string[] csv_line, int column_offset = 0)
         {
             //set_values(routines.x_types(null, csv_line.Skip(column_offset).ToArray(), false), 0);
-            set_values(x_types.get_x_types(csv_line.Skip(column_offset).ToArray()), 0);
+            set_values(line_header, x_types.get_x_types(csv_line.Skip(column_offset).ToArray()), 0);
         }
 
-        internal index_data(x_types[] x_type, int column_offset = 0)
+        internal index_data(string[] line_header, x_types[] x_type, int column_offset = 0)
         {
-            set_values(x_type, column_offset);
+            set_values(line_header, x_type, column_offset);
         }
 
-        internal void set_values(x_types[] x_type, int column_offset = 0)
+        internal void set_values(string[] line_header, x_types[] x_type, int column_offset = 0)
         {
             var k = column_offset;
 
-            // todo: lookup actual group key instance
-            group_key = new dataset_group_key(x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, x_type[k++].as_str, int.Parse(x_type[k++].as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo));
+            var header_indexes = csv_header_values_array.Select((h, i) => (header: h, index: (line_header.Length > 0 ? Array.FindIndex(line_header, a => a.EndsWith(h)) : column_offset + i))).ToArray();
+
+            int hi(string name)
+            {
+                return header_indexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+            }
+
+            // todo: lookup actual group key instance - not necessary, since the parent index_data will be looked up
+            //[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, int.TryParse(x_type[hi(nameof(___))].as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var tp_int1) ? tp_int1 : -1);
+
+            group_key = new dataset_group_key(line_header, x_type, 0);
+                
             if (group_key.value == default) group_key = null;
 
-            iteration_index = x_type[k++].as_int ?? -1;
-            group_array_index = x_type[k++].as_int ?? -1;
-            total_groups = x_type[k++].as_int ?? -1;
-            selection_direction = Enum.Parse<program.direction>(x_type[k++].as_str, true);
-            experiment_name = x_type[k++].as_str;
-            repetitions = x_type[k++].as_int ?? -1;
-            outer_cv_folds = x_type[k++].as_int ?? -1;
-            outer_cv_folds_to_run = x_type[k++].as_int ?? -1;
-            inner_cv_folds = x_type[k++].as_int ?? -1;
-            svm_type = Enum.Parse<routines.libsvm_svm_type>(x_type[k++].as_str, true);
-            svm_kernel = Enum.Parse<routines.libsvm_kernel_type>(x_type[k++].as_str, true);
-            scale_function = Enum.Parse<scaling.scale_function>(x_type[k++].as_str, true);
-            calc_11p_thresholds = x_type[k++].as_bool ?? default;
-            num_groups = x_type[k++].as_int ?? -1;
-            num_columns = x_type[k++].as_int ?? -1;
-            group_array_indexes = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
-            column_array_indexes = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
-            class_weights = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => { var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries); return (int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), double.Parse(b[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo)); }).ToArray();
+            iteration_index = x_type[hi(nameof(iteration_index))].as_int ?? -1;
+            group_array_index = x_type[hi(nameof(group_array_index))].as_int ?? -1;
+            total_groups = x_type[hi(nameof(total_groups))].as_int ?? -1;
+            selection_direction = Enum.Parse<program.direction>(x_type[hi(nameof(selection_direction))].as_str, true);
+            experiment_name = x_type[hi(nameof(experiment_name))].as_str;
+            repetitions = x_type[hi(nameof(repetitions))].as_int ?? -1;
+            outer_cv_folds = x_type[hi(nameof(outer_cv_folds))].as_int ?? -1;
+            outer_cv_folds_to_run = x_type[hi(nameof(outer_cv_folds_to_run))].as_int ?? -1;
+            inner_cv_folds = x_type[hi(nameof(inner_cv_folds))].as_int ?? -1;
+            svm_type = Enum.Parse<routines.libsvm_svm_type>(x_type[hi(nameof(svm_type))].as_str, true);
+            svm_kernel = Enum.Parse<routines.libsvm_kernel_type>(x_type[hi(nameof(svm_kernel))].as_str, true);
+            scale_function = Enum.Parse<scaling.scale_function>(x_type[hi(nameof(scale_function))].as_str, true);
+            calc_11p_thresholds = x_type[hi(nameof(calc_11p_thresholds))].as_bool ?? default;
+            num_groups = x_type[hi(nameof(num_groups))].as_int ?? -1;
+            num_columns = x_type[hi(nameof(num_columns))].as_int ?? -1;
+            group_array_indexes = x_type[hi(nameof(group_array_indexes))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
+            column_array_indexes = x_type[hi(nameof(column_array_indexes))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
+            class_weights = x_type[hi(nameof(class_weights))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => { var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries); return (int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), double.Parse(b[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo)); }).ToArray();
 
             //  ;:|~/
-            class_folds = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a =>
+            class_folds = x_type[hi(nameof(class_folds))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a =>
             {
                 var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries);
                 var class_id = int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -168,7 +178,7 @@ namespace svm_fs_batch
             }).ToArray();
 
             //  ;:|~/
-            down_sampled_train_class_folds = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a =>
+            down_sampled_train_class_folds = x_type[hi(nameof(down_sampled_train_class_folds))].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a =>
             {
                 var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries);
                 var class_id = int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -262,6 +272,9 @@ namespace svm_fs_batch
                     (((id2.column_array_indexes == null || id2.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || (id2.column_array_indexes ?? Array.Empty<int>()).SequenceEqual(data.column_array_indexes)) &&
                     (((id2.class_weights == null || id2.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || (id2.class_weights ?? Array.Empty<(int class_id, double class_weight)>()).SequenceEqual(data.class_weights))
                 );
+
+            if (id == null) throw new Exception();
+
 //#if DEBUG
 //
 //            if (id == null)

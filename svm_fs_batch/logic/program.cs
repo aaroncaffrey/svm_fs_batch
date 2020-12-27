@@ -117,16 +117,13 @@ namespace svm_fs_batch
         
 
 
-        internal static string get_iteration_folder(string results_root_folder, string experiment_name, int iteration_index, /*string iteration_name = null,*/ int? group_index = null)
+        internal static string get_iteration_folder(string results_root_folder, string experiment_name, int? iteration_index = null, int? group_index = null)
         {
-            var hr = false;
+            const bool hr = false;
 
-            var it = $@"it_{(iteration_index + (hr ? 1 : 0))}" /*+ (!string.IsNullOrWhiteSpace(iteration_name) ? iteration_name : "")*/;
-
-            if (group_index == null) return Path.Combine(results_root_folder, experiment_name, it);
-
-            var gr = $@"gr_{(group_index + (hr ? 1 : 0))}";
-            return Path.Combine(results_root_folder, experiment_name, it, gr);
+            if (iteration_index == null) return Path.Combine(results_root_folder, experiment_name);
+            else if (group_index == null) return Path.Combine(results_root_folder, experiment_name, $@"it_{(iteration_index + (hr ? 1 : 0))}");
+            else return Path.Combine(results_root_folder, experiment_name, $@"it_{(iteration_index + (hr ? 1 : 0))}", $@"gr_{(group_index + (hr ? 1 : 0))}");
         }
 
 
