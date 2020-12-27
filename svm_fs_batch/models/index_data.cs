@@ -42,7 +42,7 @@ namespace svm_fs_batch
 
 
         public static readonly string[] csv_header_values_array =
-            dataset_group_key.csv_header_values_array.Select(a=>"id_"+a).ToArray()
+            dataset_group_key.csv_header_values_array.Select(a => "id_" + a).ToArray()
                 .Concat(
             new string[]
            {
@@ -136,7 +136,7 @@ namespace svm_fs_batch
             //[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, x_type[hi(nameof(___))].as_str, int.TryParse(x_type[hi(nameof(___))].as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var tp_int1) ? tp_int1 : -1);
 
             group_key = new dataset_group_key(line_header, x_type, 0);
-                
+
             if (group_key.value == default) group_key = null;
 
             iteration_index = x_type[hi(nameof(iteration_index))].as_int ?? -1;
@@ -245,88 +245,107 @@ namespace svm_fs_batch
             return $@"[" + string.Join(", ", list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max) ? $@"/{a.value_max}" : "")).ToList()) + $@"]";
         }
 
-        internal static index_data find_reference(index_data[] list, index_data data)
+        internal class index_data_search_options
         {
-            if (data == null) return null;
+            internal bool iteration_index = true;
+            internal bool group_array_index = true;
+            internal bool total_groups = true;
+            internal bool selection_direction = true;
+            internal bool calc_11p_thresholds = true;
+            internal bool svm_type = true;
+            internal bool svm_kernel = true;
+            internal bool scale_function = true;
+            internal bool repetitions = true;
+            internal bool outer_cv_folds = true;
+            internal bool outer_cv_folds_to_run = true;
+            internal bool inner_cv_folds = true;
+            internal bool group_key = true;
+            internal bool experiment_name = true;
+            internal bool num_groups = true;
+            internal bool num_columns = true;
+            internal bool group_array_indexes = true;
+            internal bool column_array_indexes = true;
+            internal bool class_weights = true;
+        }
+
+        internal static index_data find_first_reference(index_data[] list, index_data data1, index_data_search_options idso = null)
+        {
+            if (data1 == null) return null;
 
             // find proper index_data instance for this newly loaded confusion_matrix instance
-            var id = list
-                .FirstOrDefault(id2 =>
-                    id2.iteration_index == data.iteration_index &&
-                    id2.group_array_index == data.group_array_index &&
-                    id2.total_groups == data.total_groups &&
-                    id2.selection_direction == data.selection_direction &&
-                    id2.calc_11p_thresholds == data.calc_11p_thresholds &&
-                    id2.svm_type == data.svm_type &&
-                    id2.svm_kernel == data.svm_kernel &&
-                    id2.scale_function == data.scale_function &&
-                    id2.repetitions == data.repetitions &&
-                    id2.outer_cv_folds == data.outer_cv_folds &&
-                    id2.outer_cv_folds_to_run == data.outer_cv_folds_to_run &&
-                    id2.inner_cv_folds == data.inner_cv_folds &&
-                    id2.group_key == data.group_key &&
-                    id2.experiment_name == data.experiment_name &&
-                    id2.num_groups == data.num_groups &&
-                    id2.num_columns == data.num_columns &&
-                    (((id2.group_array_indexes == null || id2.group_array_indexes.Length == 0) && (data.group_array_indexes == null || data.group_array_indexes.Length == 0)) || (id2.group_array_indexes ?? Array.Empty<int>()).SequenceEqual(data.group_array_indexes)) &&
-                    (((id2.column_array_indexes == null || id2.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || (id2.column_array_indexes ?? Array.Empty<int>()).SequenceEqual(data.column_array_indexes)) &&
-                    (((id2.class_weights == null || id2.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || (id2.class_weights ?? Array.Empty<(int class_id, double class_weight)>()).SequenceEqual(data.class_weights))
-                );
+            var id = list.FirstOrDefault(data2 => compare_reference_data(data1, data2));
 
-            if (id == null) throw new Exception();
-
-//#if DEBUG
-//
-//            if (id == null)
-//            {
-//                var idx = list
-//                    .Select((id2, i) =>
-//                        (
-//                            index: i,
-//                            sum:
-//                                (id2.iteration_index == data.iteration_index ? 1 : 0) +
-//                                (id2.group_array_index == data.group_array_index ? 1 : 0) +
-//                                (id2.total_groups == data.total_groups ? 1 : 0) +
-//                                (id2.selection_direction == data.selection_direction ? 1 : 0) +
-//                                (id2.calc_11p_thresholds == data.calc_11p_thresholds ? 1 : 0) +
-//                                (id2.svm_type == data.svm_type ? 1 : 0) +
-//                                (id2.svm_kernel == data.svm_kernel ? 1 : 0) +
-//                                (id2.scale_function == data.scale_function ? 1 : 0) +
-//                                (id2.repetitions == data.repetitions ? 1 : 0) +
-//                                (id2.outer_cv_folds == data.outer_cv_folds ? 1 : 0) +
-//                                (id2.outer_cv_folds_to_run == data.outer_cv_folds_to_run ? 1 : 0) +
-//                                (id2.inner_cv_folds == data.inner_cv_folds ? 1 : 0) +
-//                                (id2.group_key == data.group_key ? 1 : 0) +
-//                                ((((id2.group_array_indexes == null || id2.group_array_indexes.Length == 0) && (data.group_array_indexes == null || data.group_array_indexes.Length == 0)) || id2.group_array_indexes.SequenceEqual(data.group_array_indexes)) ? 1 : 0) +
-//                                ((((id2.column_array_indexes == null || id2.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || id2.column_array_indexes.SequenceEqual(data.column_array_indexes)) ? 1 : 0) +
-//                                ((((id2.class_weights == null || id2.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || id2.class_weights.SequenceEqual(data.class_weights)) ? 1 : 0)
-//                        )
-//                    )
-//                    .ToArray();
-//                var max_id = list[idx.OrderByDescending(a => a.sum).First().index];
-//
-//                if (!(max_id.group_key == data.group_key)) throw new Exception();
-//
-//                if (!(max_id.iteration_index == data.iteration_index)) throw new Exception();
-//                if (!(max_id.group_array_index == data.group_array_index)) throw new Exception();
-//                if (!(max_id.total_groups == data.total_groups)) throw new Exception();
-//                if (!(max_id.selection_direction == data.selection_direction)) throw new Exception();
-//                if (!(max_id.calc_11p_thresholds == data.calc_11p_thresholds)) throw new Exception();
-//                if (!(max_id.svm_type == data.svm_type)) throw new Exception();
-//                if (!(max_id.svm_kernel == data.svm_kernel)) throw new Exception();
-//                if (!(max_id.scale_function == data.scale_function)) throw new Exception();
-//                if (!(max_id.repetitions == data.repetitions)) throw new Exception();
-//                if (!(max_id.outer_cv_folds == data.outer_cv_folds)) throw new Exception();
-//                if (!(max_id.outer_cv_folds_to_run == data.outer_cv_folds_to_run)) throw new Exception();
-//                if (!(max_id.inner_cv_folds == data.inner_cv_folds)) throw new Exception();
-//
-//                if (!((((max_id.group_array_indexes == null || max_id.group_array_indexes.Length == 0) && (data.group_array_indexes == null || data.group_array_indexes.Length == 0)) || max_id.group_array_indexes.SequenceEqual(data.group_array_indexes)))) throw new Exception();
-//                if (!((((max_id.column_array_indexes == null || max_id.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || max_id.column_array_indexes.SequenceEqual(data.column_array_indexes)))) throw new Exception();
-//                if (!((((max_id.class_weights == null || max_id.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || max_id.class_weights.SequenceEqual(data.class_weights)))) throw new Exception();
-//            }
-//#endif
             return id;
         }
+
+        internal static index_data find_last_reference(index_data[] list, index_data data1, index_data_search_options idso = null)
+        {
+            if (data1 == null) return null;
+
+            // find proper index_data instance for this newly loaded confusion_matrix instance
+            var id = list.LastOrDefault(data2 => compare_reference_data(data1, data2));
+
+            return id;
+        }
+
+        internal static bool compare_reference_data(index_data data1, index_data data2, index_data_search_options idso = null)
+        {
+            return ((idso != null && !idso.iteration_index) || data2.iteration_index == data1.iteration_index) &&
+                   ((idso != null && !idso.group_array_index) || data2.group_array_index == data1.group_array_index) &&
+                   ((idso != null && !idso.total_groups) || data2.total_groups == data1.total_groups) &&
+                   ((idso != null && !idso.selection_direction) || data2.selection_direction == data1.selection_direction) &&
+                   ((idso != null && !idso.calc_11p_thresholds) || data2.calc_11p_thresholds == data1.calc_11p_thresholds) &&
+                   ((idso != null && !idso.svm_type) || data2.svm_type == data1.svm_type) &&
+                   ((idso != null && !idso.svm_kernel) || data2.svm_kernel == data1.svm_kernel) &&
+                   ((idso != null && !idso.scale_function) || data2.scale_function == data1.scale_function) &&
+                   ((idso != null && !idso.repetitions) || data2.repetitions == data1.repetitions) &&
+                   ((idso != null && !idso.outer_cv_folds) || data2.outer_cv_folds == data1.outer_cv_folds) &&
+                   ((idso != null && !idso.outer_cv_folds_to_run) || data2.outer_cv_folds_to_run == data1.outer_cv_folds_to_run) &&
+                   ((idso != null && !idso.inner_cv_folds) || data2.inner_cv_folds == data1.inner_cv_folds) &&
+                   ((idso != null && !idso.group_key) || data2.group_key == data1.group_key) &&
+                   ((idso != null && !idso.experiment_name) || data2.experiment_name == data1.experiment_name) &&
+                   ((idso != null && !idso.num_groups) || data2.num_groups == data1.num_groups) &&
+                   ((idso != null && !idso.num_columns) || data2.num_columns == data1.num_columns) &&
+                   ((idso != null && !idso.group_array_indexes) || (((data2.group_array_indexes == null || data2.group_array_indexes.Length == 0) && (data1.group_array_indexes == null || data1.group_array_indexes.Length == 0)) || (data2.group_array_indexes ?? Array.Empty<int>()).SequenceEqual(data1.group_array_indexes))) &&
+                   ((idso != null && !idso.column_array_indexes) || (((data2.column_array_indexes == null || data2.column_array_indexes.Length == 0) && (data1.column_array_indexes == null || data1.column_array_indexes.Length == 0)) || (data2.column_array_indexes ?? Array.Empty<int>()).SequenceEqual(data1.column_array_indexes))) &&
+                   ((idso != null && !idso.class_weights) || (((data2.class_weights == null || data2.class_weights.Length == 0) && (data1.class_weights == null || data1.class_weights.Length == 0)) || (data2.class_weights ?? Array.Empty<(int class_id, double class_weight)>()).SequenceEqual(data1.class_weights)));
+        }
+
+        //internal static index_data find_best_match_reference(index_data[] list, index_data data)
+        //{
+        //    if (data == null) return null;
+        //
+        //    // find proper index_data instance for this newly loaded confusion_matrix instance
+        //    var sums = list.Select(id2 =>
+        //            (id2.iteration_index == data.iteration_index ? 3 : 0) +
+        //            (id2.group_array_index == data.group_array_index ? 3 : 0) +
+        //            (id2.total_groups == data.total_groups ? 1 : 0) +
+        //            (id2.selection_direction == data.selection_direction ? 1 : 0) +
+        //            (id2.calc_11p_thresholds == data.calc_11p_thresholds ? 1 : 0) +
+        //            (id2.svm_type == data.svm_type ? 1 : 0) +
+        //            (id2.svm_kernel == data.svm_kernel ? 1 : 0) +
+        //            (id2.scale_function == data.scale_function ? 1 : 0) +
+        //            (id2.repetitions == data.repetitions ? 1 : 0) +
+        //            (id2.outer_cv_folds == data.outer_cv_folds ? 1 : 0) +
+        //            (id2.outer_cv_folds_to_run == data.outer_cv_folds_to_run ? 1 : 0) +
+        //            (id2.inner_cv_folds == data.inner_cv_folds ? 1 : 0) +
+        //            (id2.group_key == data.group_key ? 1 : 0) +
+        //            (id2.experiment_name == data.experiment_name ? 1 : 0) +
+        //            (id2.num_groups == data.num_groups ? 1 : 0) +
+        //            (id2.num_columns == data.num_columns ? 1 : 0) +
+        //            ((((id2.group_array_indexes == null || id2.group_array_indexes.Length == 0) && (data.group_array_indexes == null || data.group_array_indexes.Length == 0)) || (id2.group_array_indexes ?? Array.Empty<int>()).SequenceEqual(data.group_array_indexes)) ? 1 : 0) +
+        //            ((((id2.column_array_indexes == null || id2.column_array_indexes.Length == 0) && (data.column_array_indexes == null || data.column_array_indexes.Length == 0)) || (id2.column_array_indexes ?? Array.Empty<int>()).SequenceEqual(data.column_array_indexes)) ? 1 : 0) +
+        //            ((((id2.class_weights == null || id2.class_weights.Length == 0) && (data.class_weights == null || data.class_weights.Length == 0)) || (id2.class_weights ?? Array.Empty<(int class_id, double class_weight)>()).SequenceEqual(data.class_weights)) ? 1 : 0)
+        //        ).ToArray();
+        //
+        //    var max = sums.Max();
+        //    var max_index_count = sums.Count(a => a == max);
+        //    if (max_index_count > 1) throw new Exception();
+        //    var max_index = Array.FindIndex(sums, a => a == max);
+        //
+        //    var id = list[max_index];
+        //    return id;
+        //}
 
         public index_data()
         {
@@ -339,7 +358,7 @@ namespace svm_fs_batch
         {
             if (index_data == null) return;
 
-            if (index_data.group_key!=null) group_key = new dataset_group_key(index_data.group_key);
+            if (index_data.group_key != null) group_key = new dataset_group_key(index_data.group_key);
             if (group_key.value == default) group_key = null;
 
             group_array_index = index_data.group_array_index;

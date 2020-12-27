@@ -45,7 +45,7 @@ namespace svm_fs_batch
             var groups1 = dataset_group_methods.get_main_groups(cts, dataset, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: false, perspective: false);
 
             // Limit for testing
-            groups1 = groups1.Take(10).ToArray();
+            groups1 = groups1.Take(100).ToArray();
 
             // Feature select within each group first, to reduce number of columns
             if (find_best_group_features_first)
@@ -85,10 +85,10 @@ namespace svm_fs_batch
                             outer_cv_folds: outer_cv_folds,
                             outer_cv_folds_to_run: outer_cv_folds_to_run,
                             inner_folds: inner_folds,
-                            min_score_increase: 0.01,
-                            max_iterations: 10,
-                            limit_iteration_not_higher_than_all: 6,
-                            limit_iteration_not_higher_than_last: 3,
+                            min_score_increase: 0.005,
+                            max_iterations: 100,
+                            limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+                            limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last,
                             make_outer_cv_confusion_matrices: false
                         )
                     ).ToArray();
@@ -140,7 +140,8 @@ namespace svm_fs_batch
 
                 var best_winner_columns = dataset_group_methods.ungroup(cts, winner.best_winner_groups);
                 var best_winner_columns_input = dataset_group_methods.get_main_groups(cts, best_winner_columns, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: true, perspective: true);
-                var best_winner_columns_output = feature_selection_worker
+
+                var best_winner_columns_output_start_backwards = feature_selection_worker
                 (
                     cts: cts,
                     dataset: dataset,
@@ -160,10 +161,37 @@ namespace svm_fs_batch
                     outer_cv_folds: outer_cv_folds,
                     outer_cv_folds_to_run: outer_cv_folds_to_run,
                     inner_folds: inner_folds,
-                    min_score_increase: 0.01,
-                    max_iterations: 10,
-                    limit_iteration_not_higher_than_all: 6,
-                    limit_iteration_not_higher_than_last: 3,
+                    min_score_increase: 0.005,
+                    max_iterations: 100,
+                    limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+                    limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last,
+                    make_outer_cv_confusion_matrices: false
+                );
+
+                var best_winner_columns_output_start_forwards = feature_selection_worker
+                (
+                    cts: cts,
+                    dataset: dataset,
+                    groups: best_winner_columns_input,
+                    preselect_all_groups: false,
+                    //save_status: true,
+                    //cache_full: false,
+                    //cache_summary: true,
+                    base_group_indexes: null,
+                    experiment_name: $"{experiment_name}_stage4",
+                    instance_id: instance_id,
+                    total_instances: total_instances,
+                    //array_index_start: array_index_start,
+                    //array_step: array_step,
+                    //array_index_last: array_index_last,
+                    repetitions: repetitions,
+                    outer_cv_folds: outer_cv_folds,
+                    outer_cv_folds_to_run: outer_cv_folds_to_run,
+                    inner_folds: inner_folds,
+                    min_score_increase: 0.005,
+                    max_iterations: 100,
+                    limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+                    limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last,
                     make_outer_cv_confusion_matrices: false
                 );
             }
@@ -171,7 +199,7 @@ namespace svm_fs_batch
             // Check if result is approximately the same with other parameters values (i.e. variance number of repetitions, outer folds, inner folds, etc.)
             if (test_final_best_bias)
             {
-                // stage4 ...
+                // stage5 ...
 
                 // 1. test variance of kernel & scale
                 //feature_selection_worker(dataset, winner.groups);
@@ -229,7 +257,7 @@ namespace svm_fs_batch
             var all_winners_id_cm_rs = new List<(index_data id, confusion_matrix cm, rank_score rs)>();
             var all_iteration_id_cm_rs = new List<(index_data id, confusion_matrix cm, rank_score rs)[]>();
 
-            
+
             var cache_files_loaded = new List<string>();
             var feature_selection_finished = false;
             var iteration_index = 0;
@@ -237,7 +265,7 @@ namespace svm_fs_batch
             var iterations_not_higher_than_last = 0;
             var previous_group_tests = new List<int[]>();
             var selection_excluded_groups = new List<int>();
-
+            var has_calibrated = false;
 
             io_proxy.WriteLine($@"[{instance_id}/{total_instances}] {experiment_name}: Total groups: {(groups?.Length ?? 0)}.", module_name, method_name);
             var calibrate = false;
@@ -283,6 +311,7 @@ namespace svm_fs_batch
                 //    selected_columns = selected_columns.Union(new[] { 0 }).OrderBy(a => a).ToArray();
                 //}
 
+
                 var group_indexes_to_test = calibrate ? new[] { -1 } : Enumerable.Range(0, groups.Length).Except(selection_excluded_groups2).ToArray();
                 io_proxy.WriteLine($"[{instance_id}/{total_instances}] {experiment_name}: iteration: {iteration_index}, group_indexes_to_test.Length = {(group_indexes_to_test?.Length ?? 0)}.");
 
@@ -320,7 +349,7 @@ namespace svm_fs_batch
                 var iteration_partition_cm_filename_full = Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(index_data_container.indexes_partition)}_full.cm.csv");
                 var iteration_partition_cm_filename_summary = Path.Combine(iteration_folder, $@"x_{program.get_iteration_filename(index_data_container.indexes_partition)}_summary.cm.csv");
 
-                
+
 
                 // load cache (first try whole iteration, then try partition, then try individual work items)
                 cache_load.load_cache(
@@ -435,7 +464,7 @@ namespace svm_fs_batch
                     })
                     .ToList();
 
-                var iteration_whole_results_fixed_with_ranks = set_ranks(cts, iteration_whole_results_fixed, last_iteration_id_cm_rs);
+                var iteration_whole_results_fixed_with_ranks = set_ranks(cts, iteration_whole_results_fixed, all_iteration_id_cm_rs, best_winner_id_cm_rs, last_winner_id_cm_rs);
 
                 iteration_whole_results.Clear();
                 iteration_whole_results = null;
@@ -577,9 +606,10 @@ namespace svm_fs_batch
                 io_proxy.WriteLine($"[{instance_id}/{total_instances}] {experiment_name}: Finished: iteration {(iteration_index)}.  {(feature_selection_finished ? "Finished" : "Not finished")}.");
 
 
+                if (calibrate) has_calibrated = true;
                 last_winner_id_cm_rs = this_iteration_winner_id_cm_rs;
                 all_iteration_id_cm_rs.Add(iteration_whole_results_fixed_with_ranks);
-                foreach (var iteration_whole_results_fixed_with_rank in iteration_whole_results_fixed_with_ranks.Skip(1)) { iteration_whole_results_fixed_with_rank.cm.clear_supplemental();  }
+                foreach (var iteration_whole_results_fixed_with_rank in iteration_whole_results_fixed_with_ranks.Skip(1)) { iteration_whole_results_fixed_with_rank.cm.clear_supplemental(); }
                 iteration_index++;
                 calibrate = false;
                 preselect_all_groups = false;
@@ -614,7 +644,7 @@ namespace svm_fs_batch
                 var experiment_folder = program.get_iteration_folder(settings.results_root_folder, experiment_name);
                 var best_winner_fn = Path.Combine(experiment_folder, $"{experiment_name}_best_winner.csv");
 
-                
+
 
                 var best_winner_text = new List<string>();
                 best_winner_text.Add("Last best winner score data:");
@@ -658,13 +688,26 @@ namespace svm_fs_batch
         (
             CancellationTokenSource cts,
             List<(index_data id, confusion_matrix cm, double fs_score)> id_cm_score,
-            (index_data id, confusion_matrix cm, rank_score rs)[] last_iteration_id_cm_rs,
+            List<(index_data id, confusion_matrix cm, rank_score rs)[]> all_iteration_id_cm_rs,
+
+            (index_data id, confusion_matrix cm, rank_score rs) best_score,
+            (index_data id, confusion_matrix cm, rank_score rs) last_score,
+
             bool as_parallel = true
         )
         {
             if (cts.IsCancellationRequested) return default;
 
-            var last_winner_id_cm_rs = last_iteration_id_cm_rs?.FirstOrDefault();
+            var last_iteration_id_cm_rs = all_iteration_id_cm_rs?.LastOrDefault();
+
+            var all_iteration_id_cm_rs_flat = all_iteration_id_cm_rs != null && all_iteration_id_cm_rs.Count > 0 ? (
+                as_parallel ?
+                    all_iteration_id_cm_rs.AsParallel().AsOrdered().WithCancellation(cts.Token).SelectMany(a => a).ToArray() :
+                    all_iteration_id_cm_rs.SelectMany(a => a).ToArray()) : null;
+
+            var all_iteration_id_flat = all_iteration_id_cm_rs_flat?.Select(a => a.id).ToArray();
+
+            //var last_winner_id_cm_rs = last_iteration_id_cm_rs?.FirstOrDefault();
 
             // ensure consistent reordering (i.e. for items with equal tied scores when processing may have been done out of order)
             id_cm_score = id_cm_score.OrderBy(a => a.id.group_array_index).ThenBy(a => a.cm.x_class_id).ToList();
@@ -696,20 +739,37 @@ namespace svm_fs_batch
 
             // make rank_data instances, which track the ranks (performance) of each group over time, to allow for optimisation decisions and detection of variant features
 
+            var idso = new index_data.index_data_search_options()
+            {
+                iteration_index = false,
+                group_array_index = true,
+                total_groups = true,
+                selection_direction = false,
+                calc_11p_thresholds = true,
+                svm_type = true,
+                svm_kernel = true,
+                scale_function = true,
+                repetitions = true,
+                outer_cv_folds = true,
+                outer_cv_folds_to_run = true,
+                inner_cv_folds = true,
+                group_key = true,
+                experiment_name = true,
+                num_groups = false,
+                num_columns = false,
+                group_array_indexes = false,
+                column_array_indexes = false,
+                class_weights = true,
+            };
+
             var id_cm_rs = as_parallel ? id_cm_score
                     .AsParallel()
                     .AsOrdered()
                     .WithCancellation(cts.Token)
                     .Select((a, index) =>
                     {
-                        var last_rs = last_iteration_id_cm_rs?.FirstOrDefault
-                        (a =>
-                            a.id.iteration_index == id_cm_score[index].id.iteration_index &&
-                            a.id.group_array_index == id_cm_score[index].id.group_array_index &&
-                            a.cm.x_class_id == id_cm_score[index].cm.x_class_id
-                        ) ?? default;
-
-
+                        var last_group = all_iteration_id_flat != null ? index_data.find_last_reference(all_iteration_id_flat, a.id, idso) : null;
+                        var last_group_rs = last_group != null ? all_iteration_id_cm_rs_flat?.LastOrDefault(c => c.id == last_group) ?? default : default;
 
                         var rs = new rank_score()
                         {
@@ -717,10 +777,15 @@ namespace svm_fs_batch
                             iteration_index = a.id.iteration_index,
 
                             fs_rank_index = max_rank - index,
+                            fs_max_rank_index = max_rank,
                             fs_rank_index_percentile = ranks_list_scaling.scale(max_rank - index, scaling.scale_function.rescale),
 
                             fs_score = a.fs_score,
-                            fs_score_percentile = scores_list_scaling.scale(a.fs_score, scaling.scale_function.rescale)
+                            fs_score_percentile = scores_list_scaling.scale(a.fs_score, scaling.scale_function.rescale),
+
+                            fs_score_change_best = a.fs_score - (best_score.rs?.fs_score ?? 0),
+                            fs_score_change_last = a.fs_score - (last_score.rs?.fs_score ?? 0),
+                            fs_score_change_group = last_group_rs.rs != null ? a.fs_score - (last_group_rs.rs?.fs_score ?? 0) : 0,
                         };
 
                         return (a.id, a.cm, rs);
@@ -729,14 +794,8 @@ namespace svm_fs_batch
             id_cm_score
                 .Select((a, index) =>
                 {
-                    var last_rs = last_iteration_id_cm_rs?.FirstOrDefault
-                    (a =>
-                        a.id.iteration_index == id_cm_score[index].id.iteration_index &&
-                        a.id.group_array_index == id_cm_score[index].id.group_array_index &&
-                        a.cm.x_class_id == id_cm_score[index].cm.x_class_id
-                    ) ?? default;
-
-
+                    var last_group = all_iteration_id_flat != null ? index_data.find_last_reference(all_iteration_id_flat, a.id, idso) : null;
+                    var last_group_rs = last_group != null ? all_iteration_id_cm_rs_flat?.LastOrDefault(c => c.id == last_group) ?? default : default;
 
                     var rs = new rank_score()
                     {
@@ -744,10 +803,15 @@ namespace svm_fs_batch
                         iteration_index = a.id.iteration_index,
 
                         fs_rank_index = max_rank - index,
+                        fs_max_rank_index = max_rank,
                         fs_rank_index_percentile = ranks_list_scaling.scale(max_rank - index, scaling.scale_function.rescale),
 
                         fs_score = a.fs_score,
-                        fs_score_percentile = scores_list_scaling.scale(a.fs_score, scaling.scale_function.rescale)
+                        fs_score_percentile = scores_list_scaling.scale(a.fs_score, scaling.scale_function.rescale),
+
+                        fs_score_change_best = a.fs_score - (best_score.rs?.fs_score ?? 0),
+                        fs_score_change_last = a.fs_score - (last_score.rs?.fs_score ?? 0),
+                        fs_score_change_group = last_group_rs.rs != null ? a.fs_score - (last_group_rs.rs?.fs_score ?? 0) : 0,
                     };
 
                     return (a.id, a.cm, rs);

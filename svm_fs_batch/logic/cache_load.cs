@@ -551,7 +551,7 @@ namespace svm_fs_batch
                                     {
                                         if (cm[cm_index].unrolled_index_data != null)
                                         {
-                                            var id = index_data.find_reference(index_data_container.indexes_whole, cm[cm_index].unrolled_index_data);
+                                            var id = index_data.find_first_reference(index_data_container.indexes_whole, cm[cm_index].unrolled_index_data);
                                             if (id == null) throw new Exception();
                                             cm[cm_index].unrolled_index_data = id;
 
@@ -579,7 +579,7 @@ namespace svm_fs_batch
                                     {
                                         if (cm[cm_index].unrolled_index_data != null)
                                         {
-                                            var id = index_data.find_reference(index_data_container.indexes_whole, cm[cm_index].unrolled_index_data);
+                                            var id = index_data.find_first_reference(index_data_container.indexes_whole, cm[cm_index].unrolled_index_data);
                                             if (id == null) throw new Exception();
                                             cm[cm_index].unrolled_index_data = id;
                                         }
@@ -658,8 +658,8 @@ namespace svm_fs_batch
                     Array.Empty<index_data>() :
                 (
                     as_parallel ?
-                    index_data_container.indexes_whole.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(id => index_data.find_reference(iteration_cm_all_id, id) != null).ToArray() :
-                    index_data_container.indexes_whole.Where(id => index_data.find_reference(iteration_cm_all_id, id) != null).ToArray()
+                    index_data_container.indexes_whole.AsParallel().AsOrdered().WithCancellation(cts.Token).Where(id => index_data.find_first_reference(iteration_cm_all_id, id) != null).ToArray() :
+                    index_data_container.indexes_whole.Where(id => index_data.find_first_reference(iteration_cm_all_id, id) != null).ToArray()
                 );
 
             index_data_container.indexes_missing_whole = index_data_container.indexes_whole.Except(index_data_container.indexes_loaded_whole).ToArray();
