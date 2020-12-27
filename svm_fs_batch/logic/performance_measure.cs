@@ -18,7 +18,7 @@ namespace svm_fs_batch
             double? threshold = null,
             int? threshold_class = null,
             bool calculate_auc = true,
-            bool as_parallel=false
+            bool as_parallel = false
             )
         {
             if (cts.IsCancellationRequested) return default;
@@ -47,8 +47,8 @@ namespace svm_fs_batch
                     x_class_id = actual_class_id,
                     metrics = new metrics_box()
                     {
-                        P = prediction_list.Count(b => actual_class_id == b.real_class_id),
-                        N = prediction_list.Count(b => actual_class_id != b.real_class_id)
+                        cm_P = prediction_list.Count(b => actual_class_id == b.real_class_id),
+                        cm_N = prediction_list.Count(b => actual_class_id != b.real_class_id)
                     },
                     x_prediction_threshold = threshold,
                     x_prediction_threshold_class = threshold_class,
@@ -68,22 +68,22 @@ namespace svm_fs_batch
 
                 if (prediction.real_class_id == prediction.predicted_class_id)
                 {
-                    actual_class_matrix.metrics.TP++;
+                    actual_class_matrix.metrics.cm_P_TP++;
 
                     for (var index = 0; index < confusion_matrix_list.Count; index++)
                     {
                         if (confusion_matrix_list[index].x_class_id != prediction.real_class_id)
                         {
-                            confusion_matrix_list[index].metrics.TN++;
+                            confusion_matrix_list[index].metrics.cm_N_TN++;
                         }
                     }
                 }
 
                 else if (prediction.real_class_id != prediction.predicted_class_id)
                 {
-                    actual_class_matrix.metrics.FN++;
+                    actual_class_matrix.metrics.cm_P_FN++;
 
-                    predicted_class_matrix.metrics.FP++;
+                    predicted_class_matrix.metrics.cm_N_FP++;
                 }
             }
 
@@ -91,13 +91,14 @@ namespace svm_fs_batch
             {
                 Parallel.ForEach(confusion_matrix_list, cm =>
                 {
-                    cm.calculate_metrics(cts, cm.metrics, calculate_auc, prediction_list);
+                    cm.calculate_theshold_metrics(cts, cm.metrics, calculate_auc, prediction_list);
                 });
-            } else
+            }
+            else
             {
                 foreach (var cm in confusion_matrix_list)
                 {
-                    cm.calculate_metrics(cts, cm.metrics, calculate_auc, prediction_list);
+                    cm.calculate_theshold_metrics(cts, cm.metrics, calculate_auc, prediction_list);
                 }
             }
 
@@ -106,7 +107,7 @@ namespace svm_fs_batch
 
 
 
-        internal static double area_under_curve_trapz(List<(double x, double y)> coordinate_list)//, bool interpolation = true)
+        internal static double area_under_curve_trapz((double x, double y)[] coordinate_list)//, bool interpolation = true)
         {
 
             //var param_list = new List<(string key, string value)>()
@@ -118,14 +119,14 @@ namespace svm_fs_batch
 
 
             //var coords = new List<(double x1, double x2, double y1, double y2)>();
-            coordinate_list = coordinate_list.Distinct().ToList();
-            coordinate_list = coordinate_list.OrderBy(a => a.x).ThenBy(a => a.y).ToList();
-            var auc = coordinate_list.Select((c, i) => i >= coordinate_list.Count - 1 ? 0 : (coordinate_list[i + 1].x - coordinate_list[i].x) * ((coordinate_list[i].y + coordinate_list[i + 1].y) / 2)).Sum();
+            coordinate_list = coordinate_list.Distinct().ToArray();
+            coordinate_list = coordinate_list.OrderBy(a => a.x).ThenBy(a => a.y).ToArray();
+            var auc = coordinate_list.Select((c, i) => i >= coordinate_list.Length - 1 ? 0 : (coordinate_list[i + 1].x - coordinate_list[i].x) * ((coordinate_list[i].y + coordinate_list[i + 1].y) / 2)).Sum();
             return auc;
         }
 
 
-        internal static prediction[] load_prediction_file_probability_values(CancellationTokenSource cts, (string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files, bool as_parallel=false)
+        internal static prediction[] load_prediction_file_probability_values(CancellationTokenSource cts, (string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files, bool as_parallel = false)
         {
             // method untested
             const string method_name = nameof(load_prediction_file_probability_values);
@@ -164,8 +165,8 @@ namespace svm_fs_batch
                 if (lines.Select(a => a.prediction_file_lines.FirstOrDefault()).Distinct().Count() != 1) { throw new ArgumentOutOfRangeException(nameof(files)); }
             }
 
-            lines = as_parallel?
-                
+            lines = as_parallel ?
+
                 lines.AsParallel().AsOrdered().WithCancellation(cts.Token).Select((a, i) => (
                 a.test_file_lines,
                 a.test_comments_file_lines.Skip(1 /* skip header */).ToArray(),
@@ -228,7 +229,7 @@ namespace svm_fs_batch
             return load_prediction_file_probability_values_from_text(cts, test_file_lines, test_comments_file_lines, prediction_file_lines, test_class_sample_id_list);
         }
 
-        internal static prediction[] load_prediction_file_probability_values_from_text(CancellationTokenSource cts, string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, int[] test_class_sample_id_list, bool as_parallel=false)
+        internal static prediction[] load_prediction_file_probability_values_from_text(CancellationTokenSource cts, string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, int[] test_class_sample_id_list, bool as_parallel = false)
         {
             if (cts.IsCancellationRequested) return default;
 
@@ -339,7 +340,7 @@ namespace svm_fs_batch
                     };
 
                     return prediction;
-                }).ToArray():
+                }).ToArray() :
                 Enumerable.Range(0, total_predictions).Select(prediction_index =>
                 {
                     var probability_estimates = prediction_file_data[prediction_index].Length <= 1 ?
@@ -439,13 +440,13 @@ namespace svm_fs_batch
             var class_id_list = prediction_list.SelectMany(a => new int[] { a.real_class_id, a.predicted_class_id }).Distinct().OrderBy(a => a).ToArray();
 
             if (class_id_list == null || class_id_list.Length == 0) throw new Exception();
-            
+
             var confusion_matrix_list = new List<confusion_matrix>();
 
             // make confusion matrix performance scores with default decision boundary threshold
             var default_confusion_matrix_list = count_prediction_error(cts, prediction_list);
             confusion_matrix_list.AddRange(default_confusion_matrix_list);
-            
+
 
             if (class_id_list.Length >= 2 && calc_11p_thresholds)
             {
@@ -473,13 +474,13 @@ namespace svm_fs_batch
 
                             // note: AUC_ROC and AUC_PR don't change when altering the default threshold since the predicted class isn't a factor in their calculation.
 
-                            threshold_confusion_matrix_list[i].metrics.ROC_AUC_Approx_All = class_default_cm.metrics.ROC_AUC_Approx_All;
-                            threshold_confusion_matrix_list[i].metrics.ROC_AUC_Approx_11p = class_default_cm.metrics.ROC_AUC_Approx_11p;
+                            threshold_confusion_matrix_list[i].metrics.p_ROC_AUC_Approx_All = class_default_cm.metrics.p_ROC_AUC_Approx_All;
+                            threshold_confusion_matrix_list[i].metrics.p_ROC_AUC_Approx_11p = class_default_cm.metrics.p_ROC_AUC_Approx_11p;
                             threshold_confusion_matrix_list[i].roc_xy_str_all = class_default_cm.roc_xy_str_all;
                             threshold_confusion_matrix_list[i].roc_xy_str_11p = class_default_cm.roc_xy_str_11p;
 
-                            threshold_confusion_matrix_list[i].metrics.PR_AUC_Approx_All = class_default_cm.metrics.PR_AUC_Approx_All;
-                            threshold_confusion_matrix_list[i].metrics.PR_AUC_Approx_11p = class_default_cm.metrics.PR_AUC_Approx_11p;
+                            threshold_confusion_matrix_list[i].metrics.p_PR_AUC_Approx_All = class_default_cm.metrics.p_PR_AUC_Approx_All;
+                            threshold_confusion_matrix_list[i].metrics.p_PR_AUC_Approx_11p = class_default_cm.metrics.p_PR_AUC_Approx_11p;
                             threshold_confusion_matrix_list[i].pr_xy_str_all = class_default_cm.pr_xy_str_all;
                             threshold_confusion_matrix_list[i].pr_xy_str_11p = class_default_cm.pr_xy_str_11p;
                             threshold_confusion_matrix_list[i].pri_xy_str_all = class_default_cm.pri_xy_str_all;
@@ -514,9 +515,8 @@ namespace svm_fs_batch
         }
 
         internal static readonly double[] eleven_points = new double[] { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0 };
-        //var thresholds11p = new double[] { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
 
-        internal static (/*double brier_score,*/ double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, List<(double x, double y)> roc_xy, List<(double x, double y)> pr_xy, List<(double x, double y)> pri_xy)
+        internal static (double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, (double x, double y)[] roc_xy, (double x, double y)[] pr_xy, (double x, double y)[] pri_xy)
             Calculate_ROC_PR_AUC(CancellationTokenSource cts, prediction[] prediction_list, int positive_id, threshold_type threshold_type = threshold_type.all_thresholds)
         {
             if (cts.IsCancellationRequested) return default;
@@ -524,144 +524,205 @@ namespace svm_fs_batch
             if (prediction_list.Any(a => a.probability_estimates == null || a.probability_estimates.Length == 0)) return default;
 
             // Assume binary classifier - get negative class id
-            var negative_id = prediction_list.First(a => a.real_class_id != positive_id).real_class_id;
+            var class_ids = prediction_list.Select(a => a.real_class_id).Union(prediction_list.Select(c => c.predicted_class_id)).Distinct().OrderBy(a => a).ToArray();
+            var negative_id = class_ids.First(class_id => class_id != positive_id);
 
             // Calc P
-            var p = prediction_list.Count(a => a.real_class_id == positive_id);
+            var p = (double)prediction_list.Count(a => a.real_class_id == positive_id);
 
             // Calc N
-            //var n = prediction_list.Count(a => a.real_class_id == negative_id);
-            var n = prediction_list.Count(a => a.real_class_id != positive_id);
+            var n = (double)prediction_list.Count(a => a.real_class_id != positive_id);
 
             // Order predictions descending by positive class probability
             prediction_list = prediction_list.OrderByDescending(a => a.probability_estimates.FirstOrDefault(b => b.class_id == positive_id).probability_estimate).ToArray();
 
-            // Get thresholds list (either all thresholds or 11 points)
-            double[] thresholds = null;
+            var threshold_confusion_matrix_list = get_theshold_confusion_matrices(cts, prediction_list, positive_id, threshold_type, negative_id);
 
-            if (threshold_type == threshold_type.all_thresholds)
-            {
-                thresholds = prediction_list.Select(a => a.probability_estimates.FirstOrDefault(b => b.class_id == positive_id).probability_estimate).Distinct().OrderByDescending(a => a).ToArray();
-            }
-            else if (threshold_type == threshold_type.eleven_points)
-            {
-                thresholds = eleven_points;
-            }
-            else
-            {
-                throw new NotSupportedException();
-            }
-
-            // Calc predictions at each threshold
-            var threshold_prediction_list = thresholds.Select(t => (positive_threshold: t, prediction_list: prediction_list.Select(pl => new prediction(pl)
-            {
-                predicted_class_id = pl.probability_estimates.FirstOrDefault(e => e.class_id == positive_id).probability_estimate >= t ? positive_id : negative_id,
-            }).ToArray())).ToArray();
-
-            // Calc confusion matrices at each threshold
-            var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(cts, a.prediction_list, a.positive_threshold, positive_id, false)).ToList();
-            threshold_confusion_matrix_list = threshold_confusion_matrix_list.Where(a => a.x_class_id == positive_id).ToList();
-
-            //// Calc Brier
-            //var brier_score = ((double)1 / (double)prediction_list.Count)
-            //                  * (prediction_list.Sum(a => Math.Pow(a.probability_estimates.First(b => b.class_id == a.default_predicted_class).probability_estimate - (a.actual_class == a.default_predicted_class ? 1 : 0), 2)));
 
             // Average Precision (Not Approximated)
-            var ap = threshold_confusion_matrix_list.Select((a, i) =>
-            {
-                //var max_p = threshold_confusion_matrix_list.Where(b => b.TPR >= a.TPR).Max(b => b.PPV);
-                var delta_tpr = Math.Abs(a.metrics.TPR - (i == 0 ? 0 : threshold_confusion_matrix_list[i - 1].metrics.TPR));
-                var _ap = a.metrics.PPV * delta_tpr;
-
-                if (double.IsNaN(_ap)) _ap = 0;
-                //var _api = max_p * delta_tpr;
-                return _ap;
-            }).Sum();
+            var ap = calc_average_precision(threshold_confusion_matrix_list);
 
             // Average Precision Interpolated (Not Approximated)
-            var api = threshold_confusion_matrix_list.Select((a, i) =>
-            {
-                var max_ppv = threshold_confusion_matrix_list.Where(b => b.metrics.TPR >= a.metrics.TPR).Max(b => b.metrics.PPV);
+            var api = calc_average_precision_interpolated(threshold_confusion_matrix_list);
 
-                if (double.IsNaN(max_ppv)/* || max_ppv == 0*/) max_ppv = a.metrics.PPV; // = 0? =1? unknown: should it be a.PPV, 0, or 1 when there are no true results?
-
-                var delta_tpr = Math.Abs(a.metrics.TPR - (i == 0 ? 0 : threshold_confusion_matrix_list[i - 1].metrics.TPR));
-                //var _ap = a.PPV * delta_tpr;
-                var _api = max_ppv * delta_tpr;
-
-                if (double.IsNaN(_api)) _api = 0;
-
-                return _api;
-            }).Sum();
 
             // PR Curve Coordinates
-            var pr_plot_coords = threshold_confusion_matrix_list.Select(a => (x: a.metrics.TPR, y: a.metrics.PPV)).ToList();
-
-            if (pr_plot_coords.First().x != 0.0)
-            {
-                pr_plot_coords.Insert(0, ((double)0.0, pr_plot_coords.First().y));
-            }
-
-            if (pr_plot_coords.Last().x != 1.0 && threshold_confusion_matrix_list.Count > 0)
-            {
-                var m = threshold_confusion_matrix_list.First();
-                pr_plot_coords.Add(((double)1.0, (double)m.metrics.P / ((double)m.metrics.P + (double)m.metrics.N)));
-            }
-
-            // PRI Curve Coordinates
-            var pri_plot_coords = threshold_confusion_matrix_list.Select(a =>
-            {
-                var max_ppv = threshold_confusion_matrix_list.Where(b => b.metrics.TPR >= a.metrics.TPR).Max(b => b.metrics.PPV);
-                if (double.IsNaN(max_ppv)) max_ppv = a.metrics.PPV;// 0;
-
-                return (x: a.metrics.TPR, y: max_ppv);
-            }).ToList();
-
-            if (pri_plot_coords.First().x != 0.0)
-            {
-                pri_plot_coords.Insert(0, ((double)0.0, pri_plot_coords.First().y));
-            }
-
-            if (pri_plot_coords.Last().x != 1.0 && threshold_confusion_matrix_list.Count > 0)
-            {
-                var m = threshold_confusion_matrix_list.First();
-                pri_plot_coords.Add(((double)1.0, (double)m.metrics.P / ((double)m.metrics.P + (double)m.metrics.N)));
-            }
-
-            // ROC Curve Coordinates
-            var roc_plot_coords = threshold_confusion_matrix_list.Select(a => (x: a.metrics.FPR, y: a.metrics.TPR)).ToList();
-            if (!roc_plot_coords.Any(a => a.x == (double)0.0 && a.y == (double)0.0)) roc_plot_coords.Insert(0, ((double)0.0, (double)0.0));
-            if (!roc_plot_coords.Any(a => a.x == (double)1.0 && a.y == (double)1.0)) roc_plot_coords.Add(((double)1.0, (double)1.0));
-            roc_plot_coords = roc_plot_coords.Distinct().ToList();
-
-            // ROC Approx
-            var roc_auc_approx = area_under_curve_trapz(roc_plot_coords);
-            roc_plot_coords = roc_plot_coords.OrderBy(a => a.y).ThenBy(a => a.x).ToList();
+            var pr_plot_coords = calc_pr_plot(threshold_confusion_matrix_list, interpolate: false);
 
             // PR Approx
             var pr_auc_approx = area_under_curve_trapz(pr_plot_coords);
 
+
+            // PRI Curve Coordinates
+            var pri_plot_coords = calc_pr_plot(threshold_confusion_matrix_list, interpolate: true);
+
             // PRI Approx
             var pri_auc_approx = area_under_curve_trapz(pri_plot_coords);
 
-            // ROC (Not Approx & Not Eleven Point - Incompatible)
 
-            //var total_neg_for_threshold = prediction_list.Select((a, i) => (actual_class: a.real_class_id, total_neg_at_point: prediction_list.Where((b, j) => j <= i && b.real_class_id == negative_id).Count())).ToList();
+            // ROC Curve Coordinates
+            var roc_plot_coords = calc_roc_plot(threshold_confusion_matrix_list);
+
+            // ROC Approx
+            var roc_auc_approx = area_under_curve_trapz(roc_plot_coords);
+
+            // ROC (Not Approximated, and Not reduced to Eleven Points - Incompatible with 11 points)
+            var roc_auc_actual = calc_roc_auc(prediction_list, positive_id, p, n);
+
+            return (roc_auc_approx: roc_auc_approx, roc_auc_actual: roc_auc_actual, pr_auc_approx: pr_auc_approx, pri_auc_approx: pri_auc_approx, ap: ap, api: api, roc_xy: roc_plot_coords, pr_xy: pr_plot_coords, pri_xy: pri_plot_coords);
+        }
+
+        private static confusion_matrix[] get_theshold_confusion_matrices(CancellationTokenSource cts, prediction[] prediction_list, int positive_id, threshold_type threshold_type, int negative_id)
+        {
+            // Get thresholds list (either all thresholds or 11 points)
+            double[] thresholds = null;
+
+            if (threshold_type == threshold_type.all_thresholds) { thresholds = prediction_list.Select(a => a.probability_estimates.FirstOrDefault(b => b.class_id == positive_id).probability_estimate).Distinct().OrderByDescending(a => a).ToArray(); } else if (threshold_type == threshold_type.eleven_points) { thresholds = eleven_points; } else { throw new NotSupportedException(); }
+
+            // Calc predictions at each threshold
+            var threshold_prediction_list = thresholds.Select(t => (positive_threshold: t, prediction_list: prediction_list.Select(pl => new prediction(pl) { predicted_class_id = pl.probability_estimates.FirstOrDefault(e => e.class_id == positive_id).probability_estimate >= t ? positive_id : negative_id, }).ToArray())).ToArray();
+
+            // Calc confusion matrices at each threshold
+            var threshold_confusion_matrix_list = threshold_prediction_list.SelectMany(a => count_prediction_error(cts, a.prediction_list, a.positive_threshold, positive_id, false))
+                .Where(a => a.x_class_id == positive_id)
+                .ToArray();
+
+            return threshold_confusion_matrix_list;
+        }
+
+        private static double calc_roc_auc(prediction[] prediction_list, int positive_id, double p, double n)
+        {
             var total_neg_for_threshold = prediction_list.Select((a, i) => (actual_class: a.real_class_id, total_neg_at_point: prediction_list.Where((b, j) => j <= i && b.real_class_id != positive_id).Count())).ToList();
 
-            var roc_auc_actual = ((double)1 / (double)(p * n)) * (double)prediction_list
-                                  .Select((a, i) =>
-                                  {
-                                      if (a.real_class_id != positive_id) return 0;
-                                      var total_n_at_current_threshold = total_neg_for_threshold[i].total_neg_at_point;
+            var roc_auc_actual = ((double)1 / (double)(p * n)) *
+                                 (double)prediction_list.Select((a, i) =>
+                                    {
+                                        if (a.real_class_id != positive_id) return 0;
+                                        var total_n_at_current_threshold = total_neg_for_threshold[i].total_neg_at_point;
 
-                                      //var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class == negative_id && b.total_neg_at_point > total_n_at_current_threshold);
-                                      var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class != positive_id && b.total_neg_at_point > total_n_at_current_threshold);
+                                         //var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class == negative_id && b.total_neg_at_point > total_n_at_current_threshold);
+                                         var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class != positive_id && b.total_neg_at_point > total_n_at_current_threshold);
 
-                                      return n_more_than_current_n;
-                                  }).Sum();
+                                        return n_more_than_current_n;
+                                    })
+                                     .Sum();
+            return roc_auc_actual;
+        }
 
-            return (/*brier_score: brier_score,*/ roc_auc_approx: roc_auc_approx, roc_auc_actual: roc_auc_actual, pr_auc_approx: pr_auc_approx, pri_auc_approx: pri_auc_approx, ap: ap, api: api, roc_xy: roc_plot_coords, pr_xy: pr_plot_coords, pri_xy: pri_plot_coords);
+        private static (double x, double y)[] calc_roc_plot(confusion_matrix[] threshold_confusion_matrix_list)
+        {
+            if (threshold_confusion_matrix_list == null || threshold_confusion_matrix_list.Length == 0) return null;
+            var xy1 = threshold_confusion_matrix_list.Select(a => (x: a.metrics.p_FPR, y: a.metrics.p_TPR)).Distinct().ToArray();
+
+            var need_start = !xy1.Any(a => a.x == 0.0 && a.y == 0.0);
+            var need_end = !xy1.Any(a => a.x == 1.0 && a.y == 1.0);
+            if (need_start || need_end)
+            {
+                var xy2 = new (double x, double y)[xy1.Length + (need_start ? 1 : 0) + (need_end ? 1 : 0)];
+                if (need_start) { xy2[0] = (0.0, 0.0); }
+                if (need_end) { xy2[^1] = (1.0, 1.0); }
+                Array.Copy(xy1, 0, xy2, need_start ? 1 : 0, xy1.Length);
+                xy1 = xy2;
+            }
+
+            //todo: check whether 'roc_auc_approx' should be calculated before or after 'OrderBy' y,x statement, or if doesn't matter.
+            xy1 = xy1.OrderBy(a => a.y).ThenBy(a => a.x).ToArray();
+            return xy1;
+        }
+
+        //private static (double x, double y)[] calc_pri_plot(confusion_matrix[] threshold_confusion_matrix_list)
+        //{
+        //    if (threshold_confusion_matrix_list == null || threshold_confusion_matrix_list.Length == 0) return null;
+        //
+        //    var size = threshold_confusion_matrix_list.Length;
+        //    var need_start = (threshold_confusion_matrix_list.First().metrics.TPR != 0.0);
+        //    var need_end = (threshold_confusion_matrix_list.Last().metrics.TPR != 1.0);
+        //    var xy = new (double x, double y)[size + (need_start ? 1 : 0) + (need_end ? 1 : 0)];
+        //
+        //    var pri_plot_coords = threshold_confusion_matrix_list.Select(a =>
+        //        {
+        //            var max_ppv = threshold_confusion_matrix_list.Where(b => b.metrics.TPR >= a.metrics.TPR).Max(b => b.metrics.PPV);
+        //            if (double.IsNaN(max_ppv)) max_ppv = a.metrics.PPV; // 0;
+        //
+        //            return (x: a.metrics.TPR, y: max_ppv);
+        //        })
+        //        .ToArray();
+        //
+        //    Array.Copy(pri_plot_coords, 0, xy, need_start ? 1 : 0, pri_plot_coords.Length);
+        //
+        //    if (need_start) { xy[0] = ((double)0.0, threshold_confusion_matrix_list.First().metrics.PPV); }
+        //    if (need_end) { var m = threshold_confusion_matrix_list.First(); xy[^1] = ((double)1.0, (double)m.metrics.P / ((double)m.metrics.P + (double)m.metrics.N)); }
+        //
+        //    return xy;
+        //}
+
+        private static (double x, double y)[] calc_pr_plot(confusion_matrix[] threshold_confusion_matrix_list, bool interpolate)
+        {
+            if (threshold_confusion_matrix_list == null || threshold_confusion_matrix_list.Length == 0) return null;
+
+            var xy1 = threshold_confusion_matrix_list.Select(a =>
+            {
+                var max_ppv = threshold_confusion_matrix_list.Where(b => b.metrics.p_TPR >= a.metrics.p_TPR).Max(b => b.metrics.p_PPV);
+                if (double.IsNaN(max_ppv)) max_ppv = a.metrics.p_PPV; // 0;
+
+                return (x: a.metrics.p_TPR, y: (interpolate ? max_ppv : a.metrics.p_PPV));
+            }).ToArray();
+
+            var need_start = xy1.First().x != 0.0;
+            var need_end = xy1.Last().x != 1.0;
+            if (need_start || need_end)
+            {
+                var xy2 = new (double x, double y)[xy1.Length + (need_start ? 1 : 0) + (need_end ? 1 : 0)];
+                Array.Copy(xy1, 0, xy2, need_start ? 1 : 0, xy1.Length);
+
+                if (need_start) { xy2[0] = ((double)0.0, xy1.First().y); }
+
+                if (need_end)
+                {
+                    var m = threshold_confusion_matrix_list.First();
+                    xy2[^1] = ((double)1.0, (double)m.metrics.cm_P / ((double)m.metrics.cm_P + (double)m.metrics.cm_N));
+                }
+
+                xy1 = xy2;
+            }
+
+            return xy1;
+        }
+
+        private static double calc_average_precision_interpolated(confusion_matrix[] threshold_confusion_matrix_list)
+        {
+            var api = threshold_confusion_matrix_list.Select((a, i) =>
+                {
+                    var max_ppv = threshold_confusion_matrix_list.Where(b => b.metrics.p_TPR >= a.metrics.p_TPR).Max(b => b.metrics.p_PPV);
+
+                    if (double.IsNaN(max_ppv) /* || max_ppv == 0*/) max_ppv = a.metrics.p_PPV; // = 0? =1? unknown: should it be a.PPV, 0, or 1 when there are no true results?
+
+                    var delta_tpr = Math.Abs(a.metrics.p_TPR - (i == 0 ? 0 : threshold_confusion_matrix_list[i - 1].metrics.p_TPR));
+                    //var _ap = a.PPV * delta_tpr;
+                    var _api = max_ppv * delta_tpr;
+
+                    if (double.IsNaN(_api)) _api = 0;
+
+                    return _api;
+                })
+                .Sum();
+            return api;
+        }
+
+        private static double calc_average_precision(confusion_matrix[] threshold_confusion_matrix_list)
+        {
+            var ap = threshold_confusion_matrix_list.Select((a, i) =>
+                {
+                    //var max_p = threshold_confusion_matrix_list.Where(b => b.TPR >= a.TPR).Max(b => b.PPV);
+                    var delta_tpr = Math.Abs(a.metrics.p_TPR - (i == 0 ? 0 : threshold_confusion_matrix_list[i - 1].metrics.p_TPR));
+                    var _ap = a.metrics.p_PPV * delta_tpr;
+
+                    if (double.IsNaN(_ap)) _ap = 0;
+                    //var _api = max_p * delta_tpr;
+                    return _ap;
+                })
+                .Sum();
+            return ap;
         }
     }
 }

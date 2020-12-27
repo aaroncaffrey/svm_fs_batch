@@ -9,9 +9,9 @@
 
         internal static readonly string[] scoring_metrics = new string[]
         {
-            nameof(metrics_box.F1S),
-            //nameof(metrics_box.MCC),
-            //nameof(metrics_box.API_All)
+            nameof(metrics_box.p_F1S),
+            //nameof(metrics_box.p_MCC),
+            //nameof(metrics_box.p_API_All)
         };
     }
 }

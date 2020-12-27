@@ -59,7 +59,7 @@ namespace svm_fs_batch
                 bool as_parallel,
                 string libsvm_train_exe,
                 string cache_train_grid_csv,
-                string training_file,
+                string train_file,
                 string train_stdout_file,
                 string train_stderr_file,
 
@@ -277,9 +277,9 @@ namespace svm_fs_batch
                         .WithCancellation(cts.Token)
                         .Select((point, model_index) =>
                         {
-                            var model_filename = $@"{training_file}_{(model_index + 1)}.model";
+                            var model_filename = $@"{train_file}_{(model_index + 1)}.model";
 
-                            var train_result = libsvm.train(cts, libsvm_train_exe, training_file, model_filename, train_stdout_file, train_stderr_file, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, point_max_time, quiet_mode, memory_limit_mb);
+                            var train_result = libsvm.train(cts, libsvm_train_exe, train_file, model_filename, train_stdout_file, train_stderr_file, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, point_max_time, quiet_mode, memory_limit_mb);
 
                             var train_result_lines = train_result.stdout?.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToArray();
 
@@ -293,9 +293,9 @@ namespace svm_fs_batch
                     search_grid_points
                         .Select((point, model_index) =>
                         {
-                            var model_filename = $@"{training_file}_{(model_index + 1)}.model";
+                            var model_filename = $@"{train_file}_{(model_index + 1)}.model";
 
-                            var train_result = libsvm.train(cts, libsvm_train_exe, training_file, model_filename, train_stdout_file, train_stderr_file, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, point_max_time, quiet_mode, memory_limit_mb);
+                            var train_result = libsvm.train(cts, libsvm_train_exe, train_file, model_filename, train_stdout_file, train_stderr_file, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, point_max_time, quiet_mode, memory_limit_mb);
 
                             var train_result_lines = train_result.stdout?.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToArray();
 

@@ -10,284 +10,515 @@ namespace svm_fs_batch
         public const string module_name = nameof(metrics_box);
         internal static readonly metrics_box empty = new metrics_box();
 
-        internal double P;
-        internal double N;
-        internal double TP;
-        internal double FP;
-        internal double TN;
-        internal double FN;
-        internal double TPR;
-        internal double TNR;
-        internal double PPV;
-        internal double Precision;
-        internal double Prevalence;
-        internal double MCR;
-        internal double ER;
-        internal double NER;
-        internal double CNER;
-        internal double Kappa;
-        internal double Overlap;
-        internal double RND_ACC;
-        internal double Support;
-        internal double BaseRate;
-        internal double YoudenIndex;
-        internal double NPV;
-        internal double FNR;
-        internal double FPR;
-        internal double FDR;
-        internal double FOR;
-        internal double ACC;
-        internal double GMean;
-        internal double F1S;
-        internal double G1S;
-        internal double MCC;
-        internal double Informedness;
-        internal double Markedness;
-        internal double BalancedAccuracy;
-        internal double ROC_AUC_Approx_All;
-        internal double ROC_AUC_Approx_11p;
-        internal double ROC_AUC_All;
-        internal double PR_AUC_Approx_All;
-        internal double PR_AUC_Approx_11p;
-        internal double PRI_AUC_Approx_All;
-        internal double PRI_AUC_Approx_11p;
-        internal double AP_All;
-        internal double AP_11p;
-        internal double API_All;
-        internal double API_11p;
-        internal double Brier_Inverse_All;
-        internal double LRP;
-        internal double LRN;
-        internal double DOR;
-        internal double PrevalenceThreshold;
-        internal double CriticalSuccessIndex;
-        internal double F1B_00;
-        internal double F1B_01;
-        internal double F1B_02;
-        internal double F1B_03;
-        internal double F1B_04;
-        internal double F1B_05;
-        internal double F1B_06;
-        internal double F1B_07;
-        internal double F1B_08;
-        internal double F1B_09;
-        internal double F1B_10;
+        internal double cm_P;
+        internal double cm_N;
+
+        internal double cm_P_TP;
+        internal double cm_P_FN;
+        internal double cm_N_TN;
+        internal double cm_N_FP;
+
+        internal double p_TPR;
+        internal double p_TNR;
+        internal double p_PPV;
+        internal double p_Precision;
+        internal double p_Prevalence;
+        internal double p_MCR;
+        internal double p_ER;
+        internal double p_NER;
+        internal double p_CNER;
+        internal double p_Kappa;
+        internal double p_Overlap;
+        internal double p_RND_ACC;
+        internal double p_Support;
+        internal double p_BaseRate;
+        internal double p_YoudenIndex;
+        internal double p_NPV;
+        internal double p_FNR;
+        internal double p_FPR;
+        internal double p_FDR;
+        internal double p_FOR;
+        internal double p_ACC;
+        internal double p_GMean;
+        internal double p_F1S;
+        internal double p_G1S;
+        internal double p_MCC;
+        internal double p_Informedness;
+        internal double p_Markedness;
+        internal double p_BalancedAccuracy;
+        internal double p_ROC_AUC_Approx_All;
+        internal double p_ROC_AUC_Approx_11p;
+        internal double p_ROC_AUC_All;
+        internal double p_PR_AUC_Approx_All;
+        internal double p_PR_AUC_Approx_11p;
+        internal double p_PRI_AUC_Approx_All;
+        internal double p_PRI_AUC_Approx_11p;
+        internal double p_AP_All;
+        internal double p_AP_11p;
+        internal double p_API_All;
+        internal double p_API_11p;
+        internal double p_Brier_Inverse_All;
+        internal double p_LRP;
+        internal double p_LRN;
+        internal double p_DOR;
+        internal double p_PrevalenceThreshold;
+        internal double p_CriticalSuccessIndex;
+        internal double p_F1B_00;
+        internal double p_F1B_01;
+        internal double p_F1B_02;
+        internal double p_F1B_03;
+        internal double p_F1B_04;
+        internal double p_F1B_05;
+        internal double p_F1B_06;
+        internal double p_F1B_07;
+        internal double p_F1B_08;
+        internal double p_F1B_09;
+        internal double p_F1B_10;
 
         public metrics_box()
         {
 
         }
 
-        public metrics_box(metrics_box metrics, double? divisor = null)
+        public metrics_box(metrics_box metrics)
         {
-            if (divisor != null && divisor == 0)
-            {
-                return;
-            }
+            cm_P = metrics.cm_P;
+            cm_N = metrics.cm_N;
+            cm_P_TP = metrics.cm_P_TP;
+            cm_P_FN = metrics.cm_P_FN;
+            cm_N_TN = metrics.cm_N_TN;
+            cm_N_FP = metrics.cm_N_FP;
+            p_TPR = metrics.p_TPR;
+            p_TNR = metrics.p_TNR;
+            p_PPV = metrics.p_PPV;
+            p_Precision = metrics.p_Precision;
+            p_Prevalence = metrics.p_Prevalence;
+            p_MCR = metrics.p_MCR;
+            p_ER = metrics.p_ER;
+            p_NER = metrics.p_NER;
+            p_CNER = metrics.p_CNER;
+            p_Kappa = metrics.p_Kappa;
+            p_Overlap = metrics.p_Overlap;
+            p_RND_ACC = metrics.p_RND_ACC;
+            p_Support = metrics.p_Support;
+            p_BaseRate = metrics.p_BaseRate;
+            p_YoudenIndex = metrics.p_YoudenIndex;
+            p_NPV = metrics.p_NPV;
+            p_FNR = metrics.p_FNR;
+            p_FPR = metrics.p_FPR;
+            p_FDR = metrics.p_FDR;
+            p_FOR = metrics.p_FOR;
+            p_ACC = metrics.p_ACC;
+            p_GMean = metrics.p_GMean;
+            p_F1S = metrics.p_F1S;
+            p_G1S = metrics.p_G1S;
+            p_MCC = metrics.p_MCC;
+            p_Informedness = metrics.p_Informedness;
+            p_Markedness = metrics.p_Markedness;
+            p_BalancedAccuracy = metrics.p_BalancedAccuracy;
+            p_ROC_AUC_Approx_All = metrics.p_ROC_AUC_Approx_All;
+            p_ROC_AUC_Approx_11p = metrics.p_ROC_AUC_Approx_11p;
+            p_ROC_AUC_All = metrics.p_ROC_AUC_All;
+            p_PR_AUC_Approx_All = metrics.p_PR_AUC_Approx_All;
+            p_PR_AUC_Approx_11p = metrics.p_PR_AUC_Approx_11p;
+            p_PRI_AUC_Approx_All = metrics.p_PRI_AUC_Approx_All;
+            p_PRI_AUC_Approx_11p = metrics.p_PRI_AUC_Approx_11p;
+            p_AP_All = metrics.p_AP_All;
+            p_AP_11p = metrics.p_AP_11p;
+            p_API_All = metrics.p_API_All;
+            p_API_11p = metrics.p_API_11p;
+            p_Brier_Inverse_All = metrics.p_Brier_Inverse_All;
+            p_LRP = metrics.p_LRP;
+            p_LRN = metrics.p_LRN;
+            p_DOR = metrics.p_DOR;
+            p_PrevalenceThreshold = metrics.p_PrevalenceThreshold;
+            p_CriticalSuccessIndex = metrics.p_CriticalSuccessIndex;
+            p_F1B_00 = metrics.p_F1B_00;
+            p_F1B_01 = metrics.p_F1B_01;
+            p_F1B_02 = metrics.p_F1B_02;
+            p_F1B_03 = metrics.p_F1B_03;
+            p_F1B_04 = metrics.p_F1B_04;
+            p_F1B_05 = metrics.p_F1B_05;
+            p_F1B_06 = metrics.p_F1B_06;
+            p_F1B_07 = metrics.p_F1B_07;
+            p_F1B_08 = metrics.p_F1B_08;
+            p_F1B_09 = metrics.p_F1B_09;
+            p_F1B_10 = metrics.p_F1B_10;
+        }
 
-            P = metrics.P;
-            N = metrics.N;
-            TP = metrics.TP;
-            FP = metrics.FP;
-            TN = metrics.TN;
-            FN = metrics.FN;
-            TPR = metrics.TPR;
-            TNR = metrics.TNR;
-            PPV = metrics.PPV;
-            Precision = metrics.Precision;
-            Prevalence = metrics.Prevalence;
-            MCR = metrics.MCR;
-            ER = metrics.ER;
-            NER = metrics.NER;
-            CNER = metrics.CNER;
-            Kappa = metrics.Kappa;
-            Overlap = metrics.Overlap;
-            RND_ACC = metrics.RND_ACC;
-            Support = metrics.Support;
-            BaseRate = metrics.BaseRate;
-            YoudenIndex = metrics.YoudenIndex;
-            NPV = metrics.NPV;
-            FNR = metrics.FNR;
-            FPR = metrics.FPR;
-            FDR = metrics.FDR;
-            FOR = metrics.FOR;
-            ACC = metrics.ACC;
-            GMean = metrics.GMean;
-            F1S = metrics.F1S;
-            G1S = metrics.G1S;
-            MCC = metrics.MCC;
-            Informedness = metrics.Informedness;
-            Markedness = metrics.Markedness;
-            BalancedAccuracy = metrics.BalancedAccuracy;
-            ROC_AUC_Approx_All = metrics.ROC_AUC_Approx_All;
-            ROC_AUC_Approx_11p = metrics.ROC_AUC_Approx_11p;
-            ROC_AUC_All = metrics.ROC_AUC_All;
-            PR_AUC_Approx_All = metrics.PR_AUC_Approx_All;
-            PR_AUC_Approx_11p = metrics.PR_AUC_Approx_11p;
-            PRI_AUC_Approx_All = metrics.PRI_AUC_Approx_All;
-            PRI_AUC_Approx_11p = metrics.PRI_AUC_Approx_11p;
-            AP_All = metrics.AP_All;
-            AP_11p = metrics.AP_11p;
-            API_All = metrics.API_All;
-            API_11p = metrics.API_11p;
-            Brier_Inverse_All = metrics.Brier_Inverse_All;
-            LRP = metrics.LRP;
-            LRN = metrics.LRN;
-            DOR = metrics.DOR;
-            PrevalenceThreshold = metrics.PrevalenceThreshold;
-            CriticalSuccessIndex = metrics.CriticalSuccessIndex;
-            F1B_00 = metrics.F1B_00;
-            F1B_01 = metrics.F1B_01;
-            F1B_02 = metrics.F1B_02;
-            F1B_03 = metrics.F1B_03;
-            F1B_04 = metrics.F1B_04;
-            F1B_05 = metrics.F1B_05;
-            F1B_06 = metrics.F1B_06;
-            F1B_07 = metrics.F1B_07;
-            F1B_08 = metrics.F1B_08;
-            F1B_09 = metrics.F1B_09;
-            F1B_10 = metrics.F1B_10;
+        internal void set_cm(double? P = null, double? N = null, double? P_TP = null, double? P_FN = null, double? N_TN = null, double? N_FP = null)
+        {
+            // set the cm (P, N, TP, FN, TN, FP) inputs whilst allowing omission of calculable values from the non-omitted values
 
-            if (divisor != null && divisor.Value != 0)
+            if (P != null && P_TP == null && P_FN != null) P_TP = P - P_FN;
+            if (P != null && P_TP != null && P_FN == null) P_FN = P - P_TP;
+            if (P == null && P_TP != null && P_FN != null) P = P_TP + P_FN;
+            if (P == null || P_TP == null || P_FN == null) throw new Exception();
+            if (P != P_TP + P_FN) throw new Exception();
+
+            if (N != null && N_TN == null && N_FP != null) N_TN = N - N_FP;
+            if (N != null && N_TN != null && N_FP == null) N_FP = N - N_TN;
+            if (N == null && N_TN != null && N_FP != null) N = N_TN + N_FP;
+            if (N != N_TN + N_FP) throw new Exception();
+            if (N == null || N_TN == null || N_FP == null) throw new Exception();
+
+            cm_P = P.Value;
+            cm_N = N.Value;
+
+            cm_P_TP = P_TP.Value;
+            cm_P_FN = P_FN.Value;
+            cm_N_TN = N_TN.Value;
+            cm_N_FP = N_FP.Value;
+
+            calculate_metrics();
+        }
+
+        internal void set_random_perf()
+        {
+            cm_P_TP = cm_P / 2.0;
+            cm_P_FN = cm_P / 2.0;
+
+            cm_N_FP = cm_N / 2.0;
+            cm_N_TN = cm_N / 2.0;
+
+            calculate_metrics();
+        }
+
+        internal void apply_imbalance_correction1()
+        {
+            if (cm_P < cm_N)
             {
-                divide(divisor.Value);
+                var n_correct = (cm_N / cm_P);
+
+                cm_P *= n_correct;
+                cm_P_TP *= n_correct;
+                cm_P_FN *= n_correct;
+
+                cm_P = Math.Round(cm_P, 2);
+                cm_P_TP = Math.Round(cm_P_TP, 2);
+                cm_P_FN = Math.Round(cm_P_FN, 2);
+
+                calculate_metrics();
             }
+            else if (cm_N < cm_P)
+            {
+                var p_correct = (cm_P / cm_N);
+
+                cm_N *= p_correct;
+                cm_N_TN *= p_correct;
+                cm_N_FP *= p_correct;
+
+                cm_N = Math.Round(cm_N, 2);
+                cm_N_TN = Math.Round(cm_N_TN, 2);
+                cm_N_FP = Math.Round(cm_N_FP, 2);
+
+                calculate_metrics();
+            }
+        }
+
+        //internal void apply_imbalance_correction2()
+        //{
+        //    var correction = (cm_P <= cm_N) ? 1 + (1 - (cm_P / cm_N)) : 1 + (1 - (cm_N / cm_P));
+        //
+        //    p_TPR *= correction;
+        //    p_TNR *= correction;
+        //    p_PPV *= correction;
+        //    p_Precision *= correction;
+        //    p_Prevalence *= correction;
+        //    p_MCR *= correction;
+        //    p_ER *= correction;
+        //    p_NER *= correction;
+        //    p_CNER *= correction;
+        //    p_Kappa *= correction;
+        //    p_Overlap *= correction;
+        //    p_RND_ACC *= correction;
+        //    p_Support *= correction;
+        //    p_BaseRate *= correction;
+        //    p_YoudenIndex *= correction;
+        //    p_NPV *= correction;
+        //    p_FNR *= correction;
+        //    p_FPR *= correction;
+        //    p_FDR *= correction;
+        //    p_FOR *= correction;
+        //    p_ACC *= correction;
+        //    p_GMean *= correction;
+        //    p_F1S *= correction;
+        //    p_G1S *= correction;
+        //    p_MCC *= correction;
+        //    p_Informedness *= correction;
+        //    p_Markedness *= correction;
+        //    p_BalancedAccuracy *= correction;
+        //    p_ROC_AUC_Approx_All *= correction;
+        //    p_ROC_AUC_Approx_11p *= correction;
+        //    p_ROC_AUC_All *= correction;
+        //    p_PR_AUC_Approx_All *= correction;
+        //    p_PR_AUC_Approx_11p *= correction;
+        //    p_PRI_AUC_Approx_All *= correction;
+        //    p_PRI_AUC_Approx_11p *= correction;
+        //    p_AP_All *= correction;
+        //    p_AP_11p *= correction;
+        //    p_API_All *= correction;
+        //    p_API_11p *= correction;
+        //    p_Brier_Inverse_All *= correction;
+        //    p_LRP *= correction;
+        //    p_LRN *= correction;
+        //    p_DOR *= correction;
+        //    p_PrevalenceThreshold *= correction;
+        //    p_CriticalSuccessIndex *= correction;
+        //    p_F1B_00 *= correction;
+        //    p_F1B_01 *= correction;
+        //    p_F1B_02 *= correction;
+        //    p_F1B_03 *= correction;
+        //    p_F1B_04 *= correction;
+        //    p_F1B_05 *= correction;
+        //    p_F1B_06 *= correction;
+        //    p_F1B_07 *= correction;
+        //    p_F1B_08 *= correction;
+        //    p_F1B_09 *= correction;
+        //    p_F1B_10 *= correction;
+        //}
+
+        internal void calculate_metrics()
+        {
+            const double zero = 0.0;
+            const double one = 1.0;
+            const double two = 2.0;
+
+            p_Support = (cm_N) == zero ? zero : (double)(cm_P_TP + cm_N_FP) / (double)(cm_N);
+            p_BaseRate = (cm_N) == zero ? zero : (double)(cm_P_TP + cm_P_FN) / (double)(cm_N);
+
+            p_Prevalence = (cm_P + cm_N) == zero ? zero : (cm_P_FN + cm_P_TP) / (cm_P + cm_N);
+
+            p_MCR = (cm_P + cm_N) == zero ? zero : (cm_N_FP + cm_P_FN) / (cm_P + cm_N);
+            p_TPR = (cm_P_TP + cm_P_FN) == zero ? zero : (double)(cm_P_TP) / (double)(cm_P_TP + cm_P_FN);
+            p_TNR = (cm_N_TN + cm_N_FP) == zero ? zero : (double)(cm_N_TN) / (double)(cm_N_TN + cm_N_FP);
+            p_Precision = (cm_P_TP + cm_N_FP) == zero ? zero : (double)(cm_P_TP) / (double)(cm_P_TP + cm_N_FP);
+
+            p_Overlap = (cm_P_TP + cm_N_FP + cm_P_FN) == zero ? zero : cm_P_TP / (cm_P_TP + cm_N_FP + cm_P_FN);
+
+            // null error rate
+            p_NER = (cm_P + cm_N) == zero ? zero : (cm_P > cm_N ? cm_P : cm_N) / (cm_P + cm_N);
+
+            // class null error rate
+            p_CNER = (cm_P + cm_N) == zero ? zero : cm_P / (cm_P + cm_N);
+
+            // positive predictive value (differs from precision, can be equal)
+            p_PPV = (p_TPR * p_Prevalence + (one - p_TNR) * (one - p_Prevalence)) == zero ? zero : (p_TPR * p_Prevalence) / (p_TPR * p_Prevalence + (one - p_TNR) * (one - p_Prevalence));
+
+            // negative predictive value
+            p_NPV = (cm_N_TN + cm_P_FN) == zero ? zero : (double)(cm_N_TN) / (double)(cm_N_TN + cm_P_FN);
+
+            // false negative rate
+            p_FNR = (cm_P_FN + cm_P_TP) == zero ? zero : (double)(cm_P_FN) / (double)(cm_P_FN + cm_P_TP);
+
+            // false positive rate
+            p_FPR = (cm_N_FP + cm_N_TN) == zero ? zero : (double)(cm_N_FP) / (double)(cm_N_FP + cm_N_TN);
+
+            // false discovery rate
+            p_FDR = (cm_N_FP + cm_P_TP) == zero ? zero : (double)(cm_N_FP) / (double)(cm_N_FP + cm_P_TP);
+
+            // false omission rate
+            p_FOR = (cm_P_FN + cm_N_TN) == zero ? zero : (double)(cm_P_FN) / (double)(cm_P_FN + cm_N_TN);
+
+            // accuracy
+            p_ACC = (cm_P + cm_N) == zero ? zero : (double)(cm_P_TP + cm_N_TN) / (double)(cm_P + cm_N);
+
+            // test error rate (inaccuracy)
+            p_ER = one - p_ACC;
+
+            p_YoudenIndex = p_TPR + p_TNR - one;
+
+
+            //Kappa = (totalAccuracy - randomAccuracy) / (1 - randomAccuracy)
+            //totalAccuracy = (TP + TN) / (TP + TN + FP + FN)
+            //randomAccuracy = referenceLikelihood(F) * resultLikelihood(F) + referenceLikelihood(T) * resultLikelihood(T)
+            //randomAccuracy = (ActualFalse * PredictedFalse + ActualTrue * PredictedTrue) / Total * Total
+            //randomAccuracy = (TN + FP) * (TN + FN) + (FN + TP) * (FP + TP) / Total * Total
+
+            p_RND_ACC = ((cm_N_TN + cm_N_FP) * (cm_N_TN + cm_P_FN) + (cm_P_FN + cm_P_TP) * (cm_N_FP + cm_P_TP)) / ((cm_P_TP + cm_N_TN + cm_N_FP + cm_P_FN) * (cm_P_TP + cm_N_TN + cm_N_FP + cm_P_FN));
+
+            p_Kappa = (one - p_RND_ACC) == zero ? zero : (p_ACC - p_RND_ACC) / (one - p_RND_ACC);
+
+            // Geometric Mean score
+            p_GMean = Math.Sqrt(p_TPR * p_TNR);
+
+            // F1 score
+            p_F1S = (p_PPV + p_TPR) == zero ? zero : (double)(2 * p_PPV * p_TPR) / (double)(p_PPV + p_TPR);
+
+            // G1 score (same as Fowlkes–Mallows index?)
+            p_G1S = (p_PPV + p_TPR) == zero ? zero : (double)Math.Sqrt((double)(p_PPV * p_TPR));
+
+            // Matthews correlation coefficient (MCC)
+            p_MCC = ((double)Math.Sqrt((double)((cm_P_TP + cm_N_FP) * (cm_P_TP + cm_P_FN) * (cm_N_TN + cm_N_FP) * (cm_N_TN + cm_P_FN))) == zero) ? zero : ((cm_P_TP * cm_N_TN) - (cm_N_FP * cm_P_FN)) / (double)Math.Sqrt((double)((cm_P_TP + cm_N_FP) * (cm_P_TP + cm_P_FN) * (cm_N_TN + cm_N_FP) * (cm_N_TN + cm_P_FN)));
+            p_Informedness = (p_TPR + p_TNR) - one;
+            p_Markedness = (p_PPV + p_NPV) - one;
+            p_BalancedAccuracy = (p_TPR + p_TNR) / two;
+
+            // likelihood ratio for positive results
+            p_LRP = (one - p_TNR) == zero ? zero : (p_TPR) / (one - p_TNR);
+
+            // likelihood ratio for negative results
+            p_LRN = (p_TNR) == zero ? zero : (one - p_TPR) / (p_TNR);
+
+            // Diagnostic odds ratio
+            p_DOR = p_LRN == zero ? zero : p_LRP / p_LRN;
+
+            // Prevalence Threshold
+            p_PrevalenceThreshold = (p_TPR + p_TNR - one) == zero ? zero : (Math.Sqrt(p_TPR * (-p_TNR + one)) + p_TNR - one) / (p_TPR + p_TNR - one);
+
+            // Threat Score / Critical Success Index
+            p_CriticalSuccessIndex = (cm_P_TP + cm_P_FN + cm_N_FP) == zero ? zero : cm_P_TP / (cm_P_TP + cm_P_FN + cm_N_FP);
+
+            // Fowlkes–Mallows index - (same as G1 score?):
+            // var FM_Index = Math.Sqrt(PPV * TPR);
+
+            p_F1B_00 = metrics_box.fbeta2(p_PPV, p_TPR, 0.0d);
+            p_F1B_01 = metrics_box.fbeta2(p_PPV, p_TPR, 0.1d);
+            p_F1B_02 = metrics_box.fbeta2(p_PPV, p_TPR, 0.2d);
+            p_F1B_03 = metrics_box.fbeta2(p_PPV, p_TPR, 0.3d);
+            p_F1B_04 = metrics_box.fbeta2(p_PPV, p_TPR, 0.4d);
+            p_F1B_05 = metrics_box.fbeta2(p_PPV, p_TPR, 0.5d);
+            p_F1B_06 = metrics_box.fbeta2(p_PPV, p_TPR, 0.6d);
+            p_F1B_07 = metrics_box.fbeta2(p_PPV, p_TPR, 0.7d);
+            p_F1B_08 = metrics_box.fbeta2(p_PPV, p_TPR, 0.8d);
+            p_F1B_09 = metrics_box.fbeta2(p_PPV, p_TPR, 0.9d);
+            p_F1B_10 = metrics_box.fbeta2(p_PPV, p_TPR, 1.0d);
         }
 
         private void divide(double divisor)
         {
             if (divisor == 0) return;
 
-            P /= divisor;
-            N /= divisor;
-            TP /= divisor;
-            FP /= divisor;
-            TN /= divisor;
-            FN /= divisor;
-            TPR /= divisor;
-            TNR /= divisor;
-            PPV /= divisor;
-            Precision /= divisor;
-            Prevalence /= divisor;
-            MCR /= divisor;
-            ER /= divisor;
-            NER /= divisor;
-            CNER /= divisor;
-            Kappa /= divisor;
-            Overlap /= divisor;
-            RND_ACC /= divisor;
-            Support /= divisor;
-            BaseRate /= divisor;
-            YoudenIndex /= divisor;
-            NPV /= divisor;
-            FNR /= divisor;
-            FPR /= divisor;
-            FDR /= divisor;
-            FOR /= divisor;
-            ACC /= divisor;
-            GMean /= divisor;
-            F1S /= divisor;
-            G1S /= divisor;
-            MCC /= divisor;
-            Informedness /= divisor;
-            Markedness /= divisor;
-            BalancedAccuracy /= divisor;
-            ROC_AUC_Approx_All /= divisor;
-            ROC_AUC_Approx_11p /= divisor;
-            ROC_AUC_All /= divisor;
-            PR_AUC_Approx_All /= divisor;
-            PR_AUC_Approx_11p /= divisor;
-            PRI_AUC_Approx_All /= divisor;
-            PRI_AUC_Approx_11p /= divisor;
-            AP_All /= divisor;
-            AP_11p /= divisor;
-            API_All /= divisor;
-            API_11p /= divisor;
-            Brier_Inverse_All /= divisor;
-            LRP /= divisor;
-            LRN /= divisor;
-            DOR /= divisor;
-            PrevalenceThreshold /= divisor;
-            CriticalSuccessIndex /= divisor;
-            F1B_00 /= divisor;
-            F1B_01 /= divisor;
-            F1B_02 /= divisor;
-            F1B_03 /= divisor;
-            F1B_04 /= divisor;
-            F1B_05 /= divisor;
-            F1B_06 /= divisor;
-            F1B_07 /= divisor;
-            F1B_08 /= divisor;
-            F1B_09 /= divisor;
-            F1B_10 /= divisor;
+            cm_P /= divisor;
+            cm_N /= divisor;
+            cm_P_TP /= divisor;
+            cm_P_FN /= divisor;
+            cm_N_TN /= divisor;
+            cm_N_FP /= divisor;
+            p_TPR /= divisor;
+            p_TNR /= divisor;
+            p_PPV /= divisor;
+            p_Precision /= divisor;
+            p_Prevalence /= divisor;
+            p_MCR /= divisor;
+            p_ER /= divisor;
+            p_NER /= divisor;
+            p_CNER /= divisor;
+            p_Kappa /= divisor;
+            p_Overlap /= divisor;
+            p_RND_ACC /= divisor;
+            p_Support /= divisor;
+            p_BaseRate /= divisor;
+            p_YoudenIndex /= divisor;
+            p_NPV /= divisor;
+            p_FNR /= divisor;
+            p_FPR /= divisor;
+            p_FDR /= divisor;
+            p_FOR /= divisor;
+            p_ACC /= divisor;
+            p_GMean /= divisor;
+            p_F1S /= divisor;
+            p_G1S /= divisor;
+            p_MCC /= divisor;
+            p_Informedness /= divisor;
+            p_Markedness /= divisor;
+            p_BalancedAccuracy /= divisor;
+            p_ROC_AUC_Approx_All /= divisor;
+            p_ROC_AUC_Approx_11p /= divisor;
+            p_ROC_AUC_All /= divisor;
+            p_PR_AUC_Approx_All /= divisor;
+            p_PR_AUC_Approx_11p /= divisor;
+            p_PRI_AUC_Approx_All /= divisor;
+            p_PRI_AUC_Approx_11p /= divisor;
+            p_AP_All /= divisor;
+            p_AP_11p /= divisor;
+            p_API_All /= divisor;
+            p_API_11p /= divisor;
+            p_Brier_Inverse_All /= divisor;
+            p_LRP /= divisor;
+            p_LRN /= divisor;
+            p_DOR /= divisor;
+            p_PrevalenceThreshold /= divisor;
+            p_CriticalSuccessIndex /= divisor;
+            p_F1B_00 /= divisor;
+            p_F1B_01 /= divisor;
+            p_F1B_02 /= divisor;
+            p_F1B_03 /= divisor;
+            p_F1B_04 /= divisor;
+            p_F1B_05 /= divisor;
+            p_F1B_06 /= divisor;
+            p_F1B_07 /= divisor;
+            p_F1B_08 /= divisor;
+            p_F1B_09 /= divisor;
+            p_F1B_10 /= divisor;
         }
 
         internal metrics_box(metrics_box[] metrics_boxes)
         {
             if (metrics_boxes == null || metrics_boxes.Length == 0 || metrics_boxes.All(a => a == null)) return;
-            
-            P = metrics_boxes.Where(a => a != null).Select(a => a.P).DefaultIfEmpty(0).Average();
-            N = metrics_boxes.Where(a => a != null).Select(a => a.N).DefaultIfEmpty(0).Average();
-            TP = metrics_boxes.Where(a => a != null).Select(a => a.TP).DefaultIfEmpty(0).Average();
-            FP = metrics_boxes.Where(a => a != null).Select(a => a.FP).DefaultIfEmpty(0).Average();
-            TN = metrics_boxes.Where(a => a != null).Select(a => a.TN).DefaultIfEmpty(0).Average();
-            FN = metrics_boxes.Where(a => a != null).Select(a => a.FN).DefaultIfEmpty(0).Average();
-            TPR = metrics_boxes.Where(a => a != null).Select(a => a.TPR).DefaultIfEmpty(0).Average();
-            TNR = metrics_boxes.Where(a => a != null).Select(a => a.TNR).DefaultIfEmpty(0).Average();
-            PPV = metrics_boxes.Where(a => a != null).Select(a => a.PPV).DefaultIfEmpty(0).Average();
-            Precision = metrics_boxes.Where(a => a != null).Select(a => a.Precision).DefaultIfEmpty(0).Average();
-            Prevalence = metrics_boxes.Where(a => a != null).Select(a => a.Prevalence).DefaultIfEmpty(0).Average();
-            MCR = metrics_boxes.Where(a => a != null).Select(a => a.MCR).DefaultIfEmpty(0).Average();
-            ER = metrics_boxes.Where(a => a != null).Select(a => a.ER).DefaultIfEmpty(0).Average();
-            NER = metrics_boxes.Where(a => a != null).Select(a => a.NER).DefaultIfEmpty(0).Average();
-            CNER = metrics_boxes.Where(a => a != null).Select(a => a.CNER).DefaultIfEmpty(0).Average();
-            Kappa = metrics_boxes.Where(a => a != null).Select(a => a.Kappa).DefaultIfEmpty(0).Average();
-            Overlap = metrics_boxes.Where(a => a != null).Select(a => a.Overlap).DefaultIfEmpty(0).Average();
-            RND_ACC = metrics_boxes.Where(a => a != null).Select(a => a.RND_ACC).DefaultIfEmpty(0).Average();
-            Support = metrics_boxes.Where(a => a != null).Select(a => a.Support).DefaultIfEmpty(0).Average();
-            BaseRate = metrics_boxes.Where(a => a != null).Select(a => a.BaseRate).DefaultIfEmpty(0).Average();
-            YoudenIndex = metrics_boxes.Where(a => a != null).Select(a => a.YoudenIndex).DefaultIfEmpty(0).Average();
-            NPV = metrics_boxes.Where(a => a != null).Select(a => a.NPV).DefaultIfEmpty(0).Average();
-            FNR = metrics_boxes.Where(a => a != null).Select(a => a.FNR).DefaultIfEmpty(0).Average();
-            FPR = metrics_boxes.Where(a => a != null).Select(a => a.FPR).DefaultIfEmpty(0).Average();
-            FDR = metrics_boxes.Where(a => a != null).Select(a => a.FDR).DefaultIfEmpty(0).Average();
-            FOR = metrics_boxes.Where(a => a != null).Select(a => a.FOR).DefaultIfEmpty(0).Average();
-            ACC = metrics_boxes.Where(a => a != null).Select(a => a.ACC).DefaultIfEmpty(0).Average();
-            GMean = metrics_boxes.Where(a => a != null).Select(a => a.GMean).DefaultIfEmpty(0).Average();
-            F1S = metrics_boxes.Where(a => a != null).Select(a => a.F1S).DefaultIfEmpty(0).Average();
-            G1S = metrics_boxes.Where(a => a != null).Select(a => a.G1S).DefaultIfEmpty(0).Average();
-            MCC = metrics_boxes.Where(a => a != null).Select(a => a.MCC).DefaultIfEmpty(0).Average();
-            Informedness = metrics_boxes.Where(a => a != null).Select(a => a.Informedness).DefaultIfEmpty(0).Average();
-            Markedness = metrics_boxes.Where(a => a != null).Select(a => a.Markedness).DefaultIfEmpty(0).Average();
-            BalancedAccuracy = metrics_boxes.Where(a => a != null).Select(a => a.BalancedAccuracy).DefaultIfEmpty(0).Average();
-            ROC_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.ROC_AUC_Approx_All).DefaultIfEmpty(0).Average();
-            ROC_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.ROC_AUC_Approx_11p).DefaultIfEmpty(0).Average();
-            ROC_AUC_All = metrics_boxes.Where(a => a != null).Select(a => a.ROC_AUC_All).DefaultIfEmpty(0).Average();
-            PR_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.PR_AUC_Approx_All).DefaultIfEmpty(0).Average();
-            PR_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.PR_AUC_Approx_11p).DefaultIfEmpty(0).Average();
-            PRI_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.PRI_AUC_Approx_All).DefaultIfEmpty(0).Average();
-            PRI_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.PRI_AUC_Approx_11p).DefaultIfEmpty(0).Average();
-            AP_All = metrics_boxes.Where(a => a != null).Select(a => a.AP_All).DefaultIfEmpty(0).Average();
-            AP_11p = metrics_boxes.Where(a => a != null).Select(a => a.AP_11p).DefaultIfEmpty(0).Average();
-            API_All = metrics_boxes.Where(a => a != null).Select(a => a.API_All).DefaultIfEmpty(0).Average();
-            API_11p = metrics_boxes.Where(a => a != null).Select(a => a.API_11p).DefaultIfEmpty(0).Average();
-            Brier_Inverse_All = metrics_boxes.Where(a => a != null).Select(a => a.Brier_Inverse_All).DefaultIfEmpty(0).Average();
-            LRP = metrics_boxes.Where(a => a != null).Select(a => a.LRP).DefaultIfEmpty(0).Average();
-            LRN = metrics_boxes.Where(a => a != null).Select(a => a.LRN).DefaultIfEmpty(0).Average();
-            DOR = metrics_boxes.Where(a => a != null).Select(a => a.DOR).DefaultIfEmpty(0).Average();
-            PrevalenceThreshold = metrics_boxes.Where(a => a != null).Select(a => a.PrevalenceThreshold).DefaultIfEmpty(0).Average();
-            CriticalSuccessIndex = metrics_boxes.Where(a => a != null).Select(a => a.CriticalSuccessIndex).DefaultIfEmpty(0).Average();
-            F1B_00 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_00).DefaultIfEmpty(0).Average();
-            F1B_01 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_01).DefaultIfEmpty(0).Average();
-            F1B_02 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_02).DefaultIfEmpty(0).Average();
-            F1B_03 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_03).DefaultIfEmpty(0).Average();
-            F1B_04 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_04).DefaultIfEmpty(0).Average();
-            F1B_05 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_05).DefaultIfEmpty(0).Average();
-            F1B_06 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_06).DefaultIfEmpty(0).Average();
-            F1B_07 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_07).DefaultIfEmpty(0).Average();
-            F1B_08 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_08).DefaultIfEmpty(0).Average();
-            F1B_09 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_09).DefaultIfEmpty(0).Average();
-            F1B_10 = metrics_boxes.Where(a => a != null).Select(a => a.F1B_10).DefaultIfEmpty(0).Average();
+
+            cm_P = metrics_boxes.Where(a => a != null).Select(a => a.cm_P).DefaultIfEmpty(0).Average();
+            cm_N = metrics_boxes.Where(a => a != null).Select(a => a.cm_N).DefaultIfEmpty(0).Average();
+            cm_P_TP = metrics_boxes.Where(a => a != null).Select(a => a.cm_P_TP).DefaultIfEmpty(0).Average();
+            cm_P_FN = metrics_boxes.Where(a => a != null).Select(a => a.cm_P_FN).DefaultIfEmpty(0).Average();
+            cm_N_TN = metrics_boxes.Where(a => a != null).Select(a => a.cm_N_TN).DefaultIfEmpty(0).Average();
+            cm_N_FP = metrics_boxes.Where(a => a != null).Select(a => a.cm_N_FP).DefaultIfEmpty(0).Average();
+            p_TPR = metrics_boxes.Where(a => a != null).Select(a => a.p_TPR).DefaultIfEmpty(0).Average();
+            p_TNR = metrics_boxes.Where(a => a != null).Select(a => a.p_TNR).DefaultIfEmpty(0).Average();
+            p_PPV = metrics_boxes.Where(a => a != null).Select(a => a.p_PPV).DefaultIfEmpty(0).Average();
+            p_Precision = metrics_boxes.Where(a => a != null).Select(a => a.p_Precision).DefaultIfEmpty(0).Average();
+            p_Prevalence = metrics_boxes.Where(a => a != null).Select(a => a.p_Prevalence).DefaultIfEmpty(0).Average();
+            p_MCR = metrics_boxes.Where(a => a != null).Select(a => a.p_MCR).DefaultIfEmpty(0).Average();
+            p_ER = metrics_boxes.Where(a => a != null).Select(a => a.p_ER).DefaultIfEmpty(0).Average();
+            p_NER = metrics_boxes.Where(a => a != null).Select(a => a.p_NER).DefaultIfEmpty(0).Average();
+            p_CNER = metrics_boxes.Where(a => a != null).Select(a => a.p_CNER).DefaultIfEmpty(0).Average();
+            p_Kappa = metrics_boxes.Where(a => a != null).Select(a => a.p_Kappa).DefaultIfEmpty(0).Average();
+            p_Overlap = metrics_boxes.Where(a => a != null).Select(a => a.p_Overlap).DefaultIfEmpty(0).Average();
+            p_RND_ACC = metrics_boxes.Where(a => a != null).Select(a => a.p_RND_ACC).DefaultIfEmpty(0).Average();
+            p_Support = metrics_boxes.Where(a => a != null).Select(a => a.p_Support).DefaultIfEmpty(0).Average();
+            p_BaseRate = metrics_boxes.Where(a => a != null).Select(a => a.p_BaseRate).DefaultIfEmpty(0).Average();
+            p_YoudenIndex = metrics_boxes.Where(a => a != null).Select(a => a.p_YoudenIndex).DefaultIfEmpty(0).Average();
+            p_NPV = metrics_boxes.Where(a => a != null).Select(a => a.p_NPV).DefaultIfEmpty(0).Average();
+            p_FNR = metrics_boxes.Where(a => a != null).Select(a => a.p_FNR).DefaultIfEmpty(0).Average();
+            p_FPR = metrics_boxes.Where(a => a != null).Select(a => a.p_FPR).DefaultIfEmpty(0).Average();
+            p_FDR = metrics_boxes.Where(a => a != null).Select(a => a.p_FDR).DefaultIfEmpty(0).Average();
+            p_FOR = metrics_boxes.Where(a => a != null).Select(a => a.p_FOR).DefaultIfEmpty(0).Average();
+            p_ACC = metrics_boxes.Where(a => a != null).Select(a => a.p_ACC).DefaultIfEmpty(0).Average();
+            p_GMean = metrics_boxes.Where(a => a != null).Select(a => a.p_GMean).DefaultIfEmpty(0).Average();
+            p_F1S = metrics_boxes.Where(a => a != null).Select(a => a.p_F1S).DefaultIfEmpty(0).Average();
+            p_G1S = metrics_boxes.Where(a => a != null).Select(a => a.p_G1S).DefaultIfEmpty(0).Average();
+            p_MCC = metrics_boxes.Where(a => a != null).Select(a => a.p_MCC).DefaultIfEmpty(0).Average();
+            p_Informedness = metrics_boxes.Where(a => a != null).Select(a => a.p_Informedness).DefaultIfEmpty(0).Average();
+            p_Markedness = metrics_boxes.Where(a => a != null).Select(a => a.p_Markedness).DefaultIfEmpty(0).Average();
+            p_BalancedAccuracy = metrics_boxes.Where(a => a != null).Select(a => a.p_BalancedAccuracy).DefaultIfEmpty(0).Average();
+            p_ROC_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.p_ROC_AUC_Approx_All).DefaultIfEmpty(0).Average();
+            p_ROC_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.p_ROC_AUC_Approx_11p).DefaultIfEmpty(0).Average();
+            p_ROC_AUC_All = metrics_boxes.Where(a => a != null).Select(a => a.p_ROC_AUC_All).DefaultIfEmpty(0).Average();
+            p_PR_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.p_PR_AUC_Approx_All).DefaultIfEmpty(0).Average();
+            p_PR_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.p_PR_AUC_Approx_11p).DefaultIfEmpty(0).Average();
+            p_PRI_AUC_Approx_All = metrics_boxes.Where(a => a != null).Select(a => a.p_PRI_AUC_Approx_All).DefaultIfEmpty(0).Average();
+            p_PRI_AUC_Approx_11p = metrics_boxes.Where(a => a != null).Select(a => a.p_PRI_AUC_Approx_11p).DefaultIfEmpty(0).Average();
+            p_AP_All = metrics_boxes.Where(a => a != null).Select(a => a.p_AP_All).DefaultIfEmpty(0).Average();
+            p_AP_11p = metrics_boxes.Where(a => a != null).Select(a => a.p_AP_11p).DefaultIfEmpty(0).Average();
+            p_API_All = metrics_boxes.Where(a => a != null).Select(a => a.p_API_All).DefaultIfEmpty(0).Average();
+            p_API_11p = metrics_boxes.Where(a => a != null).Select(a => a.p_API_11p).DefaultIfEmpty(0).Average();
+            p_Brier_Inverse_All = metrics_boxes.Where(a => a != null).Select(a => a.p_Brier_Inverse_All).DefaultIfEmpty(0).Average();
+            p_LRP = metrics_boxes.Where(a => a != null).Select(a => a.p_LRP).DefaultIfEmpty(0).Average();
+            p_LRN = metrics_boxes.Where(a => a != null).Select(a => a.p_LRN).DefaultIfEmpty(0).Average();
+            p_DOR = metrics_boxes.Where(a => a != null).Select(a => a.p_DOR).DefaultIfEmpty(0).Average();
+            p_PrevalenceThreshold = metrics_boxes.Where(a => a != null).Select(a => a.p_PrevalenceThreshold).DefaultIfEmpty(0).Average();
+            p_CriticalSuccessIndex = metrics_boxes.Where(a => a != null).Select(a => a.p_CriticalSuccessIndex).DefaultIfEmpty(0).Average();
+            p_F1B_00 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_00).DefaultIfEmpty(0).Average();
+            p_F1B_01 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_01).DefaultIfEmpty(0).Average();
+            p_F1B_02 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_02).DefaultIfEmpty(0).Average();
+            p_F1B_03 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_03).DefaultIfEmpty(0).Average();
+            p_F1B_04 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_04).DefaultIfEmpty(0).Average();
+            p_F1B_05 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_05).DefaultIfEmpty(0).Average();
+            p_F1B_06 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_06).DefaultIfEmpty(0).Average();
+            p_F1B_07 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_07).DefaultIfEmpty(0).Average();
+            p_F1B_08 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_08).DefaultIfEmpty(0).Average();
+            p_F1B_09 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_09).DefaultIfEmpty(0).Average();
+            p_F1B_10 = metrics_boxes.Where(a => a != null).Select(a => a.p_F1B_10).DefaultIfEmpty(0).Average();
         }
 
         internal static double fbeta2(double PPV, double TPR, double fbeta)
@@ -299,72 +530,72 @@ namespace svm_fs_batch
         {
             return names.Select(a => get_value_by_name(a)).ToArray();
         }
-        
+
         internal double get_value_by_name(string name)
         {
             var metrics = this;
-            if (string.Equals(name, nameof(metrics.P), StringComparison.OrdinalIgnoreCase)) return metrics.P;
-            if (string.Equals(name, nameof(metrics.N), StringComparison.OrdinalIgnoreCase)) return metrics.N;
-            if (string.Equals(name, nameof(metrics.TP), StringComparison.OrdinalIgnoreCase)) return metrics.TP;
-            if (string.Equals(name, nameof(metrics.FP), StringComparison.OrdinalIgnoreCase)) return metrics.FP;
-            if (string.Equals(name, nameof(metrics.TN), StringComparison.OrdinalIgnoreCase)) return metrics.TN;
-            if (string.Equals(name, nameof(metrics.FN), StringComparison.OrdinalIgnoreCase)) return metrics.FN;
-            if (string.Equals(name, nameof(metrics.TPR), StringComparison.OrdinalIgnoreCase)) return metrics.TPR;
-            if (string.Equals(name, nameof(metrics.TNR), StringComparison.OrdinalIgnoreCase)) return metrics.TNR;
-            if (string.Equals(name, nameof(metrics.PPV), StringComparison.OrdinalIgnoreCase)) return metrics.PPV;
-            if (string.Equals(name, nameof(metrics.Precision), StringComparison.OrdinalIgnoreCase)) return metrics.Precision;
-            if (string.Equals(name, nameof(metrics.Prevalence), StringComparison.OrdinalIgnoreCase)) return metrics.Prevalence;
-            if (string.Equals(name, nameof(metrics.MCR), StringComparison.OrdinalIgnoreCase)) return metrics.MCR;
-            if (string.Equals(name, nameof(metrics.ER), StringComparison.OrdinalIgnoreCase)) return metrics.ER;
-            if (string.Equals(name, nameof(metrics.NER), StringComparison.OrdinalIgnoreCase)) return metrics.NER;
-            if (string.Equals(name, nameof(metrics.CNER), StringComparison.OrdinalIgnoreCase)) return metrics.CNER;
-            if (string.Equals(name, nameof(metrics.Kappa), StringComparison.OrdinalIgnoreCase)) return metrics.Kappa;
-            if (string.Equals(name, nameof(metrics.Overlap), StringComparison.OrdinalIgnoreCase)) return metrics.Overlap;
-            if (string.Equals(name, nameof(metrics.RND_ACC), StringComparison.OrdinalIgnoreCase)) return metrics.RND_ACC;
-            if (string.Equals(name, nameof(metrics.Support), StringComparison.OrdinalIgnoreCase)) return metrics.Support;
-            if (string.Equals(name, nameof(metrics.BaseRate), StringComparison.OrdinalIgnoreCase)) return metrics.BaseRate;
-            if (string.Equals(name, nameof(metrics.YoudenIndex), StringComparison.OrdinalIgnoreCase)) return metrics.YoudenIndex;
-            if (string.Equals(name, nameof(metrics.NPV), StringComparison.OrdinalIgnoreCase)) return metrics.NPV;
-            if (string.Equals(name, nameof(metrics.FNR), StringComparison.OrdinalIgnoreCase)) return metrics.FNR;
-            if (string.Equals(name, nameof(metrics.FPR), StringComparison.OrdinalIgnoreCase)) return metrics.FPR;
-            if (string.Equals(name, nameof(metrics.FDR), StringComparison.OrdinalIgnoreCase)) return metrics.FDR;
-            if (string.Equals(name, nameof(metrics.FOR), StringComparison.OrdinalIgnoreCase)) return metrics.FOR;
-            if (string.Equals(name, nameof(metrics.ACC), StringComparison.OrdinalIgnoreCase)) return metrics.ACC;
-            if (string.Equals(name, nameof(metrics.GMean), StringComparison.OrdinalIgnoreCase)) return metrics.GMean;
-            if (string.Equals(name, nameof(metrics.F1S), StringComparison.OrdinalIgnoreCase)) return metrics.F1S;
-            if (string.Equals(name, nameof(metrics.G1S), StringComparison.OrdinalIgnoreCase)) return metrics.G1S;
-            if (string.Equals(name, nameof(metrics.MCC), StringComparison.OrdinalIgnoreCase)) return metrics.MCC;
-            if (string.Equals(name, nameof(metrics.Informedness), StringComparison.OrdinalIgnoreCase)) return metrics.Informedness;
-            if (string.Equals(name, nameof(metrics.Markedness), StringComparison.OrdinalIgnoreCase)) return metrics.Markedness;
-            if (string.Equals(name, nameof(metrics.BalancedAccuracy), StringComparison.OrdinalIgnoreCase)) return metrics.BalancedAccuracy;
-            if (string.Equals(name, nameof(metrics.ROC_AUC_Approx_All), StringComparison.OrdinalIgnoreCase)) return metrics.ROC_AUC_Approx_All;
-            if (string.Equals(name, nameof(metrics.ROC_AUC_Approx_11p), StringComparison.OrdinalIgnoreCase)) return metrics.ROC_AUC_Approx_11p;
-            if (string.Equals(name, nameof(metrics.ROC_AUC_All), StringComparison.OrdinalIgnoreCase)) return metrics.ROC_AUC_All;
-            if (string.Equals(name, nameof(metrics.PR_AUC_Approx_All), StringComparison.OrdinalIgnoreCase)) return metrics.PR_AUC_Approx_All;
-            if (string.Equals(name, nameof(metrics.PR_AUC_Approx_11p), StringComparison.OrdinalIgnoreCase)) return metrics.PR_AUC_Approx_11p;
-            if (string.Equals(name, nameof(metrics.PRI_AUC_Approx_All), StringComparison.OrdinalIgnoreCase)) return metrics.PRI_AUC_Approx_All;
-            if (string.Equals(name, nameof(metrics.PRI_AUC_Approx_11p), StringComparison.OrdinalIgnoreCase)) return metrics.PRI_AUC_Approx_11p;
-            if (string.Equals(name, nameof(metrics.AP_All), StringComparison.OrdinalIgnoreCase)) return metrics.AP_All;
-            if (string.Equals(name, nameof(metrics.AP_11p), StringComparison.OrdinalIgnoreCase)) return metrics.AP_11p;
-            if (string.Equals(name, nameof(metrics.API_All), StringComparison.OrdinalIgnoreCase)) return metrics.API_All;
-            if (string.Equals(name, nameof(metrics.API_11p), StringComparison.OrdinalIgnoreCase)) return metrics.API_11p;
-            if (string.Equals(name, nameof(metrics.Brier_Inverse_All), StringComparison.OrdinalIgnoreCase)) return metrics.Brier_Inverse_All;
-            if (string.Equals(name, nameof(metrics.LRP), StringComparison.OrdinalIgnoreCase)) return metrics.LRP;
-            if (string.Equals(name, nameof(metrics.LRN), StringComparison.OrdinalIgnoreCase)) return metrics.LRN;
-            if (string.Equals(name, nameof(metrics.DOR), StringComparison.OrdinalIgnoreCase)) return metrics.DOR;
-            if (string.Equals(name, nameof(metrics.PrevalenceThreshold), StringComparison.OrdinalIgnoreCase)) return metrics.PrevalenceThreshold;
-            if (string.Equals(name, nameof(metrics.CriticalSuccessIndex), StringComparison.OrdinalIgnoreCase)) return metrics.CriticalSuccessIndex;
-            if (string.Equals(name, nameof(metrics.F1B_00), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_00;
-            if (string.Equals(name, nameof(metrics.F1B_01), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_01;
-            if (string.Equals(name, nameof(metrics.F1B_02), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_02;
-            if (string.Equals(name, nameof(metrics.F1B_03), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_03;
-            if (string.Equals(name, nameof(metrics.F1B_04), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_04;
-            if (string.Equals(name, nameof(metrics.F1B_05), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_05;
-            if (string.Equals(name, nameof(metrics.F1B_06), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_06;
-            if (string.Equals(name, nameof(metrics.F1B_07), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_07;
-            if (string.Equals(name, nameof(metrics.F1B_08), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_08;
-            if (string.Equals(name, nameof(metrics.F1B_09), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_09;
-            if (string.Equals(name, nameof(metrics.F1B_10), StringComparison.OrdinalIgnoreCase)) return metrics.F1B_10;
+            if (string.Equals(name, nameof(metrics.cm_P), StringComparison.OrdinalIgnoreCase)) return metrics.cm_P;
+            if (string.Equals(name, nameof(metrics.cm_N), StringComparison.OrdinalIgnoreCase)) return metrics.cm_N;
+            if (string.Equals(name, nameof(metrics.cm_P_TP), StringComparison.OrdinalIgnoreCase)) return metrics.cm_P_TP;
+            if (string.Equals(name, nameof(metrics.cm_P_FN), StringComparison.OrdinalIgnoreCase)) return metrics.cm_P_FN;
+            if (string.Equals(name, nameof(metrics.cm_N_TN), StringComparison.OrdinalIgnoreCase)) return metrics.cm_N_TN;
+            if (string.Equals(name, nameof(metrics.cm_N_FP), StringComparison.OrdinalIgnoreCase)) return metrics.cm_N_FP;
+            if (string.Equals(name, nameof(metrics.p_TPR), StringComparison.OrdinalIgnoreCase)) return metrics.p_TPR;
+            if (string.Equals(name, nameof(metrics.p_TNR), StringComparison.OrdinalIgnoreCase)) return metrics.p_TNR;
+            if (string.Equals(name, nameof(metrics.p_PPV), StringComparison.OrdinalIgnoreCase)) return metrics.p_PPV;
+            if (string.Equals(name, nameof(metrics.p_Precision), StringComparison.OrdinalIgnoreCase)) return metrics.p_Precision;
+            if (string.Equals(name, nameof(metrics.p_Prevalence), StringComparison.OrdinalIgnoreCase)) return metrics.p_Prevalence;
+            if (string.Equals(name, nameof(metrics.p_MCR), StringComparison.OrdinalIgnoreCase)) return metrics.p_MCR;
+            if (string.Equals(name, nameof(metrics.p_ER), StringComparison.OrdinalIgnoreCase)) return metrics.p_ER;
+            if (string.Equals(name, nameof(metrics.p_NER), StringComparison.OrdinalIgnoreCase)) return metrics.p_NER;
+            if (string.Equals(name, nameof(metrics.p_CNER), StringComparison.OrdinalIgnoreCase)) return metrics.p_CNER;
+            if (string.Equals(name, nameof(metrics.p_Kappa), StringComparison.OrdinalIgnoreCase)) return metrics.p_Kappa;
+            if (string.Equals(name, nameof(metrics.p_Overlap), StringComparison.OrdinalIgnoreCase)) return metrics.p_Overlap;
+            if (string.Equals(name, nameof(metrics.p_RND_ACC), StringComparison.OrdinalIgnoreCase)) return metrics.p_RND_ACC;
+            if (string.Equals(name, nameof(metrics.p_Support), StringComparison.OrdinalIgnoreCase)) return metrics.p_Support;
+            if (string.Equals(name, nameof(metrics.p_BaseRate), StringComparison.OrdinalIgnoreCase)) return metrics.p_BaseRate;
+            if (string.Equals(name, nameof(metrics.p_YoudenIndex), StringComparison.OrdinalIgnoreCase)) return metrics.p_YoudenIndex;
+            if (string.Equals(name, nameof(metrics.p_NPV), StringComparison.OrdinalIgnoreCase)) return metrics.p_NPV;
+            if (string.Equals(name, nameof(metrics.p_FNR), StringComparison.OrdinalIgnoreCase)) return metrics.p_FNR;
+            if (string.Equals(name, nameof(metrics.p_FPR), StringComparison.OrdinalIgnoreCase)) return metrics.p_FPR;
+            if (string.Equals(name, nameof(metrics.p_FDR), StringComparison.OrdinalIgnoreCase)) return metrics.p_FDR;
+            if (string.Equals(name, nameof(metrics.p_FOR), StringComparison.OrdinalIgnoreCase)) return metrics.p_FOR;
+            if (string.Equals(name, nameof(metrics.p_ACC), StringComparison.OrdinalIgnoreCase)) return metrics.p_ACC;
+            if (string.Equals(name, nameof(metrics.p_GMean), StringComparison.OrdinalIgnoreCase)) return metrics.p_GMean;
+            if (string.Equals(name, nameof(metrics.p_F1S), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1S;
+            if (string.Equals(name, nameof(metrics.p_G1S), StringComparison.OrdinalIgnoreCase)) return metrics.p_G1S;
+            if (string.Equals(name, nameof(metrics.p_MCC), StringComparison.OrdinalIgnoreCase)) return metrics.p_MCC;
+            if (string.Equals(name, nameof(metrics.p_Informedness), StringComparison.OrdinalIgnoreCase)) return metrics.p_Informedness;
+            if (string.Equals(name, nameof(metrics.p_Markedness), StringComparison.OrdinalIgnoreCase)) return metrics.p_Markedness;
+            if (string.Equals(name, nameof(metrics.p_BalancedAccuracy), StringComparison.OrdinalIgnoreCase)) return metrics.p_BalancedAccuracy;
+            if (string.Equals(name, nameof(metrics.p_ROC_AUC_Approx_All), StringComparison.OrdinalIgnoreCase)) return metrics.p_ROC_AUC_Approx_All;
+            if (string.Equals(name, nameof(metrics.p_ROC_AUC_Approx_11p), StringComparison.OrdinalIgnoreCase)) return metrics.p_ROC_AUC_Approx_11p;
+            if (string.Equals(name, nameof(metrics.p_ROC_AUC_All), StringComparison.OrdinalIgnoreCase)) return metrics.p_ROC_AUC_All;
+            if (string.Equals(name, nameof(metrics.p_PR_AUC_Approx_All), StringComparison.OrdinalIgnoreCase)) return metrics.p_PR_AUC_Approx_All;
+            if (string.Equals(name, nameof(metrics.p_PR_AUC_Approx_11p), StringComparison.OrdinalIgnoreCase)) return metrics.p_PR_AUC_Approx_11p;
+            if (string.Equals(name, nameof(metrics.p_PRI_AUC_Approx_All), StringComparison.OrdinalIgnoreCase)) return metrics.p_PRI_AUC_Approx_All;
+            if (string.Equals(name, nameof(metrics.p_PRI_AUC_Approx_11p), StringComparison.OrdinalIgnoreCase)) return metrics.p_PRI_AUC_Approx_11p;
+            if (string.Equals(name, nameof(metrics.p_AP_All), StringComparison.OrdinalIgnoreCase)) return metrics.p_AP_All;
+            if (string.Equals(name, nameof(metrics.p_AP_11p), StringComparison.OrdinalIgnoreCase)) return metrics.p_AP_11p;
+            if (string.Equals(name, nameof(metrics.p_API_All), StringComparison.OrdinalIgnoreCase)) return metrics.p_API_All;
+            if (string.Equals(name, nameof(metrics.p_API_11p), StringComparison.OrdinalIgnoreCase)) return metrics.p_API_11p;
+            if (string.Equals(name, nameof(metrics.p_Brier_Inverse_All), StringComparison.OrdinalIgnoreCase)) return metrics.p_Brier_Inverse_All;
+            if (string.Equals(name, nameof(metrics.p_LRP), StringComparison.OrdinalIgnoreCase)) return metrics.p_LRP;
+            if (string.Equals(name, nameof(metrics.p_LRN), StringComparison.OrdinalIgnoreCase)) return metrics.p_LRN;
+            if (string.Equals(name, nameof(metrics.p_DOR), StringComparison.OrdinalIgnoreCase)) return metrics.p_DOR;
+            if (string.Equals(name, nameof(metrics.p_PrevalenceThreshold), StringComparison.OrdinalIgnoreCase)) return metrics.p_PrevalenceThreshold;
+            if (string.Equals(name, nameof(metrics.p_CriticalSuccessIndex), StringComparison.OrdinalIgnoreCase)) return metrics.p_CriticalSuccessIndex;
+            if (string.Equals(name, nameof(metrics.p_F1B_00), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_00;
+            if (string.Equals(name, nameof(metrics.p_F1B_01), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_01;
+            if (string.Equals(name, nameof(metrics.p_F1B_02), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_02;
+            if (string.Equals(name, nameof(metrics.p_F1B_03), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_03;
+            if (string.Equals(name, nameof(metrics.p_F1B_04), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_04;
+            if (string.Equals(name, nameof(metrics.p_F1B_05), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_05;
+            if (string.Equals(name, nameof(metrics.p_F1B_06), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_06;
+            if (string.Equals(name, nameof(metrics.p_F1B_07), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_07;
+            if (string.Equals(name, nameof(metrics.p_F1B_08), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_08;
+            if (string.Equals(name, nameof(metrics.p_F1B_09), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_09;
+            if (string.Equals(name, nameof(metrics.p_F1B_10), StringComparison.OrdinalIgnoreCase)) return metrics.p_F1B_10;
             return default;
         }
 
@@ -374,66 +605,66 @@ namespace svm_fs_batch
 
             if (cross_validation_metrics == 0) throw new Exception();
 
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TP)) { metric_values.Add(TP); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FP)) { metric_values.Add(FP); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TN)) { metric_values.Add(TN); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FN)) { metric_values.Add(FN); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TPR)) { metric_values.Add(TPR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TNR)) { metric_values.Add(TNR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PPV)) { metric_values.Add(PPV); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Precision)) { metric_values.Add(Precision); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Prevalence)) { metric_values.Add(Prevalence); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCR)) { metric_values.Add(MCR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ER)) { metric_values.Add(ER); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NER)) { metric_values.Add(NER); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CNER)) { metric_values.Add(CNER); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Kappa)) { metric_values.Add(Kappa); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Overlap)) { metric_values.Add(Overlap); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.RND_ACC)) { metric_values.Add(RND_ACC); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Support)) { metric_values.Add(Support); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BaseRate)) { metric_values.Add(BaseRate); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.YoudenIndex)) { metric_values.Add(YoudenIndex); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NPV)) { metric_values.Add(NPV); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FNR)) { metric_values.Add(FNR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FPR)) { metric_values.Add(FPR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FDR)) { metric_values.Add(FDR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FOR)) { metric_values.Add(FOR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ACC)) { metric_values.Add(ACC); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.GM)) { metric_values.Add(GMean); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1S)) { metric_values.Add(F1S); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.G1S)) { metric_values.Add(G1S); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCC)) { metric_values.Add(MCC); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Informedness)) { metric_values.Add(Informedness); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Markedness)) { metric_values.Add(Markedness); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BalancedAccuracy)) { metric_values.Add(BalancedAccuracy); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_All)) { metric_values.Add(ROC_AUC_Approx_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_11p)) { metric_values.Add(ROC_AUC_Approx_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_All)) { metric_values.Add(ROC_AUC_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_All)) { metric_values.Add(PR_AUC_Approx_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_11p)) { metric_values.Add(PR_AUC_Approx_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_All)) { metric_values.Add(PRI_AUC_Approx_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_11p)) { metric_values.Add(PRI_AUC_Approx_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_All)) { metric_values.Add(AP_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_11p)) { metric_values.Add(AP_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_All)) { metric_values.Add(API_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_11p)) { metric_values.Add(API_11p); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Brier_Inverse_All)) { metric_values.Add(Brier_Inverse_All); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRP)) { metric_values.Add(LRP); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRN)) { metric_values.Add(LRN); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.DOR)) { metric_values.Add(DOR); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PrevalenceThreshold)) { metric_values.Add(PrevalenceThreshold); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CriticalSuccessIndex)) { metric_values.Add(CriticalSuccessIndex); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_00)) { metric_values.Add(F1B_00); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_01)) { metric_values.Add(F1B_01); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_02)) { metric_values.Add(F1B_02); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_03)) { metric_values.Add(F1B_03); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_04)) { metric_values.Add(F1B_04); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_05)) { metric_values.Add(F1B_05); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_06)) { metric_values.Add(F1B_06); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_07)) { metric_values.Add(F1B_07); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_08)) { metric_values.Add(F1B_08); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_09)) { metric_values.Add(F1B_09); }
-            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_10)) { metric_values.Add(F1B_10); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TP)) { metric_values.Add(cm_P_TP); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FN)) { metric_values.Add(cm_P_FN); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TN)) { metric_values.Add(cm_N_TN); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FP)) { metric_values.Add(cm_N_FP); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TPR)) { metric_values.Add(p_TPR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.TNR)) { metric_values.Add(p_TNR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PPV)) { metric_values.Add(p_PPV); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Precision)) { metric_values.Add(p_Precision); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Prevalence)) { metric_values.Add(p_Prevalence); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCR)) { metric_values.Add(p_MCR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ER)) { metric_values.Add(p_ER); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NER)) { metric_values.Add(p_NER); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CNER)) { metric_values.Add(p_CNER); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Kappa)) { metric_values.Add(p_Kappa); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Overlap)) { metric_values.Add(p_Overlap); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.RND_ACC)) { metric_values.Add(p_RND_ACC); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Support)) { metric_values.Add(p_Support); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BaseRate)) { metric_values.Add(p_BaseRate); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.YoudenIndex)) { metric_values.Add(p_YoudenIndex); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.NPV)) { metric_values.Add(p_NPV); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FNR)) { metric_values.Add(p_FNR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FPR)) { metric_values.Add(p_FPR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FDR)) { metric_values.Add(p_FDR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.FOR)) { metric_values.Add(p_FOR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ACC)) { metric_values.Add(p_ACC); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.GM)) { metric_values.Add(p_GMean); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1S)) { metric_values.Add(p_F1S); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.G1S)) { metric_values.Add(p_G1S); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.MCC)) { metric_values.Add(p_MCC); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Informedness)) { metric_values.Add(p_Informedness); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Markedness)) { metric_values.Add(p_Markedness); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.BalancedAccuracy)) { metric_values.Add(p_BalancedAccuracy); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_All)) { metric_values.Add(p_ROC_AUC_Approx_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_Approx_11p)) { metric_values.Add(p_ROC_AUC_Approx_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.ROC_AUC_All)) { metric_values.Add(p_ROC_AUC_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_All)) { metric_values.Add(p_PR_AUC_Approx_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PR_AUC_Approx_11p)) { metric_values.Add(p_PR_AUC_Approx_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_All)) { metric_values.Add(p_PRI_AUC_Approx_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PRI_AUC_Approx_11p)) { metric_values.Add(p_PRI_AUC_Approx_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_All)) { metric_values.Add(p_AP_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.AP_11p)) { metric_values.Add(p_AP_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_All)) { metric_values.Add(p_API_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.API_11p)) { metric_values.Add(p_API_11p); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.Brier_Inverse_All)) { metric_values.Add(p_Brier_Inverse_All); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRP)) { metric_values.Add(p_LRP); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.LRN)) { metric_values.Add(p_LRN); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.DOR)) { metric_values.Add(p_DOR); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.PrevalenceThreshold)) { metric_values.Add(p_PrevalenceThreshold); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.CriticalSuccessIndex)) { metric_values.Add(p_CriticalSuccessIndex); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_00)) { metric_values.Add(p_F1B_00); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_01)) { metric_values.Add(p_F1B_01); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_02)) { metric_values.Add(p_F1B_02); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_03)) { metric_values.Add(p_F1B_03); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_04)) { metric_values.Add(p_F1B_04); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_05)) { metric_values.Add(p_F1B_05); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_06)) { metric_values.Add(p_F1B_06); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_07)) { metric_values.Add(p_F1B_07); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_08)) { metric_values.Add(p_F1B_08); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_09)) { metric_values.Add(p_F1B_09); }
+            if (cross_validation_metrics.HasFlag(cross_validation_metrics.F1B_10)) { metric_values.Add(p_F1B_10); }
 
             return metric_values;
         }
@@ -443,66 +674,66 @@ namespace svm_fs_batch
         {
             var result = new (string name, double value)[] {
 
-                    (nameof(TP), TP),
-                    (nameof(FP), FP),
-                    (nameof(TN), TN),
-                    (nameof(FN), FN),
-                    (nameof(TPR), TPR),
-                    (nameof(TNR), TNR),
-                    (nameof(PPV), PPV),
-                    (nameof(Precision), Precision),
-                    (nameof(Prevalence), Prevalence),
-                    (nameof(MCR), MCR),
-                    (nameof(ER), ER),
-                    (nameof(NER), NER),
-                    (nameof(CNER), CNER),
-                    (nameof(Kappa), Kappa),
-                    (nameof(Overlap), Overlap),
-                    (nameof(RND_ACC), RND_ACC),
-                    (nameof(Support), Support),
-                    (nameof(BaseRate), BaseRate),
-                    (nameof(YoudenIndex), YoudenIndex),
-                    (nameof(NPV), NPV),
-                    (nameof(FNR), FNR),
-                    (nameof(FPR), FPR),
-                    (nameof(FDR), FDR),
-                    (nameof(FOR), FOR),
-                    (nameof(ACC), ACC),
-                    (nameof(GMean), GMean),
-                    (nameof(F1S), F1S),
-                    (nameof(G1S), G1S),
-                    (nameof(MCC), MCC),
-                    (nameof(Informedness), Informedness),
-                    (nameof(Markedness), Markedness),
-                    (nameof(BalancedAccuracy), BalancedAccuracy),
-                    (nameof(ROC_AUC_Approx_All), ROC_AUC_Approx_All),
-                    (nameof(ROC_AUC_Approx_11p), ROC_AUC_Approx_11p),
-                    (nameof(ROC_AUC_All), ROC_AUC_All),
-                    (nameof(PR_AUC_Approx_All), PR_AUC_Approx_All),
-                    (nameof(PR_AUC_Approx_11p), PR_AUC_Approx_11p),
-                    (nameof(PRI_AUC_Approx_All), PRI_AUC_Approx_All),
-                    (nameof(PRI_AUC_Approx_11p), PRI_AUC_Approx_11p),
-                    (nameof(AP_All), AP_All),
-                    (nameof(AP_11p), AP_11p),
-                    (nameof(API_All), API_All),
-                    (nameof(API_11p), API_11p),
-                    (nameof(Brier_Inverse_All), Brier_Inverse_All),
-                    (nameof(LRP), LRP),
-                    (nameof(LRN), LRN),
-                    (nameof(DOR), DOR),
-                    (nameof(PrevalenceThreshold), PrevalenceThreshold),
-                    (nameof(CriticalSuccessIndex), CriticalSuccessIndex),
-                    (nameof(F1B_00), F1B_00),
-                    (nameof(F1B_01), F1B_01),
-                    (nameof(F1B_02), F1B_02),
-                    (nameof(F1B_03), F1B_03),
-                    (nameof(F1B_04), F1B_04),
-                    (nameof(F1B_05), F1B_05),
-                    (nameof(F1B_06), F1B_06),
-                    (nameof(F1B_07), F1B_07),
-                    (nameof(F1B_08), F1B_08),
-                    (nameof(F1B_09), F1B_09),
-                    (nameof(F1B_10), F1B_10),
+                    (nameof(cm_P_TP), cm_P_TP),
+                    (nameof(cm_P_FN), cm_P_FN),
+                    (nameof(cm_N_TN), cm_N_TN),
+                    (nameof(cm_N_FP), cm_N_FP),
+                    (nameof(p_TPR), p_TPR),
+                    (nameof(p_TNR), p_TNR),
+                    (nameof(p_PPV), p_PPV),
+                    (nameof(p_Precision), p_Precision),
+                    (nameof(p_Prevalence), p_Prevalence),
+                    (nameof(p_MCR), p_MCR),
+                    (nameof(p_ER), p_ER),
+                    (nameof(p_NER), p_NER),
+                    (nameof(p_CNER), p_CNER),
+                    (nameof(p_Kappa), p_Kappa),
+                    (nameof(p_Overlap), p_Overlap),
+                    (nameof(p_RND_ACC), p_RND_ACC),
+                    (nameof(p_Support), p_Support),
+                    (nameof(p_BaseRate), p_BaseRate),
+                    (nameof(p_YoudenIndex), p_YoudenIndex),
+                    (nameof(p_NPV), p_NPV),
+                    (nameof(p_FNR), p_FNR),
+                    (nameof(p_FPR), p_FPR),
+                    (nameof(p_FDR), p_FDR),
+                    (nameof(p_FOR), p_FOR),
+                    (nameof(p_ACC), p_ACC),
+                    (nameof(p_GMean), p_GMean),
+                    (nameof(p_F1S), p_F1S),
+                    (nameof(p_G1S), p_G1S),
+                    (nameof(p_MCC), p_MCC),
+                    (nameof(p_Informedness), p_Informedness),
+                    (nameof(p_Markedness), p_Markedness),
+                    (nameof(p_BalancedAccuracy), p_BalancedAccuracy),
+                    (nameof(p_ROC_AUC_Approx_All), p_ROC_AUC_Approx_All),
+                    (nameof(p_ROC_AUC_Approx_11p), p_ROC_AUC_Approx_11p),
+                    (nameof(p_ROC_AUC_All), p_ROC_AUC_All),
+                    (nameof(p_PR_AUC_Approx_All), p_PR_AUC_Approx_All),
+                    (nameof(p_PR_AUC_Approx_11p), p_PR_AUC_Approx_11p),
+                    (nameof(p_PRI_AUC_Approx_All), p_PRI_AUC_Approx_All),
+                    (nameof(p_PRI_AUC_Approx_11p), p_PRI_AUC_Approx_11p),
+                    (nameof(p_AP_All), p_AP_All),
+                    (nameof(p_AP_11p), p_AP_11p),
+                    (nameof(p_API_All), p_API_All),
+                    (nameof(p_API_11p), p_API_11p),
+                    (nameof(p_Brier_Inverse_All), p_Brier_Inverse_All),
+                    (nameof(p_LRP), p_LRP),
+                    (nameof(p_LRN), p_LRN),
+                    (nameof(p_DOR), p_DOR),
+                    (nameof(p_PrevalenceThreshold), p_PrevalenceThreshold),
+                    (nameof(p_CriticalSuccessIndex), p_CriticalSuccessIndex),
+                    (nameof(p_F1B_00), p_F1B_00),
+                    (nameof(p_F1B_01), p_F1B_01),
+                    (nameof(p_F1B_02), p_F1B_02),
+                    (nameof(p_F1B_03), p_F1B_03),
+                    (nameof(p_F1B_04), p_F1B_04),
+                    (nameof(p_F1B_05), p_F1B_05),
+                    (nameof(p_F1B_06), p_F1B_06),
+                    (nameof(p_F1B_07), p_F1B_07),
+                    (nameof(p_F1B_08), p_F1B_08),
+                    (nameof(p_F1B_09), p_F1B_09),
+                    (nameof(p_F1B_10), p_F1B_10),
                 };
 
             return result;
@@ -513,9 +744,9 @@ namespace svm_fs_batch
         {
             None = 0UL,
             TP = 1UL << 01,
-            FP = 1UL << 02,
+            FN = 1UL << 02,
             TN = 1UL << 03,
-            FN = 1UL << 04,
+            FP = 1UL << 04,
             TPR = 1UL << 05,
             TNR = 1UL << 06,
             PPV = 1UL << 07,
@@ -580,68 +811,68 @@ namespace svm_fs_batch
 
         public static readonly string[] csv_header_values_array = new string[]
             {
-                nameof(P),
-                nameof(N),
-                nameof(TP),
-                nameof(FP),
-                nameof(TN),
-                nameof(FN),
-                nameof(TPR),
-                nameof(TNR),
-                nameof(PPV),
-                nameof(Precision),
-                nameof(Prevalence),
-                nameof(MCR),
-                nameof(ER),
-                nameof(NER),
-                nameof(CNER),
-                nameof(Kappa),
-                nameof(Overlap),
-                nameof(RND_ACC),
-                nameof(Support),
-                nameof(BaseRate),
-                nameof(YoudenIndex),
-                nameof(NPV),
-                nameof(FNR),
-                nameof(FPR),
-                nameof(FDR),
-                nameof(FOR),
-                nameof(ACC),
-                nameof(GMean),
-                nameof(F1S),
-                nameof(G1S),
-                nameof(MCC),
-                nameof(Informedness),
-                nameof(Markedness),
-                nameof(BalancedAccuracy),
-                nameof(ROC_AUC_Approx_All),
-                nameof(ROC_AUC_Approx_11p),
-                nameof(ROC_AUC_All),
-                nameof(PR_AUC_Approx_All),
-                nameof(PR_AUC_Approx_11p),
-                nameof(PRI_AUC_Approx_All),
-                nameof(PRI_AUC_Approx_11p),
-                nameof(AP_All),
-                nameof(AP_11p),
-                nameof(API_All),
-                nameof(API_11p),
-                nameof(Brier_Inverse_All),
-                nameof(LRP),
-                nameof(LRN),
-                nameof(DOR),
-                nameof(PrevalenceThreshold),
-                nameof(CriticalSuccessIndex),
-                nameof(F1B_00),
-                nameof(F1B_01),
-                nameof(F1B_02),
-                nameof(F1B_03),
-                nameof(F1B_04),
-                nameof(F1B_05),
-                nameof(F1B_06),
-                nameof(F1B_07),
-                nameof(F1B_08),
-                nameof(F1B_09),
-                nameof(F1B_10),
+                nameof(cm_P),
+                nameof(cm_N),
+                nameof(cm_P_TP),
+                nameof(cm_P_FN),
+                nameof(cm_N_TN),
+                nameof(cm_N_FP),
+                nameof(p_TPR),
+                nameof(p_TNR),
+                nameof(p_PPV),
+                nameof(p_Precision),
+                nameof(p_Prevalence),
+                nameof(p_MCR),
+                nameof(p_ER),
+                nameof(p_NER),
+                nameof(p_CNER),
+                nameof(p_Kappa),
+                nameof(p_Overlap),
+                nameof(p_RND_ACC),
+                nameof(p_Support),
+                nameof(p_BaseRate),
+                nameof(p_YoudenIndex),
+                nameof(p_NPV),
+                nameof(p_FNR),
+                nameof(p_FPR),
+                nameof(p_FDR),
+                nameof(p_FOR),
+                nameof(p_ACC),
+                nameof(p_GMean),
+                nameof(p_F1S),
+                nameof(p_G1S),
+                nameof(p_MCC),
+                nameof(p_Informedness),
+                nameof(p_Markedness),
+                nameof(p_BalancedAccuracy),
+                nameof(p_ROC_AUC_Approx_All),
+                nameof(p_ROC_AUC_Approx_11p),
+                nameof(p_ROC_AUC_All),
+                nameof(p_PR_AUC_Approx_All),
+                nameof(p_PR_AUC_Approx_11p),
+                nameof(p_PRI_AUC_Approx_All),
+                nameof(p_PRI_AUC_Approx_11p),
+                nameof(p_AP_All),
+                nameof(p_AP_11p),
+                nameof(p_API_All),
+                nameof(p_API_11p),
+                nameof(p_Brier_Inverse_All),
+                nameof(p_LRP),
+                nameof(p_LRN),
+                nameof(p_DOR),
+                nameof(p_PrevalenceThreshold),
+                nameof(p_CriticalSuccessIndex),
+                nameof(p_F1B_00),
+                nameof(p_F1B_01),
+                nameof(p_F1B_02),
+                nameof(p_F1B_03),
+                nameof(p_F1B_04),
+                nameof(p_F1B_05),
+                nameof(p_F1B_06),
+                nameof(p_F1B_07),
+                nameof(p_F1B_08),
+                nameof(p_F1B_09),
+                nameof(p_F1B_10),
             };
 
         public static readonly string csv_header_string = string.Join(",", csv_header_values_array);
@@ -650,68 +881,68 @@ namespace svm_fs_batch
         {
             return new string[]
             {
-                P.ToString("G17", NumberFormatInfo.InvariantInfo),
-                N.ToString("G17", NumberFormatInfo.InvariantInfo),
-                TP.ToString("G17", NumberFormatInfo.InvariantInfo),
-                FP.ToString("G17", NumberFormatInfo.InvariantInfo),
-                TN.ToString("G17", NumberFormatInfo.InvariantInfo),
-                FN.ToString("G17", NumberFormatInfo.InvariantInfo),
-                TPR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                TNR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                PPV.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Precision.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Prevalence.ToString("G17", NumberFormatInfo.InvariantInfo),
-                MCR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                ER.ToString("G17", NumberFormatInfo.InvariantInfo),
-                NER.ToString("G17", NumberFormatInfo.InvariantInfo),
-                CNER.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Kappa.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Overlap.ToString("G17", NumberFormatInfo.InvariantInfo),
-                RND_ACC.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Support.ToString("G17", NumberFormatInfo.InvariantInfo),
-                BaseRate.ToString("G17", NumberFormatInfo.InvariantInfo),
-                YoudenIndex.ToString("G17", NumberFormatInfo.InvariantInfo),
-                NPV.ToString("G17", NumberFormatInfo.InvariantInfo),
-                FNR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                FPR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                FDR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                FOR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                ACC.ToString("G17", NumberFormatInfo.InvariantInfo),
-                GMean.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1S.ToString("G17", NumberFormatInfo.InvariantInfo),
-                G1S.ToString("G17", NumberFormatInfo.InvariantInfo),
-                MCC.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Informedness.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Markedness.ToString("G17", NumberFormatInfo.InvariantInfo),
-                BalancedAccuracy.ToString("G17", NumberFormatInfo.InvariantInfo),
-                ROC_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo),
-                ROC_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
-                ROC_AUC_All.ToString("G17", NumberFormatInfo.InvariantInfo),
-                PR_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo),
-                PR_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
-                PRI_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo),
-                PRI_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
-                AP_All.ToString("G17", NumberFormatInfo.InvariantInfo),
-                AP_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
-                API_All.ToString("G17", NumberFormatInfo.InvariantInfo),
-                API_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
-                Brier_Inverse_All.ToString("G17", NumberFormatInfo.InvariantInfo),
-                LRP.ToString("G17", NumberFormatInfo.InvariantInfo),
-                LRN.ToString("G17", NumberFormatInfo.InvariantInfo),
-                DOR.ToString("G17", NumberFormatInfo.InvariantInfo),
-                PrevalenceThreshold.ToString("G17", NumberFormatInfo.InvariantInfo),
-                CriticalSuccessIndex.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_00.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_01.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_02.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_03.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_04.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_05.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_06.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_07.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_08.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_09.ToString("G17", NumberFormatInfo.InvariantInfo),
-                F1B_10.ToString("G17", NumberFormatInfo.InvariantInfo),
+                cm_P.ToString("G17", NumberFormatInfo.InvariantInfo),
+                cm_N.ToString("G17", NumberFormatInfo.InvariantInfo),
+                cm_P_TP.ToString("G17", NumberFormatInfo.InvariantInfo),
+                cm_P_FN.ToString("G17", NumberFormatInfo.InvariantInfo),
+                cm_N_TN.ToString("G17", NumberFormatInfo.InvariantInfo),
+                cm_N_FP.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_TPR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_TNR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_PPV.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Precision.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Prevalence.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_MCR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_ER.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_NER.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_CNER.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Kappa.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Overlap.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_RND_ACC.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Support.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_BaseRate.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_YoudenIndex.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_NPV.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_FNR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_FPR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_FDR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_FOR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_ACC.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_GMean.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1S.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_G1S.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_MCC.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Informedness.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Markedness.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_BalancedAccuracy.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_ROC_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_ROC_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_ROC_AUC_All.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_PR_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_PR_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_PRI_AUC_Approx_All.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_PRI_AUC_Approx_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_AP_All.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_AP_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_API_All.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_API_11p.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_Brier_Inverse_All.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_LRP.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_LRN.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_DOR.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_PrevalenceThreshold.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_CriticalSuccessIndex.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_00.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_01.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_02.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_03.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_04.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_05.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_06.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_07.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_08.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_09.ToString("G17", NumberFormatInfo.InvariantInfo),
+                p_F1B_10.ToString("G17", NumberFormatInfo.InvariantInfo),
             }.Select(a => a.Replace(",", ";", StringComparison.OrdinalIgnoreCase)).ToArray();
         }
 

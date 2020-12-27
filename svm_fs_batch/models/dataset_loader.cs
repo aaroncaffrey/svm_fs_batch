@@ -529,9 +529,10 @@ namespace svm_fs_batch
 
 
             var t1 = Task.Run(() => load_dataset_headers(cts, data_filenames), cts.Token);
+
             var t2 = Task.Run(() => load_dataset_comments(cts, data_filenames), cts.Token);
-            t1.Wait();
-            t2.Wait();
+
+            Task.WaitAll(new[] {t1, t2});
 
             load_dataset_values(cts, data_filenames);
 

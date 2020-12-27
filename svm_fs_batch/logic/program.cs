@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using svm_fs_batch.models;
 
 namespace svm_fs_batch
 {
@@ -16,6 +15,19 @@ namespace svm_fs_batch
 
         internal static void Main(string[] args)
         {
+            //var rnd = new metrics_box();
+            //rnd.set_cm(null, null, 20, 11, 126, 30);
+            //Console.WriteLine(string.Join("\r\n", rnd.csv_values_array().Select((a, i) => $"{metrics_box.csv_header_values_array[i]} = '{a}'").ToArray()));
+            //Console.WriteLine();
+            
+            //rnd.apply_imbalance_correction1();
+            //Console.WriteLine(string.Join("\r\n", rnd.csv_values_array().Select((a, i) => $"{metrics_box.csv_header_values_array[i]} = '{a}'").ToArray()));
+            //Console.WriteLine();
+
+            //rnd.set_random_perf();
+            //Console.WriteLine(string.Join("\r\n", rnd.csv_values_array().Select((a, i) => $"{metrics_box.csv_header_values_array[i]} = '{a}'").ToArray()));
+            //Console.WriteLine();
+
             const string method_name = nameof(Main);
             //-experiment_name _20201028084510741 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 1 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 1
             //-experiment_name test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
@@ -124,8 +136,8 @@ namespace svm_fs_batch
             dataset_loader dataset,
             (prediction[] prediction_list, confusion_matrix[] cm_list) prediction_file_data,
             index_data unrolled_index_data,
-            (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int training_size)[] train_sizes, (int class_id, int testing_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) merged_cv_input,
-            ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)[] prediction_data_list,
+            outer_cv_input merged_cv_input,
+            (TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, grid_point grid_point, string[] predict_text)[] prediction_data_list,
             bool as_parallel = false
         )
         {
@@ -139,32 +151,50 @@ namespace svm_fs_batch
             {
                 Parallel.ForEach(prediction_file_data.cm_list, cm =>
                 {
-                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, prediction_data_list, cm); 
+                    update_merged_cm_from_vector(prediction_data_list, cm);
+
+                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, cm); 
 
                 });
             } else
             {
                 foreach (var cm in prediction_file_data.cm_list)
                 {
-                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, prediction_data_list, cm);
+                    update_merged_cm_from_vector(prediction_data_list, cm);
+
+                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, cm);
                 }
             }
         }
 
-        private static void update_merged_cm_single(CancellationTokenSource cts, dataset_loader dataset, index_data unrolled_index_data, (int repetitions_index, int outer_cv_index, string train_fn, string grid_fn, string model_fn, string test_fn, string predict_fn, string cm_fn1, string cm_fn2, string[] train_text, string[] test_text, (int class_id, int training_size)[] train_sizes, (int class_id, int testing_size)[] test_sizes, (int class_id, int[] train_indexes)[] train_fold_indexes, (int class_id, int[] test_indexes)[] test_fold_indexes) merged_cv_input, ((long grid_dur, long train_dur, long predict_dur) dur, grid_point grid_point, string[] predict_text)[] prediction_data_list, confusion_matrix cm)
+        private static void update_merged_cm_from_vector((TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, grid_point grid_point, string[] predict_text)[] prediction_data_list, confusion_matrix cm)
+        {
+            if (cm.grid_point == null) { cm.grid_point = new grid_point(prediction_data_list?.Select(a => a.grid_point).ToArray()); }
+
+            if (cm.x_time_grid == null || cm.x_time_grid == TimeSpan.Zero) cm.x_time_grid = new TimeSpan(prediction_data_list?.Select(a => a.grid_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if (cm.x_time_test == null || cm.x_time_test == TimeSpan.Zero) cm.x_time_test = new TimeSpan(prediction_data_list?.Select(a => a.predict_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if (cm.x_time_train == null || cm.x_time_train == TimeSpan.Zero) cm.x_time_train = new TimeSpan(prediction_data_list?.Select(a => a.train_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+        }
+
+        internal static void update_merged_cm_single
+        (
+            CancellationTokenSource cts, 
+            dataset_loader dataset, 
+            index_data unrolled_index_data, 
+            outer_cv_input merged_cv_input,
+            confusion_matrix cm
+        )
         {
             if (cts.IsCancellationRequested) return;
 
-            if (cm.grid_point == null) { cm.grid_point = new grid_point(prediction_data_list?.Select(a => a.grid_point).ToArray()); }
-
             cm.x_class_name = settings.class_names?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_name;
             cm.x_class_size = dataset.class_sizes?.First(b => b.class_id == cm.x_class_id).class_size ?? -1;
-            cm.x_class_testing_size = merged_cv_input.test_sizes?.First(b => b.class_id == cm.x_class_id).testing_size ?? -1;
-            cm.x_class_training_size = merged_cv_input.train_sizes?.First(b => b.class_id == cm.x_class_id).training_size ?? -1;
+            cm.x_class_test_size = merged_cv_input.test_sizes?.First(b => b.class_id == cm.x_class_id).test_size ?? -1;
+            cm.x_class_train_size = merged_cv_input.train_sizes?.First(b => b.class_id == cm.x_class_id).train_size ?? -1;
             cm.x_class_weight = unrolled_index_data.class_weights?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_weight;
-            cm.x_duration_grid_search = prediction_data_list?.Select(a => a.dur.grid_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
-            cm.x_duration_testing = prediction_data_list?.Select(a => a.dur.predict_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
-            cm.x_duration_training = prediction_data_list?.Select(a => a.dur.train_dur).DefaultIfEmpty(0).Sum().ToString(CultureInfo.InvariantCulture);
+            //cm.x_time_grid_search =  prediction_data_list?.Select(a => a.dur.grid_dur).DefaultIfEmpty(0).Sum();
+            //cm.x_time_test = prediction_data_list?.Select(a => a.dur.predict_dur).DefaultIfEmpty(0).Sum();
+            //cm.x_time_train = prediction_data_list?.Select(a => a.dur.train_dur).DefaultIfEmpty(0).Sum();
             cm.x_outer_cv_index = merged_cv_input.outer_cv_index;
             cm.x_repetitions_index = merged_cv_input.repetitions_index;
         }

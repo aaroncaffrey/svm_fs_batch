@@ -29,7 +29,7 @@ namespace svm_fs_batch
         internal int[] column_array_indexes;
         internal (int class_id, double class_weight)[] class_weights;
         internal (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] class_folds;
-        internal (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_training_class_folds;
+        internal (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_train_class_folds;
 
 
         internal string group_folder;
@@ -65,7 +65,7 @@ namespace svm_fs_batch
                "id_"+nameof(column_array_indexes                   ),
                "id_"+nameof(class_weights                          ),
                "id_"+nameof(class_folds                            ),
-               "id_"+nameof(down_sampled_training_class_folds      ),
+               "id_"+nameof(down_sampled_train_class_folds      ),
            })
                 .ToArray();
 
@@ -97,7 +97,7 @@ namespace svm_fs_batch
                 $@"{string.Join(";", column_array_indexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";",class_weights?.Select(a=> $"{a.class_id}:{a.class_weight:G17}").ToArray() ?? Array.Empty<string>())}",
                 $@"{string.Join(";",class_folds?.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray()?? Array.Empty<string>())}",
-                $@"{string.Join(";",down_sampled_training_class_folds?.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
+                $@"{string.Join(";",down_sampled_train_class_folds?.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.class_size}", $@"{string.Join("|",a.folds?.Select(b=> string.Join("~", $@"{b.repetitions_index}", $@"{b.outer_cv_index}", $@"{string.Join("/", b.class_sample_indexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
             };
 
             var x3 = x1.Concat(x2).Select(a => a == null ? "" : a.Replace(',', ';')).ToArray();
@@ -112,15 +112,16 @@ namespace svm_fs_batch
 
         public index_data(string[] csv_line, int column_offset = 0)
         {
-            set_values(routines.x_types(null, csv_line.Skip(column_offset).ToArray(), false), 0);
+            //set_values(routines.x_types(null, csv_line.Skip(column_offset).ToArray(), false), 0);
+            set_values(x_types.get_x_types(csv_line.Skip(column_offset).ToArray()), 0);
         }
 
-        internal index_data((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type, int column_offset = 0)
+        internal index_data(x_types[] x_type, int column_offset = 0)
         {
             set_values(x_type, column_offset);
         }
 
-        internal void set_values((string as_str, int? as_int, double? as_double, bool? as_bool)[] x_type, int column_offset = 0)
+        internal void set_values(x_types[] x_type, int column_offset = 0)
         {
             var k = column_offset;
 
@@ -167,7 +168,7 @@ namespace svm_fs_batch
             }).ToArray();
 
             //  ;:|~/
-            down_sampled_training_class_folds = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a =>
+            down_sampled_train_class_folds = x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a =>
             {
                 var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries);
                 var class_id = int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -357,7 +358,7 @@ namespace svm_fs_batch
 
             class_weights = index_data.class_weights?.ToArray();
             class_folds = index_data.class_folds?.Select(a => (a.class_id, a.class_size, a.folds?.Select(b => (b.repetitions_index, b.outer_cv_index, b.class_sample_indexes?.ToArray())).ToArray())).ToArray();
-            down_sampled_training_class_folds = index_data.down_sampled_training_class_folds?.Select(a => (a.class_id, a.class_size, a.folds?.Select(b => (b.repetitions_index, b.outer_cv_index, b.class_sample_indexes?.ToArray())).ToArray())).ToArray();
+            down_sampled_train_class_folds = index_data.down_sampled_train_class_folds?.Select(a => (a.class_id, a.class_size, a.folds?.Select(b => (b.repetitions_index, b.outer_cv_index, b.class_sample_indexes?.ToArray())).ToArray())).ToArray();
 
             total_whole_indexes = index_data.total_whole_indexes;
             total_partition_indexes = index_data.total_partition_indexes;

@@ -105,7 +105,7 @@ namespace svm_fs_batch
 
             gsi.selection_direction = program.direction.none;
 
-            if (gsi.is_group_blacklisted || gsi.is_group_base_group) gsi.selection_direction = program.direction.none;
+            if (gsi.is_group_blacklisted || (gsi.is_group_base_group && groups.Length > base_group_indexes.Length)) gsi.selection_direction = program.direction.none;
 
             else if (!gsi.is_group_index_valid /* || is_group_base_group*/) gsi.selection_direction = program.direction.neutral; // calibration
 
@@ -213,7 +213,7 @@ namespace svm_fs_batch
                 for (var z_o_cv_series_index = 0; z_o_cv_series_index < uip.o_cv_series.Length; z_o_cv_series_index++)//2
                 {
                     // for the current number of R and O, set the folds (which vary according to the values of R and O).
-                    var (class_folds, down_sampled_training_class_folds) = routines.folds(cts, dataset.class_sizes, uip.r_cv_series[z_r_cv_series_index], uip.o_cv_series[z_o_cv_series_index] /*, outer_cv_folds_to_run*/);
+                    var (class_folds, down_sampled_train_class_folds) = routines.folds(cts, dataset.class_sizes, uip.r_cv_series[z_r_cv_series_index], uip.o_cv_series[z_o_cv_series_index] /*, outer_cv_folds_to_run*/);
 
                     for (var z_svm_types_index = 0; z_svm_types_index < uip.svm_types.Length; z_svm_types_index++)//4
                     {
@@ -260,7 +260,7 @@ namespace svm_fs_batch
 
                                                 class_weights = class_weights,
                                                 class_folds = class_folds,
-                                                down_sampled_training_class_folds = down_sampled_training_class_folds,
+                                                down_sampled_train_class_folds = down_sampled_train_class_folds,
                                                 total_groups = total_groups,
                                                 //is_job_completed = false,
 

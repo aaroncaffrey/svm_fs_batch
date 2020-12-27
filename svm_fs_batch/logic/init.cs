@@ -13,8 +13,19 @@ namespace svm_fs_batch
             //ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);
             //ThreadPool.SetMaxThreads(Environment.ProcessorCount * 100, Environment.ProcessorCount * 100);
 
-            ThreadPool.SetMinThreads(1000, 1000);
-            ThreadPool.SetMaxThreads(10000, 10000);
+            //ThreadPool.SetMinThreads(1000, 1000);
+            //ThreadPool.SetMaxThreads(10000, 10000);
+
+            //runtimeconfig.template.json
+            //{
+            //    "configProperties": {
+            //        "System.Globalization.Invariant": true,
+            //        "System.GC.Server": true,
+            //        "System.GC.Concurrent": true,
+            //        "System.Threading.ThreadPool.MinThreads": "1000",
+            //        "System.Threading.ThreadPool.MaxThreads": "10000"
+            //    }
+            //}
         }
 
         internal static void close_notifications(CancellationTokenSource cts = null)

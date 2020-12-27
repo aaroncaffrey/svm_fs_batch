@@ -1,4 +1,4 @@
-﻿namespace svm_fs_batch.models
+﻿namespace svm_fs_batch
 {
     internal class group_series_index
     {

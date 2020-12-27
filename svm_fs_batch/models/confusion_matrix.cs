@@ -14,9 +14,9 @@ namespace svm_fs_batch
 
         internal index_data unrolled_index_data;
         internal grid_point grid_point;
-        internal string x_duration_grid_search;
-        internal string x_duration_training;
-        internal string x_duration_testing;
+        internal TimeSpan? x_time_grid;
+        internal TimeSpan? x_time_train;
+        internal TimeSpan? x_time_test;
         internal double? x_prediction_threshold = -1;
         internal double? x_prediction_threshold_class;
         internal int x_repetitions_index = -1;
@@ -25,15 +25,15 @@ namespace svm_fs_batch
         internal double? x_class_weight;
         internal string x_class_name;
         internal double x_class_size;
-        internal double x_class_training_size;
-        internal double x_class_testing_size;
+        internal double x_class_train_size;
+        internal double x_class_test_size;
         internal metrics_box metrics;
-        internal string roc_xy_str_all;
-        internal string roc_xy_str_11p;
-        internal string pr_xy_str_all;
-        internal string pr_xy_str_11p;
-        internal string pri_xy_str_all;
-        internal string pri_xy_str_11p;
+        internal (double x, double y)[] roc_xy_str_all;
+        internal (double x, double y)[] roc_xy_str_11p;
+        internal (double x, double y)[] pr_xy_str_all;
+        internal (double x, double y)[] pr_xy_str_11p;
+        internal (double x, double y)[] pri_xy_str_all;
+        internal (double x, double y)[] pri_xy_str_11p;
         internal double[] thresholds;
         internal prediction[] predictions;
 
@@ -246,7 +246,7 @@ namespace svm_fs_batch
             //todo: check why confusion matrix is missing from 'line'
             if (column_count < csv_header_values_array.Length) return null;
 
-            var x_type = routines.x_types(cts, s_all, true);
+            var x_type = x_types.get_x_types(s_all, cts, true); //routines.x_types(cts, s_all, true);
 
 
             var k = 0;
@@ -267,9 +267,9 @@ namespace svm_fs_batch
             {
                 unrolled_index_data = unrolled_index_data,
                 grid_point = grid_point,
-                x_duration_grid_search = x_type[k++].as_str,
-                x_duration_training = x_type[k++].as_str,
-                x_duration_testing = x_type[k++].as_str,
+                x_time_grid = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? new TimeSpan(x_type[k].as_long ?? 0) : (TimeSpan?)null,
+                x_time_train = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? new TimeSpan(x_type[k].as_long ?? 0) : (TimeSpan?)null,
+                x_time_test = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? new TimeSpan(x_type[k].as_long ?? 0) : (TimeSpan?)null,
                 x_prediction_threshold = x_type[k++].as_double,
                 x_prediction_threshold_class = x_type[k++].as_double,
                 x_repetitions_index = x_type[k++].as_int ?? 0,
@@ -278,95 +278,102 @@ namespace svm_fs_batch
                 x_class_weight = x_type[k++].as_double,
                 x_class_name = x_type[k++].as_str,
                 x_class_size = x_type[k++].as_double ?? 0,
-                x_class_training_size = x_type[k++].as_double ?? 0,
-                x_class_testing_size = x_type[k++].as_double ?? 0,
+                x_class_train_size = x_type[k++].as_double ?? 0,
+                x_class_test_size = x_type[k++].as_double ?? 0,
                 metrics = new metrics_box()
                 {
-                    P = x_type[k++].as_double ?? 0,
-                    N = x_type[k++].as_double ?? 0,
-                    TP = x_type[k++].as_double ?? 0,
-                    FP = x_type[k++].as_double ?? 0,
-                    TN = x_type[k++].as_double ?? 0,
-                    FN = x_type[k++].as_double ?? 0,
-                    TPR = x_type[k++].as_double ?? 0,
-                    TNR = x_type[k++].as_double ?? 0,
-                    PPV = x_type[k++].as_double ?? 0,
-                    Precision = x_type[k++].as_double ?? 0,
-                    Prevalence = x_type[k++].as_double ?? 0,
-                    MCR = x_type[k++].as_double ?? 0,
-                    ER = x_type[k++].as_double ?? 0,
-                    NER = x_type[k++].as_double ?? 0,
-                    CNER = x_type[k++].as_double ?? 0,
-                    Kappa = x_type[k++].as_double ?? 0,
-                    Overlap = x_type[k++].as_double ?? 0,
-                    RND_ACC = x_type[k++].as_double ?? 0,
-                    Support = x_type[k++].as_double ?? 0,
-                    BaseRate = x_type[k++].as_double ?? 0,
-                    YoudenIndex = x_type[k++].as_double ?? 0,
-                    NPV = x_type[k++].as_double ?? 0,
-                    FNR = x_type[k++].as_double ?? 0,
-                    FPR = x_type[k++].as_double ?? 0,
-                    FDR = x_type[k++].as_double ?? 0,
-                    FOR = x_type[k++].as_double ?? 0,
-                    ACC = x_type[k++].as_double ?? 0,
-                    GMean = x_type[k++].as_double ?? 0,
-                    F1S = x_type[k++].as_double ?? 0,
-                    G1S = x_type[k++].as_double ?? 0,
-                    MCC = x_type[k++].as_double ?? 0,
-                    Informedness = x_type[k++].as_double ?? 0,
-                    Markedness = x_type[k++].as_double ?? 0,
-                    BalancedAccuracy = x_type[k++].as_double ?? 0,
-                    ROC_AUC_Approx_All = x_type[k++].as_double ?? 0,
-                    ROC_AUC_Approx_11p = x_type[k++].as_double ?? 0,
-                    ROC_AUC_All = x_type[k++].as_double ?? 0,
-                    PR_AUC_Approx_All = x_type[k++].as_double ?? 0,
-                    PR_AUC_Approx_11p = x_type[k++].as_double ?? 0,
-                    PRI_AUC_Approx_All = x_type[k++].as_double ?? 0,
-                    PRI_AUC_Approx_11p = x_type[k++].as_double ?? 0,
-                    AP_All = x_type[k++].as_double ?? 0,
-                    AP_11p = x_type[k++].as_double ?? 0,
-                    API_All = x_type[k++].as_double ?? 0,
-                    API_11p = x_type[k++].as_double ?? 0,
-                    Brier_Inverse_All = x_type[k++].as_double ?? 0,
-                    LRP = x_type[k++].as_double ?? 0,
-                    LRN = x_type[k++].as_double ?? 0,
-                    DOR = x_type[k++].as_double ?? 0,
-                    PrevalenceThreshold = x_type[k++].as_double ?? 0,
-                    CriticalSuccessIndex = x_type[k++].as_double ?? 0,
-                    F1B_00 = x_type[k++].as_double ?? 0,
-                    F1B_01 = x_type[k++].as_double ?? 0,
-                    F1B_02 = x_type[k++].as_double ?? 0,
-                    F1B_03 = x_type[k++].as_double ?? 0,
-                    F1B_04 = x_type[k++].as_double ?? 0,
-                    F1B_05 = x_type[k++].as_double ?? 0,
-                    F1B_06 = x_type[k++].as_double ?? 0,
-                    F1B_07 = x_type[k++].as_double ?? 0,
-                    F1B_08 = x_type[k++].as_double ?? 0,
-                    F1B_09 = x_type[k++].as_double ?? 0,
-                    F1B_10 = x_type[k++].as_double ?? 0,
+                    cm_P = x_type[k++].as_double ?? 0,
+                    cm_N = x_type[k++].as_double ?? 0,
+                    cm_P_TP = x_type[k++].as_double ?? 0,
+                    cm_N_FP = x_type[k++].as_double ?? 0,
+                    cm_N_TN = x_type[k++].as_double ?? 0,
+                    cm_P_FN = x_type[k++].as_double ?? 0,
+                    p_TPR = x_type[k++].as_double ?? 0,
+                    p_TNR = x_type[k++].as_double ?? 0,
+                    p_PPV = x_type[k++].as_double ?? 0,
+                    p_Precision = x_type[k++].as_double ?? 0,
+                    p_Prevalence = x_type[k++].as_double ?? 0,
+                    p_MCR = x_type[k++].as_double ?? 0,
+                    p_ER = x_type[k++].as_double ?? 0,
+                    p_NER = x_type[k++].as_double ?? 0,
+                    p_CNER = x_type[k++].as_double ?? 0,
+                    p_Kappa = x_type[k++].as_double ?? 0,
+                    p_Overlap = x_type[k++].as_double ?? 0,
+                    p_RND_ACC = x_type[k++].as_double ?? 0,
+                    p_Support = x_type[k++].as_double ?? 0,
+                    p_BaseRate = x_type[k++].as_double ?? 0,
+                    p_YoudenIndex = x_type[k++].as_double ?? 0,
+                    p_NPV = x_type[k++].as_double ?? 0,
+                    p_FNR = x_type[k++].as_double ?? 0,
+                    p_FPR = x_type[k++].as_double ?? 0,
+                    p_FDR = x_type[k++].as_double ?? 0,
+                    p_FOR = x_type[k++].as_double ?? 0,
+                    p_ACC = x_type[k++].as_double ?? 0,
+                    p_GMean = x_type[k++].as_double ?? 0,
+                    p_F1S = x_type[k++].as_double ?? 0,
+                    p_G1S = x_type[k++].as_double ?? 0,
+                    p_MCC = x_type[k++].as_double ?? 0,
+                    p_Informedness = x_type[k++].as_double ?? 0,
+                    p_Markedness = x_type[k++].as_double ?? 0,
+                    p_BalancedAccuracy = x_type[k++].as_double ?? 0,
+                    p_ROC_AUC_Approx_All = x_type[k++].as_double ?? 0,
+                    p_ROC_AUC_Approx_11p = x_type[k++].as_double ?? 0,
+                    p_ROC_AUC_All = x_type[k++].as_double ?? 0,
+                    p_PR_AUC_Approx_All = x_type[k++].as_double ?? 0,
+                    p_PR_AUC_Approx_11p = x_type[k++].as_double ?? 0,
+                    p_PRI_AUC_Approx_All = x_type[k++].as_double ?? 0,
+                    p_PRI_AUC_Approx_11p = x_type[k++].as_double ?? 0,
+                    p_AP_All = x_type[k++].as_double ?? 0,
+                    p_AP_11p = x_type[k++].as_double ?? 0,
+                    p_API_All = x_type[k++].as_double ?? 0,
+                    p_API_11p = x_type[k++].as_double ?? 0,
+                    p_Brier_Inverse_All = x_type[k++].as_double ?? 0,
+                    p_LRP = x_type[k++].as_double ?? 0,
+                    p_LRN = x_type[k++].as_double ?? 0,
+                    p_DOR = x_type[k++].as_double ?? 0,
+                    p_PrevalenceThreshold = x_type[k++].as_double ?? 0,
+                    p_CriticalSuccessIndex = x_type[k++].as_double ?? 0,
+                    p_F1B_00 = x_type[k++].as_double ?? 0,
+                    p_F1B_01 = x_type[k++].as_double ?? 0,
+                    p_F1B_02 = x_type[k++].as_double ?? 0,
+                    p_F1B_03 = x_type[k++].as_double ?? 0,
+                    p_F1B_04 = x_type[k++].as_double ?? 0,
+                    p_F1B_05 = x_type[k++].as_double ?? 0,
+                    p_F1B_06 = x_type[k++].as_double ?? 0,
+                    p_F1B_07 = x_type[k++].as_double ?? 0,
+                    p_F1B_08 = x_type[k++].as_double ?? 0,
+                    p_F1B_09 = x_type[k++].as_double ?? 0,
+                    p_F1B_10 = x_type[k++].as_double ?? 0,
                 },
-                roc_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
-                roc_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
-                pr_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
-                pr_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
-                pri_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
-                pri_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
-                thresholds = x_type.Length > k ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : -1).ToArray() : null,
-                predictions = x_type.Length > k ? x_type[k++].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new prediction(a.Split('|'))).ToArray() : null,
+                //roc_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
+                //roc_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
+                //pr_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
+                //pr_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
+                //pri_xy_str_all = x_type.Length > k ? x_type[k++].as_str : "",
+                //pri_xy_str_11p = x_type.Length > k ? x_type[k++].as_str : "",
+                roc_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';').Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (xy[0], xy[1]); }).ToArray() : null,
+                roc_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';').Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (xy[0], xy[1]); }).ToArray() : null,
+                pr_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';').Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (xy[0], xy[1]); }).ToArray() : null,
+                pr_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';').Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (xy[0], xy[1]); }).ToArray() : null,
+                pri_xy_str_all = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';').Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (xy[0], xy[1]); }).ToArray() : null,
+                pri_xy_str_11p = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';').Skip(1/* skip axis names*/).Select(a => { var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray(); return (xy[0], xy[1]); }).ToArray() : null,
+
+                thresholds = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var th_out) ? th_out : -1).ToArray() : null,
+                predictions = x_type.Length > k && !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? x_type[k].as_str.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new prediction(a.Split('|'))).ToArray() : null,
             };
 
             return cm;
         }
 
 
-        internal void calculate_metrics(CancellationTokenSource cts, metrics_box metrics, bool calculate_auc, prediction[] prediction_list)
+        internal void calculate_theshold_metrics(CancellationTokenSource cts, metrics_box metrics, bool calculate_auc, prediction[] prediction_list)
         {
             if (cts.IsCancellationRequested) return;
 
             if (x_class_id != null && prediction_list != null && prediction_list.Length > 0 && prediction_list.Any(a => a.probability_estimates != null && a.probability_estimates.Length > 0))
             {
                 var p_brier_score_all = performance_measure.brier(prediction_list, x_class_id.Value);
-                metrics.Brier_Inverse_All = 1 - p_brier_score_all;
+                metrics.p_Brier_Inverse_All = 1 - p_brier_score_all;
 
                 if (calculate_auc)
                 {
@@ -377,143 +384,49 @@ namespace svm_fs_batch
                     var (p_roc_auc_approx_11p, p_roc_auc_actual_11p, p_pr_auc_approx_11p, p_pri_auc_approx_11p, p_ap_11p, p_api_11p, p_roc_xy_11p, p_pr_xy_11p, p_pri_xy_11p) = performance_measure.Calculate_ROC_PR_AUC(cts, prediction_list, x_class_id.Value, performance_measure.threshold_type.eleven_points);
 
 
-                    metrics.ROC_AUC_Approx_All = p_roc_auc_approx_all;
-                    metrics.ROC_AUC_Approx_11p = p_roc_auc_approx_11p;
+                    metrics.p_ROC_AUC_Approx_All = p_roc_auc_approx_all;
+                    metrics.p_ROC_AUC_Approx_11p = p_roc_auc_approx_11p;
 
-                    metrics.ROC_AUC_All = p_roc_auc_actual_all;
+                    metrics.p_ROC_AUC_All = p_roc_auc_actual_all;
                     //ROC_AUC_11p = p_roc_auc_actual_11p;
 
-                    metrics.PR_AUC_Approx_All = p_pr_auc_approx_all;
-                    metrics.PR_AUC_Approx_11p = p_pr_auc_approx_11p;
+                    metrics.p_PR_AUC_Approx_All = p_pr_auc_approx_all;
+                    metrics.p_PR_AUC_Approx_11p = p_pr_auc_approx_11p;
 
-                    metrics.PRI_AUC_Approx_All = p_pri_auc_approx_all;
-                    metrics.PRI_AUC_Approx_11p = p_pri_auc_approx_11p;
+                    metrics.p_PRI_AUC_Approx_All = p_pri_auc_approx_all;
+                    metrics.p_PRI_AUC_Approx_11p = p_pri_auc_approx_11p;
 
-                    metrics.AP_All = p_ap_all;
-                    metrics.AP_11p = p_ap_11p;
-                    metrics.API_All = p_api_all;
-                    metrics.API_11p = p_api_11p;
+                    metrics.p_AP_All = p_ap_all;
+                    metrics.p_AP_11p = p_ap_11p;
+                    metrics.p_API_All = p_api_all;
+                    metrics.p_API_11p = p_api_11p;
 
                     // PR (x: a.TPR, y: a.PPV)
                     // ROC (x: a.FPR, y: a.TPR)
 
                     // roc x,y points (11 point and all thresholds)
-                    roc_xy_str_all = p_roc_xy_all != null && p_roc_xy_all.Count > 0 ? $"FPR;TPR/{string.Join("/", p_roc_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
-                    roc_xy_str_11p = p_roc_xy_11p != null && p_roc_xy_11p.Count > 0 ? $"FPR;TPR/{string.Join("/", p_roc_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    //roc_xy_str_all = p_roc_xy_all != null && p_roc_xy_all.Count > 0 ? $"FPR;TPR/{string.Join("/", p_roc_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToArray())}" : "";
+                    //roc_xy_str_11p = p_roc_xy_11p != null && p_roc_xy_11p.Count > 0 ? $"FPR;TPR/{string.Join("/", p_roc_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToArray())}" : "";
+                    //// precision-recall chart x,y points (11 point and all thresholds)
+                    //pr_xy_str_all = p_pr_xy_all != null && p_pr_xy_all.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pr_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToArray())}" : "";
+                    //pr_xy_str_11p = p_pr_xy_11p != null && p_pr_xy_11p.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pr_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToArray())}" : "";
+                    //// precision-recall interpolated x,y points (11 point and all thresholds)
+                    //pri_xy_str_all = p_pri_xy_all != null && p_pri_xy_all.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pri_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToArray())}" : "";
+                    //pri_xy_str_11p = p_pri_xy_11p != null && p_pri_xy_11p.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pri_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToArray())}" : "";
 
+                    //roc x, y points(11 point and all thresholds)
+                    roc_xy_str_all = p_roc_xy_all;
+                    roc_xy_str_11p = p_roc_xy_11p;
                     // precision-recall chart x,y points (11 point and all thresholds)
-                    pr_xy_str_all = p_pr_xy_all != null && p_pr_xy_all.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pr_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
-                    pr_xy_str_11p = p_pr_xy_11p != null && p_pr_xy_11p.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pr_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
-
+                    pr_xy_str_all = p_pr_xy_all;
+                    pr_xy_str_11p = p_pr_xy_11p;
                     // precision-recall interpolated x,y points (11 point and all thresholds)
-                    pri_xy_str_all = p_pri_xy_all != null && p_pri_xy_all.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pri_xy_all.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
-                    pri_xy_str_11p = p_pri_xy_11p != null && p_pri_xy_11p.Count > 0 ? $"TPR;PPV/{string.Join("/", p_pri_xy_11p.Select(a => $"{Math.Round(a.x, 6)};{Math.Round(a.y, 6)}").ToList())}" : "";
+                    pri_xy_str_all = p_pri_xy_all;
+                    pri_xy_str_11p = p_pri_xy_11p;
                 }
             }
 
-            const double zero = 0.0;
-            const double one = 1.0;
-            const double two = 2.0;
-
-            metrics.Support = (metrics.N) == zero ? zero : (double)(metrics.TP + metrics.FP) / (double)(metrics.N);
-            metrics.BaseRate = (metrics.N) == zero ? zero : (double)(metrics.TP + metrics.FN) / (double)(metrics.N);
-
-            metrics.Prevalence = (metrics.P + metrics.N) == zero ? zero : (metrics.FN + metrics.TP) / (metrics.P + metrics.N);
-
-            metrics.MCR = (metrics.P + metrics.N) == zero ? zero : (metrics.FP + metrics.FN) / (metrics.P + metrics.N);
-            metrics.TPR = (metrics.TP + metrics.FN) == zero ? zero : (double)(metrics.TP) / (double)(metrics.TP + metrics.FN);
-            metrics.TNR = (metrics.TN + metrics.FP) == zero ? zero : (double)(metrics.TN) / (double)(metrics.TN + metrics.FP);
-            metrics.Precision = (metrics.TP + metrics.FP) == zero ? zero : (double)(metrics.TP) / (double)(metrics.TP + metrics.FP);
-
-            metrics.Overlap = (metrics.TP + metrics.FP + metrics.FN) == zero ? zero : metrics.TP / (metrics.TP + metrics.FP + metrics.FN);
-
-            // null error rate
-            metrics.NER = (metrics.P + metrics.N) == zero ? zero : (metrics.P > metrics.N ? metrics.P : metrics.N) / (metrics.P + metrics.N);
-
-            // class null error rate
-            metrics.CNER = (metrics.P + metrics.N) == zero ? zero : metrics.P / (metrics.P + metrics.N);
-
-            // positive predictive value (differs from precision, can be equal)
-            metrics.PPV = (metrics.TPR * metrics.Prevalence + (one - metrics.TNR) * (one - metrics.Prevalence)) == zero ? zero : (metrics.TPR * metrics.Prevalence) / (metrics.TPR * metrics.Prevalence + (one - metrics.TNR) * (one - metrics.Prevalence));
-
-            // negative predictive value
-            metrics.NPV = (metrics.TN + metrics.FN) == zero ? zero : (double)(metrics.TN) / (double)(metrics.TN + metrics.FN);
-
-            // false negative rate
-            metrics.FNR = (metrics.FN + metrics.TP) == zero ? zero : (double)(metrics.FN) / (double)(metrics.FN + metrics.TP);
-
-            // false positive rate
-            metrics.FPR = (metrics.FP + metrics.TN) == zero ? zero : (double)(metrics.FP) / (double)(metrics.FP + metrics.TN);
-
-            // false discovery rate
-            metrics.FDR = (metrics.FP + metrics.TP) == zero ? zero : (double)(metrics.FP) / (double)(metrics.FP + metrics.TP);
-
-            // false omission rate
-            metrics.FOR = (metrics.FN + metrics.TN) == zero ? zero : (double)(metrics.FN) / (double)(metrics.FN + metrics.TN);
-
-            // accuracy
-            metrics.ACC = (metrics.P + metrics.N) == zero ? zero : (double)(metrics.TP + metrics.TN) / (double)(metrics.P + metrics.N);
-
-            // test error rate (inaccuracy)
-            metrics.ER = one - metrics.ACC;
-
-            metrics.YoudenIndex = metrics.TPR + metrics.TNR - one;
-
-
-            //Kappa = (totalAccuracy - randomAccuracy) / (1 - randomAccuracy)
-            //totalAccuracy = (TP + TN) / (TP + TN + FP + FN)
-            //randomAccuracy = referenceLikelihood(F) * resultLikelihood(F) + referenceLikelihood(T) * resultLikelihood(T)
-            //randomAccuracy = (ActualFalse * PredictedFalse + ActualTrue * PredictedTrue) / Total * Total
-            //randomAccuracy = (TN + FP) * (TN + FN) + (FN + TP) * (FP + TP) / Total * Total
-
-            metrics.RND_ACC = ((metrics.TN + metrics.FP) * (metrics.TN + metrics.FN) + (metrics.FN + metrics.TP) * (metrics.FP + metrics.TP)) / ((metrics.TP + metrics.TN + metrics.FP + metrics.FN) * (metrics.TP + metrics.TN + metrics.FP + metrics.FN));
-
-            metrics.Kappa = (one - metrics.RND_ACC) == zero ? zero : (metrics.ACC - metrics.RND_ACC) / (one - metrics.RND_ACC);
-
-            // Geometric Mean score
-            metrics.GMean = Math.Sqrt(metrics.TPR * metrics.TNR);
-
-            // F1 score
-            metrics.F1S = (metrics.PPV + metrics.TPR) == zero ? zero : (double)(2 * metrics.PPV * metrics.TPR) / (double)(metrics.PPV + metrics.TPR);
-
-            // G1 score (same as Fowlkes–Mallows index?)
-            metrics.G1S = (metrics.PPV + metrics.TPR) == zero ? zero : (double)Math.Sqrt((double)(metrics.PPV * metrics.TPR));
-
-            // Matthews correlation coefficient (MCC)
-            metrics.MCC = ((double)Math.Sqrt((double)((metrics.TP + metrics.FP) * (metrics.TP + metrics.FN) * (metrics.TN + metrics.FP) * (metrics.TN + metrics.FN))) == zero) ? zero : ((metrics.TP * metrics.TN) - (metrics.FP * metrics.FN)) / (double)Math.Sqrt((double)((metrics.TP + metrics.FP) * (metrics.TP + metrics.FN) * (metrics.TN + metrics.FP) * (metrics.TN + metrics.FN)));
-            metrics.Informedness = (metrics.TPR + metrics.TNR) - one;
-            metrics.Markedness = (metrics.PPV + metrics.NPV) - one;
-            metrics.BalancedAccuracy = (metrics.TPR + metrics.TNR) / two;
-
-            // likelihood ratio for positive results
-            metrics.LRP = (one - metrics.TNR) == zero ? zero : (metrics.TPR) / (one - metrics.TNR);
-
-            // likelihood ratio for negative results
-            metrics.LRN = (metrics.TNR) == zero ? zero : (one - metrics.TPR) / (metrics.TNR);
-
-            // Diagnostic odds ratio
-            metrics.DOR = metrics.LRN == zero ? zero : metrics.LRP / metrics.LRN;
-
-            // Prevalence Threshold
-            metrics.PrevalenceThreshold = (metrics.TPR + metrics.TNR - one) == zero ? zero : (Math.Sqrt(metrics.TPR * (-metrics.TNR + one)) + metrics.TNR - one) / (metrics.TPR + metrics.TNR - one);
-
-            // Threat Score / Critical Success Index
-            metrics.CriticalSuccessIndex = (metrics.TP + metrics.FN + metrics.FP) == zero ? zero : metrics.TP / (metrics.TP + metrics.FN + metrics.FP);
-
-            // Fowlkes–Mallows index - (same as G1 score?):
-            // var FM_Index = Math.Sqrt(PPV * TPR);
-
-            metrics.F1B_00 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.0d);
-            metrics.F1B_01 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.1d);
-            metrics.F1B_02 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.2d);
-            metrics.F1B_03 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.3d);
-            metrics.F1B_04 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.4d);
-            metrics.F1B_05 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.5d);
-            metrics.F1B_06 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.6d);
-            metrics.F1B_07 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.7d);
-            metrics.F1B_08 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.8d);
-            metrics.F1B_09 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 0.9d);
-            metrics.F1B_10 = metrics_box.fbeta2(metrics.PPV, metrics.TPR, 1.0d);
+            metrics.calculate_metrics();
         }
 
 
@@ -524,9 +437,9 @@ namespace svm_fs_batch
                 .Concat(
                 new string[]
                 {
-                    nameof(x_duration_grid_search),
-                    nameof(x_duration_training),
-                    nameof(x_duration_testing),
+                    nameof(x_time_grid),
+                    nameof(x_time_train),
+                    nameof(x_time_test),
                     nameof(x_prediction_threshold),
                     nameof(x_prediction_threshold_class),
                     nameof(x_repetitions_index),
@@ -536,8 +449,8 @@ namespace svm_fs_batch
                     nameof(x_class_weight),
                     nameof(x_class_name),
                     nameof(x_class_size),
-                    nameof(x_class_training_size),
-                    nameof(x_class_testing_size),
+                    nameof(x_class_train_size),
+                    nameof(x_class_test_size),
                 })
                 .Concat(metrics_box.csv_header_values_array.Select(a => $"m_{a}").ToArray())
                 .Concat(new string[]
@@ -558,16 +471,16 @@ namespace svm_fs_batch
 
         internal string[] csv_values_array()//bool summary = false)
         {
-            const bool summary = false;
+            //const bool summary = false;
             return
                 //(unrolled_index_data?.csv_values_array() ?? index_data.empty.csv_values_array())
                 //.Concat(grid_point?.csv_values_array() ?? grid_point.empty.csv_values_array())
                 (grid_point?.csv_values_array() ?? grid_point.empty.csv_values_array())
                 .Concat(new string[]
                 {
-                    x_duration_grid_search ?? "",
-                    x_duration_training ?? "",
-                    x_duration_testing ?? "",
+                    x_time_grid?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    x_time_train?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    x_time_test?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                     x_prediction_threshold?.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_prediction_threshold_class?.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_repetitions_index.ToString(NumberFormatInfo.InvariantInfo),
@@ -577,19 +490,27 @@ namespace svm_fs_batch
                     x_class_weight?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                     x_class_name ?? "",
                     x_class_size.ToString("G17", NumberFormatInfo.InvariantInfo),
-                    x_class_training_size.ToString("G17", NumberFormatInfo.InvariantInfo),
-                    x_class_testing_size.ToString("G17", NumberFormatInfo.InvariantInfo),
+                    x_class_train_size.ToString("G17", NumberFormatInfo.InvariantInfo),
+                    x_class_test_size.ToString("G17", NumberFormatInfo.InvariantInfo),
                 })
                 .Concat(metrics?.csv_values_array() ?? metrics_box.empty.csv_values_array())
                 .Concat(new string[] {
-                    !summary ? roc_xy_str_all ?? "" : "",
-                    !summary ? roc_xy_str_11p ?? "" : "",
-                    !summary ? pr_xy_str_all ?? "" : "",
-                    !summary ? pr_xy_str_11p ?? "" : "",
-                    !summary ? pri_xy_str_all ?? "" : "",
-                    !summary ? pri_xy_str_11p ?? "" : "",
-                    !summary ? string.Join(';',thresholds?.Select(a=> $"{a:G17}").ToArray() ?? Array.Empty<string>()) : "",
-                    !summary ? string.Join(";", predictions?.Select(a=> string.Join("|", (a?.csv_values_array() ?? prediction.empty.csv_values_array()))).ToArray() ?? Array.Empty<string>()) : "",
+                    
+                    //// roc x,y points (11 point and all thresholds) // $"{Math.Round(a.x, 6)}:{Math.Round(a.y, 6)}"?
+                    roc_xy_str_all != null && roc_xy_str_all.Length > 0 ? ($"FPR:TPR;{string.Join(";", roc_xy_str_all?.Select(a => $"{a.x:G17}:{a.y:G17}").ToArray() ?? Array.Empty<string>())}" ?? "") : "",
+                    roc_xy_str_11p != null && roc_xy_str_11p.Length > 0 ? ($"FPR:TPR;{string.Join(";", roc_xy_str_11p?.Select(a=> $"{a.x:G17}:{a.y:G17}").ToArray() ?? Array.Empty<string>())}" ?? "") : "",
+
+                    //// precision-recall chart x,y points (11 point and all thresholds)
+                    pr_xy_str_all != null && pr_xy_str_all.Length > 0 ? ($"TPR:PPV;{string.Join(";", pr_xy_str_all?.Select(a=> $"{a.x:G17}:{a.y:G17}").ToArray() ?? Array.Empty<string>())}" ?? "") : "",
+                    pr_xy_str_11p != null && pr_xy_str_11p.Length > 0 ? ($"TPR:PPV;{string.Join(";", pr_xy_str_11p?.Select(a=> $"{a.x:G17}:{a.y:G17}").ToArray() ?? Array.Empty<string>())}" ?? "") : "",
+
+                    //// precision-recall interpolated x,y points (11 point and all thresholds)
+                    pri_xy_str_all != null && pri_xy_str_all.Length > 0 ? ($"TPR:PPV;{string.Join(";", pri_xy_str_all?.Select(a=> $"{a.x:G17}:{a.y:G17}").ToArray() ?? Array.Empty<string>())}" ?? "") : "",
+                    pri_xy_str_11p != null && pri_xy_str_11p.Length > 0 ? ($"TPR:PPV;{string.Join(";", pri_xy_str_11p?.Select(a=> $"{a.x:G17}:{a.y:G17}").ToArray() ?? Array.Empty<string>())}" ?? "") : "",
+
+                    string.Join(';',thresholds?.Select(a=> $"{a:G17}").ToArray() ?? Array.Empty<string>()),
+                    string.Join(";", predictions?.Select(a=> string.Join("|", (a?.csv_values_array() ?? prediction.empty.csv_values_array()))).ToArray() ?? Array.Empty<string>())
+
                 })
                 .Select(a => a?.Replace(",", ";", StringComparison.OrdinalIgnoreCase) ?? "")
                 .ToArray();
