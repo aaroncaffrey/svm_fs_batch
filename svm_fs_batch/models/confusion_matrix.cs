@@ -267,9 +267,9 @@ namespace svm_fs_batch
             {
                 unrolled_index_data = unrolled_index_data,
                 grid_point = grid_point,
-                x_time_grid = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? new TimeSpan(x_type[k].as_long ?? 0) : (TimeSpan?)null,
-                x_time_train = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? new TimeSpan(x_type[k].as_long ?? 0) : (TimeSpan?)null,
-                x_time_test = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? new TimeSpan(x_type[k].as_long ?? 0) : (TimeSpan?)null,
+                x_time_grid = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? (TimeSpan?)TimeSpan.ParseExact(x_type[k].as_str, "c", DateTimeFormatInfo.InvariantInfo) : (TimeSpan?)null,
+                x_time_train = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? (TimeSpan?)TimeSpan.ParseExact(x_type[k].as_str, "c", DateTimeFormatInfo.InvariantInfo) : (TimeSpan?)null,
+                x_time_test = !string.IsNullOrWhiteSpace(x_type[k++].as_str) ? (TimeSpan?)TimeSpan.ParseExact(x_type[k].as_str, "c", DateTimeFormatInfo.InvariantInfo) : (TimeSpan?)null,
                 x_prediction_threshold = x_type[k++].as_double,
                 x_prediction_threshold_class = x_type[k++].as_double,
                 x_repetitions_index = x_type[k++].as_int ?? 0,
@@ -478,9 +478,10 @@ namespace svm_fs_batch
                 (grid_point?.csv_values_array() ?? grid_point.empty.csv_values_array())
                 .Concat(new string[]
                 {
-                    x_time_grid?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    x_time_train?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
-                    x_time_test?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
+                    $@"{(x_time_grid!=null?$@"{x_time_grid.Value:c}":"")}",
+                    $@"{(x_time_train!=null?$@"{x_time_train.Value:c}":"")}",
+                    $@"{(x_time_test!=null?$@"{x_time_test.Value:c}":"")}",
+
                     x_prediction_threshold?.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_prediction_threshold_class?.ToString("G17", NumberFormatInfo.InvariantInfo),
                     x_repetitions_index.ToString(NumberFormatInfo.InvariantInfo),

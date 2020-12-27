@@ -585,11 +585,9 @@ namespace svm_fs_batch
 
                 last_winner_id_cm_rs = this_iteration_winner_id_cm_rs;
                 all_iteration_id_cm_rs.Add(iteration_whole_results_fixed_with_ranks);
-                //last_iteration_folder = iteration_folder;
                 iteration_index++;
                 calibrate = false;
-
-                //previous_group_tests.AddRange(iteration_whole_results_fixed_with_ranks.Select(a=>a.id.group_array_indexes).ToArray());
+                preselect_all_groups = false;
                 previous_group_tests.AddRange(job_group_series.Select(a => a.group_indexes).ToArray());
             }
 

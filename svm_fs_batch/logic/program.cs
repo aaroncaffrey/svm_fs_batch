@@ -57,8 +57,8 @@ namespace svm_fs_batch
                 
                 (nameof(svm_fs_batch.program_args.inner_folds), "1"),
                 (nameof(svm_fs_batch.program_args.outer_cv_folds), "5"),
-                (nameof(svm_fs_batch.program_args.outer_cv_folds_to_run), "5"),
-                (nameof(svm_fs_batch.program_args.repetitions), "5"),
+                (nameof(svm_fs_batch.program_args.outer_cv_folds_to_run), "1"),
+                (nameof(svm_fs_batch.program_args.repetitions), "1"),
             };
 
             var fake_args = string.Join(" ", fake_args_list.Select(a => $"-{a.name}={a.value}").ToArray());
