@@ -327,6 +327,7 @@ namespace svm_fs_batch
                 column_header_list.Length,
                 i =>
                 {
+                    column_header_list[i].group_index = i;
                     column_header_list[i].column_index = i;
                 });
 

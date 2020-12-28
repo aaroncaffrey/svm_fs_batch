@@ -1,50 +1,53 @@
 ﻿using System;
-using System.Globalization;
 using System.Linq;
 
 namespace svm_fs_batch
 {
     internal class dataset_group_key : IEquatable<dataset_group_key>
     {
-        internal static readonly dataset_group_key empty = new dataset_group_key(null, null, null, null, null, null, null, null, null, -1);
+        internal static readonly dataset_group_key empty = new dataset_group_key(null, null, null, null, null, null, null, null, null, -1, -1);
 
+        internal int group_index = -1; // note: for internal use only... value subject to change.
         internal int column_index = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
 
         internal (string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value;
 
-        public dataset_group_key(string[] values)
-        {
-            if (values == null || values.Length == 0) return;
+        //public dataset_group_key(string[] values)
+        //{
+        //    if (values == null || values.Length == 0) return;
+        //
+        //    var k = 0;
+        //
+        //    if (values.Length > k && values[k++].Length > 0) value.file_tag = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.alphabet = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.stats = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.dimension = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.category = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.source = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.@group = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.member = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) value.perspective = values[k];
+        //    if (values.Length > k && values[k++].Length > 0) group_index = int.Parse(values[k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+        //    if (values.Length > k && values[k++].Length > 0) column_index = int.Parse(values[k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+        //}
 
-            var k = 0;
-
-            if (values.Length > k && values[k++].Length > 0) value.file_tag = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.alphabet = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.stats = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.dimension = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.category = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.source = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.@group = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.member = values[k];
-            if (values.Length > k && values[k++].Length > 0) value.perspective = values[k];
-            if (values.Length > k && values[k++].Length > 0) column_index = int.Parse(values[k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-        }
 
 
+        //public dataset_group_key(dataset_group_key group_key)
+        //{
+        //    this.value = group_key.value;
+        //    this.group_index = group_key.group_index;
+        //    this.column_index = group_key.column_index;
+        //}
 
-        public dataset_group_key(dataset_group_key group_key)
-        {
-            this.value = group_key.value;
-            this.column_index = group_key.column_index;
-        }
-
-        public dataset_group_key((string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value, int column_index = -1)
+        public dataset_group_key((string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective) value, int group_index = -1, int column_index = -1)
         {
             this.value = value;
+            this.group_index = group_index;
             this.column_index = column_index;
         }
 
-        public dataset_group_key(string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective, int column_index = -1)
+        public dataset_group_key(string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective, int group_index = -1, int column_index = -1)
         {
             if (!string.IsNullOrEmpty(file_tag)) this.value.file_tag = file_tag;
             if (!string.IsNullOrEmpty(alphabet)) this.value.alphabet = alphabet;
@@ -55,6 +58,7 @@ namespace svm_fs_batch
             if (!string.IsNullOrEmpty(@group)) this.value.@group = @group;
             if (!string.IsNullOrEmpty(member)) this.value.member = member;
             if (!string.IsNullOrEmpty(perspective)) this.value.perspective = perspective;
+            this.group_index = group_index;
             this.column_index = column_index;
         }
 
@@ -64,7 +68,8 @@ namespace svm_fs_batch
 
             int hi(string name)
             {
-                return header_indexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+                var a= header_indexes.FirstOrDefault(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase));
+                return a == default ? -1 : a.index;
             }
 
             var file_tag = line[hi(nameof(value.file_tag))].as_str;
@@ -76,7 +81,9 @@ namespace svm_fs_batch
             var @group = line[hi(nameof(value.@group))].as_str;
             var member = line[hi(nameof(value.member))].as_str;
             var perspective = line[hi(nameof(value.perspective))].as_str;
-            var column_index = line[hi(nameof(this.column_index))].as_int;
+            var group_index = hi(nameof(this.group_index)) > -1 ? line[hi(nameof(this.group_index))].as_int : null;
+            var column_index = hi(nameof(this.column_index)) > -1 ? line[hi(nameof(this.column_index))].as_int : null;
+            
 
             if (!string.IsNullOrEmpty(file_tag)) this.value.file_tag = file_tag;
             if (!string.IsNullOrEmpty(alphabet)) this.value.alphabet = alphabet;
@@ -87,6 +94,7 @@ namespace svm_fs_batch
             if (!string.IsNullOrEmpty(@group)) this.value.@group = @group;
             if (!string.IsNullOrEmpty(member)) this.value.member = member;
             if (!string.IsNullOrEmpty(perspective)) this.value.perspective = perspective;
+            if (group_index != null) this.group_index = group_index.Value;
             if (column_index != null) this.column_index = column_index.Value;
         }
 
@@ -106,6 +114,7 @@ namespace svm_fs_batch
             "gk_"+nameof(dataset_group_key.value.@group),
             "gk_"+nameof(dataset_group_key.value.member),
             "gk_"+nameof(dataset_group_key.value.perspective),
+            "gk_"+nameof(group_index),
             "gk_"+nameof(column_index),
         };
 
@@ -125,6 +134,7 @@ namespace svm_fs_batch
                $@"{value.@group               }",
                $@"{value.member               }",
                $@"{value.perspective          }",
+               $@"{group_index                }",
                $@"{column_index               }",
             };
         }

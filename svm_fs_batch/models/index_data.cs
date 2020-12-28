@@ -273,7 +273,7 @@ namespace svm_fs_batch
             if (data1 == null) return null;
 
             // find proper index_data instance for this newly loaded confusion_matrix instance
-            var id = list.FirstOrDefault(data2 => compare_reference_data(data1, data2));
+            var id = list.FirstOrDefault(data2 => compare_reference_data(data1, data2, idso));
 
             return id;
         }
@@ -283,7 +283,7 @@ namespace svm_fs_batch
             if (data1 == null) return null;
 
             // find proper index_data instance for this newly loaded confusion_matrix instance
-            var id = list.LastOrDefault(data2 => compare_reference_data(data1, data2));
+            var id = list.LastOrDefault(data2 => compare_reference_data(data1, data2, idso));
 
             return id;
         }
@@ -354,47 +354,47 @@ namespace svm_fs_batch
 
 
 
-        public index_data(index_data index_data)
-        {
-            if (index_data == null) return;
-
-            if (index_data.group_key != null) group_key = new dataset_group_key(index_data.group_key);
-            if (group_key.value == default) group_key = null;
-
-            group_array_index = index_data.group_array_index;
-            total_groups = index_data.total_groups;
-            group_folder = index_data.group_folder;
-
-            //is_job_completed = index_data.is_job_completed;
-            selection_direction = index_data.selection_direction;
-            experiment_name = index_data.experiment_name;
-            unrolled_whole_index = index_data.unrolled_whole_index;
-            unrolled_partition_index = index_data.unrolled_partition_index;
-            unrolled_instance_id = index_data.unrolled_instance_id;
-            iteration_index = index_data.iteration_index;
-
-            calc_11p_thresholds = index_data.calc_11p_thresholds;
-            repetitions = index_data.repetitions;
-            outer_cv_folds = index_data.outer_cv_folds;
-            outer_cv_folds_to_run = index_data.outer_cv_folds_to_run;
-            inner_cv_folds = index_data.inner_cv_folds;
-
-            svm_type = index_data.svm_type;
-            svm_kernel = index_data.svm_kernel;
-            scale_function = index_data.scale_function;
-
-            num_groups = index_data.num_groups;
-            num_columns = index_data.num_columns;
-            group_array_indexes = index_data.group_array_indexes.ToArray();
-            column_array_indexes = index_data.column_array_indexes.ToArray();
-
-            class_weights = index_data.class_weights?.ToArray();
-            class_folds = index_data.class_folds?.Select(a => (a.class_id, a.class_size, a.folds?.Select(b => (b.repetitions_index, b.outer_cv_index, b.class_sample_indexes?.ToArray())).ToArray())).ToArray();
-            down_sampled_train_class_folds = index_data.down_sampled_train_class_folds?.Select(a => (a.class_id, a.class_size, a.folds?.Select(b => (b.repetitions_index, b.outer_cv_index, b.class_sample_indexes?.ToArray())).ToArray())).ToArray();
-
-            total_whole_indexes = index_data.total_whole_indexes;
-            total_partition_indexes = index_data.total_partition_indexes;
-            total_instances = index_data.total_instances;
-        }
+        //public index_data(index_data index_data)
+        //{
+        //    if (index_data == null) return;
+        //
+        //    if (index_data.group_key != null) group_key = new dataset_group_key(index_data.group_key);
+        //    if (group_key.value == default) group_key = null;
+        //
+        //    group_array_index = index_data.group_array_index;
+        //    total_groups = index_data.total_groups;
+        //    group_folder = index_data.group_folder;
+        //
+        //    //is_job_completed = index_data.is_job_completed;
+        //    selection_direction = index_data.selection_direction;
+        //    experiment_name = index_data.experiment_name;
+        //    unrolled_whole_index = index_data.unrolled_whole_index;
+        //    unrolled_partition_index = index_data.unrolled_partition_index;
+        //    unrolled_instance_id = index_data.unrolled_instance_id;
+        //    iteration_index = index_data.iteration_index;
+        //
+        //    calc_11p_thresholds = index_data.calc_11p_thresholds;
+        //    repetitions = index_data.repetitions;
+        //    outer_cv_folds = index_data.outer_cv_folds;
+        //    outer_cv_folds_to_run = index_data.outer_cv_folds_to_run;
+        //    inner_cv_folds = index_data.inner_cv_folds;
+        //
+        //    svm_type = index_data.svm_type;
+        //    svm_kernel = index_data.svm_kernel;
+        //    scale_function = index_data.scale_function;
+        //
+        //    num_groups = index_data.num_groups;
+        //    num_columns = index_data.num_columns;
+        //    group_array_indexes = index_data.group_array_indexes.ToArray();
+        //    column_array_indexes = index_data.column_array_indexes.ToArray();
+        //
+        //    class_weights = index_data.class_weights?.ToArray();
+        //    class_folds = index_data.class_folds?.Select(a => (a.class_id, a.class_size, a.folds?.Select(b => (b.repetitions_index, b.outer_cv_index, b.class_sample_indexes?.ToArray())).ToArray())).ToArray();
+        //    down_sampled_train_class_folds = index_data.down_sampled_train_class_folds?.Select(a => (a.class_id, a.class_size, a.folds?.Select(b => (b.repetitions_index, b.outer_cv_index, b.class_sample_indexes?.ToArray())).ToArray())).ToArray();
+        //
+        //    total_whole_indexes = index_data.total_whole_indexes;
+        //    total_partition_indexes = index_data.total_partition_indexes;
+        //    total_instances = index_data.total_instances;
+        //}
     }
 }

@@ -642,38 +642,38 @@ namespace svm_fs_batch
             if (instance_id == 0)
             {
                 var experiment_folder = program.get_iteration_folder(settings.results_root_folder, experiment_name);
-                var best_winner_fn = Path.Combine(experiment_folder, $"{experiment_name}_best_winner.csv");
-
-
-
+                var best_winner_fn = Path.Combine(experiment_folder, $@"{experiment_name}_best_winner.csv");
                 var best_winner_text = new List<string>();
+
+                best_winner_text.Add("Feature selection iterative winner history:");
+                best_winner_text.Add("");
+                best_winner_text.Add($@"{string.Join(",", rank_score.csv_header_values_array)},{string.Join(",", index_data.csv_header_values_array)},{string.Join(",", confusion_matrix.csv_header_values_array)}");
+                best_winner_text.AddRange(all_winners_id_cm_rs.Select(a => $@"{string.Join(",", a.rs?.csv_values_array() ?? rank_score.empty.csv_values_array())},{string.Join(",", a.id?.csv_values_array() ?? index_data.empty.csv_values_array())},{string.Join(",", a.cm?.csv_values_array() ?? confusion_matrix.empty.csv_values_array())}").ToArray());
+                best_winner_text.Add("");
+                best_winner_text.Add("");
+
                 best_winner_text.Add("Last best winner score data:");
                 best_winner_text.Add("");
-                best_winner_text.Add(string.Join(",", index_data.csv_header_values_array));
-                best_winner_text.Add(string.Join(",", best_winner_id_cm_rs.id?.csv_values_array() ?? index_data.empty.csv_values_array()));
-                best_winner_text.Add("");
-
-                best_winner_text.Add(string.Join(",", rank_score.csv_header_values_array));
-                best_winner_text.Add(string.Join(",", best_winner_id_cm_rs.rs?.csv_values_array() ?? rank_score.empty.csv_values_array()));
-                best_winner_text.Add("");
-
-                best_winner_text.Add(string.Join(",", confusion_matrix.csv_header_values_array));
-                best_winner_text.Add(string.Join(",", best_winner_id_cm_rs.cm?.csv_values_array() ?? confusion_matrix.empty.csv_values_array()));
+                best_winner_text.Add($@"{string.Join(",", rank_score.csv_header_values_array)},{string.Join(",", index_data.csv_header_values_array)},{string.Join(",", confusion_matrix.csv_header_values_array)}");
+                best_winner_text.Add($@"{string.Join(",", best_winner_id_cm_rs.rs?.csv_values_array() ?? rank_score.empty.csv_values_array())},{string.Join(",", best_winner_id_cm_rs.id?.csv_values_array() ?? index_data.empty.csv_values_array())},{string.Join(",", best_winner_id_cm_rs.cm?.csv_values_array() ?? confusion_matrix.empty.csv_values_array())}");
                 best_winner_text.Add("");
                 best_winner_text.Add("");
 
                 best_winner_text.Add("Last best winner group keys:");
                 best_winner_text.Add("");
-                best_winner_text.AddRange(best_winner_groups.Select(a => $"{string.Join(",", a.group_key?.csv_values_array() ?? dataset_group_key.empty.csv_values_array())},{string.Join(";", a.columns ?? Array.Empty<int>())}").ToList());
+                best_winner_text.Add($"index1,{string.Join(",", dataset_group_key.csv_header_values_array)},columns...");
+                best_winner_text.AddRange(best_winner_groups.Select((a, k1) => $"{k1},{string.Join(",", a.group_key?.csv_values_array() ?? dataset_group_key.empty.csv_values_array())},{string.Join(";", a.columns ?? Array.Empty<int>())}").ToList());
                 best_winner_text.Add("");
                 best_winner_text.Add("");
 
                 best_winner_text.Add("Last best winner group column keys:");
                 best_winner_text.Add("");
-                best_winner_text.AddRange(best_winner_groups.SelectMany(a => a.group_column_headers.Select(b => string.Join(",", b.csv_values_array() ?? dataset_group_key.empty.csv_values_array())).ToList()).ToList());
+                best_winner_text.Add($"index1,index2,{string.Join(",", dataset_group_key.csv_header_values_array)},columns...");
+                best_winner_text.AddRange(best_winner_groups.SelectMany((a, k1) => a.group_column_headers.Select((b, k2) => $"{k1},{k2}," + string.Join(",", b.csv_values_array() ?? dataset_group_key.empty.csv_values_array())).ToList()).ToList());
                 best_winner_text.Add("");
                 best_winner_text.Add("");
 
+                // todo: average rank (percentile?) mean, hmean, gmean, median, mode, mid
 
                 io_proxy.WriteAllLines(cts, best_winner_fn, best_winner_text, module_name, method_name);
             }
@@ -705,7 +705,7 @@ namespace svm_fs_batch
                     all_iteration_id_cm_rs.AsParallel().AsOrdered().WithCancellation(cts.Token).SelectMany(a => a).ToArray() :
                     all_iteration_id_cm_rs.SelectMany(a => a).ToArray()) : null;
 
-            var all_iteration_id_flat = all_iteration_id_cm_rs_flat?.Select(a => a.id).ToArray();
+            var all_iteration_id_flat = all_iteration_id_cm_rs_flat?.Select(a => a.id)/*.OrderBy(a=>a.group_array_index)*/.ToArray();
 
             //var last_winner_id_cm_rs = last_iteration_id_cm_rs?.FirstOrDefault();
 
@@ -762,10 +762,35 @@ namespace svm_fs_batch
                 class_weights = true,
             };
 
+            //if (all_iteration_id_flat != null && last_group == null)
+            //{
+            //    var f = all_iteration_id_flat.First(b => b.group_array_index == a.id.group_array_index);
+            //    Console.WriteLine($@"{a.id.iteration_index} == {f.iteration_index}             " + (a.id.iteration_index == f.iteration_index));
+            //    Console.WriteLine($@"{a.id.group_array_index} == {f.group_array_index}         " + (a.id.group_array_index == f.group_array_index));
+            //    Console.WriteLine($@"{a.id.total_groups} == {f.total_groups}                   " + (a.id.total_groups == f.total_groups));
+            //    Console.WriteLine($@"{a.id.selection_direction} == {f.selection_direction}     " + (a.id.selection_direction == f.selection_direction));
+            //    Console.WriteLine($@"{a.id.calc_11p_thresholds} == {f.calc_11p_thresholds}     " + (a.id.calc_11p_thresholds == f.calc_11p_thresholds));
+            //    Console.WriteLine($@"{a.id.svm_type} == {f.svm_type}                           " + (a.id.svm_type == f.svm_type));
+            //    Console.WriteLine($@"{a.id.svm_kernel} == {f.svm_kernel}                       " + (a.id.svm_kernel == f.svm_kernel));
+            //    Console.WriteLine($@"{a.id.scale_function} == {f.scale_function}               " + (a.id.scale_function == f.scale_function));
+            //    Console.WriteLine($@"{a.id.repetitions} == {f.repetitions}                     " + (a.id.repetitions == f.repetitions));
+            //    Console.WriteLine($@"{a.id.outer_cv_folds} == {f.outer_cv_folds}               " + (a.id.outer_cv_folds == f.outer_cv_folds));
+            //    Console.WriteLine($@"{a.id.outer_cv_folds_to_run} == {f.outer_cv_folds_to_run} " + (a.id.outer_cv_folds_to_run == f.outer_cv_folds_to_run));
+            //    Console.WriteLine($@"{a.id.inner_cv_folds} == {f.inner_cv_folds}               " + (a.id.inner_cv_folds == f.inner_cv_folds));
+            //    Console.WriteLine($@"{a.id.group_key} == {f.group_key}                         " + (a.id.group_key == f.group_key));
+            //    Console.WriteLine($@"{a.id.experiment_name} == {f.experiment_name}             " + (a.id.experiment_name == f.experiment_name));
+            //    Console.WriteLine($@"{a.id.num_groups} == {f.num_groups}                       " + (a.id.num_groups == f.num_groups));
+            //    Console.WriteLine($@"{a.id.num_columns} == {f.num_columns}                     " + (a.id.num_columns == f.num_columns));
+            //    Console.WriteLine($@"{a.id.group_array_indexes} == {f.group_array_indexes}     " + (a.id.group_array_indexes == f.group_array_indexes));
+            //    Console.WriteLine($@"{a.id.column_array_indexes} == {f.column_array_indexes}   " + (a.id.column_array_indexes == f.column_array_indexes));
+            //    Console.WriteLine($@"{a.id.class_weights} == {f.class_weights}                 " + (a.id.class_weights == f.class_weights));
+            //    throw new Exception();
+            //}
+
             var id_cm_rs = as_parallel ? id_cm_score
-                    .AsParallel()
-                    .AsOrdered()
-                    .WithCancellation(cts.Token)
+                    //.AsParallel()
+                    //.AsOrdered()
+                    //.WithCancellation(cts.Token)
                     .Select((a, index) =>
                     {
                         var last_group = all_iteration_id_flat != null ? index_data.find_last_reference(all_iteration_id_flat, a.id, idso) : null;

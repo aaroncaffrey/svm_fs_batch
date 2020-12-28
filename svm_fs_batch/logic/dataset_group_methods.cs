@@ -78,9 +78,9 @@ namespace svm_fs_batch
                         )
                     )
                     .Select(
-                        a =>
+                        (a,i) =>
                         (
-                            group_key: new dataset_group_key(a.Key),
+                            group_key: new dataset_group_key(a.Key,i,-1),
                             group_column_headers: a.ToArray(),
                             columns: a.Select(b => b.column_index).ToArray()
                         )
@@ -102,9 +102,9 @@ namespace svm_fs_batch
                         )
                     )
                     .Select(
-                        a =>
+                        (a,i) =>
                         (
-                            group_key: new dataset_group_key(a.Key),
+                            group_key: new dataset_group_key(a.Key,i,-1),
                             group_column_headers: a.ToArray(),
                             columns: a.Select(b => b.column_index).ToArray()
                         )
