@@ -1,0 +1,21 @@
+﻿namespace SvmFsBatch
+{
+    internal class OuterCvInput
+    {
+        internal string CmFn1;
+        internal string CmFn2;
+        internal string GridFn;
+        internal string ModelFn;
+        internal int OuterCvIndex;
+        internal string PredictFn;
+        internal int RepetitionsIndex;
+        internal string TestFn;
+        internal (int ClassId, int[] test_indexes)[] TestFoldIndexes;
+        internal (int ClassId, int test_size)[] TestSizes;
+        internal string[] TestText;
+        internal string TrainFn;
+        internal (int ClassId, int[] train_indexes)[] TrainFoldIndexes;
+        internal (int ClassId, int train_size)[] TrainSizes;
+        internal string[] TrainText;
+    }
+}

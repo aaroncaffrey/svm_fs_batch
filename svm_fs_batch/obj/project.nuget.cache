@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "fJ9GmvWEVk9EMwvYLbRV7ynVgSJYcMZOd+9DG1qLWrMgNVV9GaPsCy7l0R5S7Juq6aQooU8PwWIJN3Eftrs2DA==",
+  "dgSpecHash": "7OQIcwZ7y/b6poLM6iBuy3NP0pxcBgICqtc+/v4QDitCQY3rds5r4/VTMEEXaHoEZAHO+rOW0S8zgqcKjbT4LA==",
   "success": true,
-  "projectFilePath": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\svm_fs_batch.csproj",
+  "projectFilePath": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\SvmFsBatch.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

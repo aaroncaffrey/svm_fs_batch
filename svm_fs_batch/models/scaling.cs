@@ -1,49 +1,48 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 
-namespace svm_fs_batch
+namespace SvmFsBatch
 {
-    internal class scaling
+    internal class Scaling
     {
-        public const string module_name = nameof(scaling);
-        internal enum scale_function : int { none, rescale, normalisation, standardisation, L0_norm, L1_norm, L2_norm, }
+        public const string ModuleName = nameof(Scaling);
+        internal double AbsSum;
+        internal double Average;
+        internal double ColumnMax;
+        internal double ColumnMin;
 
-        internal double rescale_scale_min = -1;
-        internal double rescale_scale_max = +1;
+        internal double NonZero;
+        internal double RescaleScaleMax = +1;
 
-        internal double non_zero;
-        internal double abs_sum;
-        internal double srsos;
-        internal double average;
-        internal double stdev;
-        internal double column_min;
-        internal double column_max;
+        internal double RescaleScaleMin = -1;
+        internal double Srsos;
+        internal double Stdev;
 
-        public scaling(int[] y_col) : this(y_col.Select(a=>(double)a).ToArray())
+        public Scaling(int[] yCol) : this(yCol.Select(a => (double) a).ToArray())
         {
-
         }
 
-        public scaling(double[] y_col)
+        public Scaling(double[] yCol)
         {
-            if (y_col == null || y_col.Length == 0) return;
+            if (yCol == null || yCol.Length == 0) return;
 
-            this.non_zero = y_col.Count(y => y != 0);
-            this.abs_sum = y_col.Sum(Math.Abs);
-            this.srsos = sqrt_sumofsqrs(y_col);
-            this.average = y_col.Average();
-            this.stdev = standard_deviation_sample(y_col);
-            this.column_min = y_col.Min();
-            this.column_max = y_col.Max();
+            NonZero = yCol.Count(y => y != 0);
+            AbsSum = yCol.Sum(Math.Abs);
+            Srsos = SqrtSumOfSqrs(yCol);
+            Average = yCol.Average();
+            Stdev = StandardDeviationSample(yCol);
+            ColumnMin = yCol.Min();
+            ColumnMax = yCol.Max();
         }
 
-        internal static double sqrt_sumofsqrs(double[] list)
+        internal static double SqrtSumOfSqrs(double[] list)
         {
-            return list == null || list.Length == 0 ? 0d : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
+            return list == null || list.Length == 0
+                ? 0d
+                : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
         }
 
-        internal static double standard_deviation_sample(double[] values)
+        internal static double StandardDeviationSample(double[] values)
         {
             if (values.Length < 2) return 0;
 
@@ -52,12 +51,14 @@ namespace svm_fs_batch
             return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
-        internal double[] scale(double[] values, scaling.scale_function scale_function)
+        internal double[] Scale(double[] values, ScaleFunction scaleFunction)
         {
-            return values == null || values.Length == 0 ? Array.Empty<double>() : values.Select(a => scale(a, scale_function)).ToArray();
+            return values == null || values.Length == 0
+                ? Array.Empty<double>()
+                : values.Select(a => Scale(a, scaleFunction)).ToArray();
         }
 
-        internal double scale(double value, scaling.scale_function scale_function)
+        internal double Scale(double value, ScaleFunction scaleFunction)
         {
             /*double non_zero, double abs_sum, double srsos, double column_min, double column_max, double average, double stdev,*/
 
@@ -65,63 +66,66 @@ namespace svm_fs_batch
 
             if (sp == null) return value;
 
-            switch (scale_function)
+            switch (scaleFunction)
             {
-                case scaling.scale_function.none:
+                case ScaleFunction.None: return value;
 
-                    return value;
-
-                case scaling.scale_function.rescale:
+                case ScaleFunction.Rescale:
 
 
-                    var x = (rescale_scale_max - rescale_scale_min) * (value - sp.column_min);
-                    var y = (sp.column_max - sp.column_min);
-                    var z = rescale_scale_min;
+                    var x = (RescaleScaleMax - RescaleScaleMin) * (value - sp.ColumnMin);
+                    var y = sp.ColumnMax - sp.ColumnMin;
+                    var z = RescaleScaleMin;
 
                     if (y == 0) return 0;
 
-                    var rescale = (x / y) + z;
+                    var rescale = x / y + z;
 
                     return rescale;
 
-                case scaling.scale_function.normalisation:
+                case ScaleFunction.Normalisation:
 
-                    if (sp.column_max - sp.column_min == 0) return 0;
+                    if (sp.ColumnMax - sp.ColumnMin == 0) return 0;
 
-                    var mean_norm = (value - sp.average) / (sp.column_max - sp.column_min);
+                    var meanNorm = (value - sp.Average) / (sp.ColumnMax - sp.ColumnMin);
 
-                    return mean_norm;
+                    return meanNorm;
 
-                case scaling.scale_function.standardisation:
+                case ScaleFunction.Standardisation:
 
-                    if (sp.stdev == 0) return 0;
+                    if (sp.Stdev == 0) return 0;
 
-                    var standardisation = (value - sp.average) / sp.stdev;
+                    var standardisation = (value - sp.Average) / sp.Stdev;
 
                     return standardisation;
 
-                case scaling.scale_function.L0_norm:
+                case ScaleFunction.L0Norm:
 
-                    if (sp.non_zero == 0) return 0;
+                    if (sp.NonZero == 0) return 0;
 
-                    return value / sp.non_zero;
+                    return value / sp.NonZero;
 
-                case scaling.scale_function.L1_norm:
+                case ScaleFunction.L1Norm:
 
-                    if (sp.abs_sum == 0) return 0;
+                    if (sp.AbsSum == 0) return 0;
 
-                    return value / sp.abs_sum;
+                    return value / sp.AbsSum;
 
-                case scaling.scale_function.L2_norm:
+                case ScaleFunction.L2Norm:
 
-                    if (sp.srsos == 0) return 0;
+                    if (sp.Srsos == 0) return 0;
 
-                    return value / sp.srsos;
+                    return value / sp.Srsos;
 
-                default: 
-                    
-                    throw new ArgumentOutOfRangeException(nameof(scale_function)); //return 0;
+                default: throw new ArgumentOutOfRangeException(nameof(scaleFunction)); //return 0;
             }
+        }
+
+        internal enum ScaleFunction
+        {
+            None, Rescale, Normalisation,
+            Standardisation, L0Norm, L1Norm,
+            L2Norm
         }
     }
 }

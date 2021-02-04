@@ -4,270 +4,336 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using svm_fs_batch.models;
 
-namespace svm_fs_batch
+namespace SvmFsBatch
 {
-    internal class program
+    internal static class Program
     {
-        public const string module_name = nameof(program);
+        public const string ModuleName = nameof(Program);
 
 
-        internal static void Main(string[] args)
+        internal static ProgramArgs ProgramArgs;
+
+        internal static async Task Main(string[] args)
         {
             //var rnd = new metrics_box();
             //rnd.set_cm(null, null, 20, 11, 126, 30);
-            //Console.WriteLine(string.Join("\r\n", rnd.csv_values_array().Select((a, i) => $"{metrics_box.csv_header_values_array[i]} = '{a}'").ToArray()));
+            //Console.WriteLine(string.Join("\r\n", rnd.CsvValuesArray().Select((a, i) => $"{metrics_box.CsvHeaderValuesArray[i]} = '{a}'").ToArray()));
             //Console.WriteLine();
-            
+
             //rnd.apply_imbalance_correction1();
-            //Console.WriteLine(string.Join("\r\n", rnd.csv_values_array().Select((a, i) => $"{metrics_box.csv_header_values_array[i]} = '{a}'").ToArray()));
+            //Console.WriteLine(string.Join("\r\n", rnd.CsvValuesArray().Select((a, i) => $"{metrics_box.CsvHeaderValuesArray[i]} = '{a}'").ToArray()));
             //Console.WriteLine();
 
             //rnd.set_random_perf();
-            //Console.WriteLine(string.Join("\r\n", rnd.csv_values_array().Select((a, i) => $"{metrics_box.csv_header_values_array[i]} = '{a}'").ToArray()));
+            //Console.WriteLine(string.Join("\r\n", rnd.CsvValuesArray().Select((a, i) => $"{metrics_box.CsvHeaderValuesArray[i]} = '{a}'").ToArray()));
             //Console.WriteLine();
 
-            const string method_name = nameof(Main);
+            //const string methodName = nameof(Main);
             //-experiment_name _20201028084510741 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 1 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 1
             //-experiment_name test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
-            //var x=confusion_matrix.load($@"C:\mmfs1\data\scratch\k1040015\svm_fs_batch\results\test\it_5\x_it-5_gr-5_sv-1_kr-3_sc-2_rn-1_oc-10_ic-10_ix-1-5.cm.csv");
+            //var x=ConfusionMatrix.load($@"C:\mmfs1\data\scratch\k1040015\SvmFsBatch\results\test\it_5\x_it-5_gr-5_sv-1_kr-3_sc-2_rn-1_oc-10_ic-10_ix-1-5.cm.csv");
             // debug cmd line parameters: -experiment_name test2 -array_start 0 -array_end 4 -array_index 0 -array_step 5 -array_instances 1 -array_last_index -1
 
 
-            io_proxy.WriteLine($@"cmd line: {Environment.CommandLine}", module_name, method_name);
-            io_proxy.WriteLine($@"processor count: {Environment.ProcessorCount}", module_name, method_name);
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
+            ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var maxCompletionPortThreads);
 
-            var main_cts = new CancellationTokenSource();
-            init.close_notifications(main_cts);
-            init.check_x64();
-            init.set_gc_mode();
-            init.set_thread_counts();
+            Logging.WriteLine($@"Environment.CommandLine: {Environment.CommandLine}", ModuleName);
+            Logging.WriteLine($@"Environment.ProcessorCount: {Environment.ProcessorCount}", ModuleName);
+            Logging.WriteLine($@"GetMinThreads: minWorkerThreads = {minWorkerThreads}, minCompletionPortThreads = {minCompletionPortThreads}.", ModuleName);
+            Logging.WriteLine($@"GetMaxThreads: maxWorkerThreads = {maxWorkerThreads}, maxCompletionPortThreads = {maxCompletionPortThreads}.", ModuleName);
+
+            var mainCts = new CancellationTokenSource();
+            var mainCt = mainCts.Token;
+
+            Init.CloseNotifications(mainCt); //, mainCts);
+            Init.CheckX64();
+            Init.SetGcMode();
+            //Init.SetThreadCounts();
 
             //var fake_args = $"-experiment_name=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
-            var fake_args_list = new List<(string name, string value)>()
+            var fakeArgsList = new List<(string name, string value)>
             {
-                ("experiment_name", "test"),
-                ("whole_array_index_first", "0"),
-                ("whole_array_index_last", "0"),
-                ("whole_array_step_size", "1"),
-                ("whole_array_length", "1"),
-                ("partition_array_index_first", "0"),
-                ("partition_array_index_last", "0"),
-                
-                (nameof(svm_fs_batch.program_args.inner_folds), "1"),
-                (nameof(svm_fs_batch.program_args.outer_cv_folds), "5"),
-                (nameof(svm_fs_batch.program_args.outer_cv_folds_to_run), "1"),
-                (nameof(svm_fs_batch.program_args.repetitions), "1"),
+                (nameof(ProgramArgs.ExperimentName), "test"),
+                (nameof(ProgramArgs.WholeArrayIndexFirst), "0"),
+                (nameof(ProgramArgs.WholeArrayIndexLast), "0"),
+                (nameof(ProgramArgs.WholeArrayStepSize), "1"),
+                (nameof(ProgramArgs.WholeArrayLength), "1"),
+                (nameof(ProgramArgs.PartitionArrayIndexFirst), "0"),
+                (nameof(ProgramArgs.PartitionArrayIndexLast), "0"),
+
+                (nameof(ProgramArgs.Client), "1"),
+                (nameof(ProgramArgs.Server), "1"),
+
+                (nameof(ProgramArgs.DataSetNames), "[1i.aaindex]"),
+
+                (nameof(ProgramArgs.InnerFolds), "5"),
+                (nameof(ProgramArgs.OuterCvFolds), "5"),
+                (nameof(ProgramArgs.OuterCvFoldsToRun), "5"),
+                (nameof(ProgramArgs.Repetitions), "1")
             };
 
-            var fake_args = string.Join(" ", fake_args_list.Select(a => $"-{a.name}={a.value}").ToArray());
-            args = fake_args.Split();
+            var fakeArgs = string.Join(" ", fakeArgsList.Select(a => $"-{a.name}={a.value}").ToArray());
+            args = fakeArgs.Split();
 
-            var program_args = new program_args(args);
+            ProgramArgs = new ProgramArgs(args);
 
-            if (program_args.setup)
+            if (ProgramArgs.Setup)
             {
-                setup.setup_pbs_job(main_cts, program_args);
+                await Setup.SetupPbsJobAsync(ProgramArgs, mainCt).ConfigureAwait(false);
                 return;
             }
 
 
             // check experiment name is valid
-            if (string.IsNullOrWhiteSpace(program_args.experiment_name)) { throw new ArgumentOutOfRangeException(nameof(args), $"{nameof(program_args.experiment_name)}: must specify experiment name"); }
+            if (string.IsNullOrWhiteSpace(ProgramArgs.ExperimentName)) throw new ArgumentOutOfRangeException(nameof(args), $"{nameof(ProgramArgs.ExperimentName)}: must specify experiment name");
 
             // check whole array indexes are valid
-            if (program_args.whole_array_index_first <= -1) { throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(program_args.whole_array_index_first)} = {program_args.whole_array_index_first}"); }
-            if (program_args.whole_array_index_last <= -1) { throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(program_args.whole_array_index_last)} = {program_args.whole_array_index_last}"); }
-            if (program_args.whole_array_step_size <= 0) { throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(program_args.whole_array_step_size)} = {program_args.whole_array_step_size}"); }
-            if (program_args.whole_array_length <= 0) { throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(program_args.whole_array_length)} = {program_args.whole_array_length}"); }
+            if (ProgramArgs.WholeArrayIndexFirst <= -1) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.WholeArrayIndexFirst)} = {ProgramArgs.WholeArrayIndexFirst}");
+            if (ProgramArgs.WholeArrayIndexLast <= -1) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.WholeArrayIndexLast)} = {ProgramArgs.WholeArrayIndexLast}");
+            if (ProgramArgs.WholeArrayStepSize <= 0) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.WholeArrayStepSize)} = {ProgramArgs.WholeArrayStepSize}");
+            if (ProgramArgs.WholeArrayLength <= 0) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.WholeArrayLength)} = {ProgramArgs.WholeArrayLength}");
 
             // check partition array indexes are valid
-            if (!routines.is_in_range(program_args.whole_array_index_first, program_args.whole_array_index_last, program_args.partition_array_index_first)) { throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(program_args.partition_array_index_first)} = {program_args.partition_array_index_first}"); }
-            if (!routines.is_in_range(program_args.whole_array_index_first, program_args.whole_array_index_last, program_args.partition_array_index_last)) { throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(program_args.partition_array_index_last)} = {program_args.partition_array_index_last}"); }
+            if (!Routines.IsInRange(ProgramArgs.WholeArrayIndexFirst, ProgramArgs.WholeArrayIndexLast, ProgramArgs.PartitionArrayIndexFirst)) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.PartitionArrayIndexFirst)} = {ProgramArgs.PartitionArrayIndexFirst}");
+            if (!Routines.IsInRange(ProgramArgs.WholeArrayIndexFirst, ProgramArgs.WholeArrayIndexLast, ProgramArgs.PartitionArrayIndexLast)) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.PartitionArrayIndexLast)} = {ProgramArgs.PartitionArrayIndexLast}");
 
 
-            //var instance_id = get_instance_id(program_args.whole_array_index_first, program_args.whole_array_index_last, program_args.whole_array_step_size, program_args.partition_array_index_first, program_args.partition_array_index_last);
+            //var instance_id = Getinstance_id(program_args.whole_array_index_first, program_args.whole_array_index_last, program_args.whole_array_step_size, program_args.partition_array_index_first, program_args.partition_array_index_last);
 
-            var instance_id = routines.for_iterations(program_args.whole_array_index_first, program_args.partition_array_index_first, program_args.whole_array_step_size) - 1;
-            var total_instance = routines.for_iterations(program_args.whole_array_index_first, program_args.whole_array_index_last, program_args.whole_array_step_size);
+            var instanceId = Routines.ForIterations(ProgramArgs.WholeArrayIndexFirst, ProgramArgs.PartitionArrayIndexFirst, ProgramArgs.WholeArrayStepSize) - 1;
+            var totalInstance = Routines.ForIterations(ProgramArgs.WholeArrayIndexFirst, ProgramArgs.WholeArrayIndexLast, ProgramArgs.WholeArrayStepSize);
 
-            if (instance_id < 0) { throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(instance_id)} = {instance_id}"); }
-            if (total_instance != program_args.whole_array_length) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(program_args.whole_array_length)} = {program_args.whole_array_length}, {nameof(total_instance)} = {total_instance}");
+            if (instanceId < 0) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(instanceId)} = {instanceId}");
+            if (totalInstance != ProgramArgs.WholeArrayLength) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.WholeArrayLength)} = {ProgramArgs.WholeArrayLength}, {nameof(totalInstance)} = {totalInstance}");
 
 
-            io_proxy.WriteLine($"Array job index: {instance_id} / {total_instance}. Partition array indexes: {program_args.partition_array_index_first}..{program_args.partition_array_index_last}.  Whole array indexes: {program_args.whole_array_index_first}..{program_args.whole_array_index_last}:{program_args.whole_array_step_size} (length: {program_args.whole_array_length}).");
+            Logging.WriteLine($"Array job index: {instanceId} / {totalInstance}. Partition array indexes: {ProgramArgs.PartitionArrayIndexFirst}..{ProgramArgs.PartitionArrayIndexLast}.  Whole array indexes: {ProgramArgs.WholeArrayIndexFirst}..{ProgramArgs.WholeArrayIndexLast}:{ProgramArgs.WholeArrayStepSize} (length: {ProgramArgs.WholeArrayLength}).");
 
-            feature_selection.feature_selection_initialization
-            (
-                main_cts,
-                program_args.experiment_name,
-                instance_id,
-                program_args.whole_array_length,
-                //program_args.instance_array_index_start,
-                //program_args.array_step,
-                //program_args.instance_array_index_end,
-                program_args.repetitions,
-                program_args.outer_cv_folds,
-                program_args.outer_cv_folds_to_run,
-                program_args.inner_folds
-            );
+            // Load DataSet
+
+            var DataSet = new DataSet();
+            await DataSet.LoadDataSetAsync(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt).ConfigureAwait(false);
+
+            var tasks = new List<Task>();
+            //var threads = new List<Thread>();
+
+            if ( /*instance_id == 0 ||*/ ProgramArgs.Server)
+            {
+                //var fss = Task.Run(async () => await fs_server.feature_selection_initialization(
+                var fsServerTask = Task.Run(async () => await FsServer.FeatureSelectionInitializationAsync(DataSet,
+                        ProgramArgs.ScoringClassId,
+                        ProgramArgs.ScoringMetrics,
+                        ProgramArgs.ExperimentName,
+                        instanceId,
+                        ProgramArgs.WholeArrayLength,
+                        //program_args.instance_array_index_start,
+                        //program_args.array_step,
+                        //program_args.instance_array_index_end,
+                        ProgramArgs.Repetitions,
+                        ProgramArgs.OuterCvFolds,
+                        ProgramArgs.OuterCvFoldsToRun,
+                        ProgramArgs.InnerFolds,
+                        ProgramArgs.SvmTypes,
+                        ProgramArgs.Kernels,
+                        ProgramArgs.Scales,
+                        ProgramArgs.ClassWeights,
+                        ProgramArgs.CalcElevenPointThresholds,
+                        ct: mainCt).ConfigureAwait(false),
+                    mainCt);
+
+                tasks.Add(fsServerTask);
+                //threads.Add(fss);
+            }
+
+            if ( /*instance_id != 0 ||*/ ProgramArgs.Client)
+            {
+                //var fsc = Task.Run(async () => await fs_client.x0_feature_selection_client_initialization
+                var fsClientTask = Task.Run(async () => await FsClient.FeatureSelectionClientInitializationAsync(DataSet, ProgramArgs.ExperimentName, instanceId, ProgramArgs.WholeArrayLength, mainCt).ConfigureAwait(false), mainCt);
+
+                tasks.Add(fsClientTask);
+                //threads.Add(fsc);
+            }
+
+            if (tasks.Count > 0)
+            {
+                try { await Task.WhenAny(tasks).ConfigureAwait(false); }
+                catch (Exception e) { Logging.LogException(e, ModuleName); }
+
+                try
+                {
+                    Logging.LogEvent($"Cancelling {nameof(mainCts)}", ModuleName);
+                    mainCts.Cancel();
+                }
+                catch (Exception e) { Logging.LogException(e, ModuleName); }
+
+                try { await Task.WhenAll(tasks).ConfigureAwait(false); }
+                catch (Exception e) { Logging.LogException(e, ModuleName); }
+            }
+
+            //if (threads.Count > 0)
+            //{
+            //    for (var i = 0; i < threads.Count; i++)
+            //    {
+            //        try{threads[i].Join();} catch (Exception e){ Logging.LogException( e, _ModuleName); }
+            //    }
+            //}
+
+            Logging.LogEvent($"Reached end of {nameof(Program)}.{nameof(Main)}...", ModuleName);
         }
 
-        
 
-
-        internal static string get_iteration_folder(string results_root_folder, string experiment_name, int? iteration_index = null, int? group_index = null)
+        internal static string GetIterationFolder(string resultsRootFolder, string experimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
         {
+            if (ct.IsCancellationRequested) return default;
+
             const bool hr = false;
 
-            if (iteration_index == null) return Path.Combine(results_root_folder, experiment_name);
-            else if (group_index == null) return Path.Combine(results_root_folder, experiment_name, $@"it_{(iteration_index + (hr ? 1 : 0))}");
-            else return Path.Combine(results_root_folder, experiment_name, $@"it_{(iteration_index + (hr ? 1 : 0))}", $@"gr_{(group_index + (hr ? 1 : 0))}");
+            if (iterationIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, experimentName);
+            if (groupIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, experimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}");
+            return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, experimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
         }
 
 
-        internal static void update_merged_cm
-        (
-            CancellationTokenSource cts,
-            dataset_loader dataset,
-            (prediction[] prediction_list, confusion_matrix[] cm_list) prediction_file_data,
-            index_data unrolled_index_data,
-            outer_cv_input merged_cv_input,
-            (TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, grid_point grid_point, string[] predict_text)[] prediction_data_list,
-            bool as_parallel = false
-        )
+        internal static void UpdateMergedCm(DataSet DataSet, (Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, GridPoint grid_point, string[] predict_text)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
         {
-            const string method_name = nameof(update_merged_cm);
+            const string methodName = nameof(UpdateMergedCm);
 
-            if (cts.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) return;
 
-            if (prediction_file_data.cm_list == null) throw new ArgumentOutOfRangeException(nameof(prediction_file_data),$@"{module_name}.{method_name}.{nameof(prediction_file_data)}.{nameof(prediction_file_data.cm_list)}");
+            if (predictionFileData.CmList == null) throw new ArgumentOutOfRangeException(nameof(predictionFileData), $@"{ModuleName}.{methodName}.{nameof(predictionFileData)}.{nameof(predictionFileData.CmList)}");
 
-            if (as_parallel)
-            {
-                Parallel.ForEach(prediction_file_data.cm_list, cm =>
+            if (asParallel)
+                Parallel.ForEach(predictionFileData.CmList,
+                    cm =>
+                    {
+                        UpdateMergedCmFromVector(predictionDataList, cm, ct);
+
+                        UpdateMergedCmSingle(DataSet, unrolledIndexData, mergedCvInput, cm, ct);
+                    });
+            else
+                foreach (var cm in predictionFileData.CmList)
                 {
-                    update_merged_cm_from_vector(prediction_data_list, cm);
+                    UpdateMergedCmFromVector(predictionDataList, cm, ct);
 
-                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, cm); 
-
-                });
-            } else
-            {
-                foreach (var cm in prediction_file_data.cm_list)
-                {
-                    update_merged_cm_from_vector(prediction_data_list, cm);
-
-                    update_merged_cm_single(cts, dataset, unrolled_index_data, merged_cv_input, cm);
+                    UpdateMergedCmSingle(DataSet, unrolledIndexData, mergedCvInput, cm, ct);
                 }
-            }
         }
 
-        private static void update_merged_cm_from_vector((TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, grid_point grid_point, string[] predict_text)[] prediction_data_list, confusion_matrix cm)
+        private static void UpdateMergedCmFromVector((TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, GridPoint grid_point, string[] predict_text)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
         {
-            if (cm.grid_point == null) { cm.grid_point = new grid_point(prediction_data_list?.Select(a => a.grid_point).ToArray()); }
+            if (ct.IsCancellationRequested) return;
 
-            if ((cm.x_time_grid == null  || cm.x_time_grid == TimeSpan.Zero) &&  (prediction_data_list?.Any(a => a.grid_dur != null) ?? false)) cm.x_time_grid = new TimeSpan(prediction_data_list?.Select(a => a.grid_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
-            if ((cm.x_time_train == null || cm.x_time_train == TimeSpan.Zero) && (prediction_data_list?.Any(a => a.train_dur != null) ?? false)) cm.x_time_train = new TimeSpan(prediction_data_list?.Select(a => a.train_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
-            if ((cm.x_time_test == null  || cm.x_time_test == TimeSpan.Zero) &&  (prediction_data_list?.Any(a => a.predict_dur != null) ?? false)) cm.x_time_test = new TimeSpan(prediction_data_list?.Select(a => a.predict_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if (cm.GridPoint == null) cm.GridPoint = new GridPoint(predictionDataList?.Select(a => a.grid_point).ToArray());
+
+            if ((cm.XTimeGrid == null || cm.XTimeGrid == TimeSpan.Zero) && (predictionDataList?.Any(a => a.grid_dur != null) ?? false)) cm.XTimeGrid = new TimeSpan(predictionDataList?.Select(a => a.grid_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.XTimeTrain == null || cm.XTimeTrain == TimeSpan.Zero) && (predictionDataList?.Any(a => a.train_dur != null) ?? false)) cm.XTimeTrain = new TimeSpan(predictionDataList?.Select(a => a.train_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.XTimeTest == null || cm.XTimeTest == TimeSpan.Zero) && (predictionDataList?.Any(a => a.predict_dur != null) ?? false)) cm.XTimeTest = new TimeSpan(predictionDataList?.Select(a => a.predict_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
         }
 
-        internal static void update_merged_cm_single
-        (
-            CancellationTokenSource cts, 
-            dataset_loader dataset, 
-            index_data unrolled_index_data, 
-            outer_cv_input merged_cv_input,
-            confusion_matrix cm
-        )
+        internal static void UpdateMergedCmSingle(DataSet DataSet, IndexData unrolledIndexData, OuterCvInput mergedCvInput, ConfusionMatrix cm, CancellationToken ct)
         {
-            if (cts.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) return;
 
-            cm.x_class_name = settings.class_names?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_name;
-            cm.x_class_size = dataset.class_sizes?.First(b => b.class_id == cm.x_class_id).class_size ?? -1;
-            cm.x_class_test_size = merged_cv_input.test_sizes?.First(b => b.class_id == cm.x_class_id).test_size ?? -1;
-            cm.x_class_train_size = merged_cv_input.train_sizes?.First(b => b.class_id == cm.x_class_id).train_size ?? -1;
-            cm.x_class_weight = unrolled_index_data.class_weights?.FirstOrDefault(b => cm.x_class_id == b.class_id).class_weight;
+            cm.XClassName = ProgramArgs.ClassNames?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassName;
+            cm.XClassSize = DataSet.ClassSizes?.First(b => b.ClassId == cm.XClassId).class_size ?? -1;
+            cm.XClassTestSize = mergedCvInput.TestSizes?.First(b => b.ClassId == cm.XClassId).test_size ?? -1;
+            cm.XClassTrainSize = mergedCvInput.TrainSizes?.First(b => b.ClassId == cm.XClassId).train_size ?? -1;
+            cm.XClassWeight = unrolledIndexData.IdClassWeights?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassWeight;
             //cm.x_time_grid_search =  prediction_data_list?.Select(a => a.dur.grid_dur).DefaultIfEmpty(0).Sum();
             //cm.x_time_test = prediction_data_list?.Select(a => a.dur.predict_dur).DefaultIfEmpty(0).Sum();
             //cm.x_time_train = prediction_data_list?.Select(a => a.dur.train_dur).DefaultIfEmpty(0).Sum();
-            cm.x_outer_cv_index = merged_cv_input.outer_cv_index;
-            cm.x_repetitions_index = merged_cv_input.repetitions_index;
+            cm.XOuterCvIndex = mergedCvInput.OuterCvIndex;
+            cm.XRepetitionsIndex = mergedCvInput.RepetitionsIndex;
         }
 
 
-        internal enum direction { none, forwards, neutral, backwards }
-
-
-        internal static string get_item_filename(index_data unrolled_index, int repetition_index, int outer_cv_index)
+        internal static string GetItemFilename(IndexData unrolledIndex, int repetitionIndex, int outerCvIndex, CancellationToken ct)
         {
-            return $@"{get_iteration_filename(new[] { unrolled_index })}_ri[{repetition_index}]_oi[{outer_cv_index}]";
+            return ct.IsCancellationRequested ? default :$@"{GetIterationFilename(new[] {unrolledIndex},ct)}_ri[{repetitionIndex}]_oi[{outerCvIndex}]";
         }
-        
-        internal static string get_iteration_filename(index_data[] indexes)
+
+        //internal static string GetIterationFilename(program_args pa)
+        //{
+        //    var id = new index_data()
+        //    {
+        //        id_experiment_name = pa.experiment_name,
+        //        id_iteration_index = -1,
+        //        id_outer_cv_folds = pa.outer_cv_folds,
+        //        id_outer_cv_folds_to_run = pa.outer_cv_folds_to_run,
+        //        id_repetitions = pa.repetitions,
+        //        id_calc_ElevenPoint_thresholds = pa.calc_ElevenPoint_thresholds,
+        //    };
+        //    return ct.IsCancellationRequested ? default :GetIterationFilename(new[] {id});
+        //}
+
+        internal static string GetIterationFilename(IndexData[] indexes, CancellationToken ct)
         {
-            static string get_initials(string name)
+            if (ct.IsCancellationRequested) return default;
+
+            static string GetInitials(string name)
             {
                 var initials = string.Join("", name.Replace("_", " ", StringComparison.Ordinal).Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
-                return initials.Length > 2 ?/* initials.Substring(0, 2) */ $@"{initials.First()}{initials.Last()}" : initials;
+                return initials.Length > 2
+                    ? /* initials.Substring(0, 2) */ $@"{initials.First()}{initials.Last()}"
+                    : initials;
             }
 
-            static string reduce(string text, int max = 30)
+            static string Reduce(string text, int max = 30)
             {
-                return text != null && text.Length > max ? $"{text.Substring(0, max / 3)}_{text.Substring((text.Length / 2) - (((max / 3) - 2) / 2), (max / 3) - 2)}_{text.Substring(text.Length - (max / 3), max / 3)}" : text;
+                return text != null && text.Length > max
+                    ? $"{text.Substring(0, max / 3)}_{text.Substring(text.Length / 2 - (max / 3 - 2) / 2, max / 3 - 2)}_{text.Substring(text.Length - max / 3, max / 3)}"
+                    : text;
             }
 
-            var experiment_group_name = reduce(string.Join($@"_", indexes.Select(a => a.experiment_name).Distinct().ToArray()));
-            var iteration_index = reduce(routines.find_ranges_str(indexes.Select(a => a.iteration_index).ToList()));
-            var group_index = reduce(routines.find_ranges_str(indexes.Select(a => a.group_array_index).ToList()));
-            var total_groups = reduce(routines.find_ranges_str(indexes.Select(a => a.total_groups).ToList()));
-            var calc_11p_thresholds = reduce(routines.find_ranges_str(indexes.Select(a => a.calc_11p_thresholds ? 1 : 0).ToList()));
-            var repetitions = reduce(routines.find_ranges_str(indexes.Select(a => a.repetitions).ToList()));
-            var outer_cv_folds = reduce(routines.find_ranges_str(indexes.Select(a => a.outer_cv_folds).ToList()));
-            var outer_cv_folds_to_run = reduce(routines.find_ranges_str(indexes.Select(a => a.outer_cv_folds_to_run).ToList()));
-            var class_weights = string.Join("_",
-                indexes
-                    .Where(a => a.class_weights != null)
-                    .SelectMany(a => a.class_weights)
-                    .GroupBy(a => a.class_id)
-                    .Select(a => $@"{a.Key}_{reduce(routines.find_ranges_str(a.Select(b => (int)(b.class_weight * 100)).ToList()))}")
-                    .ToList());
-            var svm_type = reduce(routines.find_ranges_str(indexes.Select(a => (int)a.svm_type).ToList()));
-            var svm_kernel = reduce(routines.find_ranges_str(indexes.Select(a => (int)a.svm_kernel).ToList()));
-            var scale_function = reduce(routines.find_ranges_str(indexes.Select(a => (int)a.scale_function).ToList()));
-            var inner_cv_folds = reduce(routines.find_ranges_str(indexes.Select(a => a.inner_cv_folds).ToList()));
+            var experimentGroupName = Reduce(string.Join(@"_", indexes.Select(a => a.IdExperimentName).Distinct().ToArray()));
+            var iterationIndex = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdIterationIndex).ToList()));
+            var groupIndex = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdGroupArrayIndex).ToList()));
+            var totalGroups = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdTotalGroups).ToList()));
+            var calcElevenPointThresholds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdCalcElevenPointThresholds
+                ? 1
+                : 0).ToList()));
+            var repetitions = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdRepetitions).ToList()));
+            var outerCvFolds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFolds).ToList()));
+            var outerCvFoldsToRun = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFoldsToRun).ToList()));
+            var classWeights = string.Join("_", indexes.Where(a => a.IdClassWeights != null).SelectMany(a => a.IdClassWeights).GroupBy(a => a.ClassId).Select(a => $@"{a.Key}_{Reduce(Routines.FindRangesStr(a.Select(b => (int) (b.ClassWeight * 100)).ToList()))}").ToList());
+            var svmType = Reduce(Routines.FindRangesStr(indexes.Select(a => (int) a.IdSvmType).ToList()));
+            var svmKernel = Reduce(Routines.FindRangesStr(indexes.Select(a => (int) a.IdSvmKernel).ToList()));
+            var scaleFunction = Reduce(Routines.FindRangesStr(indexes.Select(a => (int) a.IdScaleFunction).ToList()));
+            var innerCvFolds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdInnerCvFolds).ToList()));
 
-            var p = new List<(string name, string value)>()
+            var p = new List<(string name, string value)>
             {
-                (get_initials(nameof(experiment_group_name)), experiment_group_name),//it
-                (get_initials(nameof(iteration_index)), iteration_index),//it
-                (get_initials(nameof(group_index)), group_index),//gi
-                (get_initials(nameof(total_groups)), total_groups),//tg
-                (get_initials(nameof(calc_11p_thresholds)), calc_11p_thresholds),//ot
-                (get_initials(nameof(repetitions)), repetitions),//r
-                (get_initials(nameof(outer_cv_folds)), outer_cv_folds),//oc
-                (get_initials(nameof(outer_cv_folds_to_run)), outer_cv_folds_to_run),//oc
-                (get_initials(nameof(class_weights)), class_weights),//cw
-                (get_initials(nameof(svm_type)), svm_type),//st
-                (get_initials(nameof(svm_kernel)), svm_kernel),//sk
-                (get_initials(nameof(scale_function)), scale_function),//sf
-                (get_initials(nameof(inner_cv_folds)), inner_cv_folds),//ic
+                (GetInitials(nameof(experimentGroupName)), experimentGroupName), //it
+                (GetInitials(nameof(iterationIndex)), iterationIndex), //it
+                (GetInitials(nameof(groupIndex)), groupIndex), //gi
+                (GetInitials(nameof(totalGroups)), totalGroups), //tg
+                (GetInitials(nameof(calcElevenPointThresholds)), calcElevenPointThresholds), //ot
+                (GetInitials(nameof(repetitions)), repetitions), //r
+                (GetInitials(nameof(outerCvFolds)), outerCvFolds), //oc
+                (GetInitials(nameof(outerCvFoldsToRun)), outerCvFoldsToRun), //oc
+                (GetInitials(nameof(classWeights)), classWeights), //cw
+                (GetInitials(nameof(svmType)), svmType), //st
+                (GetInitials(nameof(svmKernel)), svmKernel), //sk
+                (GetInitials(nameof(scaleFunction)), scaleFunction), //sf
+                (GetInitials(nameof(innerCvFolds)), innerCvFolds) //ic
             };
 
-            var iter_fn = string.Join($@"_", p.Select(a => $@"{a.name}[{a.value ?? ""}]").ToList());
+            var iterFn = string.Join(@"_", p.Select(a => $@"{a.name}[{a.value ?? ""}]").ToList());
 
-            const string fn_chars = @"0123456789[]{}()_+-.;qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
+            const string fnChars = @"0123456789[]{}()_+-.;qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
 
-            if (!iter_fn.All(a => fn_chars.Contains(a)))
-            {
-                throw new Exception();
-            }
+            if (!iterFn.All(a => fnChars.Contains(a))) throw new Exception();
 
-            return iter_fn;
+            return ct.IsCancellationRequested ? default :iterFn;
         }
 
 
-        
+        internal enum Direction
+        {
+            None, Forwards, Neutral,
+            Backwards
+        }
     }
 }

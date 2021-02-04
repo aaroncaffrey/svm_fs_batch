@@ -1,115 +1,104 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace svm_fs_batch
+namespace SvmFsBatch
 {
-    internal static class routines
+    internal static class Routines
     {
-        public const string module_name = nameof(routines);
-
-        internal enum libsvm_kernel_type : int
-        {
-            //@default = rbf,
-            linear = 0,
-            polynomial = 1,
-            rbf = 2,
-            sigmoid = 3,
-            precomputed = 4,
-        }
-
-        internal enum libsvm_svm_type : int
-        {
-            //@default = c_svc,
-            c_svc = 0,
-            nu_svc = 1,
-            one_class_svm = 2,
-            epsilon_svr = 3,
-            nu_svr = 4,
-        }
+        public const string ModuleName = nameof(Routines);
 
         //[ThreadStatic] private static Random _local;
 
         //internal static Random this_threads_random => _local ?? (_local = new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId)));
 
-        //internal static int get_instance_id(int whole_array_index_first, int whole_array_index_last, int whole_array_step_size, int partition_array_index_first, int partition_array_index_last)
+        //internal static int Getinstance_id(int whole_array_index_first, int whole_array_index_last, int whole_array_step_size, int partition_array_index_first, int partition_array_index_last)
         //{
         //    var instance_id = -1;
         //
         //    //for (var whole_array_index = program_args.whole_array_index_first; whole_array_index <= program_args.partition_array_index_first; whole_array_index += program_args.whole_array_step_size) { instance_id++; }
         //    for (var whole_array_index = (whole_array_index_first <= whole_array_index_last ? whole_array_index_first : whole_array_index_last); !is_in_range(partition_array_index_first, partition_array_index_last, whole_array_index); whole_array_index += whole_array_step_size) instance_id++;
         //
-        //    return instance_id;
+        //    return ct.IsCancellationRequested ? default :instance_id;
         //}
 
-        public static int for_iterations(int first, int last, int step)
+        public static int ForIterations(int first, int last, int step)
         {
-            return (step > 0 && last >= first) || (step < 0 && first >= last) ? ((last - first) / step) + 1 : 0;
+            return step > 0 && last >= first || step < 0 && first >= last
+                ? (last - first) / step + 1
+                : 0;
         }
 
-        internal static bool is_in_range(int range_first, int range_last, int value)
+        internal static bool IsInRange(int rangeFirst, int rangeLast, int value)
         {
-            return (value >= range_first && value <= range_last) || (value >= range_last && value <= range_first);
+            return value >= rangeFirst && value <= rangeLast || value >= rangeLast && value <= rangeFirst;
         }
 
-        public static List<(int from, int to, int step)> find_ranges(List<int> ids)
+        public static List<(int from, int to, int step)> FindRanges(List<int> ids)
         {
-            if (ids == null || ids.Count == 0) return new List<(int @from, int to, int step)>();
+            if (ids == null || ids.Count == 0) return new List<(int from, int to, int step)>();
 
             ids = ids.OrderBy(a => a).Distinct().ToList();
 
-            if (ids.Count == 1) return new List<(int @from, int to, int step)>() { (ids[0], ids[0], 0) };
+            if (ids.Count == 1) return new List<(int from, int to, int step)> {(ids[0], ids[0], 0)};
 
-            var ranges = new List<(int @from, int to, int step)>();
+            var ranges = new List<(int from, int to, int step)>();
 
             var step = ids[1] - ids[0];
-            var step_start_index = 0;
+            var stepStartIndex = 0;
 
             for (var i = 1; i < ids.Count; i++)
             {
                 // if step has changed, save last
                 if (ids[i] - ids[i - 1] != step)
                 {
-                    ranges.Add((ids[step_start_index], ids[step_start_index] + (step * (i - step_start_index - 1)), step));
+                    ranges.Add((ids[stepStartIndex], ids[stepStartIndex] + step * (i - stepStartIndex - 1), step));
 
                     step = ids[i] - ids[i - 1];
-                    step_start_index = i - 1;
+                    stepStartIndex = i - 1;
                     i--;
                     continue;
                 }
 
                 if (i == ids.Count - 1)
                 {
-                    step = step_start_index == i ? 1 : step;
-                    ranges.Add((ids[step_start_index], ids[step_start_index] + (step * (i - step_start_index)), step));
+                    step = stepStartIndex == i
+                        ? 1
+                        : step;
+                    ranges.Add((ids[stepStartIndex], ids[stepStartIndex] + step * (i - stepStartIndex), step));
                 }
             }
 
             return ranges;
         }
 
-        public static string find_ranges_str(List<int> ids)
+        public static string FindRangesStr(List<int> ids)
         {
-            var ranges = find_ranges(ids);
+            var ranges = FindRanges(ids);
 
-            return string.Join("_", ranges.Select(range => $@"{range.@from}" + (range.@from != range.to ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1 ? $@";{range.step}" : $@"") : $@"")).ToList());
+            return string.Join("_",
+                ranges.Select(range => $@"{range.from}" + (range.from != range.to
+                    ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1
+                        ? $@";{range.step}"
+                        : @"")
+                    : @"")).ToList());
         }
 
-        public static int[] range(int start, int end, int step)
+        public static int[] Range(int start, int end, int step)
         {
-            var ix = for_iterations(start, end, step);
+            var ix = ForIterations(start, end, step);
 
             var ret = new int[ix];
 
-            var step_sum = start;
+            var stepSum = start;
 
             for (var i = 0; i < ix; i++)
             {
-                ret[i] = step_sum;
+                ret[i] = stepSum;
 
-                step_sum += step;
+                stepSum += step;
             }
 
             return ret;
@@ -127,44 +116,62 @@ namespace svm_fs_batch
         //    }
         //}
 
-        internal static (string as_str, int? as_int, double? as_double, bool? as_bool)[] x_types(CancellationTokenSource cts, string[] values, bool as_parallel = false)
+        //internal static (string asStr, int? asInt, double? asDouble, bool? asBool)[] x_types(CancellationToken ct,
+        //    string[] values, bool asParallel = false)
+        //{
+        //    var xType = asParallel
+        //        ? values
+        //            .AsParallel()
+        //            .AsOrdered()
+        //            .WithCancellation(ct)
+        //            .Select(asStr =>
+        //            {
+        //                var asDouble =
+        //                    double.TryParse(asStr, NumberStyles.Float, NumberFormatInfo.InvariantInfo,
+        //                        out var outDouble)
+        //                        ? outDouble
+        //                        : (double?) null;
+        //                var asInt =
+        //                    int.TryParse(asStr, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var outInt)
+        //                        ? outInt
+        //                        : (int?) null;
+        //                var asBool = asInt == 1 && asDouble == 1 ? true :
+        //                    asInt == 0 && asDouble == 0 ? false : (bool?) null;
+        //                if (asBool == null && bool.TryParse(asStr, out var outBool)) asBool = outBool;
+
+        //                return ct.IsCancellationRequested ? default :(asStr: asStr, asInt: asInt, asDouble: asDouble, asBool: asBool);
+        //            })
+        //            .ToArray()
+        //        : values
+        //            .Select(asStr =>
+        //            {
+        //                var asDouble =
+        //                    double.TryParse(asStr, NumberStyles.Float, NumberFormatInfo.InvariantInfo,
+        //                        out var outDouble)
+        //                        ? outDouble
+        //                        : (double?) null;
+        //                var asInt =
+        //                    int.TryParse(asStr, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var outInt)
+        //                        ? outInt
+        //                        : (int?) null;
+        //                var asBool = asInt == 1 && asDouble == 1 ? true :
+        //                    asInt == 0 && asDouble == 0 ? false : (bool?) null;
+        //                if (asBool == null && bool.TryParse(asStr, out var outBool)) asBool = outBool;
+
+        //                return ct.IsCancellationRequested ? default :(asStr: asStr, asInt: asInt, asDouble: asDouble, asBool: asBool);
+        //            })
+        //            .ToArray();
+
+        //    return ct.IsCancellationRequested ? default :xType;
+        //}
+
+        internal static void Shuffle(this int[] values, Random random)
         {
-            var x_type = as_parallel ? values
-                .AsParallel()
-                .AsOrdered()
-                .WithCancellation(cts.Token)
-                .Select(as_str =>
-                {
-                    var as_double = double.TryParse(as_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_double) ? out_double : (double?)null;
-                    var as_int = int.TryParse(as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : (int?)null;
-                    var as_bool = as_int == 1 && as_double == 1 ? (bool?)true : (as_int == 0 && as_double == 0 ? (bool?)false : (bool?)null);
-                    if (as_bool == null && bool.TryParse(as_str, out var out_bool)) as_bool = (bool?)out_bool;
+            var maxIndex = values.Length - 1;
 
-                    return (as_str, as_int, as_double, as_bool);
-                })
-                .ToArray() :
-            values
-                .Select(as_str =>
-                {
-                    var as_double = double.TryParse(as_str, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var out_double) ? out_double : (double?)null;
-                    var as_int = int.TryParse(as_str, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : (int?)null;
-                    var as_bool = as_int == 1 && as_double == 1 ? (bool?)true : (as_int == 0 && as_double == 0 ? (bool?)false : (bool?)null);
-                    if (as_bool == null && bool.TryParse(as_str, out var out_bool)) as_bool = (bool?)out_bool;
-
-                    return (as_str, as_int, as_double, as_bool);
-                })
-                .ToArray();
-
-            return x_type;
-        }
-
-        internal static void shuffle(this int[] values, Random random)
-        {
-            var max_index = values.Length - 1;
-
-            for (var n = max_index; n >= 0; n--)
+            for (var n = maxIndex; n >= 0; n--)
             {
-                var k = random.Next(0, max_index);
+                var k = random.Next(0, maxIndex);
 
                 var value = values[k];
                 values[k] = values[n];
@@ -172,59 +179,48 @@ namespace svm_fs_batch
             }
         }
 
-        internal static (
-            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] class_folds,
-            (int class_id, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_training_class_folds
-            ) folds(CancellationTokenSource cts, (int class_id, int class_size)[] class_sizes, int repetitions, int outer_cv_folds, bool as_parallel = false)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static ( (int ClassId, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] class_folds, (int ClassId, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_training_class_folds ) Folds((int ClassId, int class_size)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
-            if (cts.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) return default;
 
-            var class_folds = as_parallel
-                ?
-                class_sizes.AsParallel().AsOrdered().WithCancellation(cts.Token).Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds))).ToArray()
-                :
-                class_sizes.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: routines.folds(a.class_size, repetitions, outer_cv_folds))).ToArray();
+            var classFolds = asParallel
+                ? classSizes.AsParallel().AsOrdered().WithCancellation(ct).Select(a => (a.ClassId, a.class_size, folds: Folds(a.class_size, repetitions, outerCvFolds,ct))).ToArray()
+                : classSizes.Select(a => (a.ClassId, a.class_size, folds: Folds(a.class_size, repetitions, outerCvFolds,ct))).ToArray();
 
-            var down_sampled_training_class_folds = class_folds.Select(a => (class_id: a.class_id, class_size: a.class_size, folds: a.folds?.Select(b =>
-                    {
-                        var min_num_items_in_fold =
-                            class_folds.Min(c => c.folds?
-                                .Where(e => e.repetitions_index == b.repetitions_index && e.outer_cv_index == b.outer_cv_index)
-                                .Min(e => e.indexes?.Length ?? 0) ?? 0
-                            );
+            var downSampledTrainingClassFolds = classFolds.Select(a => (a.ClassId, a.class_size, folds: a.folds?.Select(b =>
+            {
+                var minNumItemsInFold = classFolds.Min(c => c.folds?.Where(e => e.repetitions_index == b.repetitions_index && e.outer_cv_index == b.outer_cv_index).Min(e => e.indexes?.Length ?? 0) ?? 0);
 
-                        return (repetitions_index: b.repetitions_index, outer_cv_index: b.outer_cv_index, indexes: b.indexes?.Take(min_num_items_in_fold).ToArray());
-                    })
-                    .ToArray()))
-                .ToArray();
+                return ct.IsCancellationRequested ? default :(b.repetitions_index, b.outer_cv_index, indexes: b.indexes?.Take(minNumItemsInFold).ToArray());
+            }).ToArray())).ToArray();
 
-            return (class_folds, down_sampled_training_class_folds);
+            return ct.IsCancellationRequested ? default :(classFolds, downSampledTrainingClassFolds);
         }
 
-        internal static (int repetitions_index, int outer_cv_index, int[] indexes)[] folds(int num_class_samples, int repetitions, int outer_cv_folds)//, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static (int repetitions_index, int outer_cv_index, int[] indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             // folds: returns a list of folds (including the indexes at each fold)... number folds = repetitions (!<1) * outer_cv_folds_to_run (!<1)
 
             // outer_cv_folds_to_run is the total number of outer_cv_folds to actually run/process... whereas, outer_cv_folds describes the data partitioning (i.e. 5 would be 5 tests of 80% train & 20% test, where as outer_cv_folds_to_run would reduce the 5 tests to given number).
-            if (num_class_samples <= 0) throw new Exception();
+            if (numClassSamples <= 0) throw new Exception();
             if (repetitions <= 0) throw new Exception();
-            if (outer_cv_folds <= 0) throw new Exception();
+            if (outerCvFolds <= 0) throw new Exception();
             //if (outer_cv_folds_to_run < 0 || outer_cv_folds_to_run > outer_cv_folds) throw new Exception();
             //if (fold_size_limit < 0) throw new Exception();
 
-            //const string method_name = nameof(folds);
+            //const string _MethodName = nameof(folds);
             /*int first_index, int last_index, int num_items,*/
-            
+
             //if (outer_cv_folds_to_run == 0) outer_cv_folds_to_run = outer_cv_folds;
-            var fold_sizes = new int[outer_cv_folds/*_to_run*/];
+            var foldSizes = new int[outerCvFolds /*_to_run*/];
 
-            if (num_class_samples > 0 && outer_cv_folds/*_to_run*/ > 0)
+            if (numClassSamples > 0 && outerCvFolds /*_to_run*/ > 0)
             {
-                var n = num_class_samples / outer_cv_folds;
+                var n = numClassSamples / outerCvFolds;
 
-                for (var i = 0; i < outer_cv_folds/*_to_run*/; i++) { fold_sizes[i] = n; }
+                for (var i = 0; i < outerCvFolds /*_to_run*/; i++) foldSizes[i] = n;
 
-                for (var i = 0; i < (num_class_samples % outer_cv_folds) && i < outer_cv_folds/*_to_run*/; i++) { fold_sizes[i]++; }
+                for (var i = 0; i < numClassSamples % outerCvFolds && i < outerCvFolds /*_to_run*/; i++) foldSizes[i]++;
             }
 
             //if (fold_size_limit > 0) { fold_sizes = fold_sizes.Select(a => a > fold_size_limit ? fold_size_limit : a).ToArray(); }
@@ -232,46 +228,81 @@ namespace svm_fs_batch
             // use same seed to ensure all calls to fold() are deterministic
             var rand = new Random(1);
 
-            var indexes_pool = Enumerable.Range(0, num_class_samples).ToArray();
+            var indexesPool = Enumerable.Range(0, numClassSamples).ToArray();
 
-            var fold_indexes = new List<(int randomisation, int outer_cv_index, int[] indexes)>();
+            var foldIndexes = new List<(int randomisation, int outer_cv_index, int[] indexes)>();
 
-            for (var repetitions_index = 0; repetitions_index < repetitions; repetitions_index++)
+            for (var repetitionsIndex = 0; repetitionsIndex < repetitions; repetitionsIndex++)
             {
-                indexes_pool.shuffle(rand);
-                
-                var outer_cv_fold_indexes = fold_sizes
-                    .Select((fold_size, outer_cv_index) => (repetitions_index: repetitions_index, outer_cv_index: outer_cv_index, indexes: indexes_pool
-                        .Skip(fold_sizes.Where((b, j) => outer_cv_index > j /* skip previous folds*/).Sum())
-                        .Take(fold_size /* take only current fold */)
-                        .OrderBy(b => b /* order indexes in the current fold numerically */)
-                        .ToArray()))
-                    .Where(c => c.indexes != null && c.indexes.Length > 0)
-                    .ToArray();
+                indexesPool.Shuffle(rand);
 
-                fold_indexes.AddRange(outer_cv_fold_indexes);
+                var outerCvFoldIndexes = foldSizes.Select((foldSize, outerCvIndex) => (repetitions_index: repetitionsIndex, outer_cv_index: outerCvIndex, indexes: indexesPool.Skip(foldSizes.Where((b, j) => outerCvIndex > j /* skip previous folds*/).Sum()).Take(foldSize /* take only current fold */).OrderBy(b => b /* order indexes in the current fold numerically */).ToArray())).Where(c => c.indexes != null && c.indexes.Length > 0).ToArray();
+
+                foldIndexes.AddRange(outerCvFoldIndexes);
             }
 
-            return fold_indexes.ToArray();
+            return ct.IsCancellationRequested ? default :foldIndexes.ToArray();
         }
 
 
-        internal static double standard_deviation_population(double[] values)
+        internal static (double num_complete_pct, TimeSpan time_taken, TimeSpan time_remaining) GetETA(int numComplete, int numTotal, DateTime startTime)
+        {
+            var numIncomplete = numTotal - numComplete;
+
+            var numCompletePct = numTotal > 0
+                ? numComplete / (double) numTotal * 100
+                : 0;
+
+            var timeTakenTicks = DateTime.UtcNow.Subtract(startTime).Ticks;
+            var timeTaken = TimeSpan.FromTicks(timeTakenTicks);
+
+            var estTimeEach = numComplete > 0
+                ? timeTakenTicks / (double) numComplete
+                : 0;
+            var estTimeRemain = estTimeEach * numIncomplete;
+
+            var timeRemaining = TimeSpan.FromTicks((long) estTimeRemain);
+
+            return (numCompletePct, timeTaken, timeRemaining);
+        }
+
+        internal static void PrintETA(int numComplete, int numTotal, DateTime startTime, string callerModuleName = @"", [CallerMemberName] string callerMethodName = @"")
+        {
+            var x = GetETA(numComplete, numTotal, startTime);
+
+            Logging.WriteLine($@"ETA: tasks complete: {numComplete}/{numTotal} ({x.num_complete_pct:0.00}%) [time taken: {x.time_taken:dd\:hh\:mm\:ss\.fff}, time remaining: {(numComplete > 0 ? $@"{x.time_remaining:dd\:hh\:mm\:ss\.fff}" : @"...")}]", callerModuleName, callerMethodName);
+        }
+
+        internal static double StandardDeviationPopulation(double[] values)
         {
             if (values == null || values.Length < 2) return 0;
 
             var mean = values.Average();
 
-            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length));
+            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / values.Length);
         }
 
-        internal static double standard_deviation_sample(double[] values)
+        internal static double StandardDeviationSample(double[] values)
         {
             if (values == null || values.Length < 2) return 0;
 
             var mean = values.Average();
 
             return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
+        }
+
+        internal enum LibsvmKernelType
+        {
+            //@default = Rbf,
+            Linear = 0, Polynomial = 1, Rbf = 2,
+            Sigmoid = 3, Precomputed = 4
+        }
+
+        internal enum LibsvmSvmType
+        {
+            //@default = CSvc,
+            CSvc = 0, NuSvc = 1, OneClassSvm = 2,
+            EpsilonSvr = 3, NuSvr = 4
         }
 
 
@@ -291,25 +322,24 @@ namespace svm_fs_batch
         //        variance += (diff * diff) / ((i + 1.0) * i);
         //    }
         //
-        //    return variance / (samples.Length - 1);
+        //    return ct.IsCancellationRequested ? default :variance / (samples.Length - 1);
         //}
         //
         //public static (double variance, double stdev) sample_standard_deviation(double[] samples)
         //{
         //    if (samples == null || samples.Length <= 1)
         //    {
-        //        return (0, 0);
+        //        return ct.IsCancellationRequested ? default :(0, 0);
         //    }
         //
         //    var variance = sample_variance(samples);
         //    var stdev = Math.Sqrt(variance);
         //
-        //    return (variance, stdev);
+        //    return ct.IsCancellationRequested ? default :(variance, stdev);
         //}
 
-        //internal static double sqrt_sumofsqrs(double[] list) { return list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+        //internal static double sqrt_sumofsqrs(double[] list) { return ct.IsCancellationRequested ? default :list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
 
-      
 
         //internal static int for_loop_instance_id(List<(int current, int max)> points)
         //{
@@ -326,7 +356,7 @@ namespace svm_fs_batch
         //    }
 
         //    v += points.Last().current;
-        //    return v;
+        //    return ct.IsCancellationRequested ? default :v;
         //}
 
 

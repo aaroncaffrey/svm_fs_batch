@@ -3,15 +3,16 @@ using System.Runtime;
 using System.Runtime.Loader;
 using System.Threading;
 
-namespace svm_fs_batch
+namespace SvmFsBatch
 {
-    internal class init
+    internal class Init
     {
-        public const string module_name = nameof(init);
-        internal static void set_thread_counts()
+        public const string ModuleName = nameof(Init);
+
+        internal static void SetThreadCounts()
         {
-            //ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);
-            //ThreadPool.SetMaxThreads(Environment.ProcessorCount * 100, Environment.ProcessorCount * 100);
+            ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);
+            ThreadPool.SetMaxThreads(Environment.ProcessorCount * 100, Environment.ProcessorCount * 100);
 
             //ThreadPool.SetMinThreads(1000, 1000);
             //ThreadPool.SetMaxThreads(10000, 10000);
@@ -28,35 +29,37 @@ namespace svm_fs_batch
             //}
         }
 
-        internal static void close_notifications(CancellationTokenSource cts = null)
+        internal static void CloseNotifications(CancellationToken ct) //, CancellationTokenSource cts = null)
         {
-            const string method_name = nameof(close_notifications);
-            if (cts != null && cts.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) return;
+
+            const string methodName = nameof(CloseNotifications);
+            //if (ct.IsCancellationRequested) return;
 
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
-                io_proxy.WriteLine($@"Console.CancelKeyPress", module_name, method_name);
-                if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
+                Logging.WriteLine(@"Console.CancelKeyPress", ModuleName, methodName);
+                //if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
             AssemblyLoadContext.Default.Unloading += context =>
             {
-                io_proxy.WriteLine($@"AssemblyLoadContext.Default.Unloading", module_name, method_name);
-                if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
+                Logging.WriteLine(@"AssemblyLoadContext.Default.Unloading", ModuleName, methodName);
+                //if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
             AppDomain.CurrentDomain.ProcessExit += (sender, eventArgs) =>
             {
-                io_proxy.WriteLine($@"AppDomain.CurrentDomain.ProcessExit", module_name, method_name);
-                if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
+                Logging.WriteLine(@"AppDomain.CurrentDomain.ProcessExit", ModuleName, methodName);
+                //if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
         }
 
-        internal static void check_x64()
+        internal static void CheckX64()
         {
-            var is_x64 = IntPtr.Size == 8;
-            if (!is_x64) { throw new Exception("Must run in x64 mode"); }
+            var isX64 = IntPtr.Size == 8;
+            if (!isX64) throw new Exception("Must run in x64 mode");
         }
 
-        internal static void set_gc_mode()
+        internal static void SetGcMode()
         {
             GCSettings.LatencyMode = GCLatencyMode.Batch;
             //GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;

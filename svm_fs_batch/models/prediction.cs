@@ -1,82 +1,92 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace svm_fs_batch
+namespace SvmFsBatch
 {
-    internal class prediction
+    internal class Prediction
     {
-        public const string module_name = nameof(prediction);
-        internal static readonly prediction empty = new prediction();
-
-        internal int prediction_index;
-        internal int class_sample_id; /* composite key with real_class_id for unique id */
-        internal int real_class_id;
-        internal int predicted_class_id;
-        internal (int class_id, double probability_estimate)[] probability_estimates;
-        internal (string comment_header, string comment_value)[] comment;
+        public const string ModuleName = nameof(Prediction);
+        internal static readonly Prediction Empty = new Prediction();
 
         //internal string[] test_row_vector; // test_row_vector is not saved/loaded
 
-        internal static readonly string[] csv_header_values_array = new string[]
+        internal static readonly string[] CsvHeaderValuesArray =
         {
-            nameof(prediction_index),
-            nameof(class_sample_id),
-            nameof(real_class_id),
-            nameof(predicted_class_id),
-            nameof(probability_estimates),
-            nameof(comment),
+            nameof(PredictionIndex),
+            nameof(ClassSampleId),
+            nameof(RealClassId),
+            nameof(PredictedClassId),
+            nameof(ProbabilityEstimates),
+            nameof(Comment)
         };
 
-        internal static readonly string csv_header_string = string.Join(",", csv_header_values_array);
+        internal static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
+        internal int ClassSampleId; /* composite key with real_ClassId for unique id */
+        internal (string comment_header, string comment_value)[] Comment;
+        internal int PredictedClassId;
 
-        internal string[] csv_values_array()
+        internal int PredictionIndex;
+        internal (int ClassId, double probability_estimate)[] ProbabilityEstimates;
+        internal int RealClassId;
+
+        public Prediction()
         {
-            return new string[]
-            {
-                $"{prediction_index}",
-                $"{class_sample_id}",
-                $"{real_class_id}",
-                $"{predicted_class_id}",
-                $"{string.Join("/",probability_estimates?.Select(a=>string.Join(":", $@"{a.class_id}", $@"{a.probability_estimate:G17}")).ToArray() ?? Array.Empty<string>())}",
-                $"{string.Join("/",comment?.Select(a=>string.Join(":", $@"{a.comment_header?.Replace(":","_")}", $@"{a.comment_value?.Replace(":","_")}")).ToArray() ?? Array.Empty<string>())}",
-            };
         }
 
-        internal string csv_values_string()
+        public Prediction(Prediction prediction)
         {
-            return string.Join(",", csv_values_array());
-        }
-
-        public prediction()
-        {
-
-        }
-
-        public prediction(prediction prediction)
-        {
-            this.prediction_index = prediction.prediction_index;
-            this.class_sample_id = prediction.class_sample_id;
-            this.real_class_id = prediction.real_class_id;
-            this.predicted_class_id = prediction.predicted_class_id;
-            this.probability_estimates = prediction.probability_estimates;
-            this.comment = prediction.comment;
+            PredictionIndex = prediction.PredictionIndex;
+            ClassSampleId = prediction.ClassSampleId;
+            RealClassId = prediction.RealClassId;
+            PredictedClassId = prediction.PredictedClassId;
+            ProbabilityEstimates = prediction.ProbabilityEstimates;
+            Comment = prediction.Comment;
             // this.test_row_vector = prediction.test_row_vector;
         }
 
-        public prediction(string[] values)
+        public Prediction(string[] values)
         {
             var k = 0;
-            prediction_index = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-            class_sample_id = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-            real_class_id = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-            predicted_class_id = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-            probability_estimates = values[k++].Split('/', StringSplitOptions.RemoveEmptyEntries).Select(a => { var b = a.Split(':'); return (int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), double.Parse(b[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo)); }).ToArray();
-            comment = values[k++].Split('/', StringSplitOptions.RemoveEmptyEntries).Select(a => { var b = a.Split(':'); return (b[0], b[1]); }).ToArray();
+            PredictionIndex = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+            ClassSampleId = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+            RealClassId = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+            PredictedClassId = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+
+            if (values.Length > k)
+                ProbabilityEstimates = values[k++].Split('/', StringSplitOptions.RemoveEmptyEntries).Select(a =>
+                {
+                    var b = a.Split(':');
+                    return (int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), double.Parse(b[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo));
+                }).ToArray();
+
+            if (values.Length > k)
+                Comment = values[k++].Split('/', StringSplitOptions.RemoveEmptyEntries).Select(a =>
+                {
+                    var b = a.Split(':');
+                    return (b[0], b[1]);
+                }).ToArray();
+        }
+
+        internal string[] CsvValuesArray()
+        {
+            return new[]
+            {
+                $"{PredictionIndex}",
+                $"{ClassSampleId}",
+                $"{RealClassId}",
+                $"{PredictedClassId}",
+                $"{string.Join("/", ProbabilityEstimates?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.probability_estimate:G17}")).ToArray() ?? Array.Empty<string>())}",
+                $"{string.Join("/", Comment?.Select(a => string.Join(":", $@"{a.comment_header?.Replace(":", "_")}", $@"{a.comment_value?.Replace(":", "_")}")).ToArray() ?? Array.Empty<string>())}"
+            };
+        }
+
+        internal string CsvValuesString()
+        {
+            return string.Join(",", CsvValuesArray());
         }
 
         /*public prediction(string str)
@@ -86,8 +96,8 @@ namespace svm_fs_batch
             prediction_index = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
             class_sample_id = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
 
-            real_class_id = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
-            predicted_class_id = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
+            real_ClassId = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
+            predicted_ClassId = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
 
             var total_prob_est = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
             var total_comment = s.Length > k ? int.Parse(s[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo) : 0;
@@ -103,7 +113,7 @@ namespace svm_fs_batch
 
                     if (cid != null && pe != null)
                     {
-                        if (probability_estimates == null) probability_estimates = new List<(int class_id, double probability_estimate)>();
+                        if (probability_estimates == null) probability_estimates = new List<(int ClassId, double probability_estimate)>();
                         probability_estimates.Add((cid.Value, pe.Value));
                     }
                 }
@@ -128,111 +138,107 @@ namespace svm_fs_batch
             }
         }*/
 
-       /*internal string str()
+        /*internal string str()
+         {
+             // 0;-1;1;2;p1:0.6;p-1:0.4;cval=xyz|0;-1;1;2;p1:0.6;p-1:0.4;cval=abc
+ 
+             return ct.IsCancellationRequested ? default :string.Join("|", new string[]
+             {
+                     $@"{prediction_index}",
+                     $@"{class_sample_id}",
+                     $@"{real_ClassId}",
+                     $@"{predicted_ClassId}",
+                     $@"{(probability_estimates?.Count ?? 0)}",
+                     $@"{(comment?.Count ?? 0)}",
+                     $@"{(probability_estimates != null &&probability_estimates.Count>0? string.Join("|", probability_estimates.Select(a => $@"p{a.ClassId:+#;-#;+0}:{a.probability_estimate:G17}").ToList()) : $@"")}",
+                     $@"{(comment != null && comment.Count>0? string.Join("|", comment.Where(a=>!string.IsNullOrWhiteSpace(a.comment_header) || !string.IsNullOrWhiteSpace(a.comment_value)).Select(a => $@"c{a.comment_header}:{a.comment_value}").ToList()) : $@"")}"
+             }.Where(a => !string.IsNullOrWhiteSpace(a)).ToArray());
+         }*/
+
+
+        public static async Task SaveAsync(CancellationToken ct, string predictionListFilename, (IndexData id, ConfusionMatrix cm, RankScore rs)[] cmList)
         {
-            // 0;-1;1;2;p1:0.6;p-1:0.4;cval=xyz|0;-1;1;2;p1:0.6;p-1:0.4;cval=abc
+            if (ct.IsCancellationRequested) return;
 
-            return string.Join("|", new string[]
-            {
-                    $@"{prediction_index}",
-                    $@"{class_sample_id}",
-                    $@"{real_class_id}",
-                    $@"{predicted_class_id}",
-                    $@"{(probability_estimates?.Count ?? 0)}",
-                    $@"{(comment?.Count ?? 0)}",
-                    $@"{(probability_estimates != null &&probability_estimates.Count>0? string.Join("|", probability_estimates.Select(a => $@"p{a.class_id:+#;-#;+0}:{a.probability_estimate:G17}").ToList()) : $@"")}",
-                    $@"{(comment != null && comment.Count>0? string.Join("|", comment.Where(a=>!string.IsNullOrWhiteSpace(a.comment_header) || !string.IsNullOrWhiteSpace(a.comment_value)).Select(a => $@"c{a.comment_header}:{a.comment_value}").ToList()) : $@"")}"
-            }.Where(a => !string.IsNullOrWhiteSpace(a)).ToArray());
-        }*/
-
-
-
-        public static void save(CancellationTokenSource cts, string prediction_list_filename, (index_data id, confusion_matrix cm, rank_score rs)[] cm_list)
-        {
-            const string method_name = nameof(save);
-
-            if (cts.IsCancellationRequested) return;
-
-            var pred_list = cm_list.SelectMany(a => a.cm.predictions).ToList();
-
-            var total_lines = cm_list.Sum(a => a.cm.predictions.Length) + 1;
-
-            var lines = new string[total_lines];
-
-            var prob_classes = pred_list.Where(a => a != null && a.probability_estimates != null && a.probability_estimates.Length > 0).SelectMany(a => a.probability_estimates.Select(b => b.class_id).ToList()).Distinct().OrderBy(a => a).ToArray();
-            var prob_comments = pred_list.Where(a => a != null && a.comment != null && a.comment.Length > 0).SelectMany(a => a.comment.Select(b => b.comment_header).ToList()).Distinct().OrderBy(a => a).ToArray();
-
-
-            var header_csv_values = new List<string>()
-            {
-                "perf_"+nameof(index_data.iteration_index),
-                "perf_"+nameof(index_data.group_array_index),
-                "perf_"+nameof(confusion_matrix.x_class_id),
-                "perf_"+nameof(confusion_matrix.x_class_name),
-
-                nameof(prediction_index),
-                nameof(class_sample_id),
-                nameof(real_class_id),
-                nameof(predicted_class_id),
-            };
-            header_csv_values.AddRange(prob_classes.Select(a => $@"prob_{a:+#;-#;+0}").ToArray());
-            header_csv_values.AddRange(prob_comments);
+            const string methodName = nameof(SaveAsync);
             
+            var predList = cmList.SelectMany(a => a.cm.Predictions).ToList();
 
-            lines[0] = string.Join($@",", header_csv_values);
+            var totalLines = cmList.Sum(a => a.cm.Predictions.Length) + 1;
+
+            var lines = new string[totalLines];
+
+            var probClasses = predList.Where(a => a != null && a.ProbabilityEstimates != null && a.ProbabilityEstimates.Length > 0).SelectMany(a => a.ProbabilityEstimates.Select(b => b.ClassId).ToList()).Distinct().OrderBy(a => a).ToArray();
+            var probComments = predList.Where(a => a != null && a.Comment != null && a.Comment.Length > 0).SelectMany(a => a.Comment.Select(b => b.comment_header).ToList()).Distinct().OrderBy(a => a).ToArray();
+
+
+            var headerCsvValues = new List<string>
+            {
+                "perf_" + nameof(IndexData.IdIterationIndex),
+                "perf_" + nameof(IndexData.IdGroupArrayIndex),
+                "perf_" + nameof(ConfusionMatrix.XClassId),
+                "perf_" + nameof(ConfusionMatrix.XClassName),
+
+                nameof(PredictionIndex),
+                nameof(ClassSampleId),
+                nameof(RealClassId),
+                nameof(PredictedClassId)
+            };
+            headerCsvValues.AddRange(probClasses.Select(a => $@"prob_{a:+#;-#;+0}").ToArray());
+            headerCsvValues.AddRange(probComments);
+
+
+            lines[0] = string.Join(@",", headerCsvValues);
 
             Parallel.For(0,
-                cm_list.Length,
-                cm_list_index =>
+                cmList.Length,
+                cmListIndex =>
                 {
                     Parallel.For(0,
-                        cm_list[cm_list_index].cm.predictions.Length,
-                        cm_pred_index =>
+                        cmList[cmListIndex].cm.Predictions.Length,
+                        cmPredIndex =>
                         {
                             var k = 0;
 
-                            var values = new string[header_csv_values.Count];
+                            var values = new string[headerCsvValues.Count];
 
-                            values[k++] = $@"{cm_list[cm_list_index].id.iteration_index}";
-                            values[k++] = $@"{cm_list[cm_list_index].id.group_array_index}";
-                            values[k++] = $@"{cm_list[cm_list_index].cm.x_class_id}";
-                            values[k++] = $@"{cm_list[cm_list_index].cm.x_class_name}";
+                            values[k++] = $@"{cmList[cmListIndex].id.IdIterationIndex}";
+                            values[k++] = $@"{cmList[cmListIndex].id.IdGroupArrayIndex}";
+                            values[k++] = $@"{cmList[cmListIndex].cm.XClassId}";
+                            values[k++] = $@"{cmList[cmListIndex].cm.XClassName}";
 
-                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].prediction_index}";
-                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].class_sample_id}";
-                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].real_class_id:+#;-#;+0}";
-                            values[k++] = $@"{cm_list[cm_list_index].cm.predictions[cm_pred_index].predicted_class_id:+#;-#;+0}";
-                            
+                            values[k++] = $@"{cmList[cmListIndex].cm.Predictions[cmPredIndex].PredictionIndex}";
+                            values[k++] = $@"{cmList[cmListIndex].cm.Predictions[cmPredIndex].ClassSampleId}";
+                            values[k++] = $@"{cmList[cmListIndex].cm.Predictions[cmPredIndex].RealClassId:+#;-#;+0}";
+                            values[k++] = $@"{cmList[cmListIndex].cm.Predictions[cmPredIndex].PredictedClassId:+#;-#;+0}";
 
-                            if (cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates != null && cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates.Length > 0)
+
+                            if (cmList[cmListIndex].cm.Predictions[cmPredIndex].ProbabilityEstimates != null && cmList[cmListIndex].cm.Predictions[cmPredIndex].ProbabilityEstimates.Length > 0)
                             {
-                                for (var probability_estimates_index = 0; probability_estimates_index < cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates.Length; probability_estimates_index++)
+                                for (var probabilityEstimatesIndex = 0; probabilityEstimatesIndex < cmList[cmListIndex].cm.Predictions[cmPredIndex].ProbabilityEstimates.Length; probabilityEstimatesIndex++)
                                 {
-                                    var values_index = header_csv_values.IndexOf($@"prob_{cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates[probability_estimates_index].class_id:+#;-#;+0}", k);
-                                    values[values_index] = $"{cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates[probability_estimates_index].probability_estimate:G17}";
+                                    var valuesIndex = headerCsvValues.IndexOf($@"prob_{cmList[cmListIndex].cm.Predictions[cmPredIndex].ProbabilityEstimates[probabilityEstimatesIndex].ClassId:+#;-#;+0}", k);
+                                    values[valuesIndex] = $"{cmList[cmListIndex].cm.Predictions[cmPredIndex].ProbabilityEstimates[probabilityEstimatesIndex].probability_estimate:G17}";
                                 }
 
-                                k += cm_list[cm_list_index].cm.predictions[cm_pred_index].probability_estimates.Length + 1;
+                                k += cmList[cmListIndex].cm.Predictions[cmPredIndex].ProbabilityEstimates.Length + 1;
                             }
 
-                            if (cm_list[cm_list_index].cm.predictions[cm_pred_index].comment != null && cm_list[cm_list_index].cm.predictions[cm_pred_index].comment.Length > 0)
-                            {
-                                for (var comment_index = 0; comment_index < cm_list[cm_list_index].cm.predictions[cm_pred_index].comment.Length; comment_index++)
+                            if (cmList[cmListIndex].cm.Predictions[cmPredIndex].Comment != null && cmList[cmListIndex].cm.Predictions[cmPredIndex].Comment.Length > 0)
+                                for (var commentIndex = 0; commentIndex < cmList[cmListIndex].cm.Predictions[cmPredIndex].Comment.Length; commentIndex++)
                                 {
-                                    var values_index = header_csv_values.IndexOf(cm_list[cm_list_index].cm.predictions[cm_pred_index].comment[comment_index].comment_header, k);
-                                    values[values_index] = cm_list[cm_list_index].cm.predictions[cm_pred_index].comment[comment_index].comment_value;
+                                    var valuesIndex = headerCsvValues.IndexOf(cmList[cmListIndex].cm.Predictions[cmPredIndex].Comment[commentIndex].comment_header, k);
+                                    values[valuesIndex] = cmList[cmListIndex].cm.Predictions[cmPredIndex].Comment[commentIndex].comment_value;
                                 }
-                            }
 
-                            for (var header_csv_values_index = 0; header_csv_values_index < header_csv_values.Count; header_csv_values_index++)
-                            {
-                                if (string.IsNullOrEmpty(values[header_csv_values_index]) && header_csv_values[header_csv_values_index] == $@"_") values[header_csv_values_index] = $@"_";
-                            }
+                            for (var headerCsvValuesIndex = 0; headerCsvValuesIndex < headerCsvValues.Count; headerCsvValuesIndex++)
+                                if (string.IsNullOrEmpty(values[headerCsvValuesIndex]) && headerCsvValues[headerCsvValuesIndex] == @"_")
+                                    values[headerCsvValuesIndex] = @"_";
 
-                            lines[cm_pred_index + 1] = string.Join($@",", values);
+                            lines[cmPredIndex + 1] = string.Join(@",", values);
                         });
                 });
-            io_proxy.WriteAllLines(cts, prediction_list_filename, lines, module_name, method_name);
+            await IoProxy.WriteAllLinesAsync(true, ct, predictionListFilename, lines, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
         }
     }
 }

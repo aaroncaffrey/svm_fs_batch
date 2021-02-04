@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "svm_fs_batch": {
+    "SvmFsBatch": {
       "commandName": "Project",
       "commandLineArgs": "-setup"
     }

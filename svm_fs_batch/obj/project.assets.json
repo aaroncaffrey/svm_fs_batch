@@ -13,9 +13,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\svm_fs_batch.csproj",
-      "projectName": "svm_fs_batch",
-      "projectPath": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\svm_fs_batch.csproj",
+      "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\SvmFsBatch.csproj",
+      "projectName": "SvmFsBatch",
+      "projectPath": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\SvmFsBatch.csproj",
       "packagesPath": "C:\\Users\\Aaron\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\Aaron\\Desktop\\svm_fs_batch\\svm_fs_batch\\obj\\",
       "projectStyle": "PackageReference",
@@ -60,7 +60,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.101\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.102\\RuntimeIdentifierGraph.json"
       }
     }
   }

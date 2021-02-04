@@ -1,0 +1,272 @@
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Diagnostics;
+//using System.Globalization;
+//using System.IO;
+//using System.Linq;
+//using System.Threading;
+//using System.Threading.Tasks;
+
+//namespace SvmFsBatch
+//{
+//    internal class fs_client
+//    {
+//        public const string _ModuleName = nameof(fs_client);
+
+//        //internal static readonly string _client_id = program.program_args.client_id;// = Guid.NewGuid().ToString();
+//        internal static readonly string _server_folder = Path.Combine(program.program_args.results_root_folder, "_server", program.program_args.server_id);
+//        internal static readonly string _client_folder = Path.Combine(program.program_args.results_root_folder, "_server", program.program_args.client_id);
+//        //internal static readonly object _message_count_lock = new object();
+//        internal static int _message_count;
+
+
+//        internal static bool exit_file_exists(CancellationTokenSource cts = null)
+//        {
+//            const string _MethodName = nameof(exit_file_exists);
+
+//            if (cts == null) cts = new CancellationTokenSource();
+
+//            var exit_file = Path.Combine(_server_folder, "exit.csv");
+//            if (io_proxy.ExistsFile(true, exit_file, _ModuleName, _MethodName) && io_proxy.FileLength(exit_file) > 0)
+//            {
+//                if (io_proxy.ExistsDirectory(true, _client_folder, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName))
+//                {
+//                    io_proxy.DeleteDirectory(true, ct, _client_folder, true, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//                }
+
+//                Logging.WriteLine("Exit file found.", _ModuleName, _MethodName);
+//                //Environment.Exit(0);
+
+//                return true;
+//            }
+
+//            return false;
+//        }
+
+//        internal static void x1_ask_server_for_work(CancellationTokenSource cts = null)
+//        {
+//            const string _MethodName = nameof(x1_ask_server_for_work);
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            var work_id = _message_count++;
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            var request_filename = Path.Combine(_client_folder, $"client_request_{work_id}.csv");
+//            await io_proxy.WriteAllLines(true, ct, request_filename, new[] { $"{work_id}" }, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//        }
+
+//        internal static (string work_id, string[] work)[] x2_wait_for_work_from_server(CancellationToken ct, TimeSpan timeout)
+//        {
+//            const string _MethodName = nameof(x2_wait_for_work_from_server);
+//            const int wait_min = 5;
+//            const int wait_max = 5;
+
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            var result = new List<(string work_id, string[] work)>();
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            var sw1 = Stopwatch.StartNew();
+//            while (!cts.IsCancellationRequested && (timeout == TimeSpan.Zero || sw1.Elapsed <= timeout))
+//            {
+//                if (exit_file_exists(cts)) { _message_count--; return null; }
+
+//                if (!io_proxy.ExistsDirectory(false, _client_folder, _ModuleName, _MethodName))
+//                {
+//                    if (timeout == TimeSpan.Zero) { _message_count--; return null; }
+//                    var time_left = timeout - sw1.Elapsed;
+//                    if (time_left > TimeSpan.Zero) await  Logging.WaitAsync(ct, wait_min <= time_left.TotalSeconds ? wait_min : (int)Math.Floor(time_left.TotalSeconds), wait_max <= time_left.TotalSeconds ? wait_max : (int)Math.Floor(time_left.TotalSeconds), _ModuleName, _MethodName);
+//                }
+
+//                // * = work_id
+//                var response_files = await io_proxy.GetFiles(true, ct, _client_folder, $"server_response_*.csv", SearchOption.TopDirectoryOnly, 10, false, _ModuleName, _MethodName);
+
+//                if (response_files == null || response_files.Length == 0)
+//                {
+//                    if (timeout == TimeSpan.Zero) { _message_count--; return null; }
+//                    var time_left = timeout - sw1.Elapsed;
+//                    if (time_left > TimeSpan.Zero) await  Logging.WaitAsync(ct, wait_min <= time_left.TotalSeconds ? wait_min : (int)Math.Floor(time_left.TotalSeconds), wait_max <= time_left.TotalSeconds ? wait_max : (int)Math.Floor(time_left.TotalSeconds), _ModuleName, _MethodName);
+
+//                }
+
+//                for (var index = 0; index < response_files.Length; index++)
+//                {
+//                    var response_file = response_files[index];
+
+//                    var work_id = Path.GetFileNameWithoutExtension(response_file).Split('_', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+
+//                    var work = await io_proxy.ReadAllLines(true, ct, response_file, 1000, false, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+
+//                    await io_proxy.DeleteFile(true, ct, response_file);
+
+//                    if (work != null && work.Length > 0)
+//                    {
+//                        //x3_accept_work_from_server(ct, work_id);
+
+//                        result.Add((work_id, work));
+//                    }
+//                }
+
+//                if (result != null && result.Count > 0) break;
+//            }
+
+//            if (result == null ||result.Count == 0)
+//            {
+//                _message_count--;
+//                return null;
+//            }
+
+//            return ct.IsCancellationRequested ? default :result.OrderBy(a => a.work_id).ToArray();
+//        }
+
+//        /*internal static void x3_accept_work_from_server(CancellationToken ct, string work_id)
+//        {
+//            const string _MethodName = nameof(x3_accept_work_from_server);
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            var accept_filename = Path.Combine(_client_folder, $"client_accept_{work_id}.csv");
+//            await io_proxy.WriteAllLines(true, ct, accept_filename, new[] { $"{work_id}" });
+//        }*/
+
+//        internal static (string work_id, string[] result)[] x4_do_work_array(CancellationToken ct, DataSet_loader DataSet, (string work_id, string[] work)[] work, bool as_parallel = true)
+//        {
+//            const string _MethodName = nameof(x4_do_work_array);
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            var result =
+//                as_parallel
+//                    ?
+//                    work.AsParallel().AsOrdered().WithCancellation(ct).Select(a => x5_do_work_item(ct, DataSet, a.work_id, a.work)).ToArray()
+//                    :
+//                    work.Select(a => x5_do_work_item(ct, DataSet, a.work_id, a.work)).ToArray();
+
+//            return ct.IsCancellationRequested ? default :result;
+//        }
+
+//        internal static (string work_id, string[] result) x5_do_work_item(CancellationToken ct, DataSet_loader DataSet, string work_id, string[] work, bool as_parallel = true)
+//        {
+//            var work_split = work.Select(a => a.Split(',')).ToArray();
+//            var header_line = work_split[0];
+//            var unrolled_index_list = work_split.Skip(1).Select(csv_line => new index_data(header_line, csv_line)).ToArray();
+
+//            var results =
+//                as_parallel ?
+//                    unrolled_index_list
+//                        .AsParallel()
+//                        .AsOrdered()
+//                        .WithCancellation(ct)
+//                        .Select(unrolled_index_data => cross_validate.cross_validate_performance(ct: ct, DataSet: DataSet, unrolled_index_data: unrolled_index_data))
+//                        .Where(a => a != default)
+//                        .SelectMany(a => a)
+//                        .ToArray()
+//                    :
+//                    unrolled_index_list
+//                        .Select(unrolled_index_data => cross_validate.cross_validate_performance(ct: ct, DataSet: DataSet, unrolled_index_data: unrolled_index_data))
+//                        .Where(a => a != default)
+//                        .SelectMany(a => a)
+//                        .ToArray();
+
+
+//            var str = new string[results.Length + 1];
+//            str[0] = index_data.csv_header_string + "," + ConfusionMatrix.csv_header_string;
+
+
+//            for (var i = 0; i < results.Length; i++)
+//            {
+//                str[i + 1] = results[i].id.CsvValuesString() + "," + results[i].cm.CsvValuesString();
+//            }
+
+//            return ct.IsCancellationRequested ? default :(work_id, str);
+//        }
+
+//        internal static void x6_send_work_array_results_to_server(CancellationToken ct, (string work_id, string[] results)[] results, bool as_parallel = true)
+//        {
+//            const string _MethodName = nameof(x6_send_work_array_results_to_server);
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            if (as_parallel)
+//            {
+//                Parallel.For(0,
+//                    results.Length,
+//                    i =>
+//                    {
+//                        x7_send_work_item_results_to_server(ct, results[i].work_id, results[i].results);
+//                    });
+//            }
+//            else
+//            {
+//                for (var i = 0; i < results.Length; i++)
+//                {
+//                    x7_send_work_item_results_to_server(ct, results[i].work_id, results[i].results);
+//                }
+//            }
+//        }
+
+//        internal static void x7_send_work_item_results_to_server(CancellationToken ct, string work_id, string[] results)
+//        {
+//            const string _MethodName = nameof(x7_send_work_item_results_to_server);
+
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            var results_file = Path.Combine(_client_folder, $@"client_results_{work_id}.csv");
+
+//            await io_proxy.WriteAllLines(true, ct, results_file, results, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//        }
+
+//        internal static void forward_client_id(CancellationTokenSource cts = null)
+//        {
+//            const string _MethodName = nameof(forward_client_id);
+
+//            if (io_proxy.ExistsDirectory(true, _client_folder, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName))
+//            {
+//                var files = await io_proxy.GetFiles(true, ct, _client_folder, "*_*.csv", SearchOption.AllDirectories, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//                var max_id = files.Select(a => int.TryParse(Path.GetFileNameWithoutExtension(a).Split('_', StringSplitOptions.RemoveEmptyEntries).LastOrDefault(), NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_int) ? out_int : -1).DefaultIfEmpty(-1).Max();
+//                _message_count = max_id + 1;
+//            }
+//        }
+
+//        internal static void x0_feature_selection_client_initialization
+//        (
+//            CancellationToken ct,
+//            DataSet_loader DataSet,
+//            string experiment_name,
+//            int instance_id,
+//            int total_instances
+//        )
+//        {
+//            // no need to group DataSet on client - server provides column indexes within whole DataSet
+
+//            const string _MethodName = nameof(x0_feature_selection_client_initialization);
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            if (ct.IsCancellationRequested) return;
+
+//            forward_client_id(cts);
+
+//            while (!cts.IsCancellationRequested && !exit_file_exists(cts))
+//            {
+//                // request work from server
+//                x1_ask_server_for_work(cts);
+
+//                // wait for response from server
+//                var work = x2_wait_for_work_from_server(ct, timeout: TimeSpan.FromMinutes(2));
+
+//                // if no work returned, ask for work, while not cancelled
+//                if (work == null || work.Length == 0) continue;
+
+//                // if list of work to be done returned, do it
+//                var work_results = x4_do_work_array(ct, DataSet, work, as_parallel: true);
+
+//                // send results to server
+//                x6_send_work_array_results_to_server(ct, work_results, as_parallel: true);
+
+//                // optionally wait for ack from server
+//                // ...
+//            }
+//        }
+
+//    }
+//}
+

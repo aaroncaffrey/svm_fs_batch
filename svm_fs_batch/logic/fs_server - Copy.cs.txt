@@ -1,0 +1,1021 @@
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Diagnostics;
+//using System.IO;
+//using System.Linq;
+//using System.Threading;
+
+//namespace SvmFsBatch
+//{
+//    internal class fs_server
+//    {
+//        public const string _ModuleName = nameof(fs_server);
+
+//        //internal static readonly string _server_id = program.program_args.server_id;//Guid.NewGuid().ToString();
+//        internal static readonly string _server_folder = Path.Combine(program.program_args.results_root_folder, "_server", program.program_args.server_id);
+
+//        internal static void feature_selection_initialization(
+//            CancellationToken ct, DataSet_loader DataSet, int scoring_ClassId, string[] scoring_metrics, string experiment_name, int instance_id, int total_instances, 
+//            int repetitions, int outer_cv_folds, int outer_cv_folds_to_run, int inner_folds,
+
+//            routines.libsvm_svm_type[] svm_types,
+//            routines.libsvm_kernel_type[] kernels,
+//            scaling.scale_function[] scales,
+//            //(int ClassId, string ClassName)[] ClassNames,
+//            (int ClassId, double ClassWeight)[][] ClassWeight_sets,
+//            bool calc_ElevenPoint_thresholds,
+
+//            int limit_iteration_not_higher_than_all = 14, int limit_iteration_not_higher_than_last = 7, 
+//            bool make_outer_cv_confusion_matrices = false, bool test_final_best_bias = false)
+//        {
+//            const string _MethodName = nameof(feature_selection_initialization);
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            if (ct.IsCancellationRequested) return;
+
+//            var find_best_group_features_first = false;
+//            var check_individual_last = true;
+
+
+//            // Get the feature groups within the DataSet
+//            var groups1 = DataSet_group_methods.GetMainGroups(ct, DataSet, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: false, perspective: false);
+
+//            // Limit for testing
+//            // todo: remove this
+//            groups1 = groups1.Take(100).ToArray();
+
+//            // Feature select within each group first, to reduce number of columns
+//            if (find_best_group_features_first)
+//            {
+//                Logging.WriteLine($@"Finding best of {groups1.Sum(a => a.columns.Length)} individual columns within the {groups1.Length} groups", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+
+//                // get best features in each group
+//                var groups1_reduce_input = DataSet_group_methods.GetSubGroups(ct, groups1, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: true, perspective: true);
+
+//                // There is 1 performance test per instance (i.e. each nested cross validation performance test [1-repetition, 5-fold outer, 5-fold inner])
+//                // This means that if number of groups is less than number of instances, some instances could be idle... problem, but rare enough to ignore.
+
+//                var groups1_reduce_output = groups1_reduce_input
+//                    //.AsParallel()
+//                    //.AsOrdered()
+//                    //.WithCancellation(ct)
+//                    .Select((group, group_index) => feature_selection_worker(ct: ct,
+//                        scoring_ClassId: scoring_ClassId,
+//                        scoring_metrics: scoring_metrics,
+//                        DataSet: DataSet,
+//                        groups: @group,
+//                        preselect_all_groups: true,
+//                        //save_status: true,
+//                        base_group_indexes: null,
+//                        experiment_name: $"{experiment_name}_stage1_{group_index}",
+//                        //instance_id: instance_id,
+//                        //total_instances: total_instances,
+//                        //array_index_start: array_index_start,
+//                        //array_step: array_step,
+//                        //array_index_last: array_index_last,
+//                        repetitions: repetitions,
+//                        outer_cv_folds: outer_cv_folds,
+//                        outer_cv_folds_to_run: outer_cv_folds_to_run,
+//                        inner_folds: inner_folds,
+
+//                        svm_types: svm_types,
+//                        kernels: kernels,
+//                        scales: scales,
+//                        calc_ElevenPoint_thresholds: calc_ElevenPoint_thresholds,
+//                        ClassWeight_sets: ClassWeight_sets,
+
+//                        min_score_increase: 0.005,
+//                        max_iterations: 100,
+//                        limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+//                        limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last
+//                    //make_outer_cv_confusion_matrices: false
+//                    ))
+//                    .ToArray();
+
+//                // ungroup (member & perspective)
+//                var groups1_reduce_output_ungrouped = DataSet_group_methods.ungroup(ct, groups1_reduce_output.Select(a => a.best_winner_groups).ToArray());
+
+//                // regroup (without member & perspective)
+//                var groups1_reduce_output_regrouped = DataSet_group_methods.GetMainGroups(ct, groups1_reduce_output_ungrouped, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: false, perspective: false);
+
+//                groups1 = groups1_reduce_output_regrouped;
+//            }
+
+
+//            // Feature select between the DataSet groups
+//            Logging.WriteLine($@"Finding best of {groups1.Length} groups (made of {groups1.Sum(a => a.columns.Length)} columns)", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+
+//            var winner = feature_selection_worker(ct: ct,
+//                scoring_ClassId: scoring_ClassId,
+//                scoring_metrics: scoring_metrics,
+//                DataSet: DataSet,
+//                groups: groups1,
+//                preselect_all_groups: false,
+//                //save_status: true,
+//                //cache_full: true,
+//                //cache_summary: true,
+//                base_group_indexes: null,
+//                experiment_name: $"{experiment_name}_stage2",
+//                //instance_id: instance_id,
+//                //total_instances: total_instances,
+//                //array_index_start: array_index_start,
+//                //array_step: array_step,
+//                //array_index_last: array_index_last,
+//                repetitions: repetitions,
+//                outer_cv_folds: outer_cv_folds,
+//                outer_cv_folds_to_run: outer_cv_folds_to_run,
+//                inner_folds: inner_folds,
+
+//                svm_types: svm_types,
+//                kernels: kernels,
+//                scales: scales,
+//                calc_ElevenPoint_thresholds: calc_ElevenPoint_thresholds,
+//                ClassWeight_sets: ClassWeight_sets,
+
+//                //order_by_ppf: order_by_ppf,
+//                min_score_increase: 0.005,
+//                max_iterations: 100,
+//                limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+//                limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last
+//            //make_outer_cv_confusion_matrices: make_outer_cv_confusion_matrices
+//            );
+
+//            // Column based feature select from the winners
+//            if (check_individual_last)
+//            {
+//                // preselect all winner group columns, then test if feature selection goes backwards.
+
+//                var best_winner_columns = DataSet_group_methods.ungroup(ct, winner.best_winner_groups);
+//                var best_winner_columns_input = DataSet_group_methods.GetMainGroups(ct, best_winner_columns, file_tag: true, alphabet: true, stats: true, dimension: true, category: true, source: true, @group: true, member: true, perspective: true);
+
+//                var best_winner_columns_output_start_backwards = feature_selection_worker(ct: ct,
+//                    scoring_ClassId: scoring_ClassId,
+//                    scoring_metrics: scoring_metrics,
+//                    DataSet: DataSet,
+//                    groups: best_winner_columns_input,
+//                    preselect_all_groups: true,
+//                    //save_status: true,
+//                    base_group_indexes: null,
+//                    experiment_name: $"{experiment_name}_stage3",
+//                    //instance_id: instance_id,
+//                    //total_instances: total_instances,
+//                    //array_index_start: array_index_start,
+//                    //array_step: array_step,
+//                    //array_index_last: array_index_last,
+//                    repetitions: repetitions,
+//                    outer_cv_folds: outer_cv_folds,
+//                    outer_cv_folds_to_run: outer_cv_folds_to_run,
+//                    inner_folds: inner_folds,
+
+//                    svm_types: svm_types,
+//                    kernels: kernels,
+//                    scales: scales,
+//                    calc_ElevenPoint_thresholds: calc_ElevenPoint_thresholds,
+//                    ClassWeight_sets: ClassWeight_sets,
+
+//                    min_score_increase: 0.005,
+//                    max_iterations: 100,
+//                    limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+//                    limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last
+//                //make_outer_cv_confusion_matrices: false
+//                );
+
+//                var best_winner_columns_output_start_forwards = feature_selection_worker(ct: ct,
+//                    scoring_ClassId: scoring_ClassId,
+//                    scoring_metrics: scoring_metrics,
+//                    DataSet: DataSet,
+//                    groups: best_winner_columns_input,
+//                    preselect_all_groups: false,
+//                    //save_status: true,
+//                    base_group_indexes: null,
+//                    experiment_name: $"{experiment_name}_stage4",
+//                    //instance_id: instance_id,
+//                    //total_instances: total_instances,
+//                    //array_index_start: array_index_start,
+//                    //array_step: array_step,
+//                    //array_index_last: array_index_last,
+//                    repetitions: repetitions,
+//                    outer_cv_folds: outer_cv_folds,
+//                    outer_cv_folds_to_run: outer_cv_folds_to_run,
+//                    inner_folds: inner_folds,
+
+//                    svm_types: svm_types,
+//                    kernels: kernels,
+//                    scales: scales,
+//                    calc_ElevenPoint_thresholds: calc_ElevenPoint_thresholds,
+//                    ClassWeight_sets: ClassWeight_sets,
+
+//                    min_score_increase: 0.005,
+//                    max_iterations: 100,
+//                    limit_iteration_not_higher_than_all: limit_iteration_not_higher_than_all,
+//                    limit_iteration_not_higher_than_last: limit_iteration_not_higher_than_last
+//                //make_outer_cv_confusion_matrices: false
+//                );
+//            }
+
+//            // Check if result is approximately the same with other parameters values (i.e. variance number of repetitions, outer folds, inner folds, etc.)
+//            if (test_final_best_bias)
+//            {
+//                // stage5 ...
+
+//                // 1. test variance of kernel & scale
+//                //feature_selection_worker(DataSet, winner.groups);
+
+//                // 2. test variance of repetitions, outer-cv, inner-cv
+
+//                // 3. test variance of class weight
+
+//            }
+//        }
+
+//        internal static ((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] best_winner_groups, (index_data id, ConfusionMatrix cm, rank_score rs) best_winner_data, List<(index_data id, ConfusionMatrix cm, rank_score rs)> winners) feature_selection_worker(CancellationToken ct,
+//            int scoring_ClassId,
+//            string[] scoring_metrics,
+//            DataSet_loader DataSet,
+//            (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups,
+//            bool preselect_all_groups, // preselect all groups
+//            int[] base_group_indexes, //always include these groups
+//            string experiment_name,
+//            //int instance_id,
+//            //int total_instances,
+//            int repetitions,
+//            int outer_cv_folds,
+//            int outer_cv_folds_to_run,
+//            int inner_folds,
+
+//            routines.libsvm_svm_type[] svm_types,
+//            routines.libsvm_kernel_type[] kernels,
+//            scaling.scale_function[] scales,
+//            //(int ClassId, string ClassName)[] ClassNames,
+//            (int ClassId, double ClassWeight)[][] ClassWeight_sets,
+//            bool calc_ElevenPoint_thresholds,
+
+//            double min_score_increase = 0.005,
+//            int max_iterations = 100,
+//            int limit_iteration_not_higher_than_all = 14,
+//            int limit_iteration_not_higher_than_last = 7,
+//            //bool make_outer_cv_confusion_matrices = false,
+
+//            bool as_parallel = true)
+//        {
+//            const string _MethodName = nameof(feature_selection_worker);
+//            const bool overwrite_cache = false;
+
+//            while (await io_proxy.exists_file(true, Path.Combine(_server_folder, $@"exit.csv"), _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName))
+//            {
+//                await io_proxy.delete_file(true, ct, Path.Combine(_server_folder, $@"exit.csv"), _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//            }
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            if (ct.IsCancellationRequested) return default;
+//            base_group_indexes = base_group_indexes?.OrderBy(a => a).Distinct().ToArray();
+
+//            (index_data id, ConfusionMatrix cm, rank_score rs) best_winner_id_cm_rs = default;
+//            (index_data id, ConfusionMatrix cm, rank_score rs) last_winner_id_cm_rs = default;
+//            var all_winners_id_cm_rs = new List<(index_data id, ConfusionMatrix cm, rank_score rs)>();
+//            var all_iteration_id_cm_rs = new List<(index_data id, ConfusionMatrix cm, rank_score rs)[]>();
+//            //var cache_files_loaded = new List<string>();
+//            var feature_selection_finished = false;
+//            var iteration_index = 0;
+//            var iterations_not_higher_than_best = 0;
+//            var iterations_not_higher_than_last = 0;
+//            var previous_group_tests = new List<int[]>();
+//            var selection_excluded_groups = new List<int>();
+//            //var has_calibrated = false;
+//            var calibrate = false;
+//            var all_index_data = new List<index_data>();
+
+//            void log(string msg)
+//            {
+//                Logging.WriteLine($@"{experiment_name}, iteration: {iteration_index}, {msg}.", _ModuleName, _MethodName);
+//            }
+
+//            // todo: add rank positions (for each iteration) to the winning features summary output... 
+
+//            log($@"Total groups: {(groups?.Length ?? 0)}.");
+
+//            while (!feature_selection_finished)
+//            {
+//                if (ct.IsCancellationRequested) return default;
+//                //var last_iteration_id_cm_rs = all_iteration_id_cm_rs?.LastOrDefault();
+//                var selected_groups = last_winner_id_cm_rs.id?.id_group_array_indexes?.ToArray() ?? Array.Empty<int>();
+//                var selection_excluded_groups2 = last_winner_id_cm_rs.id != null ? selection_excluded_groups.Concat(new[] { last_winner_id_cm_rs.id.id_group_array_index }).ToArray() : selection_excluded_groups.ToArray();
+
+
+//                if (preselect_all_groups)
+//                {
+//                    selected_groups = selected_groups.Union(Enumerable.Range(0, groups.Length).ToArray()).ToArray();
+//                    calibrate = true;
+//                }
+
+//                if (base_group_indexes != null && base_group_indexes.Length > 0)
+//                {
+//                    selected_groups = selected_groups.Union(base_group_indexes).OrderBy(a => a).ToArray();
+//                }
+
+//                if (calibrate && (selected_groups == null || selected_groups.Length == 0))
+//                {
+//                    log($@"selected_groups.Length = {(selected_groups?.Length ?? 0)}.");
+//                    throw new Exception();
+//                }
+
+
+//                var group_indexes_to_test = calibrate ? new[] { -1 } : Enumerable.Range(0, groups.Length).Except(selection_excluded_groups2).ToArray();
+//                log($@"group_indexes_to_test.Length = {(group_indexes_to_test?.Length ?? 0)}.");
+//                if (group_indexes_to_test == null || group_indexes_to_test.Length == 0) { break; }
+
+//                var previous_winner_group_index = last_winner_id_cm_rs.id?.id_group_array_index;
+//                var job_group_series = cache_load.job_group_series(ct, DataSet, groups, experiment_name, iteration_index, base_group_indexes, group_indexes_to_test, selected_groups, previous_winner_group_index, selection_excluded_groups2, previous_group_tests, as_parallel);
+//                log($@"job_group_series.Length = {(job_group_series?.Length ?? 0)}.");
+//                if (job_group_series == null || job_group_series.Length == 0) { break; }
+
+//                var IndexDataContainer = cache_load.Getfeature_selection_instructions(
+//                    ct, DataSet, groups, job_group_series, experiment_name, iteration_index,
+//                    (groups?.Length ?? 0), /*instance_id, total_instances,*/ repetitions, outer_cv_folds, outer_cv_folds_to_run, inner_folds, 
+//                    svm_types, kernels, scales, ClassWeight_sets, calc_ElevenPoint_thresholds,
+//                    base_group_indexes, group_indexes_to_test, selected_groups, previous_winner_group_index, selection_excluded_groups2, previous_group_tests);
+
+//                all_index_data.AddRange(IndexDataContainer.indexes_whole);
+
+//                log($@"IndexDataContainer.indexes_whole.Length = {(IndexDataContainer?.indexes_whole?.Length ?? 0)}");//, IndexDataContainer.indexes_partition.Length = {(IndexDataContainer?.indexes_partition?.Length ?? 0)}.");
+//                if (IndexDataContainer.indexes_whole == null || IndexDataContainer.indexes_whole.Length == 0) { break; }
+
+
+//                // iteration_all_cm is a list of all merged results (i.e. the individual outer-cross-validation partitions merged)
+//                var iteration_whole_results = new List<(index_data id, ConfusionMatrix cm)>();
+
+//                // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
+//                var iteration_folder = program.GetIterationFolder(program.program_args.results_root_folder, experiment_name, iteration_index);
+
+//                //var iteration_whole_cm_filename_full = Path.Combine(iteration_folder, $@"z_{program.GetIterationFilename(IndexDataContainer.indexes_whole)}_full.cm.csv");
+//                //var iteration_whole_cm_filename_summary = Path.Combine(iteration_folder, $@"z_{program.GetIterationFilename(IndexDataContainer.indexes_whole)}_summary.cm.csv");
+//                //var iteration_partition_cm_filename_full = Path.Combine(iteration_folder, $@"x_{program.GetIterationFilename(IndexDataContainer.indexes_partition)}_full.cm.csv");
+//                //var iteration_partition_cm_filename_summary = Path.Combine(iteration_folder, $@"x_{program.GetIterationFilename(IndexDataContainer.indexes_partition)}_summary.cm.csv");
+
+//                // load cache (first try whole iteration, then try partition, then try individual work items)
+//                /*
+//                cache_load.load_cache(ct: ct,
+//                    //groups: groups,
+//                    //instance_id: instance_id,
+//                    iteration_index: iteration_index,
+//                    experiment_name: experiment_name,
+//                    wait_for_cache: false,
+//                    cache_files_already_loaded: cache_files_loaded,
+//                    iteration_cm_sd_list: iteration_whole_results,
+//                    IndexDataContainer: IndexDataContainer,
+//                    last_iteration_id_cm_rs: last_iteration_id_cm_rs,
+//                    last_winner_id_cm_rs: last_winner_id_cm_rs,
+//                    best_winner_id_cm_rs: best_winner_id_cm_rs);
+//                */
+
+//                // check if this partition is loaded....
+//                //while (IndexDataContainer.indexes_missing_partition.Any())
+//                serve_find_performance_work(ct, IndexDataContainer, iteration_whole_results, iteration_index);
+
+//                // save partition cache
+//                //{
+//                //    // 4. save CM for all groups of this hpc instance (from index start to index end) merged outer-cv results
+//                //    //var instance_id2 = instance_id;
+//                //    var iteration_partition_results = iteration_whole_results.Where((cm_sd, i) => cm_sd.id.unrolled_instance_id == instance_id).ToArray();
+//                //
+//                //    ConfusionMatrix.save(ct, iteration_partition_cm_filename_full, iteration_partition_cm_filename_summary, overwrite_cache, iteration_partition_results);
+//                //    Logging.WriteLine($"[{instance_id}/{total_instances}] {experiment_name}: Partition cache: Saved for iteration {(iteration_index)} group. Files: {iteration_partition_cm_filename_full}, {iteration_partition_cm_filename_summary}.");
+//                //}
+
+
+//                // check if all partitions are loaded....
+//                /*
+//                while (IndexDataContainer.indexes_missing_whole.Any())
+//                {
+//                    // 5. load results from other instances (into iteration_whole_results)
+
+//                    cache_load.load_cache(ct, iteration_index, experiment_name, true, cache_files_loaded, iteration_whole_results, IndexDataContainer, last_iteration_id_cm_rs, last_winner_id_cm_rs, best_winner_id_cm_rs);
+
+//                    log($@"Partition {(IndexDataContainer.indexes_missing_whole.Length > 0 ? $@"{IndexDataContainer.indexes_missing_whole.Length} incomplete" : $@"complete")} for iteration {(iteration_index)}.");
+//                }
+//                */
+
+//                //ConfusionMatrix.save(ct, iteration_whole_cm_filename_full, iteration_whole_cm_filename_summary, overwrite_cache, iteration_whole_results.ToArray());
+//                //log($@"Full cache: Saved for iteration {(iteration_index)}. Files: {iteration_whole_cm_filename_full}, {iteration_whole_cm_filename_summary}.");
+
+
+//                // 6. find winner (highest performance of any group of any class [within scoring_metrics' and 'scoring_ClassIds'])
+//                //      ensure ordering will be consistent between instances
+//                //      ensure score_data instances are created, may not have been if from cache.
+
+//                var iteration_whole_results_fixed_with_ranks = calc_ranks(ct, scoring_ClassId, scoring_metrics, iteration_whole_results, iteration_index, all_iteration_id_cm_rs, best_winner_id_cm_rs, last_winner_id_cm_rs);
+
+//                var this_iteration_winner_id_cm_rs = iteration_whole_results_fixed_with_ranks[0];
+//                all_winners_id_cm_rs.Add(this_iteration_winner_id_cm_rs);
+
+//                //var iteration_winner_group = this_iteration_winner_id_cm_rs.id.id_group_array_index > -1 ? groups[this_iteration_winner_id_cm_rs.id.id_group_array_index] : default;
+//                //var iteration_winner_GroupKey = iteration_winner_group != default ? iteration_winner_group.GroupKey : default;
+
+
+//                var num_available_groups = num_groups_available(groups, base_group_indexes, calibrate, this_iteration_winner_id_cm_rs, selection_excluded_groups);
+//                ban_poor_performance_groups(experiment_name, iteration_whole_results_fixed_with_ranks, selection_excluded_groups, num_available_groups, iteration_index, all_iteration_id_cm_rs);
+//                num_available_groups = num_groups_available(groups, base_group_indexes, calibrate, this_iteration_winner_id_cm_rs, selection_excluded_groups);
+
+
+//                feature_selection_finished = check_finished(experiment_name, min_score_increase, max_iterations, limit_iteration_not_higher_than_all, limit_iteration_not_higher_than_last, feature_selection_finished, this_iteration_winner_id_cm_rs, last_winner_id_cm_rs, num_available_groups, iteration_index, ref best_winner_id_cm_rs, ref iterations_not_higher_than_last, ref iterations_not_higher_than_best);
+//                save_iteration_summary(ct, experiment_name, IndexDataContainer, /*instance_id, total_instances,*/ iteration_folder, iteration_index, _MethodName, overwrite_cache, iteration_whole_results_fixed_with_ranks, all_winners_id_cm_rs);
+
+//                last_winner_id_cm_rs = this_iteration_winner_id_cm_rs;
+//                all_iteration_id_cm_rs.Add(iteration_whole_results_fixed_with_ranks);
+//                foreach (var iteration_whole_results_fixed_with_rank in iteration_whole_results_fixed_with_ranks /*.Skip(1)*/)
+//                {
+//                    iteration_whole_results_fixed_with_rank.cm.clear_supplemental();
+//                    iteration_whole_results_fixed_with_rank.id.clear_supplemental();
+//                }
+
+//                iteration_index++;
+//                calibrate = false;
+//                preselect_all_groups = false;
+//                previous_group_tests.AddRange(job_group_series.Select(a => a.group_indexes).ToArray());
+//            }
+
+//            log($@"Finished: all iterations of feature selection for {(groups?.Length ?? 0)} groups.");
+//            log($@"Finished: winning score = {(best_winner_id_cm_rs.rs?.fs_score ?? 0)}, total columns = {(best_winner_id_cm_rs.id?.id_num_columns ?? 0)}.");
+
+//            var best_winner_groups = best_winner_id_cm_rs.id.id_group_array_indexes.Select(group_index => groups[group_index]).ToArray();
+//            save_results_summary(ct, all_index_data.ToArray(), groups, experiment_name, all_winners_id_cm_rs, best_winner_id_cm_rs, best_winner_groups, _MethodName, all_iteration_id_cm_rs);
+
+//            await io_proxy.WriteAllLines(true, ct, Path.Combine(_server_folder, $@"exit.csv"), new[] {"exit"}, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//            return ct.IsCancellationRequested ? default :(best_winner_groups, best_winner_id_cm_rs, all_winners_id_cm_rs);
+//        }
+
+//        private static (index_data id, ConfusionMatrix cm, rank_score rs)[] calc_ranks(CancellationToken ct, int scoring_ClassId, string[] scoring_metrics, List<(index_data id, ConfusionMatrix cm)> iteration_whole_results, int iteration_index, List<(index_data id, ConfusionMatrix cm, rank_score rs)[]> all_iteration_id_cm_rs, (index_data id, ConfusionMatrix cm, rank_score rs) best_winner_id_cm_rs, (index_data id, ConfusionMatrix cm, rank_score rs) last_winner_id_cm_rs)
+//        {
+//            var iteration_whole_results_fixed = iteration_whole_results.Where(cm_sd => cm_sd.id != null &&
+//                                                                                       cm_sd.cm != null &&
+//                                                                                       cm_sd.cm.x_ClassId != null && // class id exists
+//                                                                                       cm_sd.cm.x_ClassId.Value == scoring_ClassId && // ...and is the scoring class id
+//                                                                                       cm_sd.cm.x_prediction_threshold == null && // not a threshold altered metric
+//                                                                                       cm_sd.cm.x_repetitions_index == -1 && // merged
+//                                                                                       cm_sd.cm.x_outer_cv_index == -1 && // merged
+//                                                                                       cm_sd.id.id_iteration_index == iteration_index // this iteration
+//                )
+//                .Select(a =>
+//                {
+//                    var fs_score = a.cm.metrics.GetValuesByNames(scoring_metrics).Average();
+
+//                    return ct.IsCancellationRequested ? default :(a.id, a.cm, fs_score);
+//                })
+//                .ToList();
+
+//            var iteration_whole_results_fixed_with_ranks = set_ranks(ct, iteration_whole_results_fixed, all_iteration_id_cm_rs, best_winner_id_cm_rs, last_winner_id_cm_rs);
+
+//            iteration_whole_results.Clear();
+//            iteration_whole_results_fixed.Clear();
+
+//            return ct.IsCancellationRequested ? default :iteration_whole_results_fixed_with_ranks;
+//        }
+
+//        private static int num_groups_available((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, int[] base_group_indexes, bool calibrate, (index_data id, ConfusionMatrix cm, rank_score rs) this_iteration_winner_id_cm_rs, List<int> selection_excluded_groups)
+//        {
+//            var available_groups = Enumerable.Range(0, groups.Length).ToArray();
+//            if (!calibrate)
+//            {
+//                available_groups = available_groups.Except(this_iteration_winner_id_cm_rs.id.id_group_array_indexes).ToArray();
+//                if (base_group_indexes != null && base_group_indexes.Length > 0) available_groups = available_groups.Except(base_group_indexes).ToArray();
+//                if (selection_excluded_groups != null && selection_excluded_groups.Count > 0) available_groups = available_groups.Except(selection_excluded_groups).ToArray();
+//            }
+
+//            var num_available_groups = available_groups.Length;
+//            return ct.IsCancellationRequested ? default :num_available_groups;
+//        }
+
+//        private static void ban_poor_performance_groups(string experiment_name, (index_data id, ConfusionMatrix cm, rank_score rs)[] iteration_whole_results_fixed_with_ranks, List<int> selection_excluded_groups, int num_available_groups, int iteration_index, List<(index_data id, ConfusionMatrix cm, rank_score rs)[]> all_iteration_id_cm_rs)
+//        {
+//            void log(string msg) { Logging.WriteLine($"{experiment_name}, iteration: {iteration_index}, {msg}."); }
+
+//            {
+//                    var zero_score = iteration_whole_results_fixed_with_ranks.Where(a => a.rs.fs_score == 0).Select(a => a.id.id_group_array_index).ToArray();
+//                if (zero_score.Length > 0)
+//                {
+//                    selection_excluded_groups.AddRange(zero_score);
+//                    log($@"Excluding groups with zero scores: {string.Join(", ", zero_score)}.");
+//                }
+//            }
+
+//            {
+//                const int poor_trend_iterations = 5;
+
+//                if (num_available_groups > poor_trend_iterations && iteration_index >= (poor_trend_iterations - 1))
+//                {
+//                    // take bottom 10% for last 5 (poor_trend_iterations) iterations
+//                    var bottom_indexes = all_iteration_id_cm_rs.TakeLast(poor_trend_iterations).SelectMany(a => a.Where(b => b.rs.fs_score_percentile <= 0.1).ToArray()).Select(a => a.id.id_group_array_index).ToArray();
+//                    var bottom_indexes_count = bottom_indexes.Distinct().Select(a => (group_array_index: a, count: bottom_indexes.Count(b => a == b))).ToArray();
+
+//                    // if group_array_index was in bottom 10% the last 5 (poor_trend_iterations) times, then blacklist
+//                    var always_poor = bottom_indexes_count.Where(a => a.count >= poor_trend_iterations).Select(a => a.group_array_index).ToArray();
+
+//                    if (always_poor.Length > 0)
+//                    {
+//                        selection_excluded_groups.AddRange(always_poor);
+//                        log($@"Excluding groups with always poor scores: {string.Join(", ", always_poor)}.");
+//                    }
+//                }
+//            }
+//        }
+
+//        private static bool check_finished(string experiment_name, double min_score_increase, int max_iterations, int limit_iteration_not_higher_than_all, int limit_iteration_not_higher_than_last, bool feature_selection_finished, (index_data id, ConfusionMatrix cm, rank_score rs) this_iteration_winner_id_cm_rs, (index_data id, ConfusionMatrix cm, rank_score rs) last_winner_id_cm_rs, int num_available_groups, int iteration_index, ref (index_data id, ConfusionMatrix cm, rank_score rs) best_winner_id_cm_rs, ref int iterations_not_higher_than_last, ref int iterations_not_higher_than_best)
+//        {
+//            void log(string msg)
+//            {
+//                Logging.WriteLine($"{experiment_name}, iteration: {iteration_index}, {msg}.");
+//            }
+
+//            if (!feature_selection_finished)
+//            {
+//                var score_increase_from_last = this_iteration_winner_id_cm_rs.rs.fs_score - (last_winner_id_cm_rs.rs?.fs_score ?? 0d);
+//                var score_increase_from_best = this_iteration_winner_id_cm_rs.rs.fs_score - (best_winner_id_cm_rs.rs?.fs_score ?? 0d);
+
+//                iterations_not_higher_than_last = score_increase_from_last > 0 ? 0 : iterations_not_higher_than_last + 1;
+//                iterations_not_higher_than_best = score_increase_from_best > 0 ? 0 : iterations_not_higher_than_best + 1;
+
+//                if (score_increase_from_best > 0) { best_winner_id_cm_rs = this_iteration_winner_id_cm_rs; }
+
+
+//                var not_higher_than_last_limit_reached = iterations_not_higher_than_last >= limit_iteration_not_higher_than_last;
+//                var not_higher_than_best_limit_reached = iterations_not_higher_than_best >= limit_iteration_not_higher_than_all;
+//                var groups_not_available = num_available_groups == 0;
+//                var max_iterations_reached = (max_iterations > 0) && (iteration_index + 1 >= max_iterations);
+//                var score_increase_not_reached = (min_score_increase > 0) && (score_increase_from_last < min_score_increase);
+
+
+//                if (not_higher_than_last_limit_reached) log($@"{nameof(feature_selection_finished)}: {nameof(not_higher_than_last_limit_reached)} = {not_higher_than_last_limit_reached}");
+//                if (not_higher_than_best_limit_reached) log($@"{nameof(feature_selection_finished)}: {nameof(not_higher_than_best_limit_reached)} = {not_higher_than_best_limit_reached}");
+//                if (groups_not_available) log($@"{nameof(feature_selection_finished)}: {nameof(groups_not_available)} = {groups_not_available}");
+//                if (max_iterations_reached) log($@"{nameof(feature_selection_finished)}: {nameof(max_iterations_reached)} = {max_iterations_reached}");
+//                if (score_increase_not_reached) log($@"{nameof(feature_selection_finished)}: {nameof(score_increase_not_reached)} = {score_increase_not_reached}");
+
+//                feature_selection_finished = not_higher_than_last_limit_reached || not_higher_than_best_limit_reached || groups_not_available || max_iterations_reached || score_increase_not_reached;
+//            }
+
+//            log($@"Finished iteration. {nameof(feature_selection_finished)} = {feature_selection_finished}.");
+
+//            return ct.IsCancellationRequested ? default :feature_selection_finished;
+//        }
+
+//        private static void save_iteration_summary(CancellationToken ct, string experiment_name, IndexDataContainer IndexDataContainer, /*int instance_id, int total_instances,*/ string iteration_folder, int iteration_index, string _MethodName, bool overwrite_cache, (index_data id, ConfusionMatrix cm, rank_score rs)[] iteration_whole_results_fixed_with_ranks, List<(index_data id, ConfusionMatrix cm, rank_score rs)> all_winners_id_cm_rs)
+//        {
+//            void log(string msg)
+//            {
+//                Logging.WriteLine($"{experiment_name}, iteration: {iteration_index}, {msg}.");
+//            }
+
+//            var fn = program.GetIterationFilename(IndexDataContainer.indexes_whole);
+
+
+//            {
+
+//                // Save the CM ranked for the current iteration (winner rank #0)
+//                var iteration_cm_ranks_fn1 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{fn}_full.csv");
+//                var iteration_cm_ranks_fn2 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{fn}_summary.csv");
+//                if (await io_proxy.is_file_available(true, ct, iteration_cm_ranks_fn1, false, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName) && await io_proxy.is_file_available(true, ct, iteration_cm_ranks_fn2, false, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName)) { log($@"Already saved for iteration {(iteration_index)}. Files: {iteration_cm_ranks_fn1}, {iteration_cm_ranks_fn2}."); }
+//                else
+//                {
+//                    log($@"Unavailable for iteration {(iteration_index)}. Files: {iteration_cm_ranks_fn1}, {iteration_cm_ranks_fn2}.");
+//                    ConfusionMatrix.save(ct, iteration_cm_ranks_fn1, iteration_cm_ranks_fn2, overwrite_cache, iteration_whole_results_fixed_with_ranks);
+//                    log($@"Saved for iteration {(iteration_index)}. Files: {iteration_cm_ranks_fn1}, {iteration_cm_ranks_fn2}.");
+//                }
+//            }
+
+//            {
+//                // Save the CM of winners from all iterations
+//                var winners_cm_fn1 = Path.Combine(iteration_folder, $@"winners_cm_{fn}_full.csv");
+//                var winners_cm_fn2 = Path.Combine(iteration_folder, $@"winners_cm_{fn}_summary.csv");
+//                if (await io_proxy.is_file_available(true, ct, winners_cm_fn1, false, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName) && await io_proxy.is_file_available(true, ct, winners_cm_fn2, false, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName)) { log($@"Already saved for iteration {(iteration_index)}. Files: {winners_cm_fn1}, {winners_cm_fn2}."); }
+//                else
+//                {
+//                    log($@"Unavailable for iteration {(iteration_index)}. Files: {winners_cm_fn1}, {winners_cm_fn2}.");
+//                    ConfusionMatrix.save(ct, winners_cm_fn1, winners_cm_fn2, overwrite_cache, all_winners_id_cm_rs.ToArray());
+//                    log($@"Saved for iteration {(iteration_index)}. Files: {winners_cm_fn1}, {winners_cm_fn2}.");
+//                }
+//            }
+
+//            {
+//                // Save the prediction list for misclassification analysis
+//                var prediction_list_filename = Path.Combine(iteration_folder, $@"iteration_prediction_list_{fn}.csv");
+//                if (await io_proxy.is_file_available(true, ct, prediction_list_filename, false, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName)) { log($@"Already saved for iteration {(iteration_index)}. File: {prediction_list_filename}."); }
+//                else
+//                {
+//                    log($@"Unavailable for iteration {(iteration_index)}. File: {prediction_list_filename}.");
+//                    prediction.save(ct, prediction_list_filename, iteration_whole_results_fixed_with_ranks);
+//                    log($@"Saved for iteration {(iteration_index)}. File: {prediction_list_filename}.");
+//                }
+//            }
+//        }
+
+//        private static void save_results_summary(CancellationToken ct, index_data[] all_index_data, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, string experiment_name, List<(index_data id, ConfusionMatrix cm, rank_score rs)> all_winners_id_cm_rs, (index_data id, ConfusionMatrix cm, rank_score rs) best_winner_id_cm_rs, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] best_winner_groups, string _MethodName, List<(index_data id, ConfusionMatrix cm, rank_score rs)[]> all_iteration_id_cm_rs)
+//        {
+//            var experiment_folder = program.GetIterationFolder(program.program_args.results_root_folder, experiment_name);
+
+//            var fn = program.GetIterationFilename(all_index_data);
+
+
+//            {
+//                var best_winner_fn = Path.Combine(experiment_folder, $@"best_winner_{fn}.csv");
+//                var best_winner_text = new List<string>();
+
+//                best_winner_text.Add("Feature selection iterative winner history:");
+//                best_winner_text.Add("");
+//                best_winner_text.Add($@"index,{string.Join(",", rank_score.CsvHeaderValuesArray)},{string.Join(",", index_data.CsvHeaderValuesArray)},{string.Join(",", ConfusionMatrix.CsvHeaderValuesArray)}");
+//                best_winner_text.AddRange(all_winners_id_cm_rs.Select((a, k1) => $@"{k1},{string.Join(",", a.rs?.CsvValuesArray() ?? rank_score.empty.CsvValuesArray())},{string.Join(",", a.id?.CsvValuesArray() ?? index_data.empty.CsvValuesArray())},{string.Join(",", a.cm?.CsvValuesArray() ?? ConfusionMatrix.empty.CsvValuesArray())}").ToArray());
+//                best_winner_text.Add("");
+//                best_winner_text.Add("");
+
+//                best_winner_text.Add("Last best winner score data:");
+//                best_winner_text.Add("");
+//                best_winner_text.Add($@"{string.Join(",", rank_score.CsvHeaderValuesArray)},{string.Join(",", index_data.CsvHeaderValuesArray)},{string.Join(",", ConfusionMatrix.CsvHeaderValuesArray)}");
+//                best_winner_text.Add($@"{string.Join(",", best_winner_id_cm_rs.rs?.CsvValuesArray() ?? rank_score.empty.CsvValuesArray())},{string.Join(",", best_winner_id_cm_rs.id?.CsvValuesArray() ?? index_data.empty.CsvValuesArray())},{string.Join(",", best_winner_id_cm_rs.cm?.CsvValuesArray() ?? ConfusionMatrix.empty.CsvValuesArray())}");
+//                best_winner_text.Add("");
+//                best_winner_text.Add("");
+
+//                best_winner_text.Add("Last best winner group keys:");
+//                best_winner_text.Add("");
+//                best_winner_text.Add($"index1,{string.Join(",", DataSetGroupKey.CsvHeaderValuesArray)},columns...");
+//                best_winner_text.AddRange(best_winner_groups.Select((a, k1) => $"{k1},{string.Join(",", a.GroupKey?.CsvValuesArray() ?? DataSetGroupKey.empty.CsvValuesArray())},{string.Join(";", a.columns ?? Array.Empty<int>())}").ToList());
+//                best_winner_text.Add("");
+//                best_winner_text.Add("");
+
+//                best_winner_text.Add("Last best winner group column keys:");
+//                best_winner_text.Add("");
+//                best_winner_text.Add($"index1,index2,{string.Join(",", DataSetGroupKey.CsvHeaderValuesArray)},columns...");
+//                best_winner_text.AddRange(best_winner_groups.SelectMany((a, k1) => a.GroupColumnHeaders.Select((b, k2) => $"{k1},{k2}," + string.Join(",", b.CsvValuesArray() ?? DataSetGroupKey.empty.CsvValuesArray())).ToList()).ToList());
+//                best_winner_text.Add("");
+//                best_winner_text.Add("");
+
+//                await io_proxy.WriteAllLines(true, ct, best_winner_fn, best_winner_text, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+
+//                best_winner_text.Clear();
+//                best_winner_text = null;
+//            }
+
+//            {
+//                var all_data_fn = Path.Combine(experiment_folder, $@"all_data_{fn}.csv");
+//                var all_data = all_iteration_id_cm_rs.SelectMany(a => a).ToArray();
+//                var all_data_text = new List<string>();
+//                all_data_text.Add($@"index,{string.Join(",", rank_score.CsvHeaderValuesArray)},{string.Join(",", index_data.CsvHeaderValuesArray)},{string.Join(",", ConfusionMatrix.CsvHeaderValuesArray)}");
+//                all_data_text.AddRange(all_data.Select((a, k1) => $@"{k1},{string.Join(",", a.rs?.CsvValuesArray() ?? rank_score.empty.CsvValuesArray())},{string.Join(",", a.id?.CsvValuesArray() ?? index_data.empty.CsvValuesArray())},{string.Join(",", a.cm?.CsvValuesArray() ?? ConfusionMatrix.empty.CsvValuesArray())}").ToArray());
+//                await io_proxy.WriteAllLines(true, ct, all_data_fn, all_data_text, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//                all_data_text.Clear();
+//                all_data_text = null;
+
+//                var all_data_grouped = all_data.AsParallel().AsOrdered().WithCancellation(ct).GroupBy(a => (a.id.id_group_array_index, a.id.id_repetitions, a.id.id_outer_cv_folds, a.id.id_outer_cv_folds_to_run, a.id.id_inner_cv_folds, a.id.id_experiment_name, a.id.id_total_groups, a.id.id_svm_type, a.id.id_svm_kernel, a.id.id_scale_function, a.id.id_calc_ElevenPoint_thresholds, a.id.id_selection_direction, ClassWeights: string.Join(";", a.id?.id_ClassWeights?.Select(a => $"{a.ClassId}:{a.ClassWeight}").ToArray() ?? Array.Empty<string>()))).Select(a => (key: a.Key, list: a.ToList())).ToArray();
+//                var rank_stats_fn = Path.Combine(experiment_folder, $@"rank_stats_{fn}.csv");
+//                var rank_stats_text = new List<string>();
+//                rank_stats_text.Add($@"{string.Join(",", new string[] { "list_index", "list_count", string.Join(",", DataSetGroupKey.CsvHeaderValuesArray), "id_group_array_index", "id_repetitions", "id_outer_cv_folds", "id_outer_cv_folds_to_run", "id_inner_cv_folds", "id_experiment_name", "id_total_groups", "id_svm_type", "id_svm_kernel", "id_scale_function", "id_calc_ElevenPoint_thresholds", "id_selection_direction", "id_ClassWeights" })},{string.Join(",", stats.CsvHeaderValuesArray.Select(a => $"fs_score_{a}").ToArray())},{string.Join(",", stats.CsvHeaderValuesArray.Select(a => $"fs_score_percentile_{a}").ToArray())}");
+//                rank_stats_text.AddRange(all_data_grouped.Select((a, k1) =>
+//                    {
+//                        var fs_score = new stats(a.list.Select(b => b.rs.fs_score).ToArray());
+//                        var fs_score_percentile = new stats(a.list.Select(b => b.rs.fs_score_percentile).ToArray());
+//                        //var fs_rank_index_percentile = new stats(a.list.Select(b => b.rs.fs_rank_index_percentile).ToArray());
+//                        //var fs_rank_index = new stats(a.list.Select(b => (double) b.rs.fs_rank_index).ToArray());
+//                        var gk = a.key.id_group_array_index > -1 && groups != null && groups.Length > 0 ? groups[a.key.id_group_array_index].GroupKey : DataSetGroupKey.empty;
+
+//                        return ct.IsCancellationRequested ? default :$"{k1},{a.list.Count},{string.Join(",", gk.CsvValuesArray())},{a.key.id_group_array_index},{a.key.id_repetitions},{a.key.id_outer_cv_folds},{a.key.id_outer_cv_folds_to_run},{a.key.id_inner_cv_folds},{a.key.id_experiment_name},{a.key.id_total_groups},{a.key.id_svm_type},{a.key.id_svm_kernel},{a.key.id_scale_function},{(a.key.id_calc_ElevenPoint_thresholds ? 1 : 0)},{a.key.id_selection_direction},{a.key.ClassWeights},{string.Join(",", fs_score.CsvValuesArray())},{string.Join(",", fs_score_percentile.CsvValuesArray())}";
+//                    })
+//                    .ToArray());
+//                await io_proxy.WriteAllLines(true, ct, rank_stats_fn, rank_stats_text, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+
+//                all_data = null;
+//                all_data_grouped = null;
+//                rank_stats_text.Clear();
+//                rank_stats_text = null;
+//            }
+//        }
+
+//        private static void serve_find_performance_work(CancellationToken ct, IndexDataContainer IndexDataContainer, List<(index_data id, ConfusionMatrix cm)> iteration_whole_results, int iteration_index)
+//        {
+//            const string _MethodName = nameof(serve_find_performance_work);
+
+//            var start_time = DateTime.UtcNow;
+
+//            int work_per_request = 10;
+//            var work_timeout = TimeSpan.FromMinutes(30);
+
+//            void log(string msg)
+//            {
+//                Logging.WriteLine($"server: iteration: {iteration_index}, {msg}.", _ModuleName, _MethodName);
+//            }
+
+//            var work_list = new List<(string client_id, string work_id, DateTime time_sent, index_data[] id)>();
+
+//            var server_cm_file = Path.Combine(_server_folder, $@"_server_cache_{program.GetIterationFilename(IndexDataContainer.indexes_whole)}.csv");
+
+//            if (await io_proxy.exists_file(true, server_cm_file, _ModuleName, _MethodName) && await io_proxy.file_length(server_cm_file) > 0)
+//            {
+//                var cache = cache_load.load_cache_file(ct, server_cm_file, IndexDataContainer);
+//                iteration_whole_results.AddRange(cache);
+//            }
+//            else
+//            {
+//                await io_proxy.WriteAllLines(true, ct, server_cm_file, new [] { string.Join(",",index_data.csv_header_string, ConfusionMatrix.csv_header_string) }, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//            }
+
+//            cache_load.update_missing(ct, iteration_whole_results, IndexDataContainer);
+
+//            var start_total_missing = IndexDataContainer.indexes_missing_whole.Length;
+//            var clients_waiting = Array.Empty<(string client_id, string work_id)>();
+
+//            while (!cts.IsCancellationRequested && IndexDataContainer.indexes_missing_whole.Any())
+//            {
+//                // 1. get results clients have made
+
+//                var results = wait_results(ct, TimeSpan.Zero, IndexDataContainer);
+//                log($"{nameof(results)} = {results?.Length??0}");
+//                if (results != null && results.Length > 0)
+//                {
+//                    for (var results_index = 0; results_index < results.Length; results_index++)
+//                    {
+//                        var result = results[results_index];
+//                        //var result_id = result.id_CmList.Select(a => a.id).ToArray();
+//                        //var work_list_item = work_list.FirstOrDefault(a => a.client_id == r.client_id && a.work_id == r.work_id);
+//                        if (result.id_CmList.Length > 0)
+//                        {
+//                            iteration_whole_results.AddRange(result.id_CmList);
+
+//                            await io_proxy.AppendAllLines(true, ct, server_cm_file, result.id_CmList.Select(a => string.Join(",", a.id.CsvValuesString(), a.cm.CsvValuesString())).ToArray(), _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//                        }
+//                    }
+
+//                    cache_load.update_missing(ct, iteration_whole_results, IndexDataContainer);
+//                }
+
+//                // 2. break out, if last set of results completed the whole iteration.
+//                if (!IndexDataContainer.indexes_missing_whole.Any()) break;
+
+//                // 3. timeout any work which hasn't had a response from client...
+//                if (work_timeout != TimeSpan.Zero && work_list.Count > 0)
+//                {
+//                    var now = DateTime.UtcNow;
+//                    var timed_out_work_list = work_list.Where(a => (now - a.time_sent) > work_timeout).ToArray();
+//                    if (timed_out_work_list.Length > 0)
+//                    {
+//                        work_list = work_list.Except(timed_out_work_list).ToList();
+
+//                        //for (var i = 0; i < timed_out_work_list.Length; i++)
+//                        //{
+//                            //var wtc = timed_out_work_list[i];
+//                            //var cancel_fn = Path.Combine(_server_folder, wtc.client_id, $@"cancel_{wtc.work_id}.csv");
+//                            //await io_proxy.WriteAllLines(true, ct, cancel_fn, new[] {$@"{wtc.work_id}"}, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//                        //}
+//                    }
+
+//                }
+
+//                // 4. send any available clients work to do...
+//                var new_clients = wait_client(ct, TimeSpan.Zero);
+//                log($"{nameof(new_clients)} = {new_clients?.Length??0}");
+
+//                if (new_clients != null && new_clients.Length > 0)
+//                {
+//                    clients_waiting = clients_waiting.Concat(new_clients).ToArray();
+//                    var awaiting = work_list.SelectMany(a => a.id).ToArray();
+//                    var not_awaiting = IndexDataContainer.indexes_missing_whole.Except(awaiting).ToArray();
+
+//                    if ( /*clients_waiting != null && */clients_waiting.Length > 0 && not_awaiting.Length > 0)
+//                    {
+//                        var work_to_client = clients_waiting.Select(a => (a.client_id, a.work_id, id_list: new List<index_data>())).ToArray();
+
+//                        var max_work = not_awaiting.Length <= (work_per_request * clients_waiting.Length) ? not_awaiting.Length : (work_per_request * clients_waiting.Length);
+
+//                        var i = 0;
+//                        var client_index = 0;
+//                        while (i < max_work)
+//                        {
+//                            if (work_to_client[client_index].id_list.Count < work_per_request) { work_to_client[client_index].id_list.Add(not_awaiting[i]); }
+
+//                            i++;
+//                            client_index = client_index == clients_waiting.Length - 1 ? 0 : client_index + 1;
+//                        }
+
+//                        work_to_client = work_to_client.Where(a => a.id_list.Count > 0).ToArray();
+//                        clients_waiting = clients_waiting.Except(work_to_client.Select(a => (a.client_id, a.work_id)).ToArray()).ToArray();
+
+//                        // note: if this causes i/o bottleneck, could store all responses in one file instead...
+//                        for (var work_to_client_index = 0; work_to_client_index < work_to_client.Length; work_to_client_index++)
+//                        {
+//                            var wtc = work_to_client[work_to_client_index];
+//                            var wtc_fn = Path.Combine(_server_folder, wtc.client_id, $@"server_response_{wtc.work_id}.csv");
+//                            var wtc_lines = new string[wtc.id_list.Count + 1];
+//                            wtc_lines[0] = index_data.csv_header_string;
+//                            for (var id_list_index = 0; id_list_index < wtc.id_list.Count; id_list_index++) { wtc_lines[id_list_index + 1] = wtc.id_list[id_list_index].CsvValuesString(); }
+
+//                            await io_proxy.WriteAllLines(true, ct, wtc_fn, wtc_lines, _CallerMethodName: _ModuleName, _CallerModuleName: _ModuleName);
+//                            work_list.Add((wtc.client_id, wtc.work_id, DateTime.UtcNow, wtc.id_list.ToArray()));
+//                        }
+//                    }
+//                }
+
+//                // 5. print time remaining...
+//                routines.print_eta(IndexDataContainer.indexes_loaded_whole.Length, start_total_missing /*IndexDataContainer.indexes_whole.Length*/, start_time, _ModuleName, _MethodName);
+
+//                // 6. pause delay until retry
+//                await io_proxy.wait(ct, 5, 5, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+//            }
+//        }
+
+
+//        internal static (index_data id, ConfusionMatrix cm, rank_score rs)[] set_ranks(CancellationToken ct, List<(index_data id, ConfusionMatrix cm, double fs_score)> id_cm_score, List<(index_data id, ConfusionMatrix cm, rank_score rs)[]> all_iteration_id_cm_rs, (index_data id, ConfusionMatrix cm, rank_score rs) best_score, (index_data id, ConfusionMatrix cm, rank_score rs) last_score, bool as_parallel = true)
+//        {
+//            if (ct.IsCancellationRequested) return default;
+
+//            var last_iteration_id_cm_rs = all_iteration_id_cm_rs?.LastOrDefault();
+
+//            var all_iteration_id_cm_rs_flat = all_iteration_id_cm_rs != null && all_iteration_id_cm_rs.Count > 0 ? (as_parallel ? all_iteration_id_cm_rs.AsParallel().AsOrdered().WithCancellation(ct).SelectMany(a => a).ToArray() : all_iteration_id_cm_rs.SelectMany(a => a).ToArray()) : null;
+
+//            var all_iteration_id_flat = all_iteration_id_cm_rs_flat?.Select(a => a.id) /*.OrderBy(a=>a.group_array_index)*/.ToArray();
+
+//            //var last_winner_id_cm_rs = last_iteration_id_cm_rs?.FirstOrDefault();
+
+//            // ensure consistent reordering (i.e. for items with equal tied scores when processing may have been done out of order)
+//            id_cm_score = id_cm_score.OrderBy(a => a.id.id_group_array_index).ThenBy(a => a.cm.x_ClassId).ToList();
+
+//            // order descending by score
+//            id_cm_score = id_cm_score.OrderByDescending((a => a.fs_score)).ThenBy(a => a.id.id_num_columns).ToList();
+
+//            // unexpected but possible edge case, if winner is the same as last time (due to random variance), then take the next group instead.
+//            if (id_cm_score[0].id.id_group_array_index == (last_iteration_id_cm_rs?.FirstOrDefault().id.id_group_array_index ?? -1) && id_cm_score.Count > 1)
+//            {
+//                var ix0 = id_cm_score[0];
+//                var ix1 = id_cm_score[1];
+
+//                id_cm_score[0] = ix1;
+//                id_cm_score[1] = ix0;
+//            }
+
+
+//            var max_rank = id_cm_score.Count - 1;
+
+//            var ranks_list = Enumerable.Range(0, id_cm_score.Count).ToArray();
+//            var ranks_list_scaling = new scaling(ranks_list) { rescale_scale_min = 0, rescale_scale_max = 1 };
+
+//            var scores_list = id_cm_score.Select(a => a.fs_score).ToArray();
+//            var scores_list_scaling = new scaling(scores_list) { rescale_scale_min = 0, rescale_scale_max = 1 };
+
+//            // make rank_data instances, which track the ranks (performance) of each group over time, to allow for optimisation decisions and detection of variant features
+
+//            var idso = new index_data.index_data_search_options()
+//            {
+//                iteration_index = false, group_array_index = true, total_groups = true, selection_direction = false, calc_ElevenPoint_thresholds = true, svm_type = true, svm_kernel = true, scale_function = true, 
+//                repetitions = true, outer_cv_folds = true, outer_cv_folds_to_run = true, inner_cv_folds = true, GroupKey = true, experiment_name = true, num_groups = false, num_columns = false, group_array_indexes = false, 
+//                column_array_indexes = false, ClassWeights = true, group_folder = false
+//            };
+
+//            //if (all_iteration_id_flat != null && last_group == null)
+//            //{
+//            //    var f = all_iteration_id_flat.First(b => b.group_array_index == a.id.group_array_index);
+//            //    Console.WriteLine($@"{a.id.iteration_index} == {f.iteration_index}             " + (a.id.iteration_index == f.iteration_index));
+//            //    Console.WriteLine($@"{a.id.group_array_index} == {f.group_array_index}         " + (a.id.group_array_index == f.group_array_index));
+//            //    Console.WriteLine($@"{a.id.total_groups} == {f.total_groups}                   " + (a.id.total_groups == f.total_groups));
+//            //    Console.WriteLine($@"{a.id.selection_direction} == {f.selection_direction}     " + (a.id.selection_direction == f.selection_direction));
+//            //    Console.WriteLine($@"{a.id.calc_ElevenPoint_thresholds} == {f.calc_ElevenPoint_thresholds}     " + (a.id.calc_ElevenPoint_thresholds == f.calc_ElevenPoint_thresholds));
+//            //    Console.WriteLine($@"{a.id.svm_type} == {f.svm_type}                           " + (a.id.svm_type == f.svm_type));
+//            //    Console.WriteLine($@"{a.id.svm_kernel} == {f.svm_kernel}                       " + (a.id.svm_kernel == f.svm_kernel));
+//            //    Console.WriteLine($@"{a.id.scale_function} == {f.scale_function}               " + (a.id.scale_function == f.scale_function));
+//            //    Console.WriteLine($@"{a.id.repetitions} == {f.repetitions}                     " + (a.id.repetitions == f.repetitions));
+//            //    Console.WriteLine($@"{a.id.outer_cv_folds} == {f.outer_cv_folds}               " + (a.id.outer_cv_folds == f.outer_cv_folds));
+//            //    Console.WriteLine($@"{a.id.outer_cv_folds_to_run} == {f.outer_cv_folds_to_run} " + (a.id.outer_cv_folds_to_run == f.outer_cv_folds_to_run));
+//            //    Console.WriteLine($@"{a.id.inner_cv_folds} == {f.inner_cv_folds}               " + (a.id.inner_cv_folds == f.inner_cv_folds));
+//            //    Console.WriteLine($@"{a.id.GroupKey} == {f.GroupKey}                         " + (a.id.GroupKey == f.GroupKey));
+//            //    Console.WriteLine($@"{a.id.experiment_name} == {f.experiment_name}             " + (a.id.experiment_name == f.experiment_name));
+//            //    Console.WriteLine($@"{a.id.num_groups} == {f.num_groups}                       " + (a.id.num_groups == f.num_groups));
+//            //    Console.WriteLine($@"{a.id.num_columns} == {f.num_columns}                     " + (a.id.num_columns == f.num_columns));
+//            //    Console.WriteLine($@"{a.id.group_array_indexes} == {f.group_array_indexes}     " + (a.id.group_array_indexes == f.group_array_indexes));
+//            //    Console.WriteLine($@"{a.id.column_array_indexes} == {f.column_array_indexes}   " + (a.id.column_array_indexes == f.column_array_indexes));
+//            //    Console.WriteLine($@"{a.id.ClassWeights} == {f.ClassWeights}                 " + (a.id.ClassWeights == f.ClassWeights));
+//            //    throw new Exception();
+//            //}
+
+//            var id_cm_rs = as_parallel
+//                ? id_cm_score
+//                    //.AsParallel()
+//                    //.AsOrdered()
+//                    //.WithCancellation(ct)
+//                    .Select((a, index) =>
+//                    {
+//                        var last_group = all_iteration_id_flat != null ? index_data.find_last_reference(all_iteration_id_flat, a.id, idso) : null;
+//                        var last_group_rs = last_group != null ? all_iteration_id_cm_rs_flat?.LastOrDefault(c => c.id == last_group) ?? default : default;
+
+//                        var rs = new rank_score() { group_array_index = a.id.id_group_array_index, iteration_index = a.id.id_iteration_index, fs_rank_index = max_rank - index, fs_max_rank_index = max_rank, fs_rank_index_percentile = ranks_list_scaling.scale(max_rank - index, scaling.scale_function.rescale), fs_score = a.fs_score, fs_score_percentile = scores_list_scaling.scale(a.fs_score, scaling.scale_function.rescale), fs_score_change_best = a.fs_score - (best_score.rs?.fs_score ?? 0), fs_score_change_last = a.fs_score - (last_score.rs?.fs_score ?? 0), fs_score_change_group = last_group_rs.rs != null ? a.fs_score - (last_group_rs.rs?.fs_score ?? 0) : 0, };
+
+//                        return ct.IsCancellationRequested ? default :(a.id, a.cm, rs);
+//                    })
+//                    .ToArray()
+//                : id_cm_score.Select((a, index) =>
+//                    {
+//                        var last_group = all_iteration_id_flat != null ? index_data.find_last_reference(all_iteration_id_flat, a.id, idso) : null;
+//                        var last_group_rs = last_group != null ? all_iteration_id_cm_rs_flat?.LastOrDefault(c => c.id == last_group) ?? default : default;
+
+//                        var rs = new rank_score() { group_array_index = a.id.id_group_array_index, iteration_index = a.id.id_iteration_index, fs_rank_index = max_rank - index, fs_max_rank_index = max_rank, fs_rank_index_percentile = ranks_list_scaling.scale(max_rank - index, scaling.scale_function.rescale), fs_score = a.fs_score, fs_score_percentile = scores_list_scaling.scale(a.fs_score, scaling.scale_function.rescale), fs_score_change_best = a.fs_score - (best_score.rs?.fs_score ?? 0), fs_score_change_last = a.fs_score - (last_score.rs?.fs_score ?? 0), fs_score_change_group = last_group_rs.rs != null ? a.fs_score - (last_group_rs.rs?.fs_score ?? 0) : 0, };
+
+//                        return ct.IsCancellationRequested ? default :(a.id, a.cm, rs);
+//                    })
+//                    .ToArray();
+
+//            return ct.IsCancellationRequested ? default :id_cm_rs;
+//        }
+
+
+//        internal static (string client_id, string work_id)[] wait_client(CancellationToken ct, TimeSpan timeout)
+//        {
+//            const string _MethodName = nameof(wait_client);
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            var sw1 = Stopwatch.StartNew();
+//            while (!cts.IsCancellationRequested && (timeout == TimeSpan.Zero || sw1.Elapsed <= timeout))
+//            {
+//                if (!await io_proxy.exists_directory(true, _server_folder, _ModuleName, _MethodName))
+//                {
+//                    if (timeout == TimeSpan.Zero) return null;
+//                    var time_left = timeout - sw1.Elapsed;
+//                    if (time_left > TimeSpan.Zero) await io_proxy.wait(ct, 10 <= time_left.TotalSeconds ? 10 : (int)Math.Floor(time_left.TotalSeconds), 20 <= time_left.TotalSeconds ? 20 : (int)Math.Floor(time_left.TotalSeconds), _ModuleName, _MethodName);
+//                }
+
+//                var client_request_files = await io_proxy.GetFiles(true, ct, _server_folder, "client_request_*.csv", SearchOption.AllDirectories, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+
+//                if (client_request_files == null || client_request_files.Length == 0)
+//                {
+//                    if (timeout == TimeSpan.Zero) return null;
+//                    var time_left = timeout - sw1.Elapsed;
+//                    if (time_left > TimeSpan.Zero) await io_proxy.wait(ct, 10 <= time_left.TotalSeconds ? 10 : (int)Math.Floor(time_left.TotalSeconds), 20 <= time_left.TotalSeconds ? 20 : (int)Math.Floor(time_left.TotalSeconds), _ModuleName, _MethodName);
+//                }
+
+//                var client_requests = client_request_files.Select(a =>
+//                    {
+//                        var client_id = Path.GetDirectoryName(a).Split(new char[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+//                        var work_id = Path.GetFileNameWithoutExtension(a).Split('_', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+
+//                        return ct.IsCancellationRequested ? default :(client_id, work_id);
+//                    })
+//                    .ToArray();
+
+//                for (var i = 0; i < client_request_files.Length; i++) { await io_proxy.delete_file(true, ct, client_request_files[i], _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName); }
+
+//                return ct.IsCancellationRequested ? default :client_requests;
+//            }
+
+//            return null;
+//        }
+
+//        internal static (string client_id, string work_id, (index_data id, ConfusionMatrix cm)[] id_CmList)[] wait_results(CancellationToken ct, TimeSpan timeout, IndexDataContainer IndexDataContainer, bool as_parallel = true)
+//        {
+//            const string _MethodName = nameof(wait_results);
+//            Logging.WriteLine($"{_MethodName}()", _ModuleName, _MethodName);
+
+//            if (cts == null) cts = new CancellationTokenSource();
+//            var sw1 = Stopwatch.StartNew();
+//            while (!cts.IsCancellationRequested && (timeout == TimeSpan.Zero || sw1.Elapsed <= timeout))
+//            {
+//                if (!await io_proxy.exists_directory(true, _server_folder, _ModuleName, _MethodName))
+//                {
+//                    if (timeout == TimeSpan.Zero) return null;
+//                    var time_left = timeout - sw1.Elapsed;
+//                    if (time_left > TimeSpan.Zero) await io_proxy.wait(ct, 10 <= time_left.TotalSeconds ? 10 : (int)Math.Floor(time_left.TotalSeconds), 20 <= time_left.TotalSeconds ? 20 : (int)Math.Floor(time_left.TotalSeconds), _ModuleName, _MethodName);
+//                }
+
+//                var client_request_files = await io_proxy.GetFiles(true, ct, _server_folder, "client_results_*.csv", SearchOption.AllDirectories, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+
+//                if (client_request_files == null || client_request_files.Length == 0)
+//                {
+//                    if (timeout == TimeSpan.Zero) return null;
+//                    var time_left = timeout - sw1.Elapsed;
+//                    if (time_left > TimeSpan.Zero) await io_proxy.wait(ct, 10 <= time_left.TotalSeconds ? 10 : (int)Math.Floor(time_left.TotalSeconds), 20 <= time_left.TotalSeconds ? 20 : (int)Math.Floor(time_left.TotalSeconds), _ModuleName, _MethodName);
+//                }
+
+//                var client_requests = as_parallel
+//                    ? client_request_files
+//                        .AsParallel()
+//                        .AsOrdered()
+//                        .Select(a =>
+//                        {
+//                            var client_id = Path.GetDirectoryName(a).Split(new char[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+//                            var work_id = Path.GetFileNameWithoutExtension(a).Split('_', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+//                            var CmList = cache_load.load_cache_file(ct, a, IndexDataContainer); //ConfusionMatrix.load(ct, a, as_parallel: as_parallel);
+//                            return ct.IsCancellationRequested ? default :(client_id, work_id, CmList);
+//                        })
+//                        .ToArray()
+//                    : client_request_files
+//                        .Select(a =>
+//                        {
+//                            var client_id = Path.GetDirectoryName(a).Split(new char[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+//                            var work_id = Path.GetFileNameWithoutExtension(a).Split('_', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+//                            var CmList = cache_load.load_cache_file(ct, a, IndexDataContainer); //ConfusionMatrix.load(ct, a, as_parallel: as_parallel);
+//                            return ct.IsCancellationRequested ? default :(client_id, work_id, CmList);
+//                        })
+//                        .ToArray();
+
+//                for (var i = 0; i < client_request_files.Length; i++) { await io_proxy.delete_file(true, ct, client_request_files[i], _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName); }
+
+//                return ct.IsCancellationRequested ? default :client_requests;
+//            }
+
+//            return null;
+//        }
+//    }
+//}
+

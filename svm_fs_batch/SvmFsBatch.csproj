@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="logic\fs_client - Copy.cs.txt" />
+    <None Remove="logic\fs_server - Copy.cs.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="logic\fs_client - Copy.cs.txt" />
+    <Compile Include="logic\fs_server - Copy.cs.txt" />
+  </ItemGroup>
+
+</Project>

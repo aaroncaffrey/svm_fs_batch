@@ -3,346 +3,282 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 
-namespace svm_fs_batch
+namespace SvmFsBatch
 {
-    internal static class libsvm
+    internal static class Libsvm
     {
-        public const string module_name = nameof(libsvm);
+        public const string ModuleName = nameof(Libsvm);
 
-        internal static (string cmd_line, string stdout, string stderr) train(CancellationTokenSource cts, string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int class_id, double weight)[] class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = true)
+        internal static async Task<(string cmd_line, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
-            const string method_name = nameof(train);
+            if (ct.IsCancellationRequested) return default;
 
-            (string key, string value)[] get_params()//string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
+            const string methodName = nameof(TrainAsync);
+
+            (string key, string value)[] GetParams()
             {
                 try
                 {
-                    return new (string key, string value)[]
+                    return ct.IsCancellationRequested ? default :new (string key, string value)[]
                     {
-                    (nameof(libsvm_train_exe_file), libsvm_train_exe_file), (nameof(train_file), train_file), (nameof(model_out_file), model_out_file), (nameof(stdout_file), stdout_file), (nameof(stderr_file), stderr_file), (nameof(cost), cost?.ToString() ?? ""), (nameof(gamma), gamma?.ToString() ?? ""), (nameof(epsilon), epsilon?.ToString() ?? ""), (nameof(coef0), coef0?.ToString() ?? ""), (nameof(degree), degree?.ToString() ?? ""), (nameof(class_weights), class_weights != null ? string.Join(";", class_weights.Select(a => $@"{a.class_id}={a.weight}").ToList()) : ""), (nameof(svm_type), svm_type.ToString()), (nameof(svm_kernel), svm_kernel.ToString()), (nameof(inner_cv_folds), inner_cv_folds?.ToString() ?? ""), (nameof(probability_estimates), probability_estimates.ToString()), (nameof(shrinking_heuristics), shrinking_heuristics.ToString()), (nameof(process_max_time), process_max_time?.ToString() ?? ""), (nameof(quiet_mode), quiet_mode.ToString()), (nameof(memory_limit_mb), memory_limit_mb.ToString()), (nameof(log), log.ToString())
+                        (nameof(libsvmTrainExeFile), libsvmTrainExeFile), (nameof(trainFile), trainFile),
+                        (nameof(modelOutFile), modelOutFile), (nameof(stdoutFile), stdoutFile),
+                        (nameof(stderrFile), stderrFile), (nameof(cost), cost?.ToString() ?? ""),
+                        (nameof(gamma), gamma?.ToString() ?? ""), (nameof(epsilon), epsilon?.ToString() ?? ""),
+                        (nameof(coef0), coef0?.ToString() ?? ""), (nameof(degree), degree?.ToString() ?? ""),
+                        (nameof(classWeights), classWeights != null
+                            ? string.Join(";", classWeights.Select(a => $@"{a.ClassId}={a.weight}").ToList())
+                            : ""),
+                        (nameof(svmType), svmType.ToString()), (nameof(svmKernel), svmKernel.ToString()),
+                        (nameof(innerCvFolds), innerCvFolds?.ToString() ?? ""),
+                        (nameof(probabilityEstimates), probabilityEstimates.ToString()),
+                        (nameof(shrinkingHeuristics), shrinkingHeuristics.ToString()),
+                        (nameof(processMaxTime), processMaxTime?.ToString() ?? ""),
+                        (nameof(quietMode), quietMode.ToString()),
+                        (nameof(memoryLimitMb), memoryLimitMb.ToString()), (nameof(log), log.ToString())
                     };
                 }
-                catch (Exception) { }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-                return Array.Empty<(string key, string value)>();
+                return ct.IsCancellationRequested ? default :Array.Empty<(string key, string value)>();
             }
 
-            string get_params_str()//string libsvm_train_exe_file, string train_file, string model_out_file, string stdout_file = null, string stderr_file = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, List<(int class_id, double weight)> class_weights = null, routines.libsvm_svm_type svm_type = routines.libsvm_svm_type.c_svc, routines.libsvm_kernel_type svm_kernel = routines.libsvm_kernel_type.rbf, int? inner_cv_folds = null, bool probability_estimates = false, bool shrinking_heuristics = true, TimeSpan? process_max_time = null, bool quiet_mode = true, int memory_limit_mb = 1024, bool log = false)
+            string GetParamsStr()
             {
-                //try { return string.Join(", ", get_params(libsvm_train_exe_file, train_file, model_out_file, stdout_file, stderr_file, cost, gamma, epsilon, coef0, degree, class_weights, svm_type, svm_kernel, inner_cv_folds, probability_estimates, shrinking_heuristics, process_max_time, quiet_mode, memory_limit_mb, log).Select(a => $@"{a.key}=""{a.value}""").ToList()); } catch (Exception) { }
-                try { return string.Join(", ", get_params().Select(a => $@"{a.key}=""{a.value}""").ToList()); } catch (Exception) { }
+                try { return ct.IsCancellationRequested ? default :string.Join(", ", GetParams().Select(a => $@"{a.key}=""{a.value}""").ToList()); }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-                return "";
+                return ct.IsCancellationRequested ? default :"";
             }
 
-            if (cts.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) return default;
 
-            //libsvm_train_exe_file = (libsvm_train_exe_file);
-            //train_file = (train_file);
-            //model_out_file = (model_out_file);
-            //stdout_file = (stdout_file);
-            //stderr_file = (stderr_file);
+            var libsvmParams = new List<string>();
+            if (quietMode) libsvmParams.Add("-q");
+            if (memoryLimitMb != 100) libsvmParams.Add($@"-m {memoryLimitMb}");
+            if (probabilityEstimates) libsvmParams.Add($@"-b {(probabilityEstimates ? "1" : "0")}");
+            if (svmType != Routines.LibsvmSvmType.CSvc) libsvmParams.Add($@"-s {(int) svmType}");
+            if (svmKernel != Routines.LibsvmKernelType.Rbf) libsvmParams.Add($@"-t {(int) svmKernel}");
+            if (innerCvFolds != null && innerCvFolds >= 2) libsvmParams.Add($@"-v {innerCvFolds}");
+            if (cost != null) libsvmParams.Add($@"-c {cost.Value}");
+            if (gamma != null && svmKernel != Routines.LibsvmKernelType.Linear) libsvmParams.Add($@"-g {gamma.Value}");
+            if (epsilon != null && (svmType == Routines.LibsvmSvmType.EpsilonSvr || svmType == Routines.LibsvmSvmType.NuSvr)) libsvmParams.Add($@"-p {epsilon.Value}");
+            if (coef0 != null && (svmKernel == Routines.LibsvmKernelType.Sigmoid || svmKernel == Routines.LibsvmKernelType.Polynomial)) libsvmParams.Add($@"-r {coef0.Value}");
+            if (degree != null && svmKernel == Routines.LibsvmKernelType.Polynomial) libsvmParams.Add($@"-d {degree.Value}");
 
-            //var quiet_mode = true;
-            //var memory_limit_mb = 1024;
-
-            var libsvm_params = new List<string>();
-
-
-            if (quiet_mode) { libsvm_params.Add("-q"); }
-
-            if (memory_limit_mb != 100) { libsvm_params.Add($@"-m {memory_limit_mb}"); }
-
-            if (probability_estimates) { libsvm_params.Add($@"-b {(probability_estimates ? "1" : "0")}"); }
-
-            if (svm_type != routines.libsvm_svm_type.c_svc) { libsvm_params.Add($@"-s {(int)svm_type}"); }
-
-
-            if (svm_kernel != routines.libsvm_kernel_type.rbf) { libsvm_params.Add($@"-t {(int)svm_kernel}"); }
-
-
-            if (inner_cv_folds != null && inner_cv_folds >= 2) { libsvm_params.Add($@"-v {inner_cv_folds}"); }
-
-            if (cost != null) { libsvm_params.Add($@"-c {cost.Value}"); }
-
-            if (gamma != null && svm_kernel != routines.libsvm_kernel_type.linear) { libsvm_params.Add($@"-g {gamma.Value}"); }
-
-            if (epsilon != null && (svm_type == routines.libsvm_svm_type.epsilon_svr || svm_type == routines.libsvm_svm_type.nu_svr)) { libsvm_params.Add($@"-p {epsilon.Value}"); }
-
-            if (coef0 != null && (svm_kernel == routines.libsvm_kernel_type.sigmoid || svm_kernel == routines.libsvm_kernel_type.polynomial)) { libsvm_params.Add($@"-r {coef0.Value}"); }
-
-            if (degree != null && svm_kernel == routines.libsvm_kernel_type.polynomial) { libsvm_params.Add($@"-d {degree.Value}"); }
-
-            if (class_weights != null && class_weights.Length > 0)
+            if (classWeights != null && classWeights.Length > 0)
             {
-                class_weights = class_weights.OrderBy(a => a.class_id).ToArray();
+                classWeights = classWeights.OrderBy(a => a.ClassId).ToArray();
 
-                for (var class_weight_index = 0; class_weight_index < class_weights.Length; class_weight_index++)
+                for (var classWeightIndex = 0; classWeightIndex < classWeights.Length; classWeightIndex++)
                 {
-                    var class_weight = class_weights[class_weight_index];
-                    libsvm_params.Add($@"-w{class_weight.class_id} {class_weight.weight}");
+                    var classWeight = classWeights[classWeightIndex];
+                    libsvmParams.Add($@"-w{classWeight.ClassId} {classWeight.weight}");
                 }
             }
 
-            if (!shrinking_heuristics) { libsvm_params.Add($@"-h {(shrinking_heuristics ? "1" : "0")}"); }
+            if (!shrinkingHeuristics) libsvmParams.Add($@"-h {(shrinkingHeuristics ? "1" : "0")}");
+            libsvmParams = libsvmParams.OrderBy(a => a).ToList();
+            var trainFileParam = trainFile;
+            var modelFileParam = modelOutFile;
+            if (!string.IsNullOrWhiteSpace(trainFile)) libsvmParams.Add($@"{trainFileParam}");
+            if (!string.IsNullOrWhiteSpace(modelOutFile) && (innerCvFolds == null || innerCvFolds <= 1)) libsvmParams.Add($@"{modelFileParam}");
+            var wd = Path.GetDirectoryName(trainFile);
 
-            libsvm_params = libsvm_params.OrderBy(a => a).ToList();
-
-            var train_file_param = train_file;
-            var model_file_param = model_out_file;
-
-            if (!String.IsNullOrWhiteSpace(train_file)) { libsvm_params.Add($@"{train_file_param}"); }
-
-            if (!String.IsNullOrWhiteSpace(model_out_file) && (inner_cv_folds == null || inner_cv_folds <= 1)) { libsvm_params.Add($@"{model_file_param}"); }
-
-            var wd = Path.GetDirectoryName(train_file);
-
-            var args = string.Join(" ", libsvm_params);
-
-            var start = new ProcessStartInfo()
-            {
-                FileName = libsvm_train_exe_file,
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                //WorkingDirectory = wd ?? "" // Path.GetDirectoryName(exe_file) ?? ""
-            };
-
-            var cmd_line = string.Join(" ", libsvm_train_exe_file, args);
-
-            //var priority_boost_enabled = false;
-            //var priority_class = ProcessPriorityClass.AboveNormal;
-            //if (inner_cv_folds == null || inner_cv_folds < 2) { priority_class = ProcessPriorityClass.High; }
-
-            var retry_index = -1;
-            var retry = false;
-            do
-            {
-                retry_index++;
-
-                try
-                {
-                    if (cts.IsCancellationRequested) return default;
-
-                    using var process = Process.Start(start);
-
-                    if (process == null)
-                    {
-                        retry = true;
-                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
-                        continue;
-                    }
-
-                    if (log) { io_proxy.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", module_name, method_name); }
-
-                    //try { process.PriorityBoostEnabled = priority_boost_enabled; } catch (Exception e) { io_proxy.log_exception(e, "", module_name, method_name); }
-                    //try { process.PriorityClass = priority_class; } catch (Exception e) { io_proxy.log_exception(e, "", module_name, method_name); }
-
-                    //var stdout = process.StandardOutput.ReadToEndAsync();
-                    //var stderr = process.StandardError.ReadToEndAsync();
-
-                    var exited = process.WaitForExit((int)Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
-
-                    if (!exited)
-                    {
-                        try { process.Kill(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
-                        retry = true;
-
-                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
-                        continue;
-                    }
-
-                    var stdout_result = process?.StandardOutput?.ReadToEnd() ?? "";
-                    var stderr_result = process?.StandardError?.ReadToEnd() ?? "";
-
-                    //var tasks = new List<Task>() { stdout, stderr };
-                    //try { Task.WaitAll(tasks.ToArray<Task>()); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
-                    if (log) { io_proxy.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", module_name, method_name); }
-
-                    var exit_code = process.ExitCode;
-
-                    //var stdout_result = "";
-                    //var stderr_result = "";
-                    //try { stdout_result = stdout?.Result; } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-                    //try { stderr_result = stderr?.Result; } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
-                    if (!string.IsNullOrWhiteSpace(stdout_file) && !string.IsNullOrWhiteSpace(stdout_result)) { io_proxy.AppendAllText(cts, stdout_file, stdout_result); }
-
-                    if (!string.IsNullOrWhiteSpace(stderr_file) && !string.IsNullOrWhiteSpace(stderr_result)) { io_proxy.AppendAllText(cts, stderr_file, stderr_result); }
-
-                    if (exit_code == 0) { return (cmd_line, stdout_result, stderr_result); }
-                    else
-                    {
-                        retry = true;
-                        io_proxy.WriteLine("libsvm train failed to run");
-                        if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
-                        if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
-
-                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
-                        continue;
-                    }
-                }
-                catch (Exception e1)
-                {
-                    retry = true;
-
-                    io_proxy.log_exception(e1, get_params_str(), module_name, method_name);
-
-                    try { io_proxy.wait(cts, 25, 50); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), module_name, method_name); }
-                }
-            } while (retry && retry_index < 1_000_000);
-
-            return (cmd_line, null, null);
-        }
-
-        internal static (string cmd_line, string stdout, string stderr) predict(CancellationTokenSource cts, string libsvm_predict_exe_file, string test_file, string model_file, string predictions_out_file, bool probability_estimates, string stdout_file = null, string stderr_file = null, bool log = true)
-        {
-            const string method_name = nameof(predict);
-
-            (string key, string value)[] get_params()
-            {
-                try { return new [] { (nameof(libsvm_predict_exe_file), libsvm_predict_exe_file), (nameof(test_file), test_file), (nameof(model_file), model_file), (nameof(predictions_out_file), predictions_out_file), (nameof(stdout_file), stdout_file), (nameof(stderr_file), stderr_file), (nameof(log), log.ToString()) }; } catch (Exception) { }
-
-                return Array.Empty<(string key, string value)>();
-            }
-
-            string get_params_str()
-            {
-                try { return string.Join(", ", get_params()); } catch (Exception) { }
-
-                return "";
-            }
-
-            if (cts.IsCancellationRequested) return default;
-
-            var libsvm_params = new List<string>();
-
-            if (probability_estimates) { libsvm_params.Add($@"-b 1"); }
-
-            libsvm_params = libsvm_params.OrderBy(a => a).ToList();
-
-            var test_file_param = test_file;
-            var model_file_param = model_file;
-            var prediction_file_param = predictions_out_file;
-
-            if (!String.IsNullOrWhiteSpace(test_file)) { libsvm_params.Add($@"{test_file_param}"); }
-
-            if (!String.IsNullOrWhiteSpace(model_file)) { libsvm_params.Add($@"{model_file_param}"); }
-
-            if (!String.IsNullOrWhiteSpace(predictions_out_file)) { libsvm_params.Add($@"{prediction_file_param}"); }
-
-            var args = String.Join(" ", libsvm_params);
+            var args = string.Join(" ", libsvmParams);
 
             var start = new ProcessStartInfo
             {
-                FileName = libsvm_predict_exe_file,
+                FileName = libsvmTrainExeFile,
                 Arguments = args,
                 UseShellExecute = false,
                 CreateNoWindow = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                RedirectStandardInput = true,
-                //WorkingDirectory = Path.GetDirectoryName(exe_file) ?? ""
+                RedirectStandardInput = true
             };
 
-            var cmd_line = string.Join(" ", libsvm_predict_exe_file, args);
+            var cmdLine = string.Join(" ", libsvmTrainExeFile, args);
 
-            //var priority_boost_enabled = false;
-            //var priority_class = ProcessPriorityClass.High;
-
-            var retry_index = -1;
-            var retry = false;
-            do
-            {
-                retry_index++;
-
+            var tries = 0;
+            while (tries < maxTries)
                 try
                 {
-                    if (cts.IsCancellationRequested) return default;
-
-
+                    tries++;
+                    if (ct.IsCancellationRequested) return default;
                     using var process = Process.Start(start);
-
                     if (process == null)
                     {
-                        retry = true;
-                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
+                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
                     }
 
-                    if (log) { io_proxy.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", module_name, method_name); }
-                    //try { process.PriorityBoostEnabled = priority_boost_enabled; } catch (Exception e) { io_proxy.log_exception(e, "", module_name, method_name); }
-                    //try { process.PriorityClass = priority_class; } catch (Exception e) { io_proxy.log_exception(e, "", module_name, method_name); }
+                    if (log) Logging.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    //var exited = process.WaitForExit((int) Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
 
-                    //var stdout = process.StandardOutput.ReadToEndAsync();
-                    //var stderr = process.StandardError.ReadToEndAsync();
-
-
-                    var exited = process.WaitForExit((int)Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
-
+                    using var delayCts = new CancellationTokenSource();
+                    await Task.WhenAny(process.WaitForExitAsync(ct), Task.Delay(TimeSpan.FromMinutes(45), delayCts.Token)).ConfigureAwait(false);
+                    delayCts.Cancel();
+                    var exited = process.HasExited;
                     if (!exited)
                     {
-                        try { process.Kill(); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
+                        Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        try { process.Kill(); }
+                        catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, methodName); }
 
-                        retry = true;
-
-                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
+                        await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
                     }
 
-                    var stdout_result = process?.StandardOutput?.ReadToEnd() ?? "";
-                    var stderr_result = process?.StandardError?.ReadToEnd() ?? "";
+                    var stdoutResult = process?.StandardOutput?.ReadToEnd() ?? "";
+                    var stderrResult = process?.StandardError?.ReadToEnd() ?? "";
+                    if (log) Logging.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    var exitCode = process.ExitCode;
+                    if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
 
-                    if (log) { io_proxy.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", module_name, method_name); }
+                    if (exitCode == 0) return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult);
 
-                    var exit_code = process.ExitCode;
-
-                    //var tasks = new List<Task>() { stdout, stderr };
-                    //try { Task.WaitAll(tasks.ToArray<Task>()); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
-                    //var stdout_result = "";
-                    //var stderr_result = "";
-                    //try { stdout_result = stdout?.Result; } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
-                    //try { stderr_result = stderr?.Result; } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), nameof(libsvm), nameof(predict)); }
-
-
-                    if (!string.IsNullOrWhiteSpace(stdout_file) && !string.IsNullOrWhiteSpace(stdout_result)) { io_proxy.AppendAllText(cts, stdout_file, stdout_result); }
-
-                    if (!string.IsNullOrWhiteSpace(stderr_file) && !string.IsNullOrWhiteSpace(stderr_result)) { io_proxy.AppendAllText(cts, stderr_file, stderr_result); }
-
-                    if (exit_code == 0) { return (cmd_line, stdout_result, stderr_result); }
-                    else
-                    {
-                        retry = true;
-                        io_proxy.WriteLine("libsvm predict failed to run");
-                        if (!string.IsNullOrWhiteSpace(stdout_result)) io_proxy.WriteLine(stdout_result);
-                        if (!string.IsNullOrWhiteSpace(stderr_result)) io_proxy.WriteLine(stderr_result);
-
-                        try { io_proxy.wait(cts, 25, 50); } catch (Exception e) { io_proxy.log_exception(e, get_params_str(), module_name, method_name); }
-
-                        continue;
-                    }
+                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, methodName);
+                    if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName, methodName);
+                    await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                 }
                 catch (Exception e1)
                 {
-                    retry = true;
-                    io_proxy.log_exception(e1, get_params_str(), module_name, method_name);
-                    try { io_proxy.wait(cts, 25, 50); } catch (Exception e2) { io_proxy.log_exception(e2, get_params_str(), module_name, method_name); }
-                }
-            } while (retry && retry_index < 1_000_000);
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{GetParamsStr()}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    if (tries >= maxTries)
+                    {
+                        if (rethrow) throw;
+                        return ct.IsCancellationRequested ? default :(cmdLine, null, null);
+                    }
 
-            return (cmd_line, null, null);
+                    await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
+                }
+
+            return ct.IsCancellationRequested ? default :(cmdLine, null, null);
+        }
+
+        internal static async Task<(string cmd_line, string stdout, string stderr)> PredictAsync(string libsvmPredictExeFile, string testFile, string modelFile, string predictionsOutFile, bool probabilityEstimates, string stdoutFile = null, string stderrFile = null, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
+        {
+            if (ct.IsCancellationRequested) return default;
+
+            const string methodName = nameof(PredictAsync);
+
+            (string key, string value)[] GetParams()
+            {
+                try
+                {
+                    return new[]
+                    {
+                        (nameof(libsvmPredictExeFile), libsvmPredictExeFile), (nameof(testFile), testFile),
+                        (nameof(modelFile), modelFile), (nameof(predictionsOutFile), predictionsOutFile),
+                        (nameof(stdoutFile), stdoutFile), (nameof(stderrFile), stderrFile),
+                        (nameof(log), log.ToString())
+                    };
+                }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+
+                return ct.IsCancellationRequested ? default :Array.Empty<(string key, string value)>();
+            }
+
+            string GetParamsStr()
+            {
+                try { return ct.IsCancellationRequested ? default :string.Join(", ", GetParams()); }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+
+                return ct.IsCancellationRequested ? default :"";
+            }
+
+            if (ct.IsCancellationRequested) return default;
+
+            var libsvmParams = new List<string>();
+            if (probabilityEstimates) libsvmParams.Add(@"-b 1");
+            libsvmParams = libsvmParams.OrderBy(a => a).ToList();
+            var testFileParam = testFile;
+            var modelFileParam = modelFile;
+            var predictionFileParam = predictionsOutFile;
+            if (!string.IsNullOrWhiteSpace(testFile)) libsvmParams.Add($@"{testFileParam}");
+            if (!string.IsNullOrWhiteSpace(modelFile)) libsvmParams.Add($@"{modelFileParam}");
+            if (!string.IsNullOrWhiteSpace(predictionsOutFile)) libsvmParams.Add($@"{predictionFileParam}");
+            var args = string.Join(" ", libsvmParams);
+
+            var start = new ProcessStartInfo
+            {
+                FileName = libsvmPredictExeFile,
+                Arguments = args,
+                UseShellExecute = false,
+                CreateNoWindow = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true
+            };
+
+            var cmdLine = string.Join(" ", libsvmPredictExeFile, args);
+            var tries = 0;
+            while (tries < maxTries)
+                try
+                {
+                    tries++;
+                    if (ct.IsCancellationRequested) return default;
+                    using var process = Process.Start(start);
+                    if (process == null)
+                    {
+                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    if (log) Logging.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    //var exited = process.WaitForExit((int) Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
+                    using var delayCts = new CancellationTokenSource();
+                    await Task.WhenAny(process.WaitForExitAsync(ct), Task.Delay(TimeSpan.FromMinutes(45), delayCts.Token)).ConfigureAwait(false);
+                    delayCts.Cancel();
+
+                    var exited = process.HasExited;
+
+                    if (!exited)
+                    {
+                        Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        try { process.Kill(); }
+                        catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, methodName); }
+
+                        await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    var stdoutResult = process?.StandardOutput?.ReadToEnd() ?? "";
+                    var stderrResult = process?.StandardError?.ReadToEnd() ?? "";
+                    if (log) Logging.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    var exitCode = process.ExitCode;
+                    if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+
+                    if (exitCode == 0) return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult);
+
+                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, methodName);
+                    if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName, methodName);
+                    await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
+                }
+                catch (Exception e1)
+                {
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{GetParamsStr()}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    if (tries >= maxTries)
+                    {
+                        if (rethrow) throw;
+                        return ct.IsCancellationRequested ? default :(cmdLine, null, null);
+                    }
+
+                    await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
+                }
+
+            return ct.IsCancellationRequested ? default :(cmdLine, null, null);
         }
     }
 }
