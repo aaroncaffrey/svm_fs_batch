@@ -145,25 +145,25 @@ namespace SvmFsBatch
                 }
         }
 
-        internal static async Task<bool> CopyAsync(bool log, CancellationToken ct, string source, string dest, bool overwrite = true, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", int maxTries = 1_000_000)
+        internal static async Task<bool> CopyAsync(bool log, CancellationToken ct, string gkSource, string dest, bool overwrite = true, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", int maxTries = 1_000_000)
         {
             if (ct.IsCancellationRequested) return default;
 
             const string methodName = nameof(CopyAsync);
             var tries = 0;
-            if (log) Logging.WriteLine($@"{ModuleName}.{methodName} -> ( ""{source}"", ""{dest}"", ""{overwrite}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+            if (log) Logging.WriteLine($@"{ModuleName}.{methodName} -> ( ""{gkSource}"", ""{dest}"", ""{overwrite}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
             while (true)
                 try
                 {
                     tries++;
                     if (ct.IsCancellationRequested) return false;
                     await CreateDirectoryAsync(log, ct, dest, 1, false, ModuleName, methodName).ConfigureAwait(false);
-                    File.Copy(source, dest, overwrite);
+                    File.Copy(gkSource, dest, overwrite);
                     return true;
                 }
                 catch (Exception e1)
                 {
-                    Logging.LogException(e1, $@"{ModuleName}.{methodName} -> ( ""{source}"", ""{dest}"", ""{overwrite}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    Logging.LogException(e1, $@"{ModuleName}.{methodName} -> ( ""{gkSource}"", ""{dest}"", ""{overwrite}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
                     if (tries >= maxTries)
                     {
                         if (rethrow) throw;

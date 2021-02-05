@@ -6,9 +6,9 @@ namespace SvmFsBatch
     internal class DataSetGroupMethods
     {
         public const string ModuleName = nameof(DataSetGroupMethods);
-        // note: group_index is usually the array group index, which may be different to the group number in file
+        // note: group_index is usually the array gkGroup index, which may be different to the gkGroup number in file
 
-        internal static (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] GetMainGroups(CancellationToken ct, DataSet DataSet, bool fileTag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool group, bool member, bool perspective, bool asParallel = true)
+        internal static (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] GetMainGroups(DataSet DataSet, bool gkFileTag, bool gkAlphabet, bool gkStats, bool gkDimension, bool gkCategory, bool gkSource, bool gkGroup, bool gkMember, bool gkPerspective, bool asParallel = true, CancellationToken ct = default)
         {
             const string methodName = nameof(GetMainGroups);
 
@@ -16,10 +16,10 @@ namespace SvmFsBatch
 
             Logging.WriteLine("", ModuleName, methodName);
 
-            return ct.IsCancellationRequested ? default :GetMainGroups(ct, DataSet.ColumnHeaderList.Skip(1 /* skip class id column - i.e. don't make a group for class id */).ToArray(), fileTag, alphabet, stats, dimension, category, source, group, member, perspective, asParallel);
+            return GetMainGroups(DataSet.ColumnHeaderList.Skip(1 /* skip class id column - i.e. don't make a gkGroup for class id */).ToArray(), gkFileTag, gkAlphabet, gkStats, gkDimension, gkCategory, gkSource, gkGroup, gkMember, gkPerspective, asParallel, ct);
         }
 
-        internal static DataSetGroupKey[] Ungroup(CancellationToken ct, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[][] groups, bool asParallel = true)
+        internal static DataSetGroupKey[] Ungroup((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[][] groups, bool asParallel = true, CancellationToken ct = default)
         {
             const string methodName = nameof(Ungroup);
 
@@ -27,12 +27,12 @@ namespace SvmFsBatch
 
             Logging.WriteLine("", ModuleName, methodName);
 
-            return ct.IsCancellationRequested ? default :asParallel
+            return asParallel
                 ? groups.AsParallel().AsOrdered().WithCancellation(ct).SelectMany(a => a.SelectMany(b => b.GroupColumnHeaders).ToArray()).ToArray()
                 : groups.SelectMany(a => a.SelectMany(b => b.GroupColumnHeaders).ToArray()).ToArray();
         }
 
-        internal static DataSetGroupKey[] Ungroup(CancellationToken ct, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, bool asParallel = true)
+        internal static DataSetGroupKey[] Ungroup((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, bool asParallel = true, CancellationToken ct = default)
         {
             const string methodName = nameof(Ungroup);
 
@@ -40,12 +40,12 @@ namespace SvmFsBatch
 
             Logging.WriteLine("", ModuleName, methodName);
 
-            return ct.IsCancellationRequested ? default :asParallel
+            return asParallel
                 ? groups.AsParallel().AsOrdered().WithCancellation(ct).SelectMany(a => a.GroupColumnHeaders).ToArray()
                 : groups.SelectMany(a => a.GroupColumnHeaders).ToArray();
         }
 
-        internal static (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] GetMainGroups(CancellationToken ct, DataSetGroupKey[] columnHeaderList, bool fileTag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool group, bool member, bool perspective, bool asParallel = true)
+        internal static (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] GetMainGroups(DataSetGroupKey[] columnHeaderList, bool gkFileTag, bool gkAlphabet, bool gkStats, bool gkDimension, bool gkCategory, bool gkSource, bool gkGroup, bool gkMember, bool gkPerspective, bool asParallel = true, CancellationToken ct = default)
         {
             const string methodName = nameof(GetMainGroups);
 
@@ -53,48 +53,48 @@ namespace SvmFsBatch
 
             Logging.WriteLine("", ModuleName, methodName);
 
-            return ct.IsCancellationRequested ? default :asParallel
-                ? columnHeaderList.AsParallel().AsOrdered().WithCancellation(ct).GroupBy(a => (file_tag: fileTag
+            return asParallel
+                ? columnHeaderList.AsParallel().AsOrdered().WithCancellation(ct).GroupBy(a => (file_tag: gkFileTag
                     ? a.Value.gkFileTag
-                    : null, alphabet: alphabet
+                    : null, gkAlphabet: gkAlphabet
                     ? a.Value.gkAlphabet
-                    : null, stats: stats
+                    : null, gkStats: gkStats
                     ? a.Value.gkStats
-                    : null, dimension: dimension
+                    : null, gkDimension: gkDimension
                     ? a.Value.gkDimension
-                    : null, category: category
+                    : null, gkCategory: gkCategory
                     ? a.Value.gkCategory
-                    : null, source: source
+                    : null, gkSource: gkSource
                     ? a.Value.gkSource
-                    : null, group: group
+                    : null, gkGroup: gkGroup
                     ? a.Value.gkGroup
-                    : null, member: member
+                    : null, gkMember: gkMember
                     ? a.Value.gkMember
-                    : null, perspective: perspective
+                    : null, gkPerspective: gkPerspective
                     ? a.Value.gkPerspective
-                    : null)).Select((a, i) => (GroupKey: new DataSetGroupKey(a.Key, i), GroupColumnHeaders: a.ToArray(), columns: a.Select(b => b.GkColumnIndex).ToArray())).ToArray()
-                : columnHeaderList.GroupBy(a => (file_tag: fileTag
+                    : null)).Select((a, i) => (GroupKey: new DataSetGroupKey(a.Key, i), GroupColumnHeaders: a.ToArray(), columns: a.Select(b => b.gkColumnIndex).ToArray())).ToArray()
+                : columnHeaderList.GroupBy(a => (file_tag: gkFileTag
                     ? a.Value.gkFileTag
-                    : null, alphabet: alphabet
+                    : null, gkAlphabet: gkAlphabet
                     ? a.Value.gkAlphabet
-                    : null, stats: stats
+                    : null, gkStats: gkStats
                     ? a.Value.gkStats
-                    : null, dimension: dimension
+                    : null, gkDimension: gkDimension
                     ? a.Value.gkDimension
-                    : null, category: category
+                    : null, gkCategory: gkCategory
                     ? a.Value.gkCategory
-                    : null, source: source
+                    : null, gkSource: gkSource
                     ? a.Value.gkSource
-                    : null, group: group
+                    : null, gkGroup: gkGroup
                     ? a.Value.gkGroup
-                    : null, member: member
+                    : null, gkMember: gkMember
                     ? a.Value.gkMember
-                    : null, perspective: perspective
+                    : null, gkPerspective: gkPerspective
                     ? a.Value.gkPerspective
-                    : null)).Select((a, i) => (GroupKey: new DataSetGroupKey(a.Key, i), GroupColumnHeaders: a.ToArray(), columns: a.Select(b => b.GkColumnIndex).ToArray())).ToArray();
+                    : null)).Select((a, i) => (GroupKey: new DataSetGroupKey(a.Key, i), GroupColumnHeaders: a.ToArray(), columns: a.Select(b => b.gkColumnIndex).ToArray())).ToArray();
         }
 
-        internal static (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[][] GetSubGroups(CancellationToken ct, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] columnHeaderList, bool fileTag, bool alphabet, bool stats, bool dimension, bool category, bool source, bool group, bool member, bool perspective, bool asParallel = true)
+        internal static (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[][] GetSubGroups((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] columnHeaderList, bool gkFileTag, bool gkAlphabet, bool gkStats, bool gkDimension, bool gkCategory, bool gkSource, bool gkGroup, bool gkMember, bool gkPerspective, bool asParallel = true, CancellationToken ct = default)
         {
             const string methodName = nameof(GetSubGroups);
 
@@ -102,9 +102,9 @@ namespace SvmFsBatch
 
             Logging.WriteLine("", ModuleName, methodName);
 
-            return ct.IsCancellationRequested ? default :asParallel
-                ? columnHeaderList.AsParallel().AsOrdered().WithCancellation(ct).Select(a => GetMainGroups(ct, a.GroupColumnHeaders, fileTag, alphabet, stats, dimension, category, source, group, member, perspective)).ToArray()
-                : columnHeaderList.Select(a => GetMainGroups(ct, a.GroupColumnHeaders, fileTag, alphabet, stats, dimension, category, source, group, member, perspective)).ToArray();
+            return asParallel
+                ? columnHeaderList.AsParallel().AsOrdered().WithCancellation(ct).Select(a => GetMainGroups(a.GroupColumnHeaders, gkFileTag, gkAlphabet, gkStats, gkDimension, gkCategory, gkSource, gkGroup, gkMember, gkPerspective,ct:ct)).ToArray()
+                : columnHeaderList.Select(a => GetMainGroups(a.GroupColumnHeaders, gkFileTag, gkAlphabet, gkStats, gkDimension, gkCategory, gkSource, gkGroup, gkMember, gkPerspective,ct:ct)).ToArray();
         }
     }
 }

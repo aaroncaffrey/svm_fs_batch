@@ -11,19 +11,19 @@ namespace SvmFsBatch
         internal const string ModuleName = nameof(Logging);
         private static readonly Random Random = new Random();
 
-        internal static void WriteLine(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
+        internal static void WriteLine(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
             //await Task.Run(async ()=> Console.WriteLine($@"[{DateTime.UtcNow:G}] [{_CallerModuleName}.{_CallerMethodName}:{_CallerLineNumber}]: {text}")).ConfigureAwait(false);
-            Console.WriteLine($@"[{Thread.CurrentThread.ManagedThreadId}] [{Task.CurrentId}] [{DateTime.UtcNow:G}] [{callerModuleName}.{callerMethodName}:{callerLineNumber}]: {text}");
+            Console.WriteLine($@"[{DateTime.UtcNow:G}] [{Thread.CurrentThread.ManagedThreadId}] [{Task.CurrentId}] [{callerModuleName}.{callerMethodName}:{callerLineNumber}]: {text}");
         }
 
         //internal static async Task DelayAsync(TimeSpan time, CancellationToken ct,
         //    string callerModuleName = "", [CallerMemberName] string callerMethodName = "",
-        //    [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0,
+        //    /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0,
         //    string callerMethodType = "", (string type, string name, string value)[] callerMethodArgs = null)
         //{
         //    const string methodName = nameof(DelayAsync);
-        //    LogEvent($@"{ModuleName}.{methodName}:", callerModuleName, callerMethodName, callerFilePath, callerLineNumber);//, _CallerMethodType, _CallerMethodArgs);
+        //    LogEvent($@"{ModuleName}.{methodName}:", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);//, _CallerMethodType, _CallerMethodArgs);
         //
         //    if (!ct.IsCancellationRequested)
         //        try
@@ -32,75 +32,75 @@ namespace SvmFsBatch
         //        }
         //        catch (OperationCanceledException e)
         //        {
-        //            Logging.LogException(e, "", callerModuleName, callerMethodName, callerFilePath, callerLineNumber);
+        //            Logging.LogException(e, "", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
         //        }
         //        catch (Exception e)
         //        {
-        //            Logging.LogException(e, "", callerModuleName, callerMethodName, callerFilePath, callerLineNumber);
+        //            Logging.LogException(e, "", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
         //        }
         //}
 
-        internal static async Task WaitAsync(int minSecs, int maxSecs, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
+        internal static async Task WaitAsync(int minSecs, int maxSecs, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) return;
 
-            //const string _MethodName = nameof(WaitAsync);
+            //const string MethodName = nameof(WaitAsync);
 
             var ts = TimeSpan.FromSeconds(minSecs != maxSecs
                 ? minSecs + Random.Next(0, Math.Abs(maxSecs + 1 - minSecs))
                 : minSecs);
-            WriteLine($"{callerModuleName}.{callerMethodName} -> Waiting for {ts.Seconds} seconds", callerModuleName, callerMethodName, callerFilePath, callerLineNumber);
+            WriteLine($"{callerModuleName}.{callerMethodName} -> Waiting for {ts.Seconds} seconds", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
 
             try { await Task.Delay(ts, ct).ConfigureAwait(false); }
-            catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, callerFilePath, callerLineNumber); }
+            catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); }
         }
 
-        internal static void LogEvent(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogEvent(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
             //string _CallerMethodType = "",
             //(string type, string name, string value)[] _CallerMethodArgs = null
 
         {
             //var text2 = $@"{text} --> {_CallerMethodType} <- {_CallerModuleName}.{_CallerMethodName}:{_CallerLineNumber}({string.Join(", ", _CallerMethodArgs?.Select(a => $@"{a.type} {a.name} = ""{a.value}""").ToArray() ?? Array.Empty<string>())})";
 
-            WriteLine(text, callerModuleName, callerMethodName, callerFilePath, callerLineNumber);
+            WriteLine(text, callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
         }
 
-        internal static void LogException(Exception e = null, string msg = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0) //,
+        internal static void LogException(Exception e = null, string msg = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0) //,
             //string _CallerMethodType = "", (string type, string name, string value)[] _CallerMethodArgs = null)
         {
             do
             {
-                LogEvent($@"exception: {(!string.IsNullOrWhiteSpace(msg) ? $@"[{nameof(msg)}=""{msg}""]" : "")} [{nameof(e.GetType)}=""{e?.GetType()}""] [{nameof(e.Source)}=""{e?.Source}""] [{nameof(e.Message)}={e?.Message}] [{nameof(e.TargetSite)}=""{e?.TargetSite}""] [{nameof(e.StackTrace)}=""{string.Join(", ", e?.StackTrace?.Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries).Select(a => a.Trim()).ToArray() ?? Array.Empty<string>())}""]", callerModuleName, callerMethodName, callerFilePath, callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
+                LogEvent($@"exception: {(!string.IsNullOrWhiteSpace(msg) ? $@"[{nameof(msg)}=""{msg}""]" : "")} [{nameof(e.GetType)}=""{e?.GetType()}""] [{nameof(e.Source)}=""{e?.Source}""] [{nameof(e.Message)}={e?.Message}] [{nameof(e.TargetSite)}=""{e?.TargetSite}""] [{nameof(e.StackTrace)}=""{string.Join(", ", e?.StackTrace?.Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries).Select(a => a.Trim()).ToArray() ?? Array.Empty<string>())}""]", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
                 if (e != null && e != e.InnerException) e = e?.InnerException;
             } while (e != null);
         }
 
-        internal static void LogCall(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogCall(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent("call start:", callerModuleName, callerMethodName, callerFilePath, callerLineNumber);
+            LogEvent("call start:", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //,_CallerMethodType, _CallerMethodArgs);
         }
 
-        internal static void LogExit(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogExit(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent("call exit:", callerModuleName, callerMethodName, callerFilePath, callerLineNumber);
+            LogEvent("call exit:", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //,_CallerMethodType, _CallerMethodArgs);
         }
 
-        internal static void LogLockKnock(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogLockKnock(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent($"lock knock: {lockName}", callerModuleName, callerMethodName, callerFilePath, callerLineNumber);
+            LogEvent($"lock knock: {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //, _CallerMethodType, _CallerMethodArgs);
         }
 
-        internal static void LogLockEnter(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogLockEnter(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent($"lock enter: {lockName}", callerModuleName, callerMethodName, callerFilePath, callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
+            LogEvent($"lock enter: {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
         }
 
-        internal static void LogLockExit(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerFilePath] string callerFilePath = "", [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogLockExit(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent($"lock exit: {lockName}", callerModuleName, callerMethodName, callerFilePath, callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
+            LogEvent($"lock exit: {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
         }
     }
 }

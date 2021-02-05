@@ -8,9 +8,6 @@
 
         internal (int ClassId, double ClassWeight)[][] ClassWeightSets = null;
 
-        //internal int group_series_start = 0;
-        //internal int group_series_end = -1;
-        //internal int[] group_series;
         internal GroupSeriesIndex[] GroupSeries;
         internal int[] InnerCvSeries;
         internal int InnerCvSeriesEnd = 5;
@@ -20,7 +17,6 @@
         internal int InnerCvSeriesStep = 1;
 
         internal Routines.LibsvmKernelType[] LibsvmKernelTypes;
-        // = new routines.libsvm_kernel_type[] { routines.libsvm_kernel_type.rbf };
 
         internal int[] OuterCvSeries;
         internal int OuterCvSeriesEnd = 5;

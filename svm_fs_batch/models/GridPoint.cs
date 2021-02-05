@@ -41,7 +41,7 @@ namespace SvmFsBatch
             GpCvRate = cvRate;
         }
 
-        //public grid_point((double? cost, double? gamma, double? epsilon, double? coef0, double? degree, double? cv_rate) point)
+        //public GridPoint((double? cost, double? gamma, double? epsilon, double? coef0, double? degree, double? cv_rate) point)
         //{
         //    this.cost = point.cost;
         //    this.gamma = point.gamma;

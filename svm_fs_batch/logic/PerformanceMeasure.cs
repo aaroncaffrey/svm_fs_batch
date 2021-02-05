@@ -47,7 +47,7 @@ namespace SvmFsBatch
                     },
                     XPredictionThreshold = threshold,
                     XPredictionThresholdClass = thresholdClass,
-                    Thresholds = predictionList.Select(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == actualClassId).probability_estimate) /*.Distinct()*/
+                    Thresholds = predictionList.Select(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == actualClassId).ProbabilityEstimate) /*.Distinct()*/
                         .OrderByDescending(a => a).ToArray(),
                     Predictions = predictionList.ToArray()
                 };
@@ -116,10 +116,10 @@ namespace SvmFsBatch
 
             //var lines = files.AsParallel().AsOrdered().WithCancellation(ct).Select(async (a, i) =>
             //        (
-            //            test_file_lines: await io_proxy.ReadAllLines(true, ct, a.test_file, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName).ConfigureAwait(false),
-            //            test_comments_file_lines: await io_proxy.ReadAllLines(true, ct, a.test_comments_file, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName).ConfigureAwait(false),
-            //            prediction_file_lines: await io_proxy.ReadAllLines(true, ct, a.prediction_file, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName).ConfigureAwait(false),
-            //            test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? await io_proxy.ReadAllLines(true, ct, a.test_class_sample_id_list_file, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName).ConfigureAwait(false) : null
+            //            test_file_lines: await io_proxy.ReadAllLines(true, ct, a.test_file, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false),
+            //            test_comments_file_lines: await io_proxy.ReadAllLines(true, ct, a.test_comments_file, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false),
+            //            prediction_file_lines: await io_proxy.ReadAllLines(true, ct, a.prediction_file, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false),
+            //            test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file) ? await io_proxy.ReadAllLines(true, ct, a.test_class_sample_id_list_file, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false) : null
             //        )).ToArray();
 
 
@@ -262,12 +262,12 @@ namespace SvmFsBatch
                 ? Enumerable.Range(0, totalPredictions).AsParallel().AsOrdered().WithCancellation(ct).Select(predictionIndex =>
                 {
                     var probabilityEstimates = predictionFileData[predictionIndex].Length <= 1
-                        ? Array.Empty<(int ClassId, double probability_estimate)>()
-                        : predictionFileData[predictionIndex].Skip(1 /* skip predicted class id */).Select((a, i) => (ClassId: probabilityEstimateClassLabels[i], probability_estimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var peOut)
+                        ? Array.Empty<(int ClassId, double ProbabilityEstimate)>()
+                        : predictionFileData[predictionIndex].Skip(1 /* skip predicted class id */).Select((a, i) => (ClassId: probabilityEstimateClassLabels[i], ProbabilityEstimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var peOut)
                             ? peOut
                             : default)).OrderBy(a => a.ClassId).ToArray();
 
-                    //var probability_estimates_stated = probability_estimates != null && probability_estimates.Count > 0 && probability_estimate_class_labels != null && probability_estimate_class_labels.Count > 0;
+                    //var ProbabilityEstimates_stated = ProbabilityEstimates != null && ProbabilityEstimates.Count > 0 && ProbabilityEstimate_class_labels != null && ProbabilityEstimate_class_labels.Count > 0;
 
                     var prediction = new Prediction
                     {
@@ -276,10 +276,10 @@ namespace SvmFsBatch
                             ? testClassSampleIdList[predictionIndex]
                             : -1,
                         Comment = testCommentsFileLines != null && testCommentsFileLines.Length > 0
-                            ? testCommentsFileLines[predictionIndex].Split(',').Select((a, i) => (comment_header: (testFileCommentsHeader?.Length ?? 0) - 1 >= i
+                            ? testCommentsFileLines[predictionIndex].Split(',').Select((a, i) => (CommentHeader: (testFileCommentsHeader?.Length ?? 0) - 1 >= i
                                 ? testFileCommentsHeader[i]
-                                : "", comment_value: a)).ToArray()
-                            : Array.Empty<(string comment_header, string comment_value)>(),
+                                : "", CommentValue: a)).ToArray()
+                            : Array.Empty<(string CommentHeader, string CommentValue)>(),
                         RealClassId = int.TryParse(testFileData[predictionIndex][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var outRealClassId)
                             ? outRealClassId
                             : default,
@@ -295,12 +295,12 @@ namespace SvmFsBatch
                 : Enumerable.Range(0, totalPredictions).Select(predictionIndex =>
                 {
                     var probabilityEstimates = predictionFileData[predictionIndex].Length <= 1
-                        ? Array.Empty<(int ClassId, double probability_estimate)>()
-                        : predictionFileData[predictionIndex].Skip(1 /* skip predicted class id */).Select((a, i) => (ClassId: probabilityEstimateClassLabels[i], probability_estimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var peOut)
+                        ? Array.Empty<(int ClassId, double ProbabilityEstimate)>()
+                        : predictionFileData[predictionIndex].Skip(1 /* skip predicted class id */).Select((a, i) => (ClassId: probabilityEstimateClassLabels[i], ProbabilityEstimate: double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var peOut)
                             ? peOut
                             : default)).OrderBy(a => a.ClassId).ToArray();
 
-                    //var probability_estimates_stated = probability_estimates != null && probability_estimates.Count > 0 && probability_estimate_class_labels != null && probability_estimate_class_labels.Count > 0;
+                    //var ProbabilityEstimates_stated = ProbabilityEstimates != null && ProbabilityEstimates.Count > 0 && ProbabilityEstimate_class_labels != null && ProbabilityEstimate_class_labels.Count > 0;
 
                     var prediction = new Prediction
                     {
@@ -309,10 +309,10 @@ namespace SvmFsBatch
                             ? testClassSampleIdList[predictionIndex]
                             : -1,
                         Comment = testCommentsFileLines != null && testCommentsFileLines.Length > 0
-                            ? testCommentsFileLines[predictionIndex].Split(',').Select((a, i) => (comment_header: (testFileCommentsHeader?.Length ?? 0) - 1 >= i
+                            ? testCommentsFileLines[predictionIndex].Split(',').Select((a, i) => (CommentHeader: (testFileCommentsHeader?.Length ?? 0) - 1 >= i
                                 ? testFileCommentsHeader[i]
-                                : "", comment_value: a)).ToArray()
-                            : Array.Empty<(string comment_header, string comment_value)>(),
+                                : "", CommentValue: a)).ToArray()
+                            : Array.Empty<(string CommentHeader, string CommentValue)>(),
                         RealClassId = int.TryParse(testFileData[predictionIndex][0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var outRealClassId)
                             ? outRealClassId
                             : default,
@@ -418,7 +418,7 @@ namespace SvmFsBatch
 
                     var thresholdPredictionList = ElevenPoints.Select(th => (positive_threshold: th, prediction_list: predictionList.Select(p => new Prediction(p)
                     {
-                        PredictedClassId = p.ProbabilityEstimates.First(e => e.ClassId == positiveId).probability_estimate >= th
+                        PredictedClassId = p.ProbabilityEstimates.First(e => e.ClassId == positiveId).ProbabilityEstimate >= th
                             ? positiveId
                             : negativeId
                     }).ToArray())).ToArray();
@@ -457,10 +457,10 @@ namespace SvmFsBatch
 
             if (predictionList.Any(a => a.ProbabilityEstimates == null || a.ProbabilityEstimates.Length == 0)) return default;
 
-            predictionList = predictionList.OrderByDescending(a => a.ProbabilityEstimates.First(b => b.ClassId == positiveId).probability_estimate).ToArray();
+            predictionList = predictionList.OrderByDescending(a => a.ProbabilityEstimates.First(b => b.ClassId == positiveId).ProbabilityEstimate).ToArray();
 
             // Calc Brier
-            var brierScore = 1 / (double) predictionList.Length * predictionList.Sum(a => Math.Pow(a.ProbabilityEstimates.First(b => b.ClassId == a.PredictedClassId).probability_estimate - (a.RealClassId == a.PredictedClassId
+            var brierScore = 1 / (double) predictionList.Length * predictionList.Sum(a => Math.Pow(a.ProbabilityEstimates.First(b => b.ClassId == a.PredictedClassId).ProbabilityEstimate - (a.RealClassId == a.PredictedClassId
                     ? 1
                     : 0),
                 2));
@@ -485,7 +485,7 @@ namespace SvmFsBatch
             var n = (double) predictionList.Count(a => a.RealClassId != positiveId);
 
             // Order predictions descending by positive class probability
-            predictionList = predictionList.OrderByDescending(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == positiveId).probability_estimate).ToArray();
+            predictionList = predictionList.OrderByDescending(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == positiveId).ProbabilityEstimate).ToArray();
 
             var thresholdConfusionMatrixList = Get_theshold_confusion_matrices(predictionList, positiveId, thresholdType, negativeId, ct);
 
@@ -530,14 +530,14 @@ namespace SvmFsBatch
             // Get thresholds list (either all thresholds or 11 points)
             double[] thresholds = null;
 
-            if (thresholdType == ThresholdType.AllThresholds) thresholds = predictionList.Select(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == positiveId).probability_estimate).Distinct().OrderByDescending(a => a).ToArray();
+            if (thresholdType == ThresholdType.AllThresholds) thresholds = predictionList.Select(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == positiveId).ProbabilityEstimate).Distinct().OrderByDescending(a => a).ToArray();
             else if (thresholdType == ThresholdType.ElevenPoints) thresholds = ElevenPoints;
             else throw new NotSupportedException();
 
             // Calc predictions at each threshold
             var thresholdPredictionList = thresholds.Select(t => (positive_threshold: t, prediction_list: predictionList.Select(pl => new Prediction(pl)
             {
-                PredictedClassId = pl.ProbabilityEstimates.FirstOrDefault(e => e.ClassId == positiveId).probability_estimate >= t
+                PredictedClassId = pl.ProbabilityEstimates.FirstOrDefault(e => e.ClassId == positiveId).ProbabilityEstimate >= t
                     ? positiveId
                     : negativeId
             }).ToArray())).ToArray();

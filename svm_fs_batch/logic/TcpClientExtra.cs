@@ -88,25 +88,32 @@ namespace SvmFsBatch
             var bytes = new byte[length];
             var pos = 0;
             //lock (stream)
-            {
-                while (!ct.IsCancellationRequested && pos < length && client.Connected && stream.CanRead)
-                    try
-                    {
-                        var bytesRead = await stream.ReadAsync(bytes, pos, bytes.Length - pos, ct).ConfigureAwait(false);
-                        pos += bytesRead;
+            //{
+            while (!ct.IsCancellationRequested && pos < length && client.Connected && stream.CanRead)
+                try
+                {
+                    var bytesRead = await stream.ReadAsync(bytes, pos, bytes.Length - pos, ct).ConfigureAwait(false);
+                    pos += bytesRead;
 
-                        if (bytesRead == 0 && pos < length && !ct.IsCancellationRequested) await Task.Delay(TimeSpan.FromMilliseconds(1), ct).ConfigureAwait(false);
-                    }
-                    //catch (OperationCanceledException)
-                    //{
-                    //    return null;
-                    //}
-                    catch (Exception e)
+                    if (bytesRead == 0 && pos < length && !ct.IsCancellationRequested)
                     {
-                        Logging.LogException(e, "", ModuleName);
-                        return null;
+                        await Task.Delay(TimeSpan.FromMilliseconds(1), ct).ConfigureAwait(false);
+
+                        var pollOk = TcpClientExtra.PollTcpClientConnection(client);
+
+                        if (!pollOk) break;
                     }
-            }
+                }
+                //catch (OperationCanceledException)
+                //{
+                //    return null;
+                //}
+                catch (Exception e)
+                {
+                    Logging.LogException(e, "", ModuleName);
+                    return null;
+                }
+            //}
 
             if (pos == 0) return null;
             if (pos != length) return ct.IsCancellationRequested ? default : bytes[..pos];
@@ -153,7 +160,7 @@ namespace SvmFsBatch
         internal static async Task<(bool challenge_correct, Guid remote_guid)> ChallengeRequestAsync(TcpClient client, NetworkStream stream, byte[] localClientGuid = null, byte[] remoteClientGuidExpected = null, CancellationToken ct = default)
         {
             //#if DEBUG
-            //            Logging.LogCall( _ModuleName);
+            //            Logging.LogCall( ModuleName);
             //#endif
 
             //const bool logOkEvent = false;
@@ -293,7 +300,7 @@ namespace SvmFsBatch
         internal static (bool challenge_correct, Guid remote_guid) ChallengeRequest(TcpClient client, NetworkStream stream, byte[] localClientGuid = null, byte[] remoteClientGuidExpected = null, CancellationToken ct = default)
         {
             //#if DEBUG
-            //            Logging.LogCall( _ModuleName);
+            //            Logging.LogCall( ModuleName);
             //#endif
 
             //const bool logOkEvent = false;
@@ -434,7 +441,9 @@ namespace SvmFsBatch
             //return default;
         }
 
-        internal static async Task<bool> WriteFrameAsync(ulong frameId, ulong frameType, string text, TcpClient client, NetworkStream stream, CancellationToken ct)
+        private static readonly byte[] _bytesFrameCode = new byte[] {0, 0, 0, 0,     1, 1, 1, 1,      2, 2, 2, 2,     3, 3, 3, 3,     4, 4, 4, 4,  5, 5 ,5 ,5 };
+        
+            internal static async Task<bool> WriteFrameAsync(ulong frameId, ulong frameType, string text, TcpClient client, NetworkStream stream, CancellationToken ct)
         {
             if (ct.IsCancellationRequested) return default;
 
@@ -442,13 +451,14 @@ namespace SvmFsBatch
             {
                 if (client != null && stream != null && client.Connected && stream.CanWrite)
                 {
+
                     var bytesText = !string.IsNullOrEmpty(text)
                         ? Encoding.UTF8.GetBytes(text)
                         : Array.Empty<byte>();
                     var bytesFrameId = BitConverter.GetBytes(frameId);
                     var bytesFrameType = BitConverter.GetBytes(frameType);
                     var bytesFrameLength = BitConverter.GetBytes((ulong)bytesText.Length);
-                    var frame = new[] { bytesFrameId, bytesFrameType, bytesFrameLength, bytesText }.SelectMany(a => a).ToArray();
+                    var frame = new[] { _bytesFrameCode, bytesFrameId, bytesFrameType, bytesFrameLength, bytesText/*, _bytesFrameCode*/ }.SelectMany(a => a).ToArray();
 
                     await stream.WriteAsync(frame, ct).ConfigureAwait(false);
                     await stream.FlushAsync(ct).ConfigureAwait(false);
@@ -500,7 +510,7 @@ namespace SvmFsBatch
             if (ct.IsCancellationRequested) return default;
             if (client == null || stream == null || !client.Connected || !stream.CanRead) return default;
 
-            var headerLen = sizeof(ulong) * 3;
+            var headerLen = _bytesFrameCode.Length + (sizeof(ulong) * 3);
 
             byte[] header = Array.Empty<byte>();
 
@@ -514,26 +524,34 @@ namespace SvmFsBatch
                     var pollOk = TcpClientExtra.PollTcpClientConnection(client);
 
                     if (!pollOk) return default;
-
-                    continue;
                 }
                 else break;
             }
             if (header == null || header.Length != headerLen) return default;
 
 
-            var offset = 0;
-            var frameId = BitConverter.ToUInt64(header, sizeof(ulong) * offset++);
-            var frameType = BitConverter.ToUInt64(header, sizeof(ulong) * offset++);
-            var frameLength = (int)BitConverter.ToUInt64(header, sizeof(ulong) * offset++);
+            
+            var frameFrameCode = header.Take(_bytesFrameCode.Length).ToArray();
+            if (!_bytesFrameCode.SequenceEqual(frameFrameCode))
+            {
+                return default;
+            }
+            var offset = _bytesFrameCode.Length;
+            
+            var frameId = BitConverter.ToUInt64(header,  offset);
+            offset += sizeof(ulong);
+            
+            var frameType = BitConverter.ToUInt64(header, offset);
+            offset += sizeof(ulong);
+            
+            var frameLength = (int) BitConverter.ToUInt64(header, offset);
+            offset += sizeof(ulong);
 
             var bytesTextIn = Array.Empty<byte>();
 
             while (!ct.IsCancellationRequested && bytesTextIn.Length != frameLength)
             {
-                var bytesTextInExt = frameLength > 0
-                    ? await ReadRawFixedLengthAsync(client, stream, frameLength - bytesTextIn.Length, ct).ConfigureAwait(false)
-                    : default;
+                var bytesTextInExt = frameLength > 0 ? await ReadRawFixedLengthAsync(client, stream, frameLength - bytesTextIn.Length, ct).ConfigureAwait(false) : default;
 
                 if (bytesTextInExt != null && bytesTextInExt.Length > 0) bytesTextIn = bytesTextIn.Concat(bytesTextInExt).ToArray();
 
@@ -542,8 +560,6 @@ namespace SvmFsBatch
                     var pollOk = TcpClientExtra.PollTcpClientConnection(client);
 
                     if (!pollOk) return default;
-
-                    continue;
                 }
                 else break;
             }
@@ -755,9 +771,9 @@ namespace SvmFsBatch
 
         internal enum PayloadFrameTypes : ulong
         {
-            FrameTypePing, FrameTypePingAcknowledge, FrameTypeDataRequest,
-            FrameTypeDataRequestAcknowledge, FrameTypeBreak, FrameTypeBreakAcknowledge,
-            FrameTypeDataResponse, FrameTypeDataResponseAcknowledge, FrameTypeClose,
+            FrameTypePing, FrameTypePingAcknowledge, FrameTypeRpcRequest1,
+            FrameTypeRpcAcknowledge1, FrameTypeBreak, FrameTypeBreakAcknowledge,
+            FrameTypeDataRpcResponse1, FrameTypeDataRpcResponseAcknowledge1, FrameTypeClose,
             FrameTypeCloseAcknowledge
         }
     }

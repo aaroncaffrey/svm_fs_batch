@@ -13,7 +13,7 @@ namespace SvmFsBatch
     {
         public const string ModuleName = nameof(Libsvm);
 
-        internal static async Task<(string cmd_line, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
+        internal static async Task<(string CmdLine, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) return default;
 
@@ -164,7 +164,7 @@ namespace SvmFsBatch
             return ct.IsCancellationRequested ? default :(cmdLine, null, null);
         }
 
-        internal static async Task<(string cmd_line, string stdout, string stderr)> PredictAsync(string libsvmPredictExeFile, string testFile, string modelFile, string predictionsOutFile, bool probabilityEstimates, string stdoutFile = null, string stderrFile = null, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
+        internal static async Task<(string CmdLine, string stdout, string stderr)> PredictAsync(string libsvmPredictExeFile, string testFile, string modelFile, string predictionsOutFile, bool probabilityEstimates, string stdoutFile = null, string stderrFile = null, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) return default;
 

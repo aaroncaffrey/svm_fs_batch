@@ -14,14 +14,14 @@ namespace SvmFsBatch
 
         //internal static Random this_threads_random => _local ?? (_local = new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId)));
 
-        //internal static int Getinstance_id(int whole_array_index_first, int whole_array_index_last, int whole_array_step_size, int partition_array_index_first, int partition_array_index_last)
+        //internal static int GetInstanceId(int whole_array_index_first, int whole_array_index_last, int whole_array_step_size, int partition_array_index_first, int partition_array_index_last)
         //{
-        //    var instance_id = -1;
+        //    var InstanceId = -1;
         //
-        //    //for (var whole_array_index = program_args.whole_array_index_first; whole_array_index <= program_args.partition_array_index_first; whole_array_index += program_args.whole_array_step_size) { instance_id++; }
-        //    for (var whole_array_index = (whole_array_index_first <= whole_array_index_last ? whole_array_index_first : whole_array_index_last); !is_in_range(partition_array_index_first, partition_array_index_last, whole_array_index); whole_array_index += whole_array_step_size) instance_id++;
+        //    //for (var whole_array_index = program_args.whole_array_index_first; whole_array_index <= program_args.partition_array_index_first; whole_array_index += program_args.whole_array_step_size) { InstanceId++; }
+        //    for (var whole_array_index = (whole_array_index_first <= whole_array_index_last ? whole_array_index_first : whole_array_index_last); !is_in_range(partition_array_index_first, partition_array_index_last, whole_array_index); whole_array_index += whole_array_step_size) InstanceId++;
         //
-        //    return ct.IsCancellationRequested ? default :instance_id;
+        //    return ct.IsCancellationRequested ? default :InstanceId;
         //}
 
         public static int ForIterations(int first, int last, int step)
@@ -179,7 +179,7 @@ namespace SvmFsBatch
             }
         }
 
-        internal static ( (int ClassId, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] class_folds, (int ClassId, int class_size, (int repetitions_index, int outer_cv_index, int[] class_sample_indexes)[] folds)[] down_sampled_training_class_folds ) Folds((int ClassId, int class_size)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static ( (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] class_folds, (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] down_sampled_training_class_folds ) Folds((int ClassId, int class_size)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             if (ct.IsCancellationRequested) return default;
 
@@ -189,15 +189,15 @@ namespace SvmFsBatch
 
             var downSampledTrainingClassFolds = classFolds.Select(a => (a.ClassId, a.class_size, folds: a.folds?.Select(b =>
             {
-                var minNumItemsInFold = classFolds.Min(c => c.folds?.Where(e => e.repetitions_index == b.repetitions_index && e.outer_cv_index == b.outer_cv_index).Min(e => e.indexes?.Length ?? 0) ?? 0);
+                var minNumItemsInFold = classFolds.Min(c => c.folds?.Where(e => e.RepetitionsIndex == b.RepetitionsIndex && e.OuterCvIndex == b.OuterCvIndex).Min(e => e.indexes?.Length ?? 0) ?? 0);
 
-                return ct.IsCancellationRequested ? default :(b.repetitions_index, b.outer_cv_index, indexes: b.indexes?.Take(minNumItemsInFold).ToArray());
+                return ct.IsCancellationRequested ? default :(b.RepetitionsIndex, b.OuterCvIndex, indexes: b.indexes?.Take(minNumItemsInFold).ToArray());
             }).ToArray())).ToArray();
 
             return ct.IsCancellationRequested ? default :(classFolds, downSampledTrainingClassFolds);
         }
 
-        internal static (int repetitions_index, int outer_cv_index, int[] indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static (int RepetitionsIndex, int OuterCvIndex, int[] indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             // folds: returns a list of folds (including the indexes at each fold)... number folds = repetitions (!<1) * outer_cv_folds_to_run (!<1)
 
@@ -208,7 +208,7 @@ namespace SvmFsBatch
             //if (outer_cv_folds_to_run < 0 || outer_cv_folds_to_run > outer_cv_folds) throw new Exception();
             //if (fold_size_limit < 0) throw new Exception();
 
-            //const string _MethodName = nameof(folds);
+            //const string MethodName = nameof(folds);
             /*int first_index, int last_index, int num_items,*/
 
             //if (outer_cv_folds_to_run == 0) outer_cv_folds_to_run = outer_cv_folds;
@@ -230,13 +230,13 @@ namespace SvmFsBatch
 
             var indexesPool = Enumerable.Range(0, numClassSamples).ToArray();
 
-            var foldIndexes = new List<(int randomisation, int outer_cv_index, int[] indexes)>();
+            var foldIndexes = new List<(int randomisation, int OuterCvIndex, int[] indexes)>();
 
             for (var repetitionsIndex = 0; repetitionsIndex < repetitions; repetitionsIndex++)
             {
                 indexesPool.Shuffle(rand);
 
-                var outerCvFoldIndexes = foldSizes.Select((foldSize, outerCvIndex) => (repetitions_index: repetitionsIndex, outer_cv_index: outerCvIndex, indexes: indexesPool.Skip(foldSizes.Where((b, j) => outerCvIndex > j /* skip previous folds*/).Sum()).Take(foldSize /* take only current fold */).OrderBy(b => b /* order indexes in the current fold numerically */).ToArray())).Where(c => c.indexes != null && c.indexes.Length > 0).ToArray();
+                var outerCvFoldIndexes = foldSizes.Select((foldSize, outerCvIndex) => (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, indexes: indexesPool.Skip(foldSizes.Where((b, j) => outerCvIndex > j /* skip previous folds*/).Sum()).Take(foldSize /* take only current fold */).OrderBy(b => b /* order indexes in the current fold numerically */).ToArray())).Where(c => c.indexes != null && c.indexes.Length > 0).ToArray();
 
                 foldIndexes.AddRange(outerCvFoldIndexes);
             }
@@ -341,7 +341,7 @@ namespace SvmFsBatch
         //internal static double sqrt_sumofsqrs(double[] list) { return ct.IsCancellationRequested ? default :list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
 
 
-        //internal static int for_loop_instance_id(List<(int current, int max)> points)
+        //internal static int for_loop_InstanceId(List<(int current, int max)> points)
         //{
         //    //var jid = (i * max_j * max_k) + (j * max_k) + k;
         //    //var job_id = (i * max_j * max_k * max_l) + (j * max_k * max_l) + (k * max_l) + l;

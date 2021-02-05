@@ -15,7 +15,7 @@ namespace SvmFsBatch
         {
             if (ct.IsCancellationRequested) return default;
 
-            //const string _MethodName = nameof(Getbest_rate);
+            //const string MethodName = nameof(Getbest_rate);
 
             // libsvm grid.py: if ((rate > best_rate) || (rate == best_rate && g == best_g && c < best_c))
 
@@ -78,7 +78,7 @@ namespace SvmFsBatch
             double? epsilonExpStep = null, //1,
             double? coef0ExpBegin = null, double? coef0ExpEnd = null, double? coef0ExpStep = null, double? degreeExpBegin = null, double? degreeExpEnd = null, double? degreeExpStep = null, CancellationToken ct = default)
         {
-            //const string _MethodName = nameof(grid_parameter_search);
+            //const string MethodName = nameof(grid_parameter_search);
 
             if (ct.IsCancellationRequested) return default;
 
@@ -191,14 +191,14 @@ namespace SvmFsBatch
             for (var epsilonIndex = 0; epsilonIndex < epsilonExpListLen; epsilonIndex++)
             for (var coef0Index = 0; coef0Index < coef0ExpListLen; coef0Index++)
             for (var degreeIndex = 0; degreeIndex < degreeExpListLen; degreeIndex++)
-                //search_grid_points.Add((cost_exp_list[cost_index], gamma_exp_list[gamma_index], epsilon_exp_list[epsilon_index], coef0_exp_list[coef0_index], degree_exp_list[degree_index]));
+                //search_GridPoints.Add((cost_exp_list[cost_index], gamma_exp_list[gamma_index], epsilon_exp_list[epsilon_index], coef0_exp_list[coef0_index], degree_exp_list[degree_index]));
                 searchGridPoints[++k] = (costExpList[costIndex], gammaExpList[gammaIndex], epsilonExpList[epsilonIndex], coef0ExpList[coef0Index], degreeExpList[degreeIndex]);
 
             searchGridPoints = searchGridPoints.Distinct().OrderByDescending(a => a.cost).ThenByDescending(a => a.gamma).ThenByDescending(a => a.epsilon).ThenByDescending(a => a.coef0).ThenByDescending(a => a.degree).ToArray();
 
             var cachedSearchGridPoints = searchGridPoints.Where(a => cacheList.Any(b => svmType == b.SvmType && svmKernel == b.SvmKernel && innerCvFolds == b.InnerCvFolds && probabilityEstimates == b.ProbabilityEstimates && shrinkingHeuristics == b.ShrinkingHeuristics && a.cost == b.GridPoint.GpCost && a.gamma == b.GridPoint.GpGamma && a.epsilon == b.GridPoint.GpEpsilon && a.coef0 == b.GridPoint.GpCoef0 && a.degree == b.GridPoint.GpDegree)).ToArray();
             /*
-            var cached_search = cache.Where(b => cached_search_grid_points.Any(a => svm_type == b.svm_type && svm_kernel == b.svm_kernel && inner_cv_folds == b.inner_cv_folds && probability_estimates == b.probability_estimates && shrinking_heuristics == b.shrinking_heuristics &&
+            var cached_search = cache.Where(b => cached_search_GridPoints.Any(a => svm_type == b.svm_type && svm_kernel == b.svm_kernel && inner_cv_folds == b.inner_cv_folds && ProbabilityEstimates == b.ProbabilityEstimates && shrinking_heuristics == b.shrinking_heuristics &&
                                                                              a.cost == b.point.cost &&
                                                                              a.gamma == b.point.gamma &&
                                                                              a.epsilon == b.point.epsilon &&
@@ -275,7 +275,7 @@ namespace SvmFsBatch
 
                 await GridCacheData.WriteCacheFileAsync(cacheTrainGridCsv, resultsCacheFormat, ct).ConfigureAwait(false);
 
-                //svm_type, svm_kernel, repetitions, repetitions_index, outer_cv_folds, outer_cv_index, inner_cv_folds, probability_estimates, shrinking_heuristics, results);
+                //svm_type, svm_kernel, repetitions, RepetitionsIndex, outer_cv_folds, OuterCvIndex, inner_cv_folds, ProbabilityEstimates, shrinking_heuristics, results);
             }
 
             var bestGridPoint = GetBestRate(results,ct);
@@ -287,7 +287,7 @@ namespace SvmFsBatch
 
         internal static double LibsvmCvPerf(string[] libsvmResultLines, CancellationToken ct)
         {
-            //const string _MethodName = nameof(libsvm_cv_perf);
+            //const string MethodName = nameof(libsvm_cv_perf);
 
             //var v_libsvm_default_cross_validation_index = libsvm_result_lines.FindIndex(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.Ordinal));
             //var v_libsvm_default_cross_validation_str = v_libsvm_default_cross_validation_index < 0 ? "" : libsvm_result_lines[v_libsvm_default_cross_validation_index].Split()[4];

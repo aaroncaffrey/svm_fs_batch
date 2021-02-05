@@ -6,51 +6,51 @@
 
         internal static readonly string[] CsvHeaderValuesArray =
         {
-            /*"rs_" +*/ nameof(IterationIndex),
-            /*"rs_" +*/ nameof(GroupArrayIndex),
+            nameof(RsIterationIndex),
+            nameof(RsGroupArrayIndex),
 
-            /*"rs_" +*/ nameof(FsScoreChangeBest),
-            /*"rs_" +*/ nameof(FsScoreChangeLast),
-            /*"rs_" +*/ nameof(FsScoreChangeGroup),
+            nameof(RsFsScoreChangeBest),
+            nameof(RsFsScoreChangeLast),
+            nameof(RsFsScoreChangeGroup),
 
-            /*"rs_" +*/ nameof(FsScore),
-            /*"rs_" +*/ nameof(FsScorePercentile),
-            /*"rs_" +*/ nameof(FsRankIndex),
-            /*"rs_" +*/ nameof(FsMaxRankIndex),
-            /*"rs_" +*/ nameof(FsRankIndexPercentile)
+            nameof(RsFsScore),
+            nameof(RsFsScorePercentile),
+            nameof(RsFsRankIndex),
+            nameof(RsFsMaxRankIndex),
+            nameof(RsFsRankIndexPercentile)
         };
 
-        internal int FsMaxRankIndex;
+        internal int RsFsMaxRankIndex;
 
-        internal int FsRankIndex;
-        internal double FsRankIndexPercentile;
+        internal int RsFsRankIndex;
+        internal double RsFsRankIndexPercentile;
 
-        internal double FsScore;
+        internal double RsFsScore;
 
-        internal double FsScoreChangeBest;
-        internal double FsScoreChangeGroup;
-        internal double FsScoreChangeLast;
-        internal double FsScorePercentile;
-        internal int GroupArrayIndex;
+        internal double RsFsScoreChangeBest;
+        internal double RsFsScoreChangeGroup;
+        internal double RsFsScoreChangeLast;
+        internal double RsFsScorePercentile;
 
-        internal int IterationIndex;
+        internal int RsGroupArrayIndex;
+        internal int RsIterationIndex;
 
         internal string[] CsvValuesArray()
         {
             return new[]
             {
-                $@"{IterationIndex}",
-                $@"{GroupArrayIndex}",
+                $@"{RsIterationIndex}",
+                $@"{RsGroupArrayIndex}",
 
-                $@"{FsScoreChangeBest:G17}",
-                $@"{FsScoreChangeLast:G17}",
-                $@"{FsScoreChangeGroup:G17}",
+                $@"{RsFsScoreChangeBest:G17}",
+                $@"{RsFsScoreChangeLast:G17}",
+                $@"{RsFsScoreChangeGroup:G17}",
 
-                $@"{FsScore:G17}",
-                $@"{FsScorePercentile:G17}",
-                $@"{FsRankIndex}",
-                $@"{FsMaxRankIndex}",
-                $@"{FsRankIndexPercentile:G17}"
+                $@"{RsFsScore:G17}",
+                $@"{RsFsScorePercentile:G17}",
+                $@"{RsFsRankIndex}",
+                $@"{RsFsMaxRankIndex}",
+                $@"{RsFsRankIndexPercentile:G17}"
             };
         }
     }

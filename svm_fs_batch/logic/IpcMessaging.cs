@@ -9,7 +9,7 @@ namespace SvmFsBatch.logic
     {
         internal const string ModuleName = nameof(IpcMessaging);
 
-        internal static async Task<(IndexData id, ConfusionMatrix[] CmList)> IpcAsync(string localName, string remoteName, ConnectionPool.ConnectionPoolMember cpm, DataSet DataSet, bool asParallel = true, IndexData idRequest = null, CancellationToken ct = default)
+        internal static async Task<(IndexData id, ConfusionMatrix[] CmList)> IpcAsync(string localName, string remoteName, ConnectionPoolMember cpm, DataSet DataSet, bool asParallel = true, IndexData idRequest = null, CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) return default;
 
@@ -21,7 +21,7 @@ namespace SvmFsBatch.logic
             //using var clientTaskCts = new CancellationTokenSource();
             //var clientTaskCt = clientTaskCts.Token;
 
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, /*clientTaskCt,*/ cpm.ct);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, /*clientTaskCt,*/ cpm.Ct);
             var linkedCt = linkedCts.Token;
 
             ulong NextFrameId()
@@ -34,7 +34,10 @@ namespace SvmFsBatch.logic
                 // send request - index_data instance
                 if (idRequest != null)
                 {
-                    var writeOk0 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataRequest, idRequest.CsvValuesString(), cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                    //var requestLines = new [] { IndexData.CsvHeaderString, idRequest.CsvValuesString() };
+                    var text = idRequest.CsvValuesString() + Environment.NewLine;
+
+                    var writeOk0 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeRpcRequest1, text, cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                     if (!writeOk0)
                     {
                         Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
@@ -46,12 +49,12 @@ namespace SvmFsBatch.logic
                 // read response
                 while (!linkedCt.IsCancellationRequested)
                 {
-                    var frame = await TcpClientExtra.ReadFrameAsync(cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                    var frame = await TcpClientExtra.ReadFrameAsync(cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                     //UpdateReadTime();
 
                     if (!frame.readOk)
                     {
-                        var pollOk = TcpClientExtra.PollTcpClientConnection(cpm.client);
+                        var pollOk = TcpClientExtra.PollTcpClientConnection(cpm.Client);
                         Logging.LogEvent($@"{localName}: Frame could not be read from {remoteName} - poll {pollOk}.", ModuleName);
 
                         if (!pollOk)
@@ -70,7 +73,7 @@ namespace SvmFsBatch.logic
                             Logging.LogEvent($@"{localName}: Received ping from {remoteName}.", ModuleName);
 
                             // send ack
-                            var writeAckOk1 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypePingAcknowledge, @"", cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                            var writeAckOk1 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypePingAcknowledge, @"", cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                             if (!writeAckOk1) Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
                             break;
 
@@ -78,11 +81,11 @@ namespace SvmFsBatch.logic
                             Logging.LogEvent($@"{localName}: Acknowledgement of ping received from {remoteName}.", ModuleName);
                             break;
 
-                        case TcpClientExtra.PayloadFrameTypes.FrameTypeDataRequest:
+                        case TcpClientExtra.PayloadFrameTypes.FrameTypeRpcRequest1:
                             Logging.LogEvent($@"{localName}: Received compute request from {remoteName}.", ModuleName);
 
                             // send ack
-                            var writeAckOk2 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataRequestAcknowledge, @"", cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                            var writeAckOk2 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeRpcAcknowledge1, @"", cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                             if (!writeAckOk2)
                             {
                                 Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
@@ -99,7 +102,7 @@ namespace SvmFsBatch.logic
                             if (linkedCt.IsCancellationRequested)
                             {
                                 Logging.LogEvent($@"{localName}: Cancellation requested - not sending response to {remoteName}.", ModuleName);
-                                var writeOk1 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataResponse, "", cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                                var writeOk1 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataRpcResponse1, "", cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                                 if (!writeOk1)
                                 {
                                     Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
@@ -109,7 +112,7 @@ namespace SvmFsBatch.logic
                             else if (string.IsNullOrWhiteSpace(text))
                             {
                                 Logging.LogEvent($@"{localName}: Response was empty - not sending response to {remoteName}.", ModuleName);
-                                var writeOk2 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataResponse, "", cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                                var writeOk2 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataRpcResponse1, "", cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                                 if (!writeOk2)
                                 {
                                     Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
@@ -120,7 +123,7 @@ namespace SvmFsBatch.logic
                             {
                                 // send compute results
                                 Logging.LogEvent($@"{localName}: Sending compute response to {remoteName}.", ModuleName);
-                                var writeOk3 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataResponse, text, cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                                var writeOk3 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeDataRpcResponse1, text, cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                                 if (!writeOk3)
                                 {
                                     Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
@@ -130,7 +133,7 @@ namespace SvmFsBatch.logic
 
                             return !linkedCt.IsCancellationRequested ? result : default;
 
-                        case TcpClientExtra.PayloadFrameTypes.FrameTypeDataRequestAcknowledge:
+                        case TcpClientExtra.PayloadFrameTypes.FrameTypeRpcAcknowledge1:
                             Logging.LogEvent($@"{localName}: Acknowledgement of compute request received from {remoteName}.", ModuleName);
                             break;
 
@@ -138,7 +141,7 @@ namespace SvmFsBatch.logic
                             Logging.LogEvent($@"{localName}: Received break request from {remoteName}.", ModuleName);
 
                             //send ack
-                            var writeOk4 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeBreakAcknowledge, @"", cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                            var writeOk4 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeBreakAcknowledge, @"", cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                             if (!writeOk4)
                             {
                                 Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
@@ -151,7 +154,7 @@ namespace SvmFsBatch.logic
                             Logging.LogEvent($@"{localName}: Acknowledgement of break request received from {remoteName}.", ModuleName);
                             break;
 
-                        case TcpClientExtra.PayloadFrameTypes.FrameTypeDataResponse:
+                        case TcpClientExtra.PayloadFrameTypes.FrameTypeDataRpcResponse1:
                             Logging.LogEvent($@"{localName}: Received compute response from {remoteName}.", ModuleName);
 
                             if (frame.textInLines != null && frame.textInLines.Length > 0)
@@ -170,7 +173,7 @@ namespace SvmFsBatch.logic
                             return !linkedCt.IsCancellationRequested ? result : default;
                         //break;
 
-                        case TcpClientExtra.PayloadFrameTypes.FrameTypeDataResponseAcknowledge:
+                        case TcpClientExtra.PayloadFrameTypes.FrameTypeDataRpcResponseAcknowledge1:
                             Logging.LogEvent($@"{localName}: Acknowledgement of compute response received from {remoteName}.", ModuleName);
                             break;
 
@@ -178,7 +181,7 @@ namespace SvmFsBatch.logic
                             Logging.LogEvent($@"{localName}: {remoteName} requests close.", ModuleName);
 
                             // send ack
-                            var writeAckOk5 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeCloseAcknowledge, "", cpm.client, cpm.stream, linkedCt).ConfigureAwait(false);
+                            var writeAckOk5 = await TcpClientExtra.WriteFrameAsync(NextFrameId(), (ulong) TcpClientExtra.PayloadFrameTypes.FrameTypeCloseAcknowledge, "", cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                             if (!writeAckOk5) Logging.LogEvent($@"{localName}: Could not write to {remoteName}.");
 
                             break;
@@ -189,7 +192,7 @@ namespace SvmFsBatch.logic
 
                         default:
                             Logging.LogEvent($@"{localName}: {remoteName} sent unrecognized frame type: {frame.frameType}.", ModuleName);
-                            throw new ArgumentOutOfRangeException(nameof(frame.frameType), $@"{localName}: {remoteName} sent unrecognized frame type: {frame.frameType}.");
+                            throw new Exception( $@"{localName}: {remoteName} sent unrecognized value: {nameof(frame.frameType)} = {frame.frameType}.");
                     }
                 }
 

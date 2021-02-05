@@ -18,23 +18,23 @@ namespace SvmFsBatch
             nameof(DataSetGroupKey.Value.gkGroup),
             nameof(DataSetGroupKey.Value.gkMember),
             nameof(DataSetGroupKey.Value.gkPerspective),
-            nameof(GkGroupIndex),
-            nameof(GkColumnIndex)
+            nameof(gkGroupIndex),
+            nameof(gkColumnIndex)
         };
 
         internal static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
 
-        internal int GkColumnIndex = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
+        internal int gkColumnIndex = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
 
-        internal int GkGroupIndex = -1; // note: for internal use only... value subject to change.
+        internal int gkGroupIndex = -1; // note: for internal use only... value subject to change.
 
         internal (string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective) Value;
 
         public DataSetGroupKey((string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective) value, int gkGroupIndex = -1, int gkColumnIndex = -1)
         {
             Value = value;
-            GkGroupIndex = gkGroupIndex;
-            GkColumnIndex = gkColumnIndex;
+            this.gkGroupIndex = gkGroupIndex;
+            this.gkColumnIndex = gkColumnIndex;
         }
 
         public DataSetGroupKey(string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective, int gkGroupIndex = -1, int gkColumnIndex = -1)
@@ -48,8 +48,8 @@ namespace SvmFsBatch
             if (!string.IsNullOrEmpty(gkGroup)) Value.gkGroup = gkGroup;
             if (!string.IsNullOrEmpty(gkMember)) Value.gkMember = gkMember;
             if (!string.IsNullOrEmpty(gkPerspective)) Value.gkPerspective = gkPerspective;
-            GkGroupIndex = gkGroupIndex;
-            GkColumnIndex = gkColumnIndex;
+            this.gkGroupIndex = gkGroupIndex;
+            this.gkColumnIndex = gkColumnIndex;
         }
 
         public DataSetGroupKey(string[] lineHeader, XTypes[] line, int columnOffset = 0)
@@ -75,8 +75,8 @@ namespace SvmFsBatch
             var hiGkGroup = Hi(nameof(Value.gkGroup));
             var hiGkMember = Hi(nameof(Value.gkMember));
             var hiGkPerspective = Hi(nameof(Value.gkPerspective));
-            var hiGkGroupIndex = Hi(nameof(GkGroupIndex));
-            var hiGkColumnIndex = Hi(nameof(GkColumnIndex));
+            var higkGroupIndex = Hi(nameof(this.gkGroupIndex));
+            var higkColumnIndex = Hi(nameof(this.gkColumnIndex));
 
 
             var gkFileTag = hiGkFileTag > -1
@@ -106,11 +106,11 @@ namespace SvmFsBatch
             var gkPerspective = hiGkPerspective > -1
                 ? line[hiGkPerspective].AsStr
                 : default;
-            var gkGroupIndex = hiGkGroupIndex > -1
-                ? line[hiGkGroupIndex].AsInt
+            var gkGroupIndex = higkGroupIndex > -1
+                ? line[higkGroupIndex].AsInt
                 : null;
-            var gkColumnIndex = hiGkColumnIndex > -1
-                ? line[hiGkColumnIndex].AsInt
+            var gkColumnIndex = higkColumnIndex > -1
+                ? line[higkColumnIndex].AsInt
                 : null;
 
 
@@ -123,8 +123,8 @@ namespace SvmFsBatch
             if (!string.IsNullOrEmpty(gkGroup)) Value.gkGroup = gkGroup;
             if (!string.IsNullOrEmpty(gkMember)) Value.gkMember = gkMember;
             if (!string.IsNullOrEmpty(gkPerspective)) Value.gkPerspective = gkPerspective;
-            if (gkGroupIndex != null) GkGroupIndex = gkGroupIndex.Value;
-            if (gkColumnIndex != null) GkColumnIndex = gkColumnIndex.Value;
+            if (gkGroupIndex != null) this.gkGroupIndex = gkGroupIndex.Value;
+            if (gkColumnIndex != null) this.gkColumnIndex = gkColumnIndex.Value;
         }
 
 
@@ -137,7 +137,7 @@ namespace SvmFsBatch
             return (Value.gkFileTag ?? "") == (other.Value.gkFileTag ?? "") && (Value.gkAlphabet ?? "") == (other.Value.gkAlphabet ?? "") && (Value.gkStats ?? "") == (other.Value.gkStats ?? "") && (Value.gkDimension ?? "") == (other.Value.gkDimension ?? "") && (Value.gkCategory ?? "") == (other.Value.gkCategory ?? "") && (Value.gkSource ?? "") == (other.Value.gkSource ?? "") && (Value.gkGroup ?? "") == (other.Value.gkGroup ?? "") && (Value.gkMember ?? "") == (other.Value.gkMember ?? "") && (Value.gkPerspective ?? "") == (other.Value.gkPerspective ?? "");
         }
 
-        internal static DataSetGroupKey find_reference(DataSetGroupKey[] list, DataSetGroupKey item)
+        internal static DataSetGroupKey FindReference(DataSetGroupKey[] list, DataSetGroupKey item)
         {
             return list.FirstOrDefault(a => a == item);
         }
@@ -147,17 +147,17 @@ namespace SvmFsBatch
         {
             return new[]
             {
-                $@"{Value.gkFileTag}",
-                $@"{Value.gkAlphabet}",
-                $@"{Value.gkStats}",
-                $@"{Value.gkDimension}",
-                $@"{Value.gkCategory}",
-                $@"{Value.gkSource}",
-                $@"{Value.gkGroup}",
-                $@"{Value.gkMember}",
-                $@"{Value.gkPerspective}",
-                $@"{GkGroupIndex}",
-                $@"{GkColumnIndex}"
+                $@"{this.Value.gkFileTag}",
+                $@"{this.Value.gkAlphabet}",
+                $@"{this.Value.gkStats}",
+                $@"{this.Value.gkDimension}",
+                $@"{this.Value.gkCategory}",
+                $@"{this.Value.gkSource}",
+                $@"{this.Value.gkGroup}",
+                $@"{this.Value.gkMember}",
+                $@"{this.Value.gkPerspective}",
+                $@"{this.gkGroupIndex}",
+                $@"{this.gkColumnIndex}"
             };
         }
 

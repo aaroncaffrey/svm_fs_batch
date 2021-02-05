@@ -38,17 +38,17 @@ namespace SvmFsBatch
         }
 
 
-        internal static async Task FeatureSelectionClientInitializationAsync(DataSet DataSet, string experimentName, int instanceId, int totalInstances, CancellationToken ct)
+        internal static async Task FeatureSelectionClientInitializationAsync(DataSet DataSet, string ExperimentName, int instanceId, int totalInstances, CancellationToken ct)
         {
             if (ct.IsCancellationRequested) return;
 
-            var serverGuidBytes = Program.ProgramArgs.ServerGuid.ToByteArray();
+            //var serverGuidBytes = Program.ProgramArgs.ServerGuid.ToByteArray();
 
             var clientGuid = Program.ProgramArgs.ClientGuid;
-            var clientGuidBytes = clientGuid.ToByteArray();
+            //var clientGuidBytes = clientGuid.ToByteArray();
 
 
-            // no need to group DataSet on client - server provides column indexes within whole DataSet
+            // no need to gkGroup DataSet on client - server provides column indexes within whole DataSet
 
             const string methodName = nameof(FeatureSelectionClientInitializationAsync);
             Logging.WriteLine($"{methodName}()", ModuleName, methodName);
@@ -89,7 +89,7 @@ namespace SvmFsBatch
                     {
                         Logging.LogEvent($"{poolName}: Main Loop: Connection pool is empty.", ModuleName);
                         try { await Task.Delay(TimeSpan.FromMilliseconds(1), ct).ConfigureAwait(false); }
-                        catch (Exception) { }
+                        catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
                         continue;
                     }
@@ -100,10 +100,10 @@ namespace SvmFsBatch
 
                             try
                             {
-                                var ret = await IpcMessaging.IpcAsync($"client_{cpm.localHost}:{cpm.localPort}", $"server_{cpm.remoteHost}:{cpm.remotePort}", cpm, DataSet, true, null, ct).ConfigureAwait(false);
+                                var ret = await IpcMessaging.IpcAsync($"client_{cpm.LocalHost}:{cpm.LocalPort}", $"server_{cpm.RemoteHost}:{cpm.RemotePort}", cpm, DataSet, true, null, ct).ConfigureAwait(false);
                             }
                             catch (Exception e) { Logging.LogException(e, "", ModuleName); }
-                            finally { cp.Add(cpm); }
+                            finally { cpm?.JoinPool(cp); }
 
                             Logging.LogEvent($"{poolName}: Main Loop: Exiting task {Task.CurrentId}.", ModuleName);
                         },
@@ -113,7 +113,7 @@ namespace SvmFsBatch
 
 
                     // wait while free cpu less than 10%
-                    if (Program.ProgramArgs.IsUnix && mpstat != null)
+                    if (Program.ProgramArgs.IsUnix && mpstat != null && mpstat.IsResponsive())
                     {
                         var averageIdle = 00.00;
                         var currentIdle = 00.00;
@@ -129,10 +129,13 @@ namespace SvmFsBatch
                                 try
                                 {
                                     Logging.LogEvent($"{poolName}: Main Loop: CPU not idle... waiting...", ModuleName);
-                                    await Task.Delay(TimeSpan.FromMilliseconds(1), ct).ConfigureAwait(false);
+                                    await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
                                 }
-                                catch (Exception) { }
-                        } while (!ct.IsCancellationRequested && averageIdle <= 85.00 || currentIdle <= 85.00);
+                                catch (Exception e)
+                                {
+                                    Logging.LogException(e, "", ModuleName);
+                                }
+                        } while (!ct.IsCancellationRequested && mpstat.IsResponsive() && (averageIdle <= 85.00 || currentIdle <= 85.00));
                     }
 
                     //await Task.Delay(TimeSpan.FromMilliseconds(1), ct:ct).ConfigureAwait(false);
@@ -149,7 +152,7 @@ namespace SvmFsBatch
                 }
 
                 try { await Task.Delay(TimeSpan.FromMilliseconds(1), ct).ConfigureAwait(false); }
-                catch (Exception) { }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
             }
 
             if (tasks.Count > 0)

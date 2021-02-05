@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,20 @@ namespace SvmFsBatch.logic
         internal Task Task;
         internal DateTime TimeUpdate;
         internal CancellationToken ct = default;
+
+        internal bool IsRunning()
+        {
+            return Process != null && !Process.HasExited;
+        }
+
+        internal bool IsResponsive()
+        {
+            if (!IsRunning()) return false;
+
+            var secondsSinceUpdate = (DateTime.UtcNow - TimeUpdate).TotalSeconds;
+
+            return secondsSinceUpdate <= IntervalHistory;
+        }
 
         internal double GetIdle()
         {

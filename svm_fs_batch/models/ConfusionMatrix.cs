@@ -150,11 +150,11 @@ namespace SvmFsBatch
             var lensMax = lens.Max();
 
             var saveFull = saveFullReq && (overwrite || !await IoProxy.IsFileAvailableAsync(true, ct, cmFullFilename, false, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false));
-            //var save_summary = save_summary_req && (overwrite || !await io_proxy.IsFileAvailable(true, ct, cm_summary_filename, false, _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName));
+            //var save_summary = save_summary_req && (overwrite || !await io_proxy.IsFileAvailable(true, ct, cm_summary_filename, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName));
 
             if (saveFullReq && !saveFull) Logging.WriteLine($@"Not overwriting file: {cmFullFilename}", ModuleName, methodName);
 
-            //if (save_summary_req && !save_summary) Logging.WriteLine($@"Not overwriting file: {cm_summary_filename}", _ModuleName, _MethodName);
+            //if (save_summary_req && !save_summary) Logging.WriteLine($@"Not overwriting file: {cm_summary_filename}", ModuleName, MethodName);
 
             if (!saveFull /* && !save_summary*/) return;
 
@@ -226,9 +226,9 @@ namespace SvmFsBatch
             //if (lines_summary != null && lines_summary.Length > 0)
             //{
             //    await io_proxy.WriteAllLines(true, ct, cm_summary_filename, lines_summary,
-            //        _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName).ConfigureAwait(false);
-            //    Logging.WriteLine($@"Saved: {cm_summary_filename} ({lines_summary.Length} lines)", _ModuleName,
-            //        _MethodName);
+            //        _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false);
+            //    Logging.WriteLine($@"Saved: {cm_summary_filename} ({lines_summary.Length} lines)", ModuleName,
+            //        MethodName);
             //}
         }
 
@@ -627,7 +627,7 @@ namespace SvmFsBatch
         {
             return
                 //(unrolled_index_data?.CsvValuesArray() ?? index_data.empty.CsvValuesArray())
-                //.Concat(grid_point?.CsvValuesArray() ?? grid_point.empty.CsvValuesArray())
+                //.Concat(GridPoint?.CsvValuesArray() ?? GridPoint.empty.CsvValuesArray())
                 (GridPoint?.CsvValuesArray() ?? GridPoint.Empty.CsvValuesArray()).Concat(new[]
                 {
                     $@"{(XTimeGrid != null ? $@"{XTimeGrid.Value:G}" : "")}",

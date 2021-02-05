@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class Stats
+    internal class gkStats
     {
         internal static readonly string[] CsvHeaderValuesArray =
         {
@@ -82,7 +82,7 @@ namespace SvmFsBatch
         internal double Variance;
 
 
-        internal Stats(double[] data, bool presorted = false)
+        internal gkStats(double[] data, bool presorted = false)
         {
             if (data.Any(a => double.IsInfinity(a) || double.IsNaN(a))) throw new ArgumentOutOfRangeException(nameof(data), "");
 

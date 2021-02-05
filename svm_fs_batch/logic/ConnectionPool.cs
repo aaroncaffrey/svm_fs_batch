@@ -6,23 +6,23 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SvmFsBatch.logic
+namespace SvmFsBatch
 {
     internal class ConnectionPool
     {
         internal const string ModuleName = nameof(ConnectionPool);
 
         private bool _isDisposed;
-        private List<ConnectionPoolMember> Pool = new List<ConnectionPoolMember>();
-        private CancellationToken PoolCt;
-        private CancellationTokenSource PoolCts = new CancellationTokenSource();
-        private object PoolLock = new object();
-        private Queue<byte[]> PoolRemoteGuidQueue = new Queue<byte[]>();
-        private Task Task;
+        private List<ConnectionPoolMember> _pool = new List<ConnectionPoolMember>();
+        internal CancellationToken PoolCt { get; private set; }
+        private CancellationTokenSource _poolCts = new CancellationTokenSource();
+        private object _poolLock = new object();
+        private Queue<byte[]> _poolRemoteGuidQueue = new Queue<byte[]>();
+        private Task _task;
 
         public ConnectionPool()
         {
-            PoolCt = PoolCts.Token;
+            PoolCt = _poolCts.Token;
         }
 
         internal string PoolName { get; private set; }
@@ -31,60 +31,60 @@ namespace SvmFsBatch.logic
         {
             if (_isDisposed) return default;
 
-            lock (PoolLock) { return PoolCt.IsCancellationRequested ? default :Pool.Count; }
+            lock (_poolLock) { return PoolCt.IsCancellationRequested ? default : _pool.Count; }
         }
 
         internal int CountActive()
         {
             if (_isDisposed) return default;
 
-            lock (PoolLock) { return PoolCt.IsCancellationRequested ? default :Pool.Count(a => a.client != null && a.client.Connected); }
+            lock (_poolLock) { return PoolCt.IsCancellationRequested ? default : _pool.Count(a => a.IsActive()); }
         }
 
         internal int CountRemoteGuids()
         {
             if (_isDisposed) return default;
 
-            lock (PoolLock) { return PoolCt.IsCancellationRequested ? default :PoolRemoteGuidQueue.Count; }
+            lock (_poolLock) { return PoolCt.IsCancellationRequested ? default : _poolRemoteGuidQueue.Count; }
         }
 
-        internal void Poll()
+        internal void PollPool()
         {
             if (_isDisposed) return;
 
-            lock (PoolLock) { Pool = Pool.AsParallel().AsOrdered().Where(a => TcpClientExtra.PollTcpClientConnection(a.client)).ToList(); }
+            lock (_poolLock) { _pool = _pool.AsParallel().AsOrdered().Where(a => a.IsConnected()).ToList(); }
         }
 
         internal ConnectionPoolMember GetNextClient()
         {
             if (_isDisposed) return default;
 
-            lock (PoolLock)
+            lock (_poolLock)
             {
-                if (Pool.Count == 0) return default;
+                if (_pool.Count == 0) return default;
 
-                if (PoolRemoteGuidQueue.Count == 0) return default;
+                if (_poolRemoteGuidQueue.Count == 0) return default;
 
-                for (var i = PoolRemoteGuidQueue.Count - 1; i >= 0; i--)
+                for (var i = _poolRemoteGuidQueue.Count - 1; i >= 0; i--)
                 {
-                    var remoteGuidBytes = PoolRemoteGuidQueue.Dequeue();
-                    PoolRemoteGuidQueue.Enqueue(remoteGuidBytes);
+                    var remoteGuidBytes = _poolRemoteGuidQueue.Dequeue();
+                    _poolRemoteGuidQueue.Enqueue(remoteGuidBytes);
 
-                    var client = Pool.FirstOrDefault(a => a.client != null && a.client.Connected && a.remoteGuidBytes.SequenceEqual(remoteGuidBytes));
+                    var cpm = _pool.FirstOrDefault(a => a.IsActive() && a.HasRemoteGuid(remoteGuidBytes));
 
                     // could poll client here to check connected...
 
-                    if (client != default)
+                    if (cpm != default)
                     {
-                        Pool.Remove(client);
+                        cpm.LeavePool();
 
-                        var pollOk = TcpClientExtra.PollTcpClientConnection(client.client);
-
-                        if (pollOk) return PoolCt.IsCancellationRequested ? default :client;
-
-                        client.Close();
-                        
-                        Logging.LogEvent($@"{PoolName}: Connection pool: Connection closed.", ModuleName);
+                        if (cpm.IsConnected())
+                        {
+                            if (!PoolCt.IsCancellationRequested && !cpm.Ct.IsCancellationRequested)
+                            {
+                                return cpm;
+                            }
+                        }
                     }
                 }
 
@@ -92,18 +92,34 @@ namespace SvmFsBatch.logic
             }
         }
 
+        //internal bool Poll(ConnectionPoolMember cpm)
+        //{
+        //    lock (_poolLock)
+        //    {
+        //        var pollOk = TcpClientExtra.PollTcpClientConnection(cpm.Client) || cpm.Ct.IsCancellationRequested || PoolCt.IsCancellationRequested;
+        //        if (!pollOk)
+        //        {
+        //            cpm.Close();
+        //        }
+        //        return pollOk;
+        //    }
+        //}
+
         internal void Clean()
         {
             if (_isDisposed) return;
 
-            lock (PoolLock)
+            lock (_poolLock)
             {
-                for (var i = Pool.Count - 1; i >= 0; i--)
-                    if (!Pool[i].client.Connected)
+                for (var i = _pool.Count - 1; i >= 0; i--)
+                {
+                    var cpm = _pool[i];
+                    if (!cpm.Client.Connected)
                     {
-                        Pool.RemoveAt(i);
-                        Logging.LogEvent($@"{PoolName}: Connection pool: Connection closed.", ModuleName);
+                        _pool.RemoveAt(i);
+                        cpm.Close();
                     }
+                }
             }
         }
 
@@ -111,39 +127,56 @@ namespace SvmFsBatch.logic
         {
             if (_isDisposed) return;
 
-            lock (PoolLock)
+            lock (_poolLock)
             {
-                foreach (var c in Pool)
+                for (var index = _pool.Count - 1; index >= 0; index--)
                 {
+                    var c = _pool[index];
                     try { c?.Close(); }
                     catch (Exception) { }
-
-                    Logging.LogEvent($@"{PoolName}: Connection pool: Connection closed.", ModuleName);
                 }
 
-                Pool.Clear();
+                _pool.Clear();
             }
         }
 
-        internal void Add(ConnectionPoolMember client)
+        internal void QueueGuid(byte[] RemoteGuidBytes)
         {
-            //if (_isDisposed) return;
+            if (this._isDisposed || this._pool == null) return;
 
-            if (client == null) return;
-
-            if (client.ct.IsCancellationRequested || client.client == null || !client.client.Connected || Pool == null || _isDisposed)
+            lock (_poolLock)
             {
-                client.Close();
-
-                Logging.LogEvent($"{PoolName}: Connection pool: Connection closed.", ModuleName);
-                return;
+                if (!_poolRemoteGuidQueue.Any(a => a.SequenceEqual(RemoteGuidBytes))) _poolRemoteGuidQueue.Enqueue(RemoteGuidBytes);
             }
+        }
 
-            lock (PoolLock)
+        internal void Add(ConnectionPoolMember cpm)
+        {
+            if (cpm == null || !cpm.IsConnected()) return;
+            if (this._isDisposed || this._pool == null) return;
+
+            //if (cpm.Ct.IsCancellationRequested || cpm.Client == null || !cpm.Client.Connected || _pool == null || _isDisposed)
+            //{
+            //    cpm.Close();
+            //    return;
+            //}
+
+            lock (_poolLock)
             {
-                Pool.Add(client);
+                if (!_pool.Contains(cpm)) { _pool.Add(cpm); }
 
-                if (!PoolRemoteGuidQueue.Any(a => a.SequenceEqual(client.remoteGuidBytes))) PoolRemoteGuidQueue.Enqueue(client.remoteGuidBytes);
+                cpm.Cp = this;
+
+                QueueGuid(cpm.RemoteGuidBytes);
+            }
+        }
+
+        internal void Remove(ConnectionPoolMember cpm)
+        {
+            lock (_poolLock)
+            {
+                _pool.Remove(cpm);
+
             }
         }
 
@@ -153,26 +186,26 @@ namespace SvmFsBatch.logic
 
             _isDisposed = true;
 
-            lock (PoolLock)
+            lock (_poolLock)
             {
-                PoolCts.Cancel();
-                PoolCts.Dispose();
+                _poolCts.Cancel();
+                _poolCts.Dispose();
                 CloseAll();
             }
 
-            if (Task != null && !Task.IsCompleted) await Task.ConfigureAwait(false);
+            if (_task != null && !_task.IsCompleted) await _task.ConfigureAwait(false);
 
-            lock (PoolLock)
+            lock (_poolLock)
             {
-                PoolRemoteGuidQueue = null;
-                Pool = null;
-                PoolCts = null;
+                _poolRemoteGuidQueue = null;
+                _pool = null;
+                _poolCts = null;
                 PoolCt = default;
-                Task = null;
+                _task = null;
                 PoolName = null;
             }
 
-            PoolLock = null;
+            _poolLock = null;
         }
 
         internal void Start(string poolName, Guid poolGuid, bool incoming, bool outgoing, CancellationToken ct)
@@ -185,7 +218,7 @@ namespace SvmFsBatch.logic
             var linkedCt = linkedCts.Token;
 
 
-            Task = Task.Run(async () =>
+            _task = Task.Run(async () =>
                 {
                     var poolGuidBytes = poolGuid.ToByteArray();
 
@@ -283,7 +316,7 @@ namespace SvmFsBatch.logic
                             {
                                 var incomingClientConnect = Task.Run(async () =>
                                     {
-                                        if (!linkedCt.IsCancellationRequested) return ct.IsCancellationRequested ? default :await listener.AcceptTcpClientAsync().ConfigureAwait(false);
+                                        if (!linkedCt.IsCancellationRequested) return ct.IsCancellationRequested ? default : await listener.AcceptTcpClientAsync().ConfigureAwait(false);
                                         return default;
                                     },
                                     linkedCt);
@@ -343,13 +376,13 @@ namespace SvmFsBatch.logic
                                     try { stream?.Close(); }
                                     catch (Exception)
                                     {
-                                        /*Logging.LogException( e, "", _ModuleName); */
+                                        /*Logging.LogException( e, "", ModuleName); */
                                     }
 
                                     try { client?.Close(); }
                                     catch (Exception)
                                     {
-                                        /*Logging.LogException( e, "", _ModuleName);*/
+                                        /*Logging.LogException( e, "", ModuleName);*/
                                     }
 
                                     continue;
@@ -369,13 +402,13 @@ namespace SvmFsBatch.logic
                                     try { stream?.Close(); }
                                     catch (Exception)
                                     {
-                                        /*Logging.LogException( e, "", _ModuleName); */
+                                        /*Logging.LogException( e, "", ModuleName); */
                                     }
 
                                     try { client?.Close(); }
                                     catch (Exception)
                                     {
-                                        /*Logging.LogException( e, "", _ModuleName);*/
+                                        /*Logging.LogException( e, "", ModuleName);*/
                                     }
 
                                     continue;
@@ -384,14 +417,14 @@ namespace SvmFsBatch.logic
 
                                 Add(new ConnectionPoolMember
                                 {
-                                    client = client,
-                                    stream = stream,
-                                    localGuidBytes = poolGuidBytes,
-                                    remoteGuidBytes = remoteGuidBytes,
-                                    localHost = rid.localAddress.ToString(),
-                                    localPort = rid.localPort,
-                                    remoteHost = rid.remoteAddress.ToString(),
-                                    remotePort = rid.remotePort
+                                    Client = client,
+                                    Stream = stream,
+                                    LocalGuidBytes = poolGuidBytes,
+                                    RemoteGuidBytes = remoteGuidBytes,
+                                    LocalHost = rid.localAddress.ToString(),
+                                    LocalPort = rid.localPort,
+                                    RemoteHost = rid.remoteAddress.ToString(),
+                                    RemotePort = rid.remotePort,
                                 });
                             }
                         }
@@ -420,49 +453,6 @@ namespace SvmFsBatch.logic
                 linkedCt);
         }
 
-        internal class ConnectionPoolMember
-        {
-            private bool _IsDisposed;
-            internal CancellationTokenSource cts = new CancellationTokenSource();
-            internal CancellationToken ct = default;
 
-            internal TcpClient client;
-
-            internal byte[] localGuidBytes;
-            internal string localHost;
-            internal int localPort;
-
-            internal byte[] remoteGuidBytes;
-            internal string remoteHost;
-            internal int remotePort;
-            internal NetworkStream stream;
-
-            internal ConnectionPoolMember()
-            {
-                ct = cts.Token;
-            }
-
-            internal void Close()
-            {
-                if (_IsDisposed) return;
-
-                _IsDisposed = true;
-
-                try {stream?.Close();} catch (Exception) { }
-                try {client?.Close(); } catch (Exception) { }
-                try {cts?.Cancel();} catch (Exception) { }
-                try {cts?.Dispose();} catch (Exception) { }
-
-                cts = default;
-                client = default;
-                stream = default;
-                localGuidBytes = default;
-                remoteGuidBytes = default;
-                localHost = default;
-                localPort = default;
-                remoteHost = default;
-                remotePort = default;
-            }
-        }
     }
 }

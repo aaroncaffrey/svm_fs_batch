@@ -16,6 +16,17 @@ namespace SvmFsBatch
 
         internal static async Task Main(string[] args)
         {
+            //var id1 = new IndexData();
+            //id1.IdExperimentName = "test";
+            //id1.IdColumnArrayIndexes = new int[] { 1, 2, 3 };
+            //id1.IdGroupArrayIndexes = new int[] { 7, 8, 9 };
+            //id1.IdGroupKey = new DataSetGroupKey("file tag", "alpha", "stat", "dim", "cat", "src", "grp", "mem", "per", 10, 20);
+            //var id2 = new IndexData(string.Join(",", id1.CsvValuesArray()));
+
+            //var eq = IndexData.CompareReferenceData2(id1, id2);
+            //return;
+
+
             //var rnd = new metrics_box();
             //rnd.set_cm(null, null, 20, 11, 126, 30);
             //Console.WriteLine(string.Join("\r\n", rnd.CsvValuesArray().Select((a, i) => $"{metrics_box.CsvHeaderValuesArray[i]} = '{a}'").ToArray()));
@@ -30,10 +41,10 @@ namespace SvmFsBatch
             //Console.WriteLine();
 
             //const string methodName = nameof(Main);
-            //-experiment_name _20201028084510741 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 1 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 1
-            //-experiment_name test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
+            //-ExperimentName _20201028084510741 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 1 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 1
+            //-ExperimentName test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
             //var x=ConfusionMatrix.load($@"C:\mmfs1\data\scratch\k1040015\SvmFsBatch\results\test\it_5\x_it-5_gr-5_sv-1_kr-3_sc-2_rn-1_oc-10_ic-10_ix-1-5.cm.csv");
-            // debug cmd line parameters: -experiment_name test2 -array_start 0 -array_end 4 -array_index 0 -array_step 5 -array_instances 1 -array_last_index -1
+            // debug cmd line parameters: -ExperimentName test2 -array_start 0 -array_end 4 -array_index 0 -array_step 5 -array_instances 1 -array_last_index -1
 
 
             ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
@@ -52,7 +63,7 @@ namespace SvmFsBatch
             Init.SetGcMode();
             //Init.SetThreadCounts();
 
-            //var fake_args = $"-experiment_name=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
+            //var fake_args = $"-ExperimentName=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
             var fakeArgsList = new List<(string name, string value)>
             {
                 (nameof(ProgramArgs.ExperimentName), "test"),
@@ -68,9 +79,9 @@ namespace SvmFsBatch
 
                 (nameof(ProgramArgs.DataSetNames), "[1i.aaindex]"),
 
-                (nameof(ProgramArgs.InnerFolds), "5"),
-                (nameof(ProgramArgs.OuterCvFolds), "5"),
-                (nameof(ProgramArgs.OuterCvFoldsToRun), "5"),
+                (nameof(ProgramArgs.InnerFolds), "0"),
+                (nameof(ProgramArgs.OuterCvFolds), "10"),
+                (nameof(ProgramArgs.OuterCvFoldsToRun), "1"),
                 (nameof(ProgramArgs.Repetitions), "1")
             };
 
@@ -100,7 +111,7 @@ namespace SvmFsBatch
             if (!Routines.IsInRange(ProgramArgs.WholeArrayIndexFirst, ProgramArgs.WholeArrayIndexLast, ProgramArgs.PartitionArrayIndexLast)) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.PartitionArrayIndexLast)} = {ProgramArgs.PartitionArrayIndexLast}");
 
 
-            //var instance_id = Getinstance_id(program_args.whole_array_index_first, program_args.whole_array_index_last, program_args.whole_array_step_size, program_args.partition_array_index_first, program_args.partition_array_index_last);
+            //var InstanceId = GetInstanceId(program_args.whole_array_index_first, program_args.whole_array_index_last, program_args.whole_array_step_size, program_args.partition_array_index_first, program_args.partition_array_index_last);
 
             var instanceId = Routines.ForIterations(ProgramArgs.WholeArrayIndexFirst, ProgramArgs.PartitionArrayIndexFirst, ProgramArgs.WholeArrayStepSize) - 1;
             var totalInstance = Routines.ForIterations(ProgramArgs.WholeArrayIndexFirst, ProgramArgs.WholeArrayIndexLast, ProgramArgs.WholeArrayStepSize);
@@ -119,7 +130,7 @@ namespace SvmFsBatch
             var tasks = new List<Task>();
             //var threads = new List<Thread>();
 
-            if ( /*instance_id == 0 ||*/ ProgramArgs.Server)
+            if ( /*InstanceId == 0 ||*/ ProgramArgs.Server)
             {
                 //var fss = Task.Run(async () => await fs_server.feature_selection_initialization(
                 var fsServerTask = Task.Run(async () => await FsServer.FeatureSelectionInitializationAsync(DataSet,
@@ -147,7 +158,7 @@ namespace SvmFsBatch
                 //threads.Add(fss);
             }
 
-            if ( /*instance_id != 0 ||*/ ProgramArgs.Client)
+            if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
             {
                 //var fsc = Task.Run(async () => await fs_client.x0_feature_selection_client_initialization
                 var fsClientTask = Task.Run(async () => await FsClient.FeatureSelectionClientInitializationAsync(DataSet, ProgramArgs.ExperimentName, instanceId, ProgramArgs.WholeArrayLength, mainCt).ConfigureAwait(false), mainCt);
@@ -176,7 +187,7 @@ namespace SvmFsBatch
             //{
             //    for (var i = 0; i < threads.Count; i++)
             //    {
-            //        try{threads[i].Join();} catch (Exception e){ Logging.LogException( e, _ModuleName); }
+            //        try{threads[i].Join();} catch (Exception e){ Logging.LogException( e, ModuleName); }
             //    }
             //}
 
@@ -184,19 +195,19 @@ namespace SvmFsBatch
         }
 
 
-        internal static string GetIterationFolder(string resultsRootFolder, string experimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
+        internal static string GetIterationFolder(string resultsRootFolder, string ExperimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) return default;
 
             const bool hr = false;
 
-            if (iterationIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, experimentName);
-            if (groupIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, experimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}");
-            return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, experimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
+            if (iterationIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName);
+            if (groupIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}");
+            return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
         }
 
 
-        internal static void UpdateMergedCm(DataSet DataSet, (Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, GridPoint grid_point, string[] predict_text)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
+        internal static void UpdateMergedCm(DataSet DataSet, (Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
         {
             const string methodName = nameof(UpdateMergedCm);
 
@@ -221,15 +232,15 @@ namespace SvmFsBatch
                 }
         }
 
-        private static void UpdateMergedCmFromVector((TimeSpan? grid_dur, TimeSpan? train_dur, TimeSpan? predict_dur, GridPoint grid_point, string[] predict_text)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
+        private static void UpdateMergedCmFromVector((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
         {
             if (ct.IsCancellationRequested) return;
 
-            if (cm.GridPoint == null) cm.GridPoint = new GridPoint(predictionDataList?.Select(a => a.grid_point).ToArray());
+            if (cm.GridPoint == null) cm.GridPoint = new GridPoint(predictionDataList?.Select(a => a.GridPoint).ToArray());
 
-            if ((cm.XTimeGrid == null || cm.XTimeGrid == TimeSpan.Zero) && (predictionDataList?.Any(a => a.grid_dur != null) ?? false)) cm.XTimeGrid = new TimeSpan(predictionDataList?.Select(a => a.grid_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
-            if ((cm.XTimeTrain == null || cm.XTimeTrain == TimeSpan.Zero) && (predictionDataList?.Any(a => a.train_dur != null) ?? false)) cm.XTimeTrain = new TimeSpan(predictionDataList?.Select(a => a.train_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
-            if ((cm.XTimeTest == null || cm.XTimeTest == TimeSpan.Zero) && (predictionDataList?.Any(a => a.predict_dur != null) ?? false)) cm.XTimeTest = new TimeSpan(predictionDataList?.Select(a => a.predict_dur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.XTimeGrid == null || cm.XTimeGrid == TimeSpan.Zero) && (predictionDataList?.Any(a => a.gridDur != null) ?? false)) cm.XTimeGrid = new TimeSpan(predictionDataList?.Select(a => a.gridDur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.XTimeTrain == null || cm.XTimeTrain == TimeSpan.Zero) && (predictionDataList?.Any(a => a.trainDur != null) ?? false)) cm.XTimeTrain = new TimeSpan(predictionDataList?.Select(a => a.trainDur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+            if ((cm.XTimeTest == null || cm.XTimeTest == TimeSpan.Zero) && (predictionDataList?.Any(a => a.predictDur != null) ?? false)) cm.XTimeTest = new TimeSpan(predictionDataList?.Select(a => a.predictDur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
         }
 
         internal static void UpdateMergedCmSingle(DataSet DataSet, IndexData unrolledIndexData, OuterCvInput mergedCvInput, ConfusionMatrix cm, CancellationToken ct)
@@ -241,9 +252,9 @@ namespace SvmFsBatch
             cm.XClassTestSize = mergedCvInput.TestSizes?.First(b => b.ClassId == cm.XClassId).test_size ?? -1;
             cm.XClassTrainSize = mergedCvInput.TrainSizes?.First(b => b.ClassId == cm.XClassId).train_size ?? -1;
             cm.XClassWeight = unrolledIndexData.IdClassWeights?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassWeight;
-            //cm.x_time_grid_search =  prediction_data_list?.Select(a => a.dur.grid_dur).DefaultIfEmpty(0).Sum();
-            //cm.x_time_test = prediction_data_list?.Select(a => a.dur.predict_dur).DefaultIfEmpty(0).Sum();
-            //cm.x_time_train = prediction_data_list?.Select(a => a.dur.train_dur).DefaultIfEmpty(0).Sum();
+            //cm.x_time_grid_search =  PredictionData_list?.Select(a => a.dur.gridDur).DefaultIfEmpty(0).Sum();
+            //cm.x_time_test = PredictionData_list?.Select(a => a.dur.predictDur).DefaultIfEmpty(0).Sum();
+            //cm.x_time_train = PredictionData_list?.Select(a => a.dur.trainDur).DefaultIfEmpty(0).Sum();
             cm.XOuterCvIndex = mergedCvInput.OuterCvIndex;
             cm.XRepetitionsIndex = mergedCvInput.RepetitionsIndex;
         }
@@ -258,8 +269,8 @@ namespace SvmFsBatch
         //{
         //    var id = new index_data()
         //    {
-        //        id_experiment_name = pa.experiment_name,
-        //        id_iteration_index = -1,
+        //        id_ExperimentName = pa.ExperimentName,
+        //        id_IterationIndex = -1,
         //        id_outer_cv_folds = pa.outer_cv_folds,
         //        id_outer_cv_folds_to_run = pa.outer_cv_folds_to_run,
         //        id_repetitions = pa.repetitions,

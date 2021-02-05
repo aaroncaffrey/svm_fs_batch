@@ -22,7 +22,7 @@ namespace SvmFsBatch
         //            int row_index,
         //            int col_index,
         //            string comment_key,
-        //            string comment_value
+        //            string CommentValue
         //        )[] row_comment,
         //        (
         //            int row_index,
@@ -31,14 +31,14 @@ namespace SvmFsBatch
         //                int internal_column_index,
         //                int external_column_index,
         //                string file_tag,
-        //                string alphabet,
-        //                string stats,
-        //                string dimension,
-        //                string category,
-        //                string source,
-        //                string @group,
-        //                string member,
-        //                string perspective
+        //                string gkAlphabet,
+        //                string gkStats,
+        //                string gkDimension,
+        //                string gkCategory,
+        //                string gkSource,
+        //                string @gkGroup,
+        //                string gkMember,
+        //                string gkPerspective
         //            ) column_header,
         //            double row_column_val
         //        )[] row_columns
@@ -47,21 +47,21 @@ namespace SvmFsBatch
 
         internal (int ClassId, int class_size)[] ClassSizes;
 
-        //internal (int internal_column_index, int external_column_index, string file_tag, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)[] column_header_list;
+        //internal (int internal_column_index, int external_column_index, string file_tag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)[] column_header_list;
         internal DataSetGroupKey[] ColumnHeaderList;
 
-        internal (int ClassId, string ClassName, (int row_index, int col_index, string comment_key, string comment_value)[][] cl_comment_list)[] CommentList;
+        internal (int ClassId, string ClassName, (int row_index, int col_index, string comment_key, string CommentValue)[][] cl_comment_list)[] CommentList;
 
         // feature values, grouped by class id (with meta data class name and class size)
-        // internal List<(int ClassId, string ClassName, int class_size, List<((int internal_column_index, int external_column_index, string file_tag, string alphabet, string dimension, string category, string source, string @group, string member, string perspective) column_header, double fv)[]> val_list)> value_list;
+        // internal List<(int ClassId, string ClassName, int class_size, List<((int internal_column_index, int external_column_index, string file_tag, string gkAlphabet, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective) column_header, double fv)[]> val_list)> value_list;
 
-        internal ( int ClassId, string ClassName, int class_size, ( ( int row_index, int col_index, string comment_key, string comment_value )[] row_comment, ( int row_index, int col_index, DataSetGroupKey column_header, double row_column_val )[] row_columns )[] val_list )[] ValueList;
+        internal ( int ClassId, string ClassName, int class_size, ( ( int row_index, int col_index, string comment_key, string CommentValue )[] row_comment, ( int row_index, int col_index, DataSetGroupKey column_header, double row_column_val )[] row_columns )[] val_list )[] ValueList;
 
         internal static int[] RemoveDuplicateColumns(DataSet DataSet, int[] queryCols, bool asParallel = false, CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) return default;
 
-            //const string _MethodName = nameof(remove_duplicate_columns);
+            //const string MethodName = nameof(remove_duplicate_columns);
             // remove duplicate columns (may exist in separate groups)
             //var query_col_dupe_check = idr.DataSet_instance_list_grouped.SelectMany(a => a.examples).SelectMany(a => query_cols.Select(b => (query_col: b, fv: a.feature_data[b].fv)).ToList()).GroupBy(b => b.query_col).Select(b => (query_col: b.Key, values: b.Select(c => c.fv).ToList())).ToList();
 
@@ -135,9 +135,9 @@ namespace SvmFsBatch
             {
                 var ret = queryCols.Except(indexesToRemove).ToArray();
 //#if DEBUG
-//                Logging.WriteLine($"Removed duplicate columns: [{string.Join(", ", indexes_to_remove)}].", program._ModuleName, _MethodName);
-//                Logging.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program._ModuleName, _MethodName);
-//                Logging.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program._ModuleName, _MethodName);
+//                Logging.WriteLine($"Removed duplicate columns: [{string.Join(", ", indexes_to_remove)}].", program.ModuleName, MethodName);
+//                Logging.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program.ModuleName, MethodName);
+//                Logging.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program.ModuleName, MethodName);
 //#endif
                 return ct.IsCancellationRequested ? default :ret;
             }
@@ -227,8 +227,8 @@ namespace SvmFsBatch
         //    if (DataSet_names == null || DataSet_names.Length == 0 || DataSet_names.Any(string.IsNullOrWhiteSpace)) throw new ArgumentOutOfRangeException(nameof(DataSet_names));
 
         //    //var required_default = false;
-        //    //var required_matches = new List<(bool required, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)>();
-        //    //required_matches.Add((required: true, alphabet: null, dimension: null, category: null, source: null, group: null, member: null, perspective: null));
+        //    //var required_matches = new List<(bool required, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)>();
+        //    //required_matches.Add((required: true, gkAlphabet: null, gkDimension: null, gkCategory: null, gkSource: null, gkGroup: null, gkMember: null, gkPerspective: null));
 
         //    // file tags: 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p (1d - linear, 2d - predicted, 3d - actual, interface, neighborhood, protein)
 
@@ -256,14 +256,14 @@ namespace SvmFsBatch
 
             ColumnHeaderList = dataFilenames.First( /* headers are same for all classes, so only load first class headers */).header_csv_filenames.AsParallel().AsOrdered().WithCancellation(ct).SelectMany((fileInfo, fileIndex) =>
             {
-                return ct.IsCancellationRequested ? default :IoProxy.ReadAllLinesAsync(true, ct, fileInfo.filename, callerModuleName: ModuleName, callerMethodName: methodName).Result.Skip(fileIndex == 0
+                return IoProxy.ReadAllLinesAsync(true, ct, fileInfo.filename, callerModuleName: ModuleName, callerMethodName: methodName).Result.Skip(fileIndex == 0
                     ? 1
                     : 2 /*skip header line, and if not first file, class id line too */).AsParallel().AsOrdered().WithCancellation(ct).Select((line, lineIndex) =>
                 {
                     var row = line.Split(',');
 
                     if (row.Length == 9)
-                        return ct.IsCancellationRequested ? default :new DataSetGroupKey(
+                        return new DataSetGroupKey(
                             //internal_column_index: -1, 
                             //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
                             fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
@@ -278,7 +278,7 @@ namespace SvmFsBatch
                             row[7],
                             row[8]);
                     if (row.Length == 8)
-                        return ct.IsCancellationRequested ? default :new DataSetGroupKey(
+                        return new DataSetGroupKey(
                             //internal_column_index: -1, 
                             //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
                             fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
@@ -300,12 +300,12 @@ namespace SvmFsBatch
                 ColumnHeaderList.Length,
                 i =>
                 {
-                    ColumnHeaderList[i].GkGroupIndex = i;
-                    ColumnHeaderList[i].GkColumnIndex = i;
+                    ColumnHeaderList[i].gkGroupIndex = i;
+                    ColumnHeaderList[i].gkColumnIndex = i;
                 });
 
 
-            //header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.alphabet, a.stats, a.dimension, a.category, a.source, a.@group, a.member, a.perspective)).ToArray();
+            //header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.gkAlphabet, a.gkStats, a.gkDimension, a.gkCategory, a.gkSource, a.@gkGroup, a.gkMember, a.gkPerspective)).ToArray();
             swHeader.Stop();
             Logging.WriteLine($@"Finish: reading headers ({swHeader.Elapsed}).", ModuleName, methodName);
         }
@@ -326,11 +326,11 @@ namespace SvmFsBatch
                 var commentHeader = commentLines.First();
                 var clCommentList = commentLines.Skip(1 /*skip header*/).AsParallel().AsOrdered().WithCancellation(ct).Select((rowSplit, rowIndex) =>
                 {
-                    var keyValueList = rowSplit.AsParallel().AsOrdered().WithCancellation(ct).Select((colData, colIndex) => (row_index: rowIndex, col_index: colIndex, comment_key: commentHeader[colIndex], comment_value: colData)).ToArray();
+                    var keyValueList = rowSplit.AsParallel().AsOrdered().WithCancellation(ct).Select((colData, colIndex) => (row_index: rowIndex, col_index: colIndex, comment_key: commentHeader[colIndex], CommentValue: colData)).ToArray();
 
-                    return ct.IsCancellationRequested ? default :keyValueList;
+                    return keyValueList;
                 }).ToArray();
-                return ct.IsCancellationRequested ? default :(cl.ClassId, cl.ClassName, cl_comment_list: clCommentList);
+                return (cl.ClassId, cl.ClassName, cl_comment_list: clCommentList);
             }).ToArray();
 
             CommentList = await Task.WhenAll(commentList2).ConfigureAwait(false);
@@ -372,7 +372,7 @@ namespace SvmFsBatch
                     vals[rowIndex] = valsTag.SelectMany((aCl, aClIndex) => aCl[rowIndex]).ToArray();
 
                 var valList = vals.AsParallel().AsOrdered().WithCancellation(ct).Select((row, rowIndex) => (row_comment: CommentList[clIndex].cl_comment_list[rowIndex], row_columns: row.Select((colVal, colIndex) => (row_index: rowIndex, col_index: colIndex, column_header: ColumnHeaderList[colIndex], row_column_val: vals[rowIndex][colIndex])).ToArray())).ToArray();
-                return ct.IsCancellationRequested ? default :(cl.ClassId, cl.ClassName, class_size: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
+                return (cl.ClassId, cl.ClassName, class_size: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
             }).ToArray();
             swValues.Stop();
             Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName, methodName);
@@ -385,9 +385,9 @@ namespace SvmFsBatch
             var dataFilenames = classNames.Select(cl =>
             {
                 // (string file_tag, int ClassId, string ClassName, string filename)
-                var valuesCsvFilenames = fileTags.Select(fileTag => (file_tag: fileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"f_({fileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
-                var headerCsvFilenames = fileTags.Select(fileTag => (file_tag: fileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"h_({fileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
-                var commentCsvFilenames = fileTags.Select(fileTag => (file_tag: fileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"c_({fileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var valuesCsvFilenames = fileTags.Select(gkFileTag => (file_tag: gkFileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"f_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var headerCsvFilenames = fileTags.Select(gkFileTag => (file_tag: gkFileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"h_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var commentCsvFilenames = fileTags.Select(gkFileTag => (file_tag: gkFileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"c_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
 
                 return (cl.ClassId, cl.ClassName, values_csv_filenames: valuesCsvFilenames, header_csv_filenames: headerCsvFilenames, comment_csv_filenames: commentCsvFilenames);
             }).ToList();
@@ -424,7 +424,7 @@ namespace SvmFsBatch
         internal async Task LoadDataSetAsync(string DataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames //,
             //bool perform_integrity_checks = false,
             //bool required_default = true,
-            //IList<(bool required, string alphabet, string stats, string dimension, string category, string source, string @group, string member, string perspective)> required_matches = null
+            //IList<(bool required, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)> required_matches = null
             , CancellationToken ct)
         {
             if (ct.IsCancellationRequested) return;
@@ -439,7 +439,7 @@ namespace SvmFsBatch
             foreach (var cl in classNames) Logging.WriteLine($@"{cl.ClassId:+#;-#;+0} = {cl.ClassName}", ModuleName, methodName);
 
             fileTags = fileTags.OrderBy(a => a).ToArray();
-            foreach (var fileTag in fileTags) Logging.WriteLine($@"{fileTag}: {fileTag}", ModuleName, methodName);
+            foreach (var gkFileTag in fileTags) Logging.WriteLine($@"{gkFileTag}: {gkFileTag}", ModuleName, methodName);
 
             var dataFilenames = GetDataFilenames(DataSetFolder, fileTags, classNames);
             CheckDataFiles(dataFilenames);
@@ -453,14 +453,14 @@ namespace SvmFsBatch
 }
 //{
 //    // all comment headers should be equal
-//    var comment_headers = file_data.SelectMany(a => a.comment_csv_data.Select(b => b.header_row).ToList()).ToList();
-//    for (var ci = 0; ci < comment_headers.Count; ci++)
+//    var CommentHeaders = file_data.SelectMany(a => a.comment_csv_data.Select(b => b.header_row).ToList()).ToList();
+//    for (var ci = 0; ci < CommentHeaders.Count; ci++)
 //    {
-//        for (var cj = 0; cj < comment_headers.Count; cj++)
+//        for (var cj = 0; cj < CommentHeaders.Count; cj++)
 //        {
 //            if (cj <= ci) continue;
 
-//            if (!comment_headers[ci].SequenceEqual(comment_headers[cj])) throw new Exception();
+//            if (!CommentHeaders[ci].SequenceEqual(CommentHeaders[cj])) throw new Exception();
 //        }
 //    }
 //}
@@ -507,63 +507,63 @@ namespace SvmFsBatch
 //        //if (fid!=i) throw new Exception();
 
 
-//        var alphabet = row[1];
-//        var dimension = row[2];
-//        var category = row[3];
-//        var source = row[4];
-//        var group = row[5];
-//        var member = row[6];
-//        var perspective = row[7];
+//        var gkAlphabet = row[1];
+//        var gkDimension = row[2];
+//        var gkCategory = row[3];
+//        var gkSource = row[4];
+//        var gkGroup = row[5];
+//        var gkMember = row[6];
+//        var gkPerspective = row[7];
 
 
 //        const string def = "default";
 
-//        if (string.IsNullOrWhiteSpace(alphabet)) alphabet = def;
-//        if (string.IsNullOrWhiteSpace(dimension)) dimension = def;
-//        if (string.IsNullOrWhiteSpace(category)) category = def;
-//        if (string.IsNullOrWhiteSpace(source)) source = def;
-//        if (string.IsNullOrWhiteSpace(group)) group = def;
-//        if (string.IsNullOrWhiteSpace(member)) member = def;
-//        if (string.IsNullOrWhiteSpace(perspective)) perspective = def;
+//        if (string.IsNullOrWhiteSpace(gkAlphabet)) gkAlphabet = def;
+//        if (string.IsNullOrWhiteSpace(gkDimension)) gkDimension = def;
+//        if (string.IsNullOrWhiteSpace(gkCategory)) gkCategory = def;
+//        if (string.IsNullOrWhiteSpace(gkSource)) gkSource = def;
+//        if (string.IsNullOrWhiteSpace(gkGroup)) gkGroup = def;
+//        if (string.IsNullOrWhiteSpace(gkMember)) gkMember = def;
+//        if (string.IsNullOrWhiteSpace(gkPerspective)) gkPerspective = def;
 
 //        lock (lock_table)
 //        {
-//            if (!table_alphabet.Contains(alphabet)) { table_alphabet.Add(alphabet); }
-//            if (!table_dimension.Contains(dimension)) { table_dimension.Add(dimension); }
-//            if (!table_category.Contains(category)) { table_category.Add(category); }
-//            if (!table_source.Contains(source)) { table_source.Add(source); }
-//            if (!table_group.Contains(group)) { table_group.Add(group); }
-//            if (!table_member.Contains(member)) { table_member.Add(member); }
-//            if (!table_perspective.Contains(perspective)) { table_perspective.Add(perspective); }
+//            if (!table_alphabet.Contains(gkAlphabet)) { table_alphabet.Add(gkAlphabet); }
+//            if (!table_dimension.Contains(gkDimension)) { table_dimension.Add(gkDimension); }
+//            if (!table_category.Contains(gkCategory)) { table_category.Add(gkCategory); }
+//            if (!table_source.Contains(gkSource)) { table_source.Add(gkSource); }
+//            if (!table_group.Contains(gkGroup)) { table_group.Add(gkGroup); }
+//            if (!table_member.Contains(gkMember)) { table_member.Add(gkMember); }
+//            if (!table_perspective.Contains(gkPerspective)) { table_perspective.Add(gkPerspective); }
 //        }
 
-//        var alphabet_id = table_alphabet.LastIndexOf(alphabet);
-//        var dimension_id = table_dimension.LastIndexOf(dimension);
-//        var category_id = table_category.LastIndexOf(category);
-//        var source_id = table_source.LastIndexOf(source);
-//        var group_id = table_group.LastIndexOf(group);
-//        var member_id = table_member.LastIndexOf(member);
-//        var perspective_id = table_perspective.LastIndexOf(perspective);
+//        var alphabet_id = table_alphabet.LastIndexOf(gkAlphabet);
+//        var dimension_id = table_dimension.LastIndexOf(gkDimension);
+//        var category_id = table_category.LastIndexOf(gkCategory);
+//        var source_id = table_source.LastIndexOf(gkSource);
+//        var group_id = table_group.LastIndexOf(gkGroup);
+//        var member_id = table_member.LastIndexOf(gkMember);
+//        var perspective_id = table_perspective.LastIndexOf(gkPerspective);
 
-//        alphabet = table_alphabet[alphabet_id];
-//        dimension = table_dimension[dimension_id];
-//        category = table_category[category_id];
-//        source = table_source[source_id];
-//        group = table_group[group_id];
-//        member = table_member[member_id];
-//        perspective = table_perspective[perspective_id];
+//        gkAlphabet = table_alphabet[alphabet_id];
+//        gkDimension = table_dimension[dimension_id];
+//        gkCategory = table_category[category_id];
+//        gkSource = table_source[source_id];
+//        gkGroup = table_group[group_id];
+//        gkMember = table_member[member_id];
+//        gkPerspective = table_perspective[perspective_id];
 
 //        return ct.IsCancellationRequested ? default :(
 //            internal_fid: internal_fid,
 //            external_fid: external_fid,
 //            file_tag: tag_headers.file_tag,
-//            alphabet: alphabet,
-//            dimension: dimension,
-//            category: category,
-//            source: source,
-//            group: group,
-//            member: member,
-//            perspective: perspective
+//            gkAlphabet: gkAlphabet,
+//            gkDimension: gkDimension,
+//            gkCategory: gkCategory,
+//            gkSource: gkSource,
+//            gkGroup: gkGroup,
+//            gkMember: gkMember,
+//            gkPerspective: gkPerspective
 //        );
 
 //        //internal_fid: internal_fid,
@@ -572,7 +572,7 @@ namespace SvmFsBatch
 //    }).ToList()).ToList();
 
 ////var feature_catalog = feature_catalog_data.Select((a,i) => 
-////    (internal_fid:i, a.external_fid, a.file_tag, a.alphabet, a.dimension, a.category, a.source, a.group, a.member, a.perspective)
+////    (internal_fid:i, a.external_fid, a.file_tag, a.gkAlphabet, a.gkDimension, a.gkCategory, a.gkSource, a.gkGroup, a.gkMember, a.gkPerspective)
 ////).ToList();
 
 ////if (cl.values_csv_data.Select(a => a.data_rows.Select(b => b.Length).ToList()).Distinct().Count() != 1) throw new Exception();
@@ -627,13 +627,13 @@ if (required_matches != null && required_matches.Count > 0)
         {
 
             var matching_fids = header_data[i].headers.AsParallel().AsOrdered().Where(a =>
-                matches(a.alphabet, rm.alphabet) &&
-                matches(a.category, rm.category) &&
-                matches(a.dimension, rm.dimension) &&
-                matches(a.source, rm.source) &&
-                matches(a.@group, rm.@group) &&
-                matches(a.member, rm.member) &&
-                matches(a.perspective, rm.perspective)
+                matches(a.gkAlphabet, rm.gkAlphabet) &&
+                matches(a.gkCategory, rm.gkCategory) &&
+                matches(a.gkDimension, rm.gkDimension) &&
+                matches(a.gkSource, rm.gkSource) &&
+                matches(a.@gkGroup, rm.@gkGroup) &&
+                matches(a.gkMember, rm.gkMember) &&
+                matches(a.gkPerspective, rm.gkPerspective)
                 ).Select(a => a.fid).ToList();
 
 
@@ -657,13 +657,13 @@ if (required_matches != null && required_matches.Count > 0)
 //        var rm = required_matches[index];
 
 //        var matching_fids = feature_catalog.AsParallel().AsOrdered().Where(a =>
-//            matches(a.alphabet, rm.alphabet) &&
-//            matches(a.category, rm.category) &&
-//            matches(a.dimension, rm.dimension) &&
-//            matches(a.source, rm.source) &&
-//            matches(a.@group, rm.@group) &&
-//            matches(a.member, rm.member) &&
-//            matches(a.perspective, rm.perspective)
+//            matches(a.gkAlphabet, rm.gkAlphabet) &&
+//            matches(a.gkCategory, rm.gkCategory) &&
+//            matches(a.gkDimension, rm.gkDimension) &&
+//            matches(a.gkSource, rm.gkSource) &&
+//            matches(a.@gkGroup, rm.@gkGroup) &&
+//            matches(a.gkMember, rm.gkMember) &&
+//            matches(a.gkPerspective, rm.gkPerspective)
 //        ).Select(a => a.internal_fid).ToList();
 
 
@@ -680,16 +680,16 @@ if (required_matches != null && required_matches.Count > 0)
 /*
 if (perform_integrity_checks)
 {
-    Logging.WriteLine($@"Checking all DataSet columns are the same length...", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine($@"Checking all DataSet columns are the same length...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
     var DataSet_num_diferent_column_length = DataSet_instance_list.Select(a => a.feature_data.Count).Distinct().Count();
     if (DataSet_num_diferent_column_length != 1) throw new Exception();
 
-    Logging.WriteLine($@"Checking DataSet headers and DataSet columns are the same length...", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine($@"Checking DataSet headers and DataSet columns are the same length...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
     var header_length = header_data.Count;
     var DataSet_column_length = DataSet_instance_list.First().feature_data.Count;
     if (DataSet_column_length != header_length) throw new Exception();
 
-    Logging.WriteLine($@"Checking all DataSet comment columns are the same length...", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine($@"Checking all DataSet comment columns are the same length...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
     var comments_num_different_column_length = DataSet_instance_list.Select(a => a.comment_columns.Count).Distinct().Count();
     if (comments_num_different_column_length != 1)
     {
@@ -763,7 +763,7 @@ if (perform_integrity_checks)
 /*
 internal static double[][][] Getcolumn_data_by_class(DataSet DataSet) // [column][row]
 {
-    //Logging.WriteLine("...", _ModuleName, nameof(Getcolumn_data_by_class));
+    //Logging.WriteLine("...", ModuleName, nameof(Getcolumn_data_by_class));
 
     var total_headers = DataSet.DataSet_headers.Count;
     var total_classes = DataSet.DataSet_instance_list.Select(a => a.ClassId).Distinct().Count();
@@ -784,7 +784,7 @@ internal static double[][][] Getcolumn_data_by_class(DataSet DataSet) // [column
 /*
 internal static double[][] Getcolumn_data(DataSet DataSet) // [column][row]
 {
-    //Logging.WriteLine("...", _ModuleName, nameof(Getcolumn_data));
+    //Logging.WriteLine("...", ModuleName, nameof(Getcolumn_data));
 
     var result = new double[DataSet.DataSet_headers.Count][];
 
@@ -801,13 +801,13 @@ internal static double[][] Getcolumn_data(DataSet DataSet) // [column][row]
 internal static void remove_large_groups(DataSet DataSet, int max_group_size)
 {
     
-    const string _MethodName = nameof(remove_large_groups);
+    const string MethodName = nameof(remove_large_groups);
 
-    //Logging.WriteLine("...", _ModuleName, nameof(remove_large_groups));
+    //Logging.WriteLine("...", ModuleName, nameof(remove_large_groups));
 
     var groups = DataSet.DataSet_headers.Skip(1).GroupBy(a => (a.alphabet_id, a.dimension_id, a.category_id, a.source_id, a.group_id)).OrderBy(a => a.Count()).ToList();
 
-    //groups.ForEach(a => Console.WriteLine(a.Count() + ": " + a.First().alphabet + ", " + a.First().dimension + ", " + a.First().category + ", " + a.First().group));
+    //groups.ForEach(a => Console.WriteLine(a.Count() + ": " + a.First().gkAlphabet + ", " + a.First().gkDimension + ", " + a.First().gkCategory + ", " + a.First().gkGroup));
 
     //var sizes = groups.Select(a => a.Count()).Distinct().Select(b=> (size: b, count: groups.Count(c=> c.Count() == b))).OrderByDescending(a => a).ToList();
 
@@ -822,7 +822,7 @@ internal static void remove_large_groups(DataSet DataSet, int max_group_size)
         remove_fids(DataSet, fids_to_remove);
     }
 
-    groups_too_large.ForEach(a => Logging.WriteLine($@"Removed large group: {a.Key}", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName));
+    groups_too_large.ForEach(a => Logging.WriteLine($@"Removed large gkGroup: {a.Key}", _CallerModuleName: ModuleName, _CallerMethodName: MethodName));
 }
 */
 
@@ -830,9 +830,9 @@ internal static void remove_large_groups(DataSet DataSet, int max_group_size)
 internal static void remove_duplicate_groups(DataSet DataSet)
 {
     
-    //const string _MethodName = nameof(remove_duplicate_groups);
+    //const string MethodName = nameof(remove_duplicate_groups);
 
-    //Logging.WriteLine("...", _ModuleName, nameof(remove_duplicate_groups));
+    //Logging.WriteLine("...", ModuleName, nameof(remove_duplicate_groups));
 
 
     var column_data = Getcolumn_data(DataSet);
@@ -904,8 +904,8 @@ internal static void remove_duplicate_groups(DataSet DataSet)
             var group_to_keep = groups_ungrouped.First();
             var groups_to_remove = groups_ungrouped.Skip(1).ToList();
 
-            var group_to_keep_key = new string[] { group_to_keep.First().alphabet, group_to_keep.First().dimension, group_to_keep.First().category, group_to_keep.First().source, group_to_keep.First().group };
-            var groups_to_remove_keys = groups_to_remove.Select(a => new string[] { a.First().alphabet, a.First().dimension, a.First().category, a.First().source, a.First().group }).ToList();
+            var group_to_keep_key = new string[] { group_to_keep.First().gkAlphabet, group_to_keep.First().gkDimension, group_to_keep.First().gkCategory, group_to_keep.First().gkSource, group_to_keep.First().gkGroup };
+            var groups_to_remove_keys = groups_to_remove.Select(a => new string[] { a.First().gkAlphabet, a.First().gkDimension, a.First().gkCategory, a.First().gkSource, a.First().gkGroup }).ToList();
 
             Console.WriteLine($"+    Keeping: {string.Join(".", group_to_keep_key)}");
             groups_to_remove_keys.ForEach(a => Console.WriteLine($"-   Removing: {string.Join(".", a)}"));
@@ -928,29 +928,29 @@ internal static void remove_duplicate_groups(DataSet DataSet)
             {
                 foreach (var x in cg)
                 {
-                    alphabets.Add(x.alphabet);
-                    dimensions.Add(x.dimension);
-                    categories.Add(x.category);
-                    sources.Add(x.source);
-                    groups.Add(x.group);
-                    //members.Add(x.member);
-                    //perspectives.Add(x.perspective);
+                    alphabets.Add(x.gkAlphabet);
+                    dimensions.Add(x.gkDimension);
+                    categories.Add(x.gkCategory);
+                    sources.Add(x.gkSource);
+                    groups.Add(x.gkGroup);
+                    //members.Add(x.gkMember);
+                    //perspectives.Add(x.gkPerspective);
                 }
 
-                //Console.WriteLine("Duplicate group: " + string.Join(",", cg.Select(b => b.alphabet + "," + b.dimension + "," + b.category + "," + b.source + "," + b.group + "," + b.member + "," + b.perspective).ToList()));
+                //Console.WriteLine("Duplicate gkGroup: " + string.Join(",", cg.Select(b => b.gkAlphabet + "," + b.gkDimension + "," + b.gkCategory + "," + b.gkSource + "," + b.gkGroup + "," + b.gkMember + "," + b.gkPerspective).ToList()));
             }
 
             var new_header = (
-                alphabet: string.Join("|", alphabets.Distinct().ToList()),
-                dimension: string.Join("|", dimensions.Distinct().ToList()),
-                category: string.Join("|", categories.Distinct().ToList()),
-                source: string.Join("|", sources.Distinct().ToList()),
-                group: string.Join("|", groups.Distinct().ToList())
+                gkAlphabet: string.Join("|", alphabets.Distinct().ToList()),
+                gkDimension: string.Join("|", dimensions.Distinct().ToList()),
+                gkCategory: string.Join("|", categories.Distinct().ToList()),
+                gkSource: string.Join("|", sources.Distinct().ToList()),
+                gkGroup: string.Join("|", groups.Distinct().ToList())
                 //string.Join("|", members.Distinct().ToList()),
                 //string.Join("|", perspectives.Distinct().ToList())
                 );
 
-            var new_header_str = new string[] { new_header.alphabet, new_header.dimension, new_header.category, new_header.source, new_header.group };
+            var new_header_str = new string[] { new_header.gkAlphabet, new_header.gkDimension, new_header.gkCategory, new_header.gkSource, new_header.gkGroup };
 
 
             Console.WriteLine($"~ new header: {string.Join(".", new_header_str)}");
@@ -961,7 +961,7 @@ internal static void remove_duplicate_groups(DataSet DataSet)
                 DataSet.DataSet_headers[group_to_keep[i].fid] =
                 (group_to_keep[i].fid,
 
-                    new_header.alphabet, new_header.dimension, new_header.category, new_header.source, new_header.group, group_to_keep[i].member, group_to_keep[i].perspective,
+                    new_header.gkAlphabet, new_header.gkDimension, new_header.gkCategory, new_header.gkSource, new_header.gkGroup, group_to_keep[i].gkMember, group_to_keep[i].gkPerspective,
                     group_to_keep[i].alphabet_id, group_to_keep[i].dimension_id, group_to_keep[i].category_id, group_to_keep[i].source_id, group_to_keep[i].group_id, group_to_keep[i].member_id, group_to_keep[i].perspective_id
 
                     );
@@ -980,9 +980,9 @@ internal static void remove_duplicate_groups(DataSet DataSet)
 internal static void save_DataSet(DataSet DataSet, List<(int ClassId, string header_filename, string data_filename)> filenames)
 {
     
-    const string _MethodName = nameof(save_DataSet);
+    const string MethodName = nameof(save_DataSet);
 
-    Logging.WriteLine("started saving...", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine("started saving...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
 
     //var ClassIds = DataSet.DataSet_instance_list.Select(a => a.ClassId).Distinct().OrderBy(a => a).ToList();
     var header_fids = Enumerable.Range(0, DataSet.DataSet_headers.Count);
@@ -996,15 +996,15 @@ internal static void save_DataSet(DataSet DataSet, List<(int ClassId, string hea
         DataSet.DataSet_instance_list.Where(a => a.ClassId == ClassId_filenames.ClassId).ToList().
             ForEach(a => data.Add(string.Join(",", a.feature_data.Select(b => b.fv.ToString("G17", NumberFormatInfo.InvariantInfo)).ToList())));
 
-        var header = DataSet.DataSet_headers.Select(a => $@"{a.fid},{a.alphabet},{a.dimension},{a.category},{a.source},{a.group},{a.member},{a.perspective}").ToList();
-        header.Insert(0, $@"fid,alphabet,dimension,category,source,group,member,perspective");
+        var header = DataSet.DataSet_headers.Select(a => $@"{a.fid},{a.gkAlphabet},{a.gkDimension},{a.gkCategory},{a.gkSource},{a.gkGroup},{a.gkMember},{a.gkPerspective}").ToList();
+        header.Insert(0, $@"fid,gkAlphabet,gkDimension,gkCategory,gkSource,gkGroup,gkMember,gkPerspective");
 
         await io_proxy.WriteAllLines(true, ClassId_filenames.header_filename, header);
 
         await io_proxy.WriteAllLines(true, ClassId_filenames.data_filename, data);
     }
 
-    Logging.WriteLine("finished saving...", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine("finished saving...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
 }
 */
 
@@ -1013,9 +1013,9 @@ internal static void remove_empty_features(DataSet DataSet, double min_non_zero_
 internal static void remove_empty_features(DataSet DataSet, int min_distinct_numbers = 2)
 {
     
-    const string _MethodName = nameof(remove_empty_features);
+    const string MethodName = nameof(remove_empty_features);
 
-    Logging.WriteLine("...", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine("...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
 
     var empty_fids = new List<int>();
 
@@ -1050,7 +1050,7 @@ internal static void remove_empty_features(DataSet DataSet, int min_distinct_num
         remove_fids(DataSet, empty_fids);
     }
 
-    Logging.WriteLine($@"Removed features ({empty_fids.Count}): {string.Join(",", empty_fids)}", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine($@"Removed features ({empty_fids.Count}): {string.Join(",", empty_fids)}", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
 
 }
 */
@@ -1058,9 +1058,9 @@ internal static void remove_empty_features(DataSet DataSet, int min_distinct_num
 //internal static void remove_empty_features_by_class(DataSet DataSet, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2, string stats_filename = null)
 internal static void remove_empty_features_by_class(DataSet DataSet, int min_distinct_numbers = 2, string stats_filename = null)
 {
-    const string _MethodName = nameof(remove_empty_features_by_class);
+    const string MethodName = nameof(remove_empty_features_by_class);
 
-    Logging.WriteLine("...", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine("...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
 
     var save_stats = !string.IsNullOrWhiteSpace(stats_filename);
 
@@ -1165,7 +1165,7 @@ internal static void remove_empty_features_by_class(DataSet DataSet, int min_dis
         remove_fids(DataSet, empty_fids);
     }
 
-    Logging.WriteLine($@"Removed features ({empty_fids.Count}): {string.Join(",", empty_fids)}", _CallerModuleName: _ModuleName, _CallerMethodName: _MethodName);
+    Logging.WriteLine($@"Removed features ({empty_fids.Count}): {string.Join(",", empty_fids)}", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
 
     if (save_stats)
     {
@@ -1180,7 +1180,7 @@ internal static void remove_empty_features_by_class(DataSet DataSet, int min_dis
 /*
 internal static void remove_fids(DataSet DataSet, List<int> fids_to_remove)
 {
-    //Logging.WriteLine("...", _ModuleName, nameof(remove_fids));
+    //Logging.WriteLine("...", ModuleName, nameof(remove_fids));
 
     // removed given fids and renumber the headers/features
 
@@ -1191,7 +1191,7 @@ internal static void remove_fids(DataSet DataSet, List<int> fids_to_remove)
     fids_to_remove.ForEach(a => remove[a] = true);
 
     DataSet.DataSet_headers = DataSet.DataSet_headers.Where((a, i) => !remove[i]).Select((b, j) =>
-        (j, b.alphabet, b.dimension, b.category, b.source, b.group, b.member, b.perspective,
+        (j, b.gkAlphabet, b.gkDimension, b.gkCategory, b.gkSource, b.gkGroup, b.gkMember, b.gkPerspective,
             b.alphabet_id, b.dimension_id, b.category_id, b.source_id, b.group_id, b.member_id, b.perspective_id)
         ).ToList();
 

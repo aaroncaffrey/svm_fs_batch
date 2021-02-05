@@ -62,7 +62,7 @@ namespace SvmFsBatch
             const string methodName = nameof(MakePbsScriptAsync);
 
             if (isJobArray && arrayStepSize == 0) throw new ArgumentOutOfRangeException(nameof(arrayStepSize));
-            //-experiment_name test2 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 5 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 5
+            //-ExperimentName test2 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 5 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 5
 
 
             var pbsScriptLines = new List<string>();
