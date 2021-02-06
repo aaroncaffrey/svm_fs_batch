@@ -65,37 +65,40 @@ namespace SvmFsBatch.logic
             return default;
         }
 
-        private void Run()
+        private async Task RunAsync()
         {
             if (ct.IsCancellationRequested) return;
 
-            Stop();
-
-            var start = new ProcessStartInfo
+            await Task.Run(async () =>
             {
-                FileName = "/usr/bin/mpstat",
-                Arguments = $@"{Interval}",
-                UseShellExecute = false,
-                CreateNoWindow = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                RedirectStandardInput = true
-            };
+                await StopAsync().ConfigureAwait(false);
 
-            try { Process = Process.Start(start); }
-            catch (Exception e)
-            {
-                Logging.LogException(e);
-                throw;
-            }
+                var start = new ProcessStartInfo
+                {
+                    FileName = "/usr/bin/mpstat",
+                    Arguments = $@"{Interval}",
+                    UseShellExecute = false,
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    RedirectStandardInput = true
+                };
+
+                try { Process = Process.Start(start); }
+                catch (Exception e)
+                {
+                    Logging.LogException(e);
+                    //throw;
+                }
+            }, ct);
         }
 
-        internal void Start(CancellationToken ct)
+        internal async Task Start(CancellationToken ct)
         {
             this.ct = ct;
             if (ct.IsCancellationRequested) return;
             
-            Run();
+            await RunAsync();
 
             if (Process != null)
             {
@@ -109,7 +112,7 @@ namespace SvmFsBatch.logic
                         {
                             if (this.ct.IsCancellationRequested)
                             {
-                                Stop();
+                                await StopAsync().ConfigureAwait(false);
                                 return;
                             }
 
@@ -152,13 +155,13 @@ namespace SvmFsBatch.logic
 
                         if (State && Process.HasExited && !this.ct.IsCancellationRequested)
                             // rerun if killed externally
-                            Run();
+                            RunAsync();
                     }
                 });
             }
         }
 
-        internal void Stop()
+        internal async Task StopAsync()
         {
             State = false;
 
@@ -166,7 +169,7 @@ namespace SvmFsBatch.logic
 
             try
             {
-                if (!Process.HasExited) try{Process.Kill();}catch (Exception){}
+                if (!Process.HasExited) try{Process.Kill(); await Process.WaitForExitAsync(ct).ConfigureAwait(false); } catch (Exception){}
                 Process.Dispose();
                 Process = null;
             }

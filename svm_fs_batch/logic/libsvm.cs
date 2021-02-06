@@ -128,7 +128,9 @@ namespace SvmFsBatch
                     if (!exited)
                     {
                         Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
-                        try { process.Kill(); }
+                        try { process.Kill();
+                            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+                        }
                         catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, methodName); }
 
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
@@ -245,7 +247,7 @@ namespace SvmFsBatch
                     if (!exited)
                     {
                         Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
-                        try { process.Kill(); }
+                        try { process.Kill(); await process.WaitForExitAsync(ct).ConfigureAwait(false); }
                         catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, methodName); }
 
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);

@@ -519,13 +519,15 @@ namespace SvmFsBatch
                 var headerExt = await ReadRawFixedLengthAsync(client, stream, headerLen - header.Length, ct).ConfigureAwait(false);
                 if (headerExt != null && headerExt.Length > 0) header = header.Concat(headerExt).ToArray();
 
-                if (!ct.IsCancellationRequested && header.Length != headerLen)
+                if (ct.IsCancellationRequested) return default;
+
+                if (header.Length != headerLen)
                 {
                     var pollOk = TcpClientExtra.PollTcpClientConnection(client);
 
                     if (!pollOk) return default;
-                }
-                else break;
+                } else break;
+
             }
             if (header == null || header.Length != headerLen) return default;
 
@@ -555,7 +557,9 @@ namespace SvmFsBatch
 
                 if (bytesTextInExt != null && bytesTextInExt.Length > 0) bytesTextIn = bytesTextIn.Concat(bytesTextInExt).ToArray();
 
-                if (!ct.IsCancellationRequested && bytesTextIn.Length != frameLength)
+                if (ct.IsCancellationRequested) return default;
+
+                if (bytesTextIn.Length != frameLength)
                 {
                     var pollOk = TcpClientExtra.PollTcpClientConnection(client);
 

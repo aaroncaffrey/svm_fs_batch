@@ -62,10 +62,10 @@ namespace SvmFsBatch
             if (Program.ProgramArgs.IsUnix)
             {
                 mpstat = new Mpstat();
-                mpstat.Start(ct);
+                await mpstat.Start(ct);
             }
 
-            var r = new Random();
+            //var r = new Random();
 
 
             var cp = new ConnectionPool();
@@ -161,7 +161,7 @@ namespace SvmFsBatch
 
             await cp.StopAsync().ConfigureAwait(false);
 
-            try { mpstat?.Stop(); }
+            try { if (mpstat!=null)await mpstat.StopAsync(); }
             catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
             Logging.LogEvent($"{poolName}: Reached end of {nameof(FsClient)}.{nameof(FeatureSelectionClientInitializationAsync)}...", ModuleName);

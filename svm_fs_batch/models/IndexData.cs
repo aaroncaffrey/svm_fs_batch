@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Formats.Asn1;
 using System.Globalization;
 using System.Linq;
 
@@ -154,7 +155,7 @@ namespace SvmFsBatch
             var str = string.Join(",", x3);
             var id2 = new  IndexData(str);
             var re = CompareReferenceData2(this, id2);
-            if (!re.Values().All(a => a))
+            if (!re.AllTrue())
             {
                 Logging.LogEvent("!!! INDEXDATA NOT EQUAL !!!");
             }
@@ -333,7 +334,7 @@ namespace SvmFsBatch
             if (data1 == null) return null;
 
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
-            var id = list.FirstOrDefault(data2 => CompareReferenceData(data1, data2, idso));
+            var id = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2, idso));
 
             return id;
         }
@@ -350,8 +351,8 @@ namespace SvmFsBatch
 
         internal static bool CompareReferenceData(IndexData data1, IndexData data2, IndexDataSearchOptions idso = null)
         {
-            var comp = CompareReferenceData2(data1, data2);
-            if (idso == null || idso.Values().All(a => a)) return comp.Values().All(a => a);
+            var comp = CompareReferenceData2(data1, data2, idso);
+            if (idso == null || idso.AllTrue()) return comp.AllTrue();
 
             return
                 (!idso.IdCalcElevenPointThresholds || comp.IdCalcElevenPointThresholds) &&
@@ -379,7 +380,7 @@ namespace SvmFsBatch
 
         }
 
-        internal static IndexDataSearchOptions CompareReferenceData2(IndexData x1a, IndexData x2a)
+        internal static IndexDataSearchOptions CompareReferenceData2(IndexData x1a, IndexData x2a, IndexDataSearchOptions idso = null)
         {
             var comp = new IndexDataSearchOptions();
 
@@ -409,70 +410,80 @@ namespace SvmFsBatch
             comp.IdGroupArrayIndexes = (x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0) ? false : x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes);
             comp.IdColumnArrayIndexes = (x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0) ? false : x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes);
 
-            
-            if ((x1a.IdClassFolds == null || x1a.IdClassFolds.Length == 0) ^ (x2a.IdClassFolds == null || x2a.IdClassFolds.Length == 0))
+
+            if (idso == null || idso.IdClassFolds)
             {
-                // one array null/empty, other array not null/empty
-                comp.IdClassFolds = false;
+                if ((x1a.IdClassFolds?.Length ?? 0) != (x2a.IdClassFolds?.Length ?? 0))
+                {
+                    // different length
+                    comp.IdClassFolds = false;
+                }
+                else
+                {
+                    comp.IdClassFolds = true;
+
+                    // check not same reference, check length > 0 (already know same length from previous if)
+                    if (x1a.IdClassFolds != x2a.IdClassFolds && ((x1a.IdClassFolds?.Length ?? 0) > 0) && ((x2a.IdClassFolds?.Length ?? 0) > 0))
+                    {
+
+                        for (var i = 0; i < x1a.IdClassFolds.Length; i++)
+                        {
+                            if (x1a.IdClassFolds[i].ClassId != x2a.IdClassFolds[i].ClassId || x1a.IdClassFolds[i].class_size != x2a.IdClassFolds[i].class_size || (x1a.IdClassFolds[i].folds?.Length ?? 0) != (x2a.IdClassFolds[i].folds?.Length ?? 0))
+                            {
+                                comp.IdClassFolds = false;
+                                break;
+                            }
+
+                            for (var k = 0; k < (x1a.IdClassFolds[i].folds?.Length ?? 0); k++)
+                            {
+                                if (x1a.IdClassFolds[i].folds[k].OuterCvIndex != x2a.IdClassFolds[i].folds[k].OuterCvIndex || x1a.IdClassFolds[i].folds[k].RepetitionsIndex != x2a.IdClassFolds[i].folds[k].RepetitionsIndex || (x1a.IdClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) != (x2a.IdClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) || !x1a.IdClassFolds[i].folds[k].ClassSampleIndexes.SequenceEqual(x2a.IdClassFolds[i].folds[k].ClassSampleIndexes))
+                                {
+                                    comp.IdClassFolds = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                }
             }
-            else if (x1a.IdClassFolds == x2a.IdClassFolds || ((x1a.IdClassFolds == null || x1a.IdClassFolds.Length == 0) && (x2a.IdClassFolds == null || x2a.IdClassFolds.Length == 0)))
+
+
+            if (idso == null || idso.IdDownSampledTrainClassFolds)
             {
-                // same reference (both null or both same instance), or different reference and both arrays empty
-                comp.IdClassFolds = true;
-            }
-            else
-            {
-                var x1aIdClassFoldsFlat =
-                    x1a.IdClassFolds?
-                        .Select(a => (a.ClassId, a.class_size, folds: a.folds?
-                            .SelectMany(b => b.ClassSampleIndexes?.Select(c => (b.RepetitionsIndex, b.OuterCvIndex, ClassSampleIndexes: c)).ToArray() ?? Array.Empty<(int, int, int)>()).ToArray() ?? Array.Empty<(int, int, int)>()))
-                        .SelectMany(a => a.folds?.Select(b => (a.ClassId, a.class_size, b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes)).ToArray() ?? Array.Empty<(int, int, int, int, int)>())
-                        .SelectMany(a => new[] { a.ClassId, a.class_size, a.RepetitionsIndex, a.OuterCvIndex, a.ClassSampleIndexes })
-                        .ToArray() ?? Array.Empty<int>();
+                if ((x1a.IdDownSampledTrainClassFolds?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds?.Length ?? 0))
+                {
+                    // different length
+                    comp.IdDownSampledTrainClassFolds = false;
+                }
+                else
+                {
+                    comp.IdDownSampledTrainClassFolds = true;
 
-                var x2aIdClassFoldsFlat =
-                    x2a.IdClassFolds?
-                        .Select(a => (a.ClassId, a.class_size, folds: a.folds?
-                            .SelectMany(b => b.ClassSampleIndexes?.Select(c => (b.RepetitionsIndex, b.OuterCvIndex, ClassSampleIndexes: c)).ToArray() ?? Array.Empty<(int, int, int)>()).ToArray() ?? Array.Empty<(int, int, int)>()))
-                        .SelectMany(a => a.folds?.Select(b => (a.ClassId, a.class_size, b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes)).ToArray() ?? Array.Empty<(int, int, int, int, int)>())
-                        .SelectMany(a => new[] { a.ClassId, a.class_size, a.RepetitionsIndex, a.OuterCvIndex, a.ClassSampleIndexes })
-                        .ToArray() ?? Array.Empty<int>();
+                    // check not same reference, check length > 0 (already know same length from previous if)
+                    if (x1a.IdDownSampledTrainClassFolds != x2a.IdDownSampledTrainClassFolds && ((x1a.IdDownSampledTrainClassFolds?.Length ?? 0) > 0) && ((x2a.IdDownSampledTrainClassFolds?.Length ?? 0) > 0))
+                    {
 
+                        for (var i = 0; i < x1a.IdDownSampledTrainClassFolds.Length; i++)
+                        {
+                            if (x1a.IdDownSampledTrainClassFolds[i].ClassId != x2a.IdDownSampledTrainClassFolds[i].ClassId || x1a.IdDownSampledTrainClassFolds[i].class_size != x2a.IdDownSampledTrainClassFolds[i].class_size || (x1a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0))
+                            {
+                                comp.IdDownSampledTrainClassFolds = false;
+                                break;
+                            }
 
-                comp.IdClassFolds = (x1aIdClassFoldsFlat.SequenceEqual(x2aIdClassFoldsFlat));
-            }
+                            for (var k = 0; k < (x1a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0); k++)
+                            {
+                                if (x1a.IdDownSampledTrainClassFolds[i].folds[k].OuterCvIndex != x2a.IdDownSampledTrainClassFolds[i].folds[k].OuterCvIndex || x1a.IdDownSampledTrainClassFolds[i].folds[k].RepetitionsIndex != x2a.IdDownSampledTrainClassFolds[i].folds[k].RepetitionsIndex || (x1a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) || !x1a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes.SequenceEqual(x2a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes))
+                                {
+                                    comp.IdDownSampledTrainClassFolds = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
-
-            if ((x1a.IdDownSampledTrainClassFolds == null || x1a.IdDownSampledTrainClassFolds.Length == 0) ^ (x2a.IdDownSampledTrainClassFolds == null || x2a.IdDownSampledTrainClassFolds.Length == 0))
-            {
-                // one array null/empty, other array not null/empty
-                comp.IdDownSampledTrainClassFolds = false;
-            }
-            else if (x1a.IdDownSampledTrainClassFolds == x2a.IdDownSampledTrainClassFolds || ((x1a.IdDownSampledTrainClassFolds == null || x1a.IdDownSampledTrainClassFolds.Length == 0) && (x2a.IdDownSampledTrainClassFolds == null || x2a.IdDownSampledTrainClassFolds.Length == 0)))
-            {
-                // same reference, or different reference and both arrays empty
-                comp.IdDownSampledTrainClassFolds = true;
-            }
-            else
-            {
-                var x1aIdDownSampledTrainClassFoldsFlat =
-                    x1a.IdDownSampledTrainClassFolds?
-                        .Select(a => (a.ClassId, a.class_size, folds: a.folds?
-                            .SelectMany(b => b.ClassSampleIndexes?.Select(c => (b.RepetitionsIndex, b.OuterCvIndex, ClassSampleIndexes: c)).ToArray() ?? Array.Empty<(int, int, int)>()).ToArray() ?? Array.Empty<(int, int, int)>()))
-                        .SelectMany(a => a.folds?.Select(b => (a.ClassId, a.class_size, b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes)).ToArray() ?? Array.Empty<(int, int, int, int, int)>())
-                        .SelectMany(a => new[] { a.ClassId, a.class_size, a.RepetitionsIndex, a.OuterCvIndex, a.ClassSampleIndexes })
-                        .ToArray() ?? Array.Empty<int>();
-
-                var x2aIdDownSampledTrainClassFoldsFlat =
-                    x2a.IdDownSampledTrainClassFolds?
-                        .Select(a => (a.ClassId, a.class_size, folds: a.folds?
-                            .SelectMany(b => b.ClassSampleIndexes?.Select(c => (b.RepetitionsIndex, b.OuterCvIndex, ClassSampleIndexes: c)).ToArray() ?? Array.Empty<(int, int, int)>()).ToArray() ?? Array.Empty<(int, int, int)>()))
-                        .SelectMany(a => a.folds?.Select(b => (a.ClassId, a.class_size, b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes)).ToArray() ?? Array.Empty<(int, int, int, int, int)>())
-                        .SelectMany(a => new[] { a.ClassId, a.class_size, a.RepetitionsIndex, a.OuterCvIndex, a.ClassSampleIndexes })
-                        .ToArray() ?? Array.Empty<int>();
-
-
-                comp.IdDownSampledTrainClassFolds = (x1aIdDownSampledTrainClassFoldsFlat.SequenceEqual(x2aIdDownSampledTrainClassFoldsFlat));
+                }
             }
 
 
@@ -503,6 +514,62 @@ namespace SvmFsBatch
             internal bool IdTotalGroups = true;
             internal bool IdClassFolds = true;
             internal bool IdDownSampledTrainClassFolds = true;
+
+            internal bool AnyTrue()
+            {
+                return
+                    IdCalcElevenPointThresholds ||
+                    IdClassWeights ||
+                    IdColumnArrayIndexes ||
+                    IdExperimentName ||
+                    IdGroupArrayIndex ||
+                    IdGroupArrayIndexes ||
+                    IdGroupFolder ||
+                    IdGroupKey ||
+                    IdInnerCvFolds ||
+                    IdIterationIndex ||
+                    IdNumColumns ||
+                    IdNumGroups ||
+                    IdOuterCvFolds ||
+                    IdOuterCvFoldsToRun ||
+                    IdRepetitions ||
+                    IdScaleFunction ||
+                    IdSelectionDirection ||
+                    IdSvmKernel ||
+                    IdSvmType ||
+                    IdTotalGroups ||
+                    IdClassFolds ||
+                    IdDownSampledTrainClassFolds
+                    ;
+            }
+
+            internal bool AllTrue()
+            {
+                return
+                    IdCalcElevenPointThresholds &&
+                    IdClassWeights &&
+                    IdColumnArrayIndexes &&
+                    IdExperimentName &&
+                    IdGroupArrayIndex &&
+                    IdGroupArrayIndexes &&
+                    IdGroupFolder &&
+                    IdGroupKey &&
+                    IdInnerCvFolds &&
+                    IdIterationIndex &&
+                    IdNumColumns &&
+                    IdNumGroups &&
+                    IdOuterCvFolds &&
+                    IdOuterCvFoldsToRun &&
+                    IdRepetitions &&
+                    IdScaleFunction &&
+                    IdSelectionDirection &&
+                    IdSvmKernel &&
+                    IdSvmType &&
+                    IdTotalGroups &&
+                    IdClassFolds &&
+                    IdDownSampledTrainClassFolds
+                    ;
+            }
 
             internal bool[] Values()
             {

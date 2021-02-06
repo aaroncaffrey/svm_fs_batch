@@ -49,23 +49,23 @@ namespace SvmFsBatch.logic
                 // read response
                 while (!linkedCt.IsCancellationRequested)
                 {
-                    var frame = await TcpClientExtra.ReadFrameAsync(cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
+                    var frame = await cpm.ReadFrameAsync();
+                    //TcpClientExtra.ReadFrameAsync(cpm.Client, cpm.Stream, linkedCt).ConfigureAwait(false);
                     //UpdateReadTime();
+
+                    if (linkedCt.IsCancellationRequested) return default;
 
                     if (!frame.readOk)
                     {
-                        var pollOk = TcpClientExtra.PollTcpClientConnection(cpm.Client);
-                        Logging.LogEvent($@"{localName}: Frame could not be read from {remoteName} - poll {pollOk}.", ModuleName);
-
-                        if (!pollOk)
+                        if (!cpm.IsActive())
                         {
-                            return !linkedCt.IsCancellationRequested ? result : default;
+                            Logging.LogEvent($@"{localName}: Frame could not be read from {remoteName}.", ModuleName);
+                            return default;
                         }
-                        
+
                         continue;
                     }
 
-                    if (linkedCt.IsCancellationRequested) return default;
 
                     switch ((TcpClientExtra.PayloadFrameTypes) frame.frameType)
                     {

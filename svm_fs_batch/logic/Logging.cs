@@ -55,6 +55,14 @@ namespace SvmFsBatch
             catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); }
         }
 
+
+        internal static void Wait(int minSecs, int maxSecs, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
+        {
+            WaitAsync(minSecs, maxSecs, callerModuleName, callerMethodName, callerLineNumber, ct).Wait(ct);
+        }
+
+
+
         internal static void LogEvent(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
             //string _CallerMethodType = "",
             //(string type, string name, string value)[] _CallerMethodArgs = null

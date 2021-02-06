@@ -2,12 +2,23 @@
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 using SvmFsBatch.logic;
 
 namespace SvmFsBatch
 {
     internal class ConnectionPoolMember
     {
+        internal async Task<(bool readOk, ulong frameId, ulong frameType, int frameLength, byte[] bytesTextIn, string textIn, string[] textInLines)> ReadFrameAsync()//TcpClient client, NetworkStream stream, CancellationToken ct)
+        {
+            if (_isDisposed) return default;
+
+            var frame = await TcpClientExtra.ReadFrameAsync(Client, Stream, Ct);
+
+            if (!frame.readOk) IsActive();
+
+            return frame;
+        }
 
         internal void JoinPool(ConnectionPool cp)
         {
@@ -15,6 +26,8 @@ namespace SvmFsBatch
 
             lock (ObjectLock)
             {
+                if (_isDisposed || cp == null) return;
+
                 try
                 {
                     this.Cp = cp;
@@ -32,6 +45,8 @@ namespace SvmFsBatch
             if (_isDisposed) return;
 
             lock (ObjectLock) {
+                if (_isDisposed) return;
+
                 try
                 {
                     Cp?.Remove(this);
@@ -156,6 +171,8 @@ namespace SvmFsBatch
             {
                 lock (ObjectLock)
                 {
+                    if (_isDisposed) return false;
+
                     if (IsCancelled()) return false;
 
                     var pollOk = TcpClientExtra.PollTcpClientConnection(Client);

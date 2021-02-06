@@ -489,16 +489,28 @@ namespace SvmFsBatch
                 var cmList = await ConfusionMatrix.LoadAsync(cmFn, ct: ct).ConfigureAwait(false);
                 if (cmList != null && cmList.Length > 0)
                 {
-                    for (var cmIndex = 0; cmIndex < cmList.Length; cmIndex++)
-                        if (cmList[cmIndex].UnrolledIndexData != null)
+                    //for (var cmIndex = 0; cmIndex < cmList.Length; cmIndex++)
+                    //    if (cmList[cmIndex].UnrolledIndexData != null)
+                    //    {
+                    //        var id = IndexData.FindFirstReference(indexDataContainer.IndexesWhole, cmList[cmIndex].UnrolledIndexData);
+                    //        cmList[cmIndex].UnrolledIndexData = id ?? throw new Exception();
+                    //    }
+
+                    Parallel.For(0, cmList.Length,
+                        cmIndex =>
                         {
-                            var id = IndexData.FindFirstReference(indexDataContainer.IndexesWhole, cmList[cmIndex].UnrolledIndexData);
-                            cmList[cmIndex].UnrolledIndexData = id ?? throw new Exception();
-                        }
+                            if (cmList[cmIndex].UnrolledIndexData != null)
+                            {
+                                var id = IndexData.FindFirstReference(indexDataContainer.IndexesWhole, cmList[cmIndex].UnrolledIndexData);
+                                cmList[cmIndex].UnrolledIndexData = id ?? throw new Exception();
+                            }
+                        });
 
-                    var idCmList = cmList.Select(cm => (id: cm?.UnrolledIndexData, cm)).Where(a => a.id != null && a.cm != null).ToArray();
+                    var idCmList = cmList.AsParallel().AsOrdered().Select(cm => (id: cm?.UnrolledIndexData, cm)).Where(a => a.id != null && a.cm != null).ToArray();
 
-                    return !ct.IsCancellationRequested ? idCmList : default;
+                    return ct.IsCancellationRequested
+                        ? default
+                        : idCmList;
                 }
             }
 

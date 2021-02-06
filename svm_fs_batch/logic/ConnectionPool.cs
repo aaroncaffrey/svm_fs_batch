@@ -31,14 +31,34 @@ namespace SvmFsBatch
         {
             if (_isDisposed) return default;
 
-            lock (_poolLock) { return PoolCt.IsCancellationRequested ? default : _pool.Count; }
+            lock (_poolLock)
+            {
+            if (_isDisposed) return default;
+
+            return PoolCt.IsCancellationRequested ? default : _pool.Count;
+            }
         }
 
         internal int CountActive()
         {
             if (_isDisposed) return default;
 
-            lock (_poolLock) { return PoolCt.IsCancellationRequested ? default : _pool.Count(a => a.IsActive()); }
+            lock (_poolLock)
+            {
+                if (_isDisposed) return default;
+
+                var numActive = 0;
+                for (var index = _pool.Count - 1; index >= 0; index--)
+                {
+                    if (_pool[index].IsActive()) numActive++;
+                }
+
+                return PoolCt.IsCancellationRequested
+                    ? default
+                    : numActive;
+                
+                // _pool.Count(a => a.IsActive());
+            }
         }
 
         internal int CountRemoteGuids()
@@ -61,31 +81,46 @@ namespace SvmFsBatch
 
             lock (_poolLock)
             {
+                if (_isDisposed) return default;
+
                 if (_pool.Count == 0) return default;
 
                 if (_poolRemoteGuidQueue.Count == 0) return default;
 
-                for (var i = _poolRemoteGuidQueue.Count - 1; i >= 0; i--)
+                for (var remoteGuidIndex = _poolRemoteGuidQueue.Count - 1; remoteGuidIndex >= 0; remoteGuidIndex--)
                 {
                     var remoteGuidBytes = _poolRemoteGuidQueue.Dequeue();
                     _poolRemoteGuidQueue.Enqueue(remoteGuidBytes);
 
-                    var cpm = _pool.FirstOrDefault(a => a.IsActive() && a.HasRemoteGuid(remoteGuidBytes));
+                    for (var index = _pool.Count - 1; index >= 0; index--)
+                    {
+                        var cpm = _pool[index];
+
+                        // IsActive checks if tcp connected and not cancelled
+                        if (cpm.IsActive() && cpm.HasRemoteGuid(remoteGuidBytes))
+                        {
+                            cpm.LeavePool();
+
+                            return cpm;
+                        }
+                    }
+
+                    //var cpm = _pool.FirstOrDefault(a => a.IsActive() && a.HasRemoteGuid(remoteGuidBytes));
 
                     // could poll client here to check connected...
 
-                    if (cpm != default)
-                    {
-                        cpm.LeavePool();
+                    //if (cpm != default)
+                    //{
+                    //    cpm.LeavePool();
 
-                        if (cpm.IsConnected())
-                        {
-                            if (!PoolCt.IsCancellationRequested && !cpm.Ct.IsCancellationRequested)
-                            {
-                                return cpm;
-                            }
-                        }
-                    }
+                    //    if (cpm.IsConnected())
+                    //    {
+                    //        if (!PoolCt.IsCancellationRequested && !cpm.Ct.IsCancellationRequested)
+                    //        {
+                    //            return cpm;
+                    //        }
+                    //    }
+                    //}
                 }
 
                 return default;
@@ -111,6 +146,9 @@ namespace SvmFsBatch
 
             lock (_poolLock)
             {
+                if (_isDisposed) return;
+
+
                 for (var i = _pool.Count - 1; i >= 0; i--)
                 {
                     var cpm = _pool[i];
@@ -129,6 +167,9 @@ namespace SvmFsBatch
 
             lock (_poolLock)
             {
+                if (_isDisposed) return;
+
+
                 for (var index = _pool.Count - 1; index >= 0; index--)
                 {
                     var c = _pool[index];
@@ -146,6 +187,8 @@ namespace SvmFsBatch
 
             lock (_poolLock)
             {
+                if (_isDisposed) return;
+
                 if (!_poolRemoteGuidQueue.Any(a => a.SequenceEqual(RemoteGuidBytes))) _poolRemoteGuidQueue.Enqueue(RemoteGuidBytes);
             }
         }
@@ -163,6 +206,9 @@ namespace SvmFsBatch
 
             lock (_poolLock)
             {
+                if (this._isDisposed || this._pool == null) return;
+
+
                 if (!_pool.Contains(cpm)) { _pool.Add(cpm); }
 
                 cpm.Cp = this;
@@ -175,6 +221,8 @@ namespace SvmFsBatch
         {
             lock (_poolLock)
             {
+                if (this._isDisposed || this._pool == null) return;
+
                 _pool.Remove(cpm);
 
             }
@@ -183,8 +231,6 @@ namespace SvmFsBatch
         internal async Task StopAsync()
         {
             if (_isDisposed) return;
-
-            _isDisposed = true;
 
             lock (_poolLock)
             {
@@ -205,7 +251,8 @@ namespace SvmFsBatch
                 PoolName = null;
             }
 
-            _poolLock = null;
+            _isDisposed = true;
+            //_poolLock = null;
         }
 
         internal void Start(string poolName, Guid poolGuid, bool incoming, bool outgoing, CancellationToken ct)

@@ -259,7 +259,7 @@ namespace SvmFsBatch
                 {
                     tries++;
                     if (ct.IsCancellationRequested) return null;
-                    return ct.IsCancellationRequested ? default :await File.ReadAllLinesAsync(filename, Ec, ct).ConfigureAwait(false);
+                    return ct.IsCancellationRequested ? default : await File.ReadAllLinesAsync(filename, Ec, ct).ConfigureAwait(false);
                 }
                 catch (Exception e1)
                 {
@@ -271,6 +271,34 @@ namespace SvmFsBatch
                     }
 
                     try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    catch (Exception) { }
+                }
+        }
+
+        internal static string[] ReadAllLines(bool log, CancellationToken ct, string filename, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "")
+        {
+            if (ct.IsCancellationRequested) return default;
+
+            const string methodName = nameof(ReadAllLinesAsync);
+            var tries = 0;
+            if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+            while (true)
+                try
+                {
+                    tries++;
+                    if (ct.IsCancellationRequested) return null;
+                    return ct.IsCancellationRequested ? default : File.ReadAllLines(filename, Ec);
+                }
+                catch (Exception e1)
+                {
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    if (tries >= maxTries)
+                    {
+                        if (rethrow) throw;
+                        return null;
+                    }
+
+                    try { Logging.Wait(15, 30, ct: ct); }
                     catch (Exception) { }
                 }
         }
