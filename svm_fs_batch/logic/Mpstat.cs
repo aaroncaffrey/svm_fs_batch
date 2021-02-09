@@ -39,7 +39,8 @@ namespace SvmFsBatch.logic
 
             var secondsSinceUpdate = (DateTime.UtcNow - TimeUpdate).TotalSeconds;
 
-            Logging.LogExit(ModuleName); return secondsSinceUpdate <= IntervalHistory;
+            Logging.LogExit(ModuleName);
+            return secondsSinceUpdate <= IntervalHistory;
         }
 
         internal double GetIdle()
@@ -51,9 +52,14 @@ namespace SvmFsBatch.logic
 
             var ix = Array.FindIndex(Header, a => string.Equals(a, "%idle", StringComparison.OrdinalIgnoreCase));
 
-            if (ix > -1 && DataDouble.Any()) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :DataDouble[ix]; }
+            if (ix > -1 && DataDouble.Any())
+            {
+                Logging.LogExit(ModuleName); 
+                return ct.IsCancellationRequested ? default :DataDouble[ix];
+            }
 
-            Logging.LogExit(ModuleName); return default;
+            Logging.LogExit(ModuleName);
+            return default;
         }
 
 
@@ -66,9 +72,14 @@ namespace SvmFsBatch.logic
 
             var ix = Array.FindIndex(Header, a => string.Equals(a, "%idle", StringComparison.OrdinalIgnoreCase));
 
-            if (ix > -1 && DataDoubleHistory.Any()) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :DataDoubleHistory.Average(a => a[ix]); }
+            if (ix > -1 && DataDoubleHistory.Any())
+            {
+                Logging.LogExit(ModuleName);
+                return ct.IsCancellationRequested ? default :DataDoubleHistory.Average(a => a[ix]);
+            }
 
-            Logging.LogExit(ModuleName); return default;
+            Logging.LogExit(ModuleName);
+            return default;
         }
 
         private async Task RunAsync()

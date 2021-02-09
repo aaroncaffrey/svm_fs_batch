@@ -151,9 +151,9 @@ namespace SvmFsBatch
             if (Ct.IsCancellationRequested) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default; }
             if (Client == null || Stream == null || !Client.Connected || !Stream.CanRead) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default; }
 
-            byte[] _bytesFrameCode = new byte[] { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5 };
+            byte[] _bytesFrameBeginCode = new byte[] { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5 };
 
-            var headerLen = _bytesFrameCode.Length + (sizeof(ulong) * 3);
+            var headerLen = _bytesFrameBeginCode.Length + (sizeof(ulong) * 3);
 
             byte[] header = Array.Empty<byte>();
 
@@ -184,11 +184,27 @@ namespace SvmFsBatch
                         return default;
                     }
                 }
-                else break;
+                else if (header.Length == headerLen)
+                {
+                    // skip any keep alive data by finding frame begin code sequence
+                    for (var i = 0; i <= header.Length - _bytesFrameBeginCode.Length; i++)
+                    {
+                        if (header.Skip(i).Take(_bytesFrameBeginCode.Length).SequenceEqual(_bytesFrameBeginCode))
+                        {
+                            if (i > 0)
+                            {
+                                header = header.Skip(i).ToArray();
+                            }
 
+                            break;
+                        }
+                    }
+
+                    if (header.Length == headerLen) { break; }
+                }
             }
 
-            if (header == null || header.Length != headerLen)
+            if ((header?.Length??0) != headerLen)
             {
                 Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); 
                 return default;
@@ -196,12 +212,12 @@ namespace SvmFsBatch
 
 
 
-            var frameFrameCode = header.Take(_bytesFrameCode.Length).ToArray();
-            if (!_bytesFrameCode.SequenceEqual(frameFrameCode))
+            var frameFrameCode = header.Take(_bytesFrameBeginCode.Length).ToArray();
+            if (!_bytesFrameBeginCode.SequenceEqual(frameFrameCode))
             {
                 Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default;
             }
-            var offset = _bytesFrameCode.Length;
+            var offset = _bytesFrameBeginCode.Length;
 
             var frameId = BitConverter.ToUInt64(header, offset);
             offset += sizeof(ulong);
@@ -222,23 +238,39 @@ namespace SvmFsBatch
 
                 Logging.LogEvent($"!!!! {nameof(ReadFrameAsync)} WHILE 2 !!!! {whileCnt2}");
 
-                var bytesTextInExt = frameLength > 0 ? await ReadRawFixedLengthAsync(frameLength - bytesTextIn.Length, callChain: callChain, lvl: lvl + 1).ConfigureAwait(false) : default;
+                var bytesTextInExt = await ReadRawFixedLengthAsync(frameLength - bytesTextIn.Length, callChain: callChain, lvl: lvl + 1).ConfigureAwait(false) ;
 
-                if (bytesTextInExt != null && bytesTextInExt.Length > 0) bytesTextIn = bytesTextIn.Concat(bytesTextInExt).ToArray();
+                if ((bytesTextInExt?.Length??0) > 0)
+                {
+                    bytesTextIn = bytesTextIn.Concat(bytesTextInExt).ToArray();
+                }
 
-                if (Ct.IsCancellationRequested) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default; }
+                if (Ct.IsCancellationRequested)
+                {
+                    Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); 
+                    return default;
+                }
 
-                if (bytesTextIn.Length != frameLength)
+                if ((bytesTextIn?.Length ?? 0) != frameLength)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(1), Ct).ConfigureAwait(false);
 
-                    if (!IsActive(callChain: callChain, lvl: lvl + 1)) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default; }
+                    if (!IsActive(callChain: callChain, lvl: lvl + 1))
+                    {
+                        Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); 
+                        return default;
+                    }
                 }
                 else break;
             }
 
-            if (bytesTextIn == null || bytesTextIn.Length != frameLength) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default; }
-            var textIn = bytesTextIn != null && bytesTextIn.Length > 0 ? Encoding.UTF8.GetString(bytesTextIn) : null;
+            if ((bytesTextIn?.Length ?? 0) != frameLength)
+            {
+                Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
+                return default;
+            }
+
+            var textIn = (bytesTextIn?.Length ?? 0) > 0 ? Encoding.UTF8.GetString(bytesTextIn) : null;
             var textInLines = textIn?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
 
