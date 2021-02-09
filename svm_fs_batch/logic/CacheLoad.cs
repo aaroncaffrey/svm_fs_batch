@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,9 +20,10 @@ namespace SvmFsBatch
             //(int ClassId, string ClassName)[] ClassNames,
             (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, int[] baseGroupIndexes, int[] groupIndexesToTest, int[] selectedGroupIndexes, int? previousWinnerGroupIndex, int[] selectionExcludedGroupIndexes, List<int[]> previousGroupTests, bool asParallel = true, CancellationToken ct = default)
         {
+            Logging.LogCall(ModuleName);
             const string methodName = nameof(GetFeatureSelectionInstructions);
 
-            if (ct.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             if (jobGroupSeries == null || jobGroupSeries.Length == 0) throw new ArgumentOutOfRangeException(nameof(jobGroupSeries), $"{ModuleName}.{methodName}.{nameof(jobGroupSeries)}");
             //var job_group_series = cache_load.job_group_series(ct, DataSet, groups, ExperimentName, IterationIndex, base_group_indexes, group_indexes_to_test, selected_group_indexes, previous_winner_group_index, selection_excluded_group_indexes, previous_group_tests, as_parallel);
@@ -56,28 +58,37 @@ namespace SvmFsBatch
 
             var unrolledIndexes = GetUnrolledIndexes(DataSet, ExperimentName, iterationIndex, totalGroups, /*InstanceId, TotalInstances,*/ uip, outerCvFoldsToRun, ct);
 
-            return ct.IsCancellationRequested
+            var ret = ct.IsCancellationRequested
                 ? default
                 : unrolledIndexes;
+            
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal static GroupSeriesIndex[] JobGroupSeries(DataSet DataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, string ExperimentName, int iterationIndex, int[] baseGroupIndexes, int[] groupIndexesToTest, int[] selectedGroupIndexes, int? previousWinnerGroupIndex, int[] selectionExcludedGroupIndexes, List<int[]> previousGroupTests, bool asParallel, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var jobGroupSeries = asParallel
                 ? groupIndexesToTest.AsParallel().AsOrdered().WithCancellation(ct).Select(groupArrayIndex => JobGroupSeriesIndexSingle(DataSet, groups, ExperimentName, iterationIndex, baseGroupIndexes, selectedGroupIndexes, previousWinnerGroupIndex, selectionExcludedGroupIndexes, previousGroupTests, groupArrayIndex, ct)).ToArray()
                 : groupIndexesToTest.Select(groupArrayIndex => JobGroupSeriesIndexSingle(DataSet, groups, ExperimentName, iterationIndex, baseGroupIndexes, selectedGroupIndexes, previousWinnerGroupIndex, selectionExcludedGroupIndexes, previousGroupTests, groupArrayIndex, ct)).ToArray();
 
             jobGroupSeries = jobGroupSeries.Where(a => a.SelectionDirection != Program.Direction.None).ToArray();
-            return ct.IsCancellationRequested
+
+            var ret = ct.IsCancellationRequested
                 ? default
                 : jobGroupSeries;
+            
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal static GroupSeriesIndex JobGroupSeriesIndexSingle(DataSet DataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, string ExperimentName, int iterationIndex, int[] baseGroupIndexes, int[] selectedGroupIndexes, int? previousWinnerGroupIndex, int[] selectionExcludedGroupIndexes, List<int[]> previousGroupTests, int groupArrayIndex, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
             //var test_selected_groups = selected_groups.OrderBy(group_index => group_index).ToArray();
             //var test_selected_columns = selected_columns.OrderBy(col_index => col_index).ToArray();
             var gsi = new GroupSeriesIndex();
@@ -150,15 +161,20 @@ namespace SvmFsBatch
 
             if (gsi.GroupIndexes != null && gsi.GroupIndexes.Length > 0 && (gsi.ColumnIndexes == null || gsi.ColumnIndexes.Length <= 1)) throw new Exception();
 
-            return ct.IsCancellationRequested
+            
+            var ret = ct.IsCancellationRequested
                 ? default
                 : gsi;
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
 
         internal static IndexDataContainer GetUnrolledIndexes(DataSet DataSet, string ExperimentName, int iterationIndex, int totalGroups, UnrolledIndexesParameters uip, int outerCvFoldsToRun = 0, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const string methodName = nameof(GetUnrolledIndexes);
 
@@ -273,12 +289,17 @@ namespace SvmFsBatch
                 IndexesWhole = indexesWhole
             }; //redistribute_work(ct, IndexesWhole/*, InstanceId, TotalInstances*/);
 
-            return !ct.IsCancellationRequested ? indexDataContainer : default;
+            var ret = ct.IsCancellationRequested
+                ? default
+                : indexDataContainer;
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         //internal static IndexDataContainer redistribute_work(CancellationToken ct, IndexDataContainer IndexDataContainer/*, int InstanceId, int TotalInstances*/)
         //{
-        //    return ct.IsCancellationRequested ? default :redistribute_work(ct, IndexDataContainer.IndexesWhole/*, InstanceId, TotalInstances*/);
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :redistribute_work(ct, IndexDataContainer.IndexesWhole/*, InstanceId, TotalInstances*/);
         //}
 
         /*internal static IndexDataContainer redistribute_work(CancellationToken ct, index_data[] IndexesWhole)//, int InstanceId, int TotalInstances, bool as_parallel = true)
@@ -289,7 +310,7 @@ namespace SvmFsBatch
             
             const string MethodName = nameof(redistribute_work);
 
-            if (ct.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             if (IndexesWhole == null || IndexesWhole.Length == 0) throw new ArgumentOutOfRangeException(nameof(IndexesWhole), $@"{ModuleName}.{MethodName}.{nameof(IndexesWhole)}");
 
@@ -347,13 +368,14 @@ namespace SvmFsBatch
             // if finished own work, do others  and save  gkGroup file
 
             
-            return ct.IsCancellationRequested ? default :IndexDataContainer;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :IndexDataContainer;
         }*/
 
 
         internal static async Task LoadCacheAsync(int iterationIndex, string ExperimentName, bool waitForCache, List<string> cacheFilesAlreadyLoaded, List<(IndexData id, ConfusionMatrix cm)> iterationCmSdList, IndexDataContainer indexDataContainer, (IndexData id, ConfusionMatrix cm, RankScore rs)[] lastIterationIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) lastWinnerIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             const string methodName = nameof(LoadCacheAsync);
             
@@ -373,8 +395,8 @@ namespace SvmFsBatch
             // check which indexes are missing.
             UpdateMissing(iterationCmSdList, indexDataContainer, ct: ct);
 
-            // if all indexes loaded, return
-            if (!indexDataContainer.IndexesMissingWhole.Any()) return;
+            // if all indexes loaded, Logging.LogExit(ModuleName); return
+            if (!indexDataContainer.IndexesMissingWhole.Any()) { Logging.LogExit(ModuleName); return; }
 
             var iterationFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, ExperimentName, iterationIndex, ct:ct);
 
@@ -428,17 +450,22 @@ namespace SvmFsBatch
 
                 if (waitForCache && indexDataContainer.IndexesMissingWhole.Any()) await Logging.WaitAsync(10, 20, ModuleName, methodName, ct: ct).ConfigureAwait(false);
             } while (waitForCache && indexDataContainer.IndexesMissingWhole.Any());
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static async Task LoadCacheFileListWithUpdateAsync(List<string> cacheFilesAlreadyLoaded, List<(IndexData id, ConfusionMatrix cm)> iterationCmSdList, IndexDataContainer indexDataContainer, bool asParallel, string[] cacheFiles1, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             var loadResult = await LoadCacheFileListAsync(indexDataContainer, cacheFiles1, asParallel, ct).ConfigureAwait(false);
 
             cacheFilesAlreadyLoaded?.AddRange(loadResult.FilesLoaded);
             iterationCmSdList?.AddRange(loadResult.IdCmSd);
             if (iterationCmSdList != null && indexDataContainer != null) UpdateMissing(iterationCmSdList, indexDataContainer, asParallel, ct);
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static async Task<(string[] FilesLoaded, (IndexData id, ConfusionMatrix cm)[] IdCmSd)> LoadCacheFileListAsync(
@@ -446,21 +473,22 @@ namespace SvmFsBatch
             //List<(index_data id, ConfusionMatrix cm)> iteration_cm_sd_list,
             IndexDataContainer indexDataContainer, string[] cacheFiles, bool asParallel = true, CancellationToken ct = default)
         {
+            Logging.LogCall(ModuleName);
             //const string MethodName = nameof(load_cache_file_list);
 
-            if (ct.IsCancellationRequested) return default;
-            if (cacheFiles == null || cacheFiles.Length == 0) return default;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (cacheFiles == null || cacheFiles.Length == 0) { Logging.LogExit(ModuleName);  return default; }
 
             // load and parse cm files
             var loadedDataTasks = asParallel
                 ? cacheFiles.AsParallel().AsOrdered().WithCancellation(ct).Select(async cmFn =>
                 {
-                    if (ct.IsCancellationRequested) return null;
+                    if (ct.IsCancellationRequested) {   return null; }
                     return ct.IsCancellationRequested ? default :await LoadCacheFileAsync(cmFn, indexDataContainer, ct).ConfigureAwait(false);
                 }).ToArray()
                 : cacheFiles.Select(async cmFn =>
                 {
-                    if (ct.IsCancellationRequested) return null;
+                    if (ct.IsCancellationRequested) {  return null; }
                     return ct.IsCancellationRequested ? default :await LoadCacheFileAsync(cmFn, indexDataContainer, ct).ConfigureAwait(false);
                 }).ToArray();
 
@@ -474,13 +502,18 @@ namespace SvmFsBatch
             //cache_files_already_loaded?.AddRange(FilesLoaded);
             //iteration_cm_sd_list?.AddRange(loaded_data_flat);
             //if (iteration_cm_sd_list != null && IndexDataContainer != null) update_missing(ct, iteration_cm_sd_list, IndexDataContainer, as_parallel);
+            var ret = ct.IsCancellationRequested
+                ? default
+                : (filesLoaded, loadedDataFlat);
+            Logging.LogExit(ModuleName);
+            return ret;
 
-            return !ct.IsCancellationRequested ? (filesLoaded, loadedDataFlat) : default;
         }
 
         internal static async Task<(IndexData id, ConfusionMatrix cm)[]> LoadCacheFileAsync(string cmFn, IndexDataContainer indexDataContainer, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const string methodName = nameof(LoadCacheFileAsync);
 
@@ -508,12 +541,14 @@ namespace SvmFsBatch
 
                     var idCmList = cmList.AsParallel().AsOrdered().Select(cm => (id: cm?.UnrolledIndexData, cm)).Where(a => a.id != null && a.cm != null).ToArray();
 
+                    Logging.LogExit(ModuleName);
                     return ct.IsCancellationRequested
                         ? default
                         : idCmList;
                 }
             }
 
+            Logging.LogExit(ModuleName); 
             return null;
         }
 
@@ -521,9 +556,10 @@ namespace SvmFsBatch
             //int InstanceId,
             List<(IndexData id, ConfusionMatrix cm)> iterationCmAll, IndexDataContainer indexDataContainer, bool asParallel = true, CancellationToken ct = default)
         {
+            Logging.LogCall(ModuleName);
             // this method checks 'iteration_cm_all' to see which results are already loaded and which results are missing
             // note: if necessary, call redistribute_work().
-            if (ct.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             var iterationCmAllId = iterationCmAll.Select(a => a.id).ToArray();
             //var iteration_cm_all_cm = iteration_cm_all.Select(a => a.cm).ToArray();
@@ -551,12 +587,14 @@ namespace SvmFsBatch
             //    IndexDataContainer.indexes_partitions.Select((ip, i) => ip.Except(IndexDataContainer.indexes_loaded_partitions[i]).ToArray()).ToArray();
 
             //IndexDataContainer.indexes_missing_partition = IndexDataContainer.indexes_missing_partitions.Length > InstanceId ? IndexDataContainer.indexes_missing_partitions[InstanceId] : null;
+
+            Logging.LogExit(ModuleName);
         }
     }
 }
 /*internal static (index_data[] IndexesWhole, index_data[] indexes_partition) GetUnrolledIndexes_check_bias(CancellationToken ct, int search_type, DataSet_loader DataSet, string ExperimentName, int IterationIndex, int TotalGroups, int InstanceId, int TotalInstances)
         {
-            if (ct.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
 
             // for a specific set of features (i.e. the final result from feature selection):
@@ -593,7 +631,7 @@ namespace SvmFsBatch
                 };
 
                 var variations_1 = GetUnrolledIndexes(ct, DataSet, ExperimentName, IterationIndex, TotalGroups, InstanceId, TotalInstances, p1);
-                return ct.IsCancellationRequested ? default :variations_1;
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :variations_1;
             }
             else if (search_type == 1)
             {
@@ -627,7 +665,7 @@ namespace SvmFsBatch
 
                 var variations_2 = GetUnrolledIndexes(ct, DataSet, ExperimentName, IterationIndex,TotalGroups, InstanceId, TotalInstances, p2);
 
-                return ct.IsCancellationRequested ? default :variations_2;
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :variations_2;
             }
             else if (search_type == 2)
             {
@@ -678,11 +716,11 @@ namespace SvmFsBatch
 
                 var variations_3 = GetUnrolledIndexes(ct, DataSet, ExperimentName, IterationIndex, TotalGroups, InstanceId, TotalInstances, p3);
 
-                return ct.IsCancellationRequested ? default :variations_3;
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :variations_3;
             }
             else
             {
-                // return ct.IsCancellationRequested ? default :null when no tests are left
-                return ct.IsCancellationRequested ? default :(null, null);
+                // Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :null when no tests are left
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(null, null);
             }
         }*/

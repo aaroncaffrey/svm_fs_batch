@@ -11,6 +11,7 @@ namespace SvmFsBatch
 
         internal static void SetThreadCounts()
         {
+            Logging.LogCall(ModuleName);
             ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);
             ThreadPool.SetMaxThreads(Environment.ProcessorCount * 100, Environment.ProcessorCount * 100);
 
@@ -27,14 +28,17 @@ namespace SvmFsBatch
             //        "System.Threading.ThreadPool.MaxThreads": "10000"
             //    }
             //}
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static void CloseNotifications(CancellationToken ct) //, CancellationTokenSource cts = null)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             const string methodName = nameof(CloseNotifications);
-            //if (ct.IsCancellationRequested) return;
+            //if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
@@ -51,18 +55,26 @@ namespace SvmFsBatch
                 Logging.WriteLine(@"AppDomain.CurrentDomain.ProcessExit", ModuleName, methodName);
                 //if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static void CheckX64()
         {
+            Logging.LogCall(ModuleName);
             var isX64 = IntPtr.Size == 8;
             if (!isX64) throw new Exception("Must run in x64 mode");
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static void SetGcMode()
         {
+            Logging.LogCall(ModuleName);
             GCSettings.LatencyMode = GCLatencyMode.Batch;
             //GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+
+            Logging.LogExit(ModuleName);
         }
     }
 }

@@ -25,7 +25,7 @@
         internal int OuterCvSeriesStart = 5;
         internal int OuterCvSeriesStep = 1;
 
-        // the following variables can be used for generating different series... to test bias of a particular set of numbers... e.g. do 5/5/5 and 10/10/10 return ct.IsCancellationRequested ? default :similar results?
+        // the following variables can be used for generating different series... to test bias of a particular set of numbers... e.g. do 5/5/5 and 10/10/10 Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :similar results?
         // number of times to run tests (repeats) (default: 1 for single repetition, or 5 to match default fold number [0 would be none] ... 5 to 5 at step 1)
 
         internal int[] RepetitionCvSeries;
@@ -37,5 +37,10 @@
         internal Scaling.ScaleFunction[] Scales; // = new scaling.scale_function[] { scaling.scale_function.rescale };
 
         internal Routines.LibsvmSvmType[] SvmTypes; // = new routines.libsvm_svm_type[] { routines.libsvm_svm_type.c_svc };
+
+        public UnrolledIndexesParameters()
+        {
+            Logging.LogCall(ModuleName);
+        }
     }
 }

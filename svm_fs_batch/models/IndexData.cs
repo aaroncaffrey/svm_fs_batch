@@ -69,38 +69,58 @@ namespace SvmFsBatch
 
         public IndexData()
         {
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName);
         }
 
 
         public IndexData(string line) : this(new[] { line })
         {
+            Logging.LogCall(ModuleName);
 
+            Logging.LogExit(ModuleName);
         }
 
         public IndexData(string[] lines)
         {
-            if (lines == null || lines.Length < 1 || lines.Length > 2) return;
+            Logging.LogCall(ModuleName);
+
+            if (lines == null || lines.Length < 1 || lines.Length > 2) { Logging.LogExit(ModuleName); return; }
 
             var lineHeader = lines.Length == 2
                 ? lines.First().Split(',')
                 : CsvHeaderValuesArray;
 
             SetValues(lineHeader, XTypes.GetXTypes(lines.Last().Split(',')));
+
+            Logging.LogExit(ModuleName);
         }
 
         public IndexData(string[] lineHeader, string csvLine, int columnOffset = 0) : this(lineHeader, csvLine.Split(','), columnOffset)
         {
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName);
         }
 
         public IndexData(string[] lineHeader, string[] csvLine, int columnOffset = 0)
         {
+            Logging.LogCall(ModuleName);
+            
             //set_values(routines.x_types(null, csv_line.Skip(column_offset).ToArray(), false), 0);
             SetValues(lineHeader, XTypes.GetXTypes(csvLine.Skip(columnOffset).ToArray()));
+
+            Logging.LogExit(ModuleName);
         }
 
         internal IndexData(string[] lineHeader, XTypes[] xType, int columnOffset = 0)
         {
+            Logging.LogCall(ModuleName);
+
             SetValues(lineHeader, xType, columnOffset);
+
+            Logging.LogExit(ModuleName);
         }
 
         //internal int unrolled_whole_index = -1;
@@ -113,13 +133,19 @@ namespace SvmFsBatch
 
         internal void ClearSupplemental()
         {
+            Logging.LogCall(ModuleName);
+
             IdClassFolds = null;
             IdDownSampledTrainClassFolds = null;
+
+            Logging.LogExit(ModuleName);
         }
 
 
         public string[] CsvValuesArray()
         {
+            Logging.LogCall(ModuleName);
+
             var x1 = IdGroupKey?.CsvValuesArray() ?? DataSetGroupKey.Empty.CsvValuesArray();
 
             var x2 = new[]
@@ -147,24 +173,27 @@ namespace SvmFsBatch
                 $@"{IdGroupFolder}"
             };
 
-            var x3 = x1.Concat(x2).Select(a => a == null
+            var ret = x1.Concat(x2).Select(a => a == null
                 ? ""
                 : a.Replace(',', ';')).ToArray();
 
-#if DEBUG
-            var str = string.Join(",", x3);
-            var id2 = new  IndexData(str);
-            var re = CompareReferenceData2(this, id2);
-            if (!re.AllTrue())
-            {
-                Logging.LogEvent("!!! INDEXDATA NOT EQUAL !!!");
-            }
-#endif
-            return x3;
+//#if DEBUG
+//            var str = string.Join(",", x3);
+//            var id2 = new  IndexData(str);
+//            var re = CompareReferenceData2(this, id2);
+//            if (!re.AllTrue())
+//            {
+//                Logging.LogEvent("!!! INDEXDATA NOT EQUAL !!!");
+//            }
+//#endif
+            Logging.LogExit(ModuleName); 
+            return ret;
         }
 
         internal void SetValues(string[] lineHeader, XTypes[] xType, int columnOffset = 0)
         {
+            Logging.LogCall(ModuleName);
+
             var k = columnOffset;
 
             var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
@@ -173,7 +202,7 @@ namespace SvmFsBatch
 
             int Hi(string name)
             {
-                return headerIndexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+                Logging.LogExit(ModuleName); return headerIndexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
             }
 
             // todo: lookup actual gkGroup key instance - not necessary, since the parent index_data will be looked up
@@ -226,7 +255,7 @@ namespace SvmFsBatch
                 IdClassWeights = xType[hiIdClassWeights].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a =>
                 {
                     var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries);
-                    return (int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), double.Parse(b[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo));
+                    Logging.LogExit(ModuleName); return (int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), double.Parse(b[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo));
                 }).ToArray();
 
             //  ;:|~/
@@ -243,9 +272,9 @@ namespace SvmFsBatch
                         var outerCvIndex = int.Parse(e[1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
                         var classSampleIndexes = e[2].Split('/', StringSplitOptions.RemoveEmptyEntries).Select(f => int.Parse(f, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
 
-                        return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
+                        Logging.LogExit(ModuleName); return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
                     }).ToArray();
-                    return (ClassId: classId, class_size: classSize, folds);
+                    Logging.LogExit(ModuleName); return (ClassId: classId, class_size: classSize, folds);
                 }).ToArray();
 
             //  ;:|~/
@@ -262,21 +291,30 @@ namespace SvmFsBatch
                         var outerCvIndex = int.Parse(e[1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
                         var classSampleIndexes = e[2].Split('/', StringSplitOptions.RemoveEmptyEntries).Select(f => int.Parse(f, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
 
-                        return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
+                        Logging.LogExit(ModuleName); return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
                     }).ToArray();
-                    return (ClassId: classId, class_size: classSize, folds);
+                    Logging.LogExit(ModuleName); return (ClassId: classId, class_size: classSize, folds);
                 }).ToArray();
 
             if (hiIdGroupFolder > -1) IdGroupFolder = xType[hiIdGroupFolder].AsStr;
+
+            Logging.LogExit(ModuleName);
         }
 
         public string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+
+            var ret = string.Join(",", CsvValuesArray());
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal string IdIndexStr()
         {
+            Logging.LogCall(ModuleName);
+
             var list = new (string name, string value, string value_max)[]
             {
                 (nameof(IdExperimentName), $@"{IdExperimentName}", @""),
@@ -290,14 +328,19 @@ namespace SvmFsBatch
                 //(nameof(this.unrolled_partition_index), $@"{this.unrolled_partition_index}", this.total_partition_indexes > -1 ? $@"{this.total_partition_indexes}" : $@"")
             };
 
-            return @"[" + string.Join(", ",
+            var ret = @"[" + string.Join(", ",
                 list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max)
                     ? $@"/{a.value_max}"
                     : @"")).ToList()) + @"]";
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal string IdMlStr()
         {
+            Logging.LogCall(ModuleName);
+
             var list = new (string name, string value, string value_max)[]
             {
                 (nameof(IdSvmType), $@"{IdSvmType}", @""),
@@ -307,14 +350,19 @@ namespace SvmFsBatch
                 (nameof(IdCalcElevenPointThresholds), $@"{IdCalcElevenPointThresholds}", "")
             };
 
-            return @"[" + string.Join(", ",
+            var ret = @"[" + string.Join(", ",
                 list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max)
                     ? $@"/{a.value_max}"
                     : "")).ToList()) + @"]";
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal string IdFoldStr()
         {
+            Logging.LogCall(ModuleName);
+
             var list = new (string name, string value, string value_max)[]
             {
                 (nameof(IdRepetitions), $@"{IdRepetitions}", ""),
@@ -323,38 +371,49 @@ namespace SvmFsBatch
                 (nameof(IdInnerCvFolds), $@"{IdInnerCvFolds}", "")
             };
 
-            return @"[" + string.Join(", ",
+            var ret = @"[" + string.Join(", ",
                 list.Select(a => $@"{a.name}={a.value}" + (!string.IsNullOrWhiteSpace(a.value_max)
                     ? $@"/{a.value_max}"
                     : "")).ToList()) + @"]";
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal static IndexData FindFirstReference(IndexData[] list, IndexData data1, IndexDataSearchOptions idso = null)
         {
-            if (data1 == null) return null;
+            Logging.LogCall(ModuleName);
+
+            if (data1 == null) { Logging.LogExit(ModuleName);  return null; }
 
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
-            var id = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2, idso));
+            var ret = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2, idso));
 
-            return id;
+            Logging.LogExit(ModuleName); 
+            return ret;
         }
 
         internal static IndexData FindLastReference(IndexData[] list, IndexData data1, IndexDataSearchOptions idso = null)
         {
-            if (data1 == null) return null;
+            Logging.LogCall(ModuleName);
+
+            if (data1 == null) { Logging.LogExit(ModuleName);  return null; }
 
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
-            var id = list.LastOrDefault(data2 => CompareReferenceData(data1, data2, idso));
+            var ret = list.LastOrDefault(data2 => CompareReferenceData(data1, data2, idso));
 
-            return id;
+            Logging.LogExit(ModuleName); 
+            return ret;
         }
 
         internal static bool CompareReferenceData(IndexData data1, IndexData data2, IndexDataSearchOptions idso = null)
         {
-            var comp = CompareReferenceData2(data1, data2, idso);
-            if (idso == null || idso.AllTrue()) return comp.AllTrue();
+            Logging.LogCall(ModuleName);
 
-            return
+            var comp = CompareReferenceData2(data1, data2, idso);
+            if (idso == null || idso.AllTrue()) {Logging.LogExit(ModuleName); return comp.AllTrue(); }
+
+            var ret =
                 (!idso.IdCalcElevenPointThresholds || comp.IdCalcElevenPointThresholds) &&
                 (!idso.IdClassWeights || comp.IdClassWeights) &&
                 (!idso.IdColumnArrayIndexes || comp.IdColumnArrayIndexes) &&
@@ -378,37 +437,41 @@ namespace SvmFsBatch
                 (!idso.IdClassFolds || comp.IdClassFolds) &&
                 (!idso.IdDownSampledTrainClassFolds || comp.IdDownSampledTrainClassFolds);
 
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal static IndexDataSearchOptions CompareReferenceData2(IndexData x1a, IndexData x2a, IndexDataSearchOptions idso = null)
         {
-            var comp = new IndexDataSearchOptions();
+            Logging.LogCall(ModuleName);
+
+            var ret = new IndexDataSearchOptions();
 
             // primitives
-            comp.IdCalcElevenPointThresholds = x1a.IdCalcElevenPointThresholds == x2a.IdCalcElevenPointThresholds;
-            comp.IdExperimentName = x1a.IdExperimentName == x2a.IdExperimentName || (string.IsNullOrEmpty(x1a.IdExperimentName) && string.IsNullOrEmpty(x2a.IdExperimentName));
-            comp.IdGroupArrayIndex = x1a.IdGroupArrayIndex == x2a.IdGroupArrayIndex;
-            comp.IdGroupFolder = x1a.IdGroupFolder == x2a.IdGroupFolder || (string.IsNullOrEmpty(x1a.IdGroupFolder) && string.IsNullOrEmpty(x2a.IdGroupFolder));
+            ret.IdCalcElevenPointThresholds = x1a.IdCalcElevenPointThresholds == x2a.IdCalcElevenPointThresholds;
+            ret.IdExperimentName = x1a.IdExperimentName == x2a.IdExperimentName || (string.IsNullOrEmpty(x1a.IdExperimentName) && string.IsNullOrEmpty(x2a.IdExperimentName));
+            ret.IdGroupArrayIndex = x1a.IdGroupArrayIndex == x2a.IdGroupArrayIndex;
+            ret.IdGroupFolder = x1a.IdGroupFolder == x2a.IdGroupFolder || (string.IsNullOrEmpty(x1a.IdGroupFolder) && string.IsNullOrEmpty(x2a.IdGroupFolder));
 
-            comp.IdInnerCvFolds = x1a.IdInnerCvFolds == x2a.IdInnerCvFolds;
-            comp.IdIterationIndex = x1a.IdIterationIndex == x2a.IdIterationIndex;
-            comp.IdNumColumns = x1a.IdNumColumns == x2a.IdNumColumns;
-            comp.IdNumGroups = x1a.IdNumGroups == x2a.IdNumGroups;
-            comp.IdOuterCvFolds = x1a.IdOuterCvFolds == x2a.IdOuterCvFolds;
-            comp.IdOuterCvFoldsToRun = x1a.IdOuterCvFoldsToRun == x2a.IdOuterCvFoldsToRun;
-            comp.IdRepetitions = x1a.IdRepetitions == x2a.IdRepetitions;
-            comp.IdScaleFunction = x1a.IdScaleFunction == x2a.IdScaleFunction;
-            comp.IdSelectionDirection = x1a.IdSelectionDirection == x2a.IdSelectionDirection;
-            comp.IdSvmKernel = x1a.IdSvmKernel == x2a.IdSvmKernel;
-            comp.IdSvmType = x1a.IdSvmType == x2a.IdSvmType;
-            comp.IdTotalGroups = x1a.IdTotalGroups == x2a.IdTotalGroups;
+            ret.IdInnerCvFolds = x1a.IdInnerCvFolds == x2a.IdInnerCvFolds;
+            ret.IdIterationIndex = x1a.IdIterationIndex == x2a.IdIterationIndex;
+            ret.IdNumColumns = x1a.IdNumColumns == x2a.IdNumColumns;
+            ret.IdNumGroups = x1a.IdNumGroups == x2a.IdNumGroups;
+            ret.IdOuterCvFolds = x1a.IdOuterCvFolds == x2a.IdOuterCvFolds;
+            ret.IdOuterCvFoldsToRun = x1a.IdOuterCvFoldsToRun == x2a.IdOuterCvFoldsToRun;
+            ret.IdRepetitions = x1a.IdRepetitions == x2a.IdRepetitions;
+            ret.IdScaleFunction = x1a.IdScaleFunction == x2a.IdScaleFunction;
+            ret.IdSelectionDirection = x1a.IdSelectionDirection == x2a.IdSelectionDirection;
+            ret.IdSvmKernel = x1a.IdSvmKernel == x2a.IdSvmKernel;
+            ret.IdSvmType = x1a.IdSvmType == x2a.IdSvmType;
+            ret.IdTotalGroups = x1a.IdTotalGroups == x2a.IdTotalGroups;
 
             // special cases
-            comp.IdGroupKey = x1a.IdGroupKey == x2a.IdGroupKey;
+            ret.IdGroupKey = x1a.IdGroupKey == x2a.IdGroupKey;
 
-            comp.IdClassWeights = (x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) ^ (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0) ? false : x1a.IdClassWeights == x2a.IdClassWeights  || ((x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) && (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0)) || x1a.IdClassWeights.SequenceEqual(x2a.IdClassWeights);
-            comp.IdGroupArrayIndexes = (x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0) ? false : x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes);
-            comp.IdColumnArrayIndexes = (x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0) ? false : x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes);
+            ret.IdClassWeights = (x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) ^ (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0) ? false : x1a.IdClassWeights == x2a.IdClassWeights  || ((x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) && (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0)) || x1a.IdClassWeights.SequenceEqual(x2a.IdClassWeights);
+            ret.IdGroupArrayIndexes = (x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0) ? false : x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes);
+            ret.IdColumnArrayIndexes = (x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0) ? false : x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes);
 
 
             if (idso == null || idso.IdClassFolds)
@@ -416,11 +479,11 @@ namespace SvmFsBatch
                 if ((x1a.IdClassFolds?.Length ?? 0) != (x2a.IdClassFolds?.Length ?? 0))
                 {
                     // different length
-                    comp.IdClassFolds = false;
+                    ret.IdClassFolds = false;
                 }
                 else
                 {
-                    comp.IdClassFolds = true;
+                    ret.IdClassFolds = true;
 
                     // check not same reference, check length > 0 (already know same length from previous if)
                     if (x1a.IdClassFolds != x2a.IdClassFolds && ((x1a.IdClassFolds?.Length ?? 0) > 0) && ((x2a.IdClassFolds?.Length ?? 0) > 0))
@@ -430,7 +493,7 @@ namespace SvmFsBatch
                         {
                             if (x1a.IdClassFolds[i].ClassId != x2a.IdClassFolds[i].ClassId || x1a.IdClassFolds[i].class_size != x2a.IdClassFolds[i].class_size || (x1a.IdClassFolds[i].folds?.Length ?? 0) != (x2a.IdClassFolds[i].folds?.Length ?? 0))
                             {
-                                comp.IdClassFolds = false;
+                                ret.IdClassFolds = false;
                                 break;
                             }
 
@@ -438,7 +501,7 @@ namespace SvmFsBatch
                             {
                                 if (x1a.IdClassFolds[i].folds[k].OuterCvIndex != x2a.IdClassFolds[i].folds[k].OuterCvIndex || x1a.IdClassFolds[i].folds[k].RepetitionsIndex != x2a.IdClassFolds[i].folds[k].RepetitionsIndex || (x1a.IdClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) != (x2a.IdClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) || !x1a.IdClassFolds[i].folds[k].ClassSampleIndexes.SequenceEqual(x2a.IdClassFolds[i].folds[k].ClassSampleIndexes))
                                 {
-                                    comp.IdClassFolds = false;
+                                    ret.IdClassFolds = false;
                                     break;
                                 }
                             }
@@ -454,11 +517,11 @@ namespace SvmFsBatch
                 if ((x1a.IdDownSampledTrainClassFolds?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds?.Length ?? 0))
                 {
                     // different length
-                    comp.IdDownSampledTrainClassFolds = false;
+                    ret.IdDownSampledTrainClassFolds = false;
                 }
                 else
                 {
-                    comp.IdDownSampledTrainClassFolds = true;
+                    ret.IdDownSampledTrainClassFolds = true;
 
                     // check not same reference, check length > 0 (already know same length from previous if)
                     if (x1a.IdDownSampledTrainClassFolds != x2a.IdDownSampledTrainClassFolds && ((x1a.IdDownSampledTrainClassFolds?.Length ?? 0) > 0) && ((x2a.IdDownSampledTrainClassFolds?.Length ?? 0) > 0))
@@ -468,7 +531,7 @@ namespace SvmFsBatch
                         {
                             if (x1a.IdDownSampledTrainClassFolds[i].ClassId != x2a.IdDownSampledTrainClassFolds[i].ClassId || x1a.IdDownSampledTrainClassFolds[i].class_size != x2a.IdDownSampledTrainClassFolds[i].class_size || (x1a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0))
                             {
-                                comp.IdDownSampledTrainClassFolds = false;
+                                ret.IdDownSampledTrainClassFolds = false;
                                 break;
                             }
 
@@ -476,7 +539,7 @@ namespace SvmFsBatch
                             {
                                 if (x1a.IdDownSampledTrainClassFolds[i].folds[k].OuterCvIndex != x2a.IdDownSampledTrainClassFolds[i].folds[k].OuterCvIndex || x1a.IdDownSampledTrainClassFolds[i].folds[k].RepetitionsIndex != x2a.IdDownSampledTrainClassFolds[i].folds[k].RepetitionsIndex || (x1a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes?.Length ?? 0) || !x1a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes.SequenceEqual(x2a.IdDownSampledTrainClassFolds[i].folds[k].ClassSampleIndexes))
                                 {
-                                    comp.IdDownSampledTrainClassFolds = false;
+                                    ret.IdDownSampledTrainClassFolds = false;
                                     break;
                                 }
                             }
@@ -486,8 +549,8 @@ namespace SvmFsBatch
                 }
             }
 
-
-            return comp;
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal class IndexDataSearchOptions
@@ -517,7 +580,9 @@ namespace SvmFsBatch
 
             internal bool AnyTrue()
             {
-                return
+                Logging.LogCall(ModuleName);
+
+                var ret = 
                     IdCalcElevenPointThresholds ||
                     IdClassWeights ||
                     IdColumnArrayIndexes ||
@@ -541,11 +606,16 @@ namespace SvmFsBatch
                     IdClassFolds ||
                     IdDownSampledTrainClassFolds
                     ;
+
+                Logging.LogExit(ModuleName);
+                return ret;
             }
 
             internal bool AllTrue()
             {
-                return
+                Logging.LogCall(ModuleName);
+
+                var ret =
                     IdCalcElevenPointThresholds &&
                     IdClassWeights &&
                     IdColumnArrayIndexes &&
@@ -569,11 +639,16 @@ namespace SvmFsBatch
                     IdClassFolds &&
                     IdDownSampledTrainClassFolds
                     ;
+
+                Logging.LogExit(ModuleName);
+                return ret;
             }
 
             internal bool[] Values()
             {
-                return new[]
+                Logging.LogCall(ModuleName);
+
+                var ret = new[]
                 {
                     IdCalcElevenPointThresholds,
                     IdClassWeights,
@@ -598,13 +673,16 @@ namespace SvmFsBatch
                     IdClassFolds,
                     IdDownSampledTrainClassFolds
                 };
+
+                Logging.LogExit(ModuleName);
+                return ret;
             }
         }
 
 
         //internal static index_data find_best_match_reference(index_data[] list, index_data data)
         //{
-        //    if (data == null) return null;
+        //    if (data == null) { Logging.LogExit(ModuleName);  return null; }
         //
         //    // find proper index_data instance for this newly loaded ConfusionMatrix instance
         //    var sums = list.Select(id2 =>
@@ -635,13 +713,13 @@ namespace SvmFsBatch
         //    var max_index = Array.FindIndex(sums, a => a == max);
         //
         //    var id = list[max_index];
-        //    return ct.IsCancellationRequested ? default :id;
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :id;
         //}
 
 
         //public index_data(index_data index_data)
         //{
-        //    if (index_data == null) return;
+        //    if (index_data == null) { Logging.LogExit(ModuleName); return; }
         //
         //    if (index_data.GroupKey != null) GroupKey = new DataSetGroupKey(index_data.GroupKey);
         //    if (GroupKey.value == default) GroupKey = null;

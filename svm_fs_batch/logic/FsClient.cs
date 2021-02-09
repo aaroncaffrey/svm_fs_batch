@@ -12,35 +12,48 @@ namespace SvmFsBatch
         public const string ModuleName = nameof(FsClient);
 
 
-        internal static async Task<string> CrossValidatePerformanceRequestAsync(DataSet DataSet, bool asParallel, IndexData id, CancellationToken ct)
+        internal static async Task<string> CrossValidatePerformanceRequestAsync(DataSet DataSet, bool asParallel, IndexData id, ulong lvl = 0, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName,lvl:lvl+1);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName,lvl:lvl+1);  return default; }
 
-            var unrolledIndexList = new[] {id};
+            try
+            {
+                var unrolledIndexList = new[] {id};
 
-            var resultsTasks = asParallel
-                ? unrolledIndexList.AsParallel().AsOrdered().WithCancellation(ct).Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
-                    //.SelectMany(a => a)
-                    .ToArray()
-                : unrolledIndexList.Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
-                    //.SelectMany(a => a)
-                    .ToArray();
+                var resultsTasks = asParallel
+                    ? unrolledIndexList.AsParallel().AsOrdered().WithCancellation(ct).Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
+                        //.SelectMany(a => a)
+                        .ToArray()
+                    : unrolledIndexList.Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
+                        //.SelectMany(a => a)
+                        .ToArray();
 
-            var results = (await Task.WhenAll(resultsTasks).ConfigureAwait(false)).Where(a => a != default).SelectMany(a => a).Where(a => a != default).ToArray();
+                var results = (await Task.WhenAll(resultsTasks).ConfigureAwait(false)).Where(a => a != default).SelectMany(a => a).Where(a => a != default).ToArray();
 
-            var lines = results.Select(a => $"{a.id.CsvValuesString()},{a.cm.CsvValuesString()}").ToList();
+                var lines = results.Select(a => $"{a.id.CsvValuesString()},{a.cm.CsvValuesString()}").ToList();
 
-            lines.Insert(0, $"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
+                lines.Insert(0, $"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
 
-            var text = string.Join(Environment.NewLine, lines) + Environment.NewLine;
+                var text = string.Join(Environment.NewLine, lines) + Environment.NewLine;
 
-            return !ct.IsCancellationRequested ? text : default;
+                Logging.LogExit(ModuleName, lvl: lvl + 1);
+                return ct.IsCancellationRequested ? default : text;
+            }
+            catch (Exception e)
+            {
+                Logging.LogException(e, "", ModuleName);
+            }
+            
+            Logging.LogExit(ModuleName, lvl: lvl + 1);
+            return default;
         }
 
 
-        internal static async Task FeatureSelectionClientInitializationAsync(DataSet DataSet, string ExperimentName, int instanceId, int totalInstances, CancellationToken ct)
+        internal static async Task FeatureSelectionClientInitializationAsync(DataSet DataSet, string ExperimentName, int instanceId, int totalInstances, ulong lvl = 0, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName, lvl:lvl+1);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName,lvl:lvl+1); return; }
 
             //var serverGuidBytes = Program.ProgramArgs.ServerGuid.ToByteArray();
 
@@ -68,11 +81,12 @@ namespace SvmFsBatch
             //var r = new Random();
 
 
-            var cp = new ConnectionPool();
+            var remoteServerPoolGuid = Program.ProgramArgs.ServerGuid;
+            var cp = new ConnectionPool(callChain: null, lvl: lvl + 1);
             var poolName = "Client";
-            cp.Start(poolName, clientGuid, false, true, ct);
+            cp.Start(false, poolName, clientGuid, remoteServerPoolGuid, callChain: null, lvl: lvl + 1, ct: ct);
 
-
+            var lastCountActive = (0, 0, 0);
             while (true)
             {
                 try
@@ -83,12 +97,19 @@ namespace SvmFsBatch
                         break;
                     }
 
-                    var cpm = cp.GetNextClient();
+                    var cpm = cp.GetNextClient(callChain: null, lvl: lvl + 1);
 
                     if (cpm == default)
                     {
-                        Logging.LogEvent($"{poolName}: Main Loop: Connection pool is empty.", ModuleName);
-                        try { await Task.Delay(TimeSpan.FromMilliseconds(1), ct).ConfigureAwait(false); }
+                        var countActive = cp.CountActive();
+
+                        if (countActive != lastCountActive)
+                        {
+                            lastCountActive = countActive;
+                            Logging.LogEvent($"{poolName}: Main Loop: Connection pool was empty. Pool reserved: {countActive.reserved}. Pool unreserved: {countActive.unreserved}. Pool total: {countActive.total}.", ModuleName);
+                        }
+
+                        try { await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false); }
                         catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
                         continue;
@@ -100,10 +121,10 @@ namespace SvmFsBatch
 
                             try
                             {
-                                var ret = await IpcMessaging.IpcAsync($"client_{cpm.LocalHost}:{cpm.LocalPort}", $"server_{cpm.RemoteHost}:{cpm.RemotePort}", cpm, DataSet, true, null, ct).ConfigureAwait(false);
+                                var ret = await IpcMessaging.IpcAsync($"client_{cpm.LocalHost}:{cpm.LocalPort}", $"server_{cpm.RemoteHost}:{cpm.RemotePort}", cpm, DataSet, true, null, lvl: lvl + 1, ct:ct).ConfigureAwait(false);
                             }
                             catch (Exception e) { Logging.LogException(e, "", ModuleName); }
-                            finally { cpm?.JoinPool(cp); }
+                            finally { cpm?.Unreserve(callChain: null, lvl: lvl + 1); }
 
                             Logging.LogEvent($"{poolName}: Main Loop: Exiting task {Task.CurrentId}.", ModuleName);
                         },
@@ -159,12 +180,14 @@ namespace SvmFsBatch
                 try { await Task.WhenAll(tasks).ConfigureAwait(false); }
                 catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-            await cp.StopAsync().ConfigureAwait(false);
+            await cp.StopAsync(callChain: null, lvl: lvl + 1).ConfigureAwait(false);
 
             try { if (mpstat!=null)await mpstat.StopAsync(); }
             catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
             Logging.LogEvent($"{poolName}: Reached end of {nameof(FsClient)}.{nameof(FeatureSelectionClientInitializationAsync)}...", ModuleName);
+
+            Logging.LogExit(ModuleName, lvl:lvl+1);
         }
     }
 }

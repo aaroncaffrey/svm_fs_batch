@@ -135,6 +135,8 @@ namespace SvmFsBatch
 
         public ProgramArgs(string[] args)
         {
+            Logging.LogCall(ModuleName);
+
             const string methodName = nameof(ProgramArgs);
 
             var argNames = new[]
@@ -323,7 +325,9 @@ namespace SvmFsBatch
 
         internal string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+
+            var ret = new[]
             {
                 $"{Folds}",
                 $"{Repetitions}",
@@ -375,27 +379,42 @@ namespace SvmFsBatch
                 $"{NegativeClassName}",
                 $"{PositiveClassName}"
             };
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal bool ArgsKeyExists(string key)
         {
-            if (Args == null || Args.Length == 0) return false;
+            Logging.LogCall(ModuleName);
 
-            return Args.Any(a => string.Equals(a.key, key, StringComparison.OrdinalIgnoreCase));
+            if (Args == null || Args.Length == 0) {Logging.LogExit(ModuleName); return false; }
+
+            var ret = Args.Any(a => string.Equals(a.key, key, StringComparison.OrdinalIgnoreCase));
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal (string key, string asStr, int? asInt, double? asDouble, bool? asBool) ArgsValue(string key)
         {
-            if (Args == null || Args.Length == 0) return default;
+            Logging.LogCall(ModuleName);
 
-            return Args.FirstOrDefault(a => string.Equals(a.key, key, StringComparison.OrdinalIgnoreCase));
+            if (Args == null || Args.Length == 0) { Logging.LogExit(ModuleName);  return default; }
+
+            var ret = Args.FirstOrDefault(a => string.Equals(a.key, key, StringComparison.OrdinalIgnoreCase));
+            
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal static (string key, string asStr, int? asInt, double? asDouble, bool? asBool)[] GetParams(string[] args)
         {
+            Logging.LogCall(ModuleName);
+
             var x = new List<(string key, string value)>();
 
-            if (args == null || args.Length == 0) return null;
+            if (args == null || args.Length == 0) { Logging.LogExit(ModuleName);  return null; }
 
             args = args.SelectMany(a => a.Split(new[] {'='}, StringSplitOptions.RemoveEmptyEntries)).Where(a => !string.IsNullOrWhiteSpace(a)).ToArray();
 
@@ -432,7 +451,7 @@ namespace SvmFsBatch
 
             //var x2 = new List<(string key, string asStr, int? asInt, double? asDouble, bool? asBool)>();
 
-            var x2 = x.Select(a =>
+            var ret = x.Select(a =>
             {
                 var asInt = int.TryParse(a.value, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var asIntOut)
                     ? asIntOut
@@ -452,10 +471,11 @@ namespace SvmFsBatch
                     else if (asInt == 1 && asDouble == 1) asBool = true;
                 }
 
-                return (a.key, asStr: a.value, asInt, asDouble, asBool);
+                 return (a.key, asStr: a.value, asInt, asDouble, asBool);
             }).ToArray();
 
-            return x2;
+            Logging.LogExit(ModuleName); 
+            return ret;
         }
     }
 }

@@ -35,10 +35,15 @@ namespace SvmFsBatch
 
         public Prediction()
         {
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName);
         }
 
         public Prediction(Prediction prediction)
         {
+            Logging.LogCall(ModuleName);
+
             PredictionIndex = prediction.PredictionIndex;
             ClassSampleId = prediction.ClassSampleId;
             RealClassId = prediction.RealClassId;
@@ -46,10 +51,14 @@ namespace SvmFsBatch
             ProbabilityEstimates = prediction.ProbabilityEstimates;
             Comment = prediction.Comment;
             // this.test_row_vector = prediction.test_row_vector;
+
+            Logging.LogExit(ModuleName);
         }
 
         public Prediction(string[] values)
         {
+            Logging.LogCall(ModuleName);
+
             var k = 0;
             PredictionIndex = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
             ClassSampleId = int.Parse(values[k++], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -69,11 +78,15 @@ namespace SvmFsBatch
                     var b = a.Split(':');
                     return (b[0], b[1]);
                 }).ToArray();
+
+            Logging.LogExit(ModuleName);
         }
 
         internal string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+
+            var ret = new[]
             {
                 $"{PredictionIndex}",
                 $"{ClassSampleId}",
@@ -82,11 +95,19 @@ namespace SvmFsBatch
                 $"{string.Join("/", ProbabilityEstimates?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.ProbabilityEstimate:G17}")).ToArray() ?? Array.Empty<string>())}",
                 $"{string.Join("/", Comment?.Select(a => string.Join(":", $@"{a.CommentHeader?.Replace(":", "_")}", $@"{a.CommentValue?.Replace(":", "_")}")).ToArray() ?? Array.Empty<string>())}"
             };
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+
+            var ret = string.Join(",", CsvValuesArray());
+            
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         /*public prediction(string str)
@@ -142,7 +163,7 @@ namespace SvmFsBatch
          {
              // 0;-1;1;2;p1:0.6;p-1:0.4;cval=xyz|0;-1;1;2;p1:0.6;p-1:0.4;cval=abc
  
-             return ct.IsCancellationRequested ? default :string.Join("|", new string[]
+             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :string.Join("|", new string[]
              {
                      $@"{prediction_index}",
                      $@"{class_sample_id}",
@@ -158,7 +179,9 @@ namespace SvmFsBatch
 
         public static async Task SaveAsync(CancellationToken ct, string predictionListFilename, (IndexData id, ConfusionMatrix cm, RankScore rs)[] cmList)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             const string methodName = nameof(SaveAsync);
             
@@ -239,6 +262,8 @@ namespace SvmFsBatch
                         });
                 });
             await IoProxy.WriteAllLinesAsync(true, ct, predictionListFilename, lines, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+
+            Logging.LogExit(ModuleName);
         }
     }
 }

@@ -76,6 +76,8 @@ namespace SvmFsBatch
 
         internal void ClearSupplemental()
         {
+            Logging.LogCall(ModuleName);
+
             UnrolledIndexData = null;
             GridPoint = null;
             XTimeGrid = null;
@@ -89,20 +91,28 @@ namespace SvmFsBatch
             PriXyStrElevenPoint = null;
             Thresholds = null;
             Predictions = null;
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
             bool overwrite, ConfusionMatrix[] xList, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             await SaveAsync(cmFullFilename, /*cm_summary_filename,*/ overwrite, null, xList, null, asParallel, ct).ConfigureAwait(false);
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
             bool overwrite, (IndexData id, ConfusionMatrix cm, RankScore rs)[] xList, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             await SaveAsync(cmFullFilename,
                 //cm_summary_filename,
@@ -112,12 +122,16 @@ namespace SvmFsBatch
                 xList.Select(a => a.rs).ToArray(),
                 asParallel,
                 ct).ConfigureAwait(false);
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
             bool overwrite, (IndexData id, ConfusionMatrix cm)[] xList, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             await SaveAsync(cmFullFilename,
                 //cm_summary_filename,
@@ -127,12 +141,16 @@ namespace SvmFsBatch
                 null,
                 asParallel,
                 ct).ConfigureAwait(false);
+
+            Logging.LogExit(ModuleName);
         }
 
 
         internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/ bool overwrite, IndexData[] idList, ConfusionMatrix[] cmList, RankScore[] rsList, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             const string methodName = nameof(SaveAsync);
 
@@ -156,7 +174,7 @@ namespace SvmFsBatch
 
             //if (save_summary_req && !save_summary) Logging.WriteLine($@"Not overwriting file: {cm_summary_filename}", ModuleName, MethodName);
 
-            if (!saveFull /* && !save_summary*/) return;
+            if (!saveFull /* && !save_summary*/) { Logging.LogExit(ModuleName); return; }
 
 
             var linesFull = saveFull
@@ -230,22 +248,28 @@ namespace SvmFsBatch
             //    Logging.WriteLine($@"Saved: {cm_summary_filename} ({lines_summary.Length} lines)", ModuleName,
             //        MethodName);
             //}
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static async Task<ConfusionMatrix[]> LoadAsync(string filename, int columnOffset = -1, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const string methodName = nameof(LoadAsync);
             
             var lines = await IoProxy.ReadAllLinesAsync(true, ct, filename, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
             var ret = Load(lines, columnOffset, asParallel, ct);
-            return ct.IsCancellationRequested ? default :ret;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :ret;
         }
 
         internal static ConfusionMatrix[] Load(string[] lines, int columnOffset = -1, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var lineHeader = lines[0].Split(',');
             var hasHeaderLine = false;
@@ -274,16 +298,18 @@ namespace SvmFsBatch
                     : 0).Where(a => !string.IsNullOrWhiteSpace(a)).Select(line => LoadLine(columnOffset, lineHeader, line, asParallel, ct)).Where(a => a != null).ToArray();
 
 
-            return ct.IsCancellationRequested ? default :cmList;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cmList;
         }
 
         private static ConfusionMatrix LoadLine(int columnOffset, string[] lineHeader, string line, bool asParallel = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var sAll = line.Split(',');
             var columnCount = sAll.Length - columnOffset;
-            if (columnCount < CsvHeaderValuesArray.Length) return null;
+            if (columnCount < CsvHeaderValuesArray.Length) { Logging.LogExit(ModuleName);  return null; }
             var xType = XTypes.GetXTypes(sAll, asParallel, ct);
             var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
                 ? Array.FindIndex(lineHeader, a => a.EndsWith(h))
@@ -291,7 +317,7 @@ namespace SvmFsBatch
 
             int Hi(string name)
             {
-                return ct.IsCancellationRequested ? default :headerIndexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :headerIndexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
             }
 
             var cm = new ConfusionMatrix();
@@ -501,7 +527,7 @@ namespace SvmFsBatch
                     ? xType[hiRocXyStrAll].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1 /* skip axis names*/).Select(a =>
                     {
                         var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray();
-                        return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
                     }).ToArray()
                     : null;
             if (hiRocXyStrElevenPoint > -1)
@@ -509,7 +535,7 @@ namespace SvmFsBatch
                     ? xType[hiRocXyStrElevenPoint].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1 /* skip axis names*/).Select(a =>
                     {
                         var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray();
-                        return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
                     }).ToArray()
                     : null;
             if (hiPrXyStrAll > -1)
@@ -517,7 +543,7 @@ namespace SvmFsBatch
                     ? xType[hiPrXyStrAll].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1 /* skip axis names*/).Select(a =>
                     {
                         var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray();
-                        return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
                     }).ToArray()
                     : null;
             if (hiPrXyStrElevenPoint > -1)
@@ -525,7 +551,7 @@ namespace SvmFsBatch
                     ? xType[hiPrXyStrElevenPoint].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1 /* skip axis names*/).Select(a =>
                     {
                         var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray();
-                        return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
                     }).ToArray()
                     : null;
             if (hiPriXyStrAll > -1)
@@ -533,7 +559,7 @@ namespace SvmFsBatch
                     ? xType[hiPriXyStrAll].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1 /* skip axis names*/).Select(a =>
                     {
                         var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray();
-                        return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
                     }).ToArray()
                     : null;
             if (hiPriXyStrElevenPoint > -1)
@@ -541,7 +567,7 @@ namespace SvmFsBatch
                     ? xType[hiPriXyStrElevenPoint].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Skip(1 /* skip axis names*/).Select(a =>
                     {
                         var xy = a.Split(':', StringSplitOptions.RemoveEmptyEntries).Select(b => double.Parse(b, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray();
-                        return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
                     }).ToArray()
                     : null;
             if (hiThresholds > -1)
@@ -555,13 +581,15 @@ namespace SvmFsBatch
                     ? xType[hiPredictions].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new Prediction(a.Split('|'))).ToArray()
                     : null;
 
-            return ct.IsCancellationRequested ? default :cm;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cm;
         }
 
 
         internal void CalculateThesholdMetrics(MetricsBox metrics, bool calculateAuc, Prediction[] predictionList, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             if (XClassId != null && predictionList != null && predictionList.Length > 0 && predictionList.Any(a => a.ProbabilityEstimates != null && a.ProbabilityEstimates.Length > 0))
             {
@@ -573,8 +601,8 @@ namespace SvmFsBatch
                     //var (p_brier_score_all, p_roc_auc_all, p_roc_auc2_all, p_pr_auc_all, p_pri_auc_all, p_ap_all, p_api_all, p_roc_xy_all, p_pr_xy_all, p_pri_xy_all) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, ClassId.Value, false);
                     //var (p_brier_score_ElevenPoint, p_roc_auc_ElevenPoint, p_roc_auc2_ElevenPoint, p_pr_auc_ElevenPoint, p_pri_auc_ElevenPoint, p_ap_ElevenPoint, p_api_ElevenPoint, p_roc_xy_ElevenPoint, p_pr_xy_ElevenPoint, p_pri_xy_ElevenPoint) = performance_measure.Calculate_ROC_PR_AUC(prediction_list, ClassId.Value, true);
 
-                    var (pRocAucApproxAll, pRocAucActualAll, pPrAucApproxAll, pPriAucApproxAll, pApAll, pApiAll, pRocXyAll, pPrXyAll, pPriXyAll) = PerformanceMeasure.Calculate_ROC_PR_AUC(predictionList, XClassId.Value, ct: ct);
-                    var (pRocAucApproxElevenPoint, pRocAucActualElevenPoint, pPrAucApproxElevenPoint, pPriAucApproxElevenPoint, pApElevenPoint, pApiElevenPoint, pRocXyElevenPoint, pPrXyElevenPoint, pPriXyElevenPoint) = PerformanceMeasure.Calculate_ROC_PR_AUC(predictionList, XClassId.Value, PerformanceMeasure.ThresholdType.ElevenPoints, ct);
+                    var (pRocAucApproxAll, pRocAucActualAll, pPrAucApproxAll, pPriAucApproxAll, pApAll, pApiAll, pRocXyAll, pPrXyAll, pPriXyAll) = PerformanceMeasure.CalculateRocAucPrecisionRecallAuc(predictionList, XClassId.Value, ct: ct);
+                    var (pRocAucApproxElevenPoint, pRocAucActualElevenPoint, pPrAucApproxElevenPoint, pPriAucApproxElevenPoint, pApElevenPoint, pApiElevenPoint, pRocXyElevenPoint, pPrXyElevenPoint, pPriXyElevenPoint) = PerformanceMeasure.CalculateRocAucPrecisionRecallAuc(predictionList, XClassId.Value, PerformanceMeasure.ThresholdType.ElevenPoints, ct);
 
 
                     metrics.PRocAucApproxAll = pRocAucApproxAll;
@@ -620,12 +648,16 @@ namespace SvmFsBatch
             }
 
             metrics.CalculateMetrics();
+
+            Logging.LogExit(ModuleName);
         }
 
 
         internal string[] CsvValuesArray()
         {
-            return
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return
                 //(unrolled_index_data?.CsvValuesArray() ?? index_data.empty.CsvValuesArray())
                 //.Concat(GridPoint?.CsvValuesArray() ?? GridPoint.empty.CsvValuesArray())
                 (GridPoint?.CsvValuesArray() ?? GridPoint.Empty.CsvValuesArray()).Concat(new[]
@@ -682,7 +714,9 @@ namespace SvmFsBatch
 
         public string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return string.Join(",", CsvValuesArray());
         }
     }
 }

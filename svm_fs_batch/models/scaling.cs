@@ -20,11 +20,14 @@ namespace SvmFsBatch
 
         public Scaling(int[] yCol) : this(yCol.Select(a => (double) a).ToArray())
         {
+            Logging.LogCall(ModuleName);
         }
 
         public Scaling(double[] yCol)
         {
-            if (yCol == null || yCol.Length == 0) return;
+            Logging.LogCall(ModuleName);
+
+            if (yCol == null || yCol.Length == 0) { Logging.LogExit(ModuleName); return; }
 
             NonZero = yCol.Count(y => y != 0);
             AbsSum = yCol.Sum(Math.Abs);
@@ -37,38 +40,46 @@ namespace SvmFsBatch
 
         internal static double SqrtSumOfSqrs(double[] list)
         {
-            return list == null || list.Length == 0
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return list == null || list.Length == 0
                 ? 0d
                 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
         }
 
         internal static double StandardDeviationSample(double[] values)
         {
-            if (values.Length < 2) return 0;
+            Logging.LogCall(ModuleName);
+
+            if (values.Length < 2) {Logging.LogExit(ModuleName); return 0; }
 
             var mean = values.Average();
 
-            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
+            Logging.LogExit(ModuleName); return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
         internal double[] Scale(double[] values, ScaleFunction scaleFunction)
         {
-            return values == null || values.Length == 0
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return values == null || values.Length == 0
                 ? Array.Empty<double>()
                 : values.Select(a => Scale(a, scaleFunction)).ToArray();
         }
 
         internal double Scale(double value, ScaleFunction scaleFunction)
         {
+            Logging.LogCall(ModuleName);
+
             /*double non_zero, double abs_sum, double srsos, double column_min, double column_max, double average, double stdev,*/
 
             var sp = this;
 
-            if (sp == null) return value;
+            if (sp == null) {Logging.LogExit(ModuleName); return value; }
 
             switch (scaleFunction)
             {
-                case ScaleFunction.None: return value;
+                case ScaleFunction.None: Logging.LogExit(ModuleName); return value;
 
                 case ScaleFunction.Rescale:
 
@@ -77,47 +88,47 @@ namespace SvmFsBatch
                     var y = sp.ColumnMax - sp.ColumnMin;
                     var z = RescaleScaleMin;
 
-                    if (y == 0) return 0;
+                    if (y == 0) {Logging.LogExit(ModuleName); return 0; }
 
                     var rescale = x / y + z;
 
-                    return rescale;
+                    Logging.LogExit(ModuleName); return rescale;
 
                 case ScaleFunction.Normalisation:
 
-                    if (sp.ColumnMax - sp.ColumnMin == 0) return 0;
+                    if (sp.ColumnMax - sp.ColumnMin == 0) {Logging.LogExit(ModuleName); return 0; }
 
                     var meanNorm = (value - sp.Average) / (sp.ColumnMax - sp.ColumnMin);
 
-                    return meanNorm;
+                    Logging.LogExit(ModuleName); return meanNorm;
 
                 case ScaleFunction.Standardisation:
 
-                    if (sp.Stdev == 0) return 0;
+                    if (sp.Stdev == 0) {Logging.LogExit(ModuleName); return 0; }
 
                     var standardisation = (value - sp.Average) / sp.Stdev;
 
-                    return standardisation;
+                    Logging.LogExit(ModuleName); return standardisation;
 
                 case ScaleFunction.L0Norm:
 
-                    if (sp.NonZero == 0) return 0;
+                    if (sp.NonZero == 0) {Logging.LogExit(ModuleName); return 0; }
 
-                    return value / sp.NonZero;
+                    Logging.LogExit(ModuleName); return value / sp.NonZero;
 
                 case ScaleFunction.L1Norm:
 
-                    if (sp.AbsSum == 0) return 0;
+                    if (sp.AbsSum == 0) {Logging.LogExit(ModuleName); return 0; }
 
-                    return value / sp.AbsSum;
+                    Logging.LogExit(ModuleName); return value / sp.AbsSum;
 
                 case ScaleFunction.L2Norm:
 
-                    if (sp.Srsos == 0) return 0;
+                    if (sp.Srsos == 0) {Logging.LogExit(ModuleName); return 0; }
 
-                    return value / sp.Srsos;
+                    Logging.LogExit(ModuleName); return value / sp.Srsos;
 
-                default: throw new ArgumentOutOfRangeException(nameof(scaleFunction)); //return 0;
+                default: throw new ArgumentOutOfRangeException(nameof(scaleFunction)); //Logging.LogExit(ModuleName); return 0;
             }
         }
 

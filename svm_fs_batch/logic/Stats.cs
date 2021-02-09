@@ -3,8 +3,10 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class gkStats
+    internal class Stats
     {
+        internal const string ModuleName = nameof(Stats);
+
         internal static readonly string[] CsvHeaderValuesArray =
         {
             nameof(AbsSum),
@@ -82,8 +84,10 @@ namespace SvmFsBatch
         internal double Variance;
 
 
-        internal gkStats(double[] data, bool presorted = false)
+        internal Stats(double[] data, bool presorted = false)
         {
+            Logging.LogCall(ModuleName);
+
             if (data.Any(a => double.IsInfinity(a) || double.IsNaN(a))) throw new ArgumentOutOfRangeException(nameof(data), "");
 
             data = presorted
@@ -145,7 +149,8 @@ namespace SvmFsBatch
 
         internal string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+            Logging.LogExit(ModuleName); return new[]
             {
                 $@"{AbsSum:G17}",
                 $@"{Count}",
@@ -187,12 +192,16 @@ namespace SvmFsBatch
 
         internal string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return string.Join(",", CsvValuesArray());
         }
 
         internal static (double zeros, double nonzeros, double corrected) GeometricMean(double[] values)
         {
-            if (values == null || values.Length == 0 || values.All(a => a == 0)) return (0.0, 0.0, 0.0);
+            Logging.LogCall(ModuleName);
+
+            if (values == null || values.Length == 0 || values.All(a => a == 0)) {Logging.LogExit(ModuleName); return (0.0, 0.0, 0.0); }
 
             var useLog = false;
             var valuesNonzero = values.Where(a => a != 0).ToArray();
@@ -227,12 +236,14 @@ namespace SvmFsBatch
                 ? resultNonzeros
                 : 0.0;
 
-            return (resultZeros, resultNonzeros, resultCorrected);
+            Logging.LogExit(ModuleName); return (resultZeros, resultNonzeros, resultCorrected);
         }
 
         internal static (double zeros, double nonzeros, double corrected) HarmonicMean(double[] values)
         {
-            if (values == null || values.Length == 0 || values.All(a => a == 0)) return (0.0, 0.0, 0.0);
+            Logging.LogCall(ModuleName);
+
+            if (values == null || values.Length == 0 || values.All(a => a == 0)) {Logging.LogExit(ModuleName); return (0.0, 0.0, 0.0); }
 
             //  hm = values.Length / values.Sum(i => 1.0 / i);
             var valuesNonzero = values.Where(a => a != 0).ToArray();
@@ -244,12 +255,14 @@ namespace SvmFsBatch
                 ? resultNonzeros
                 : 0.0;
 
-            return (resultZeros, resultNonzeros, resultCorrected);
+            Logging.LogExit(ModuleName); return (resultZeros, resultNonzeros, resultCorrected);
         }
 
         internal static double SampleVariance(double[] samples)
         {
-            if (samples == null || samples.Length <= 1) return 0;
+            Logging.LogCall(ModuleName);
+
+            if (samples == null || samples.Length <= 1) {Logging.LogExit(ModuleName); return 0; }
 
             var variance = 0.0;
             var t = samples[0];
@@ -260,40 +273,50 @@ namespace SvmFsBatch
                 variance += diff * diff / ((i + 1.0) * i);
             }
 
-            return variance / (samples.Length - 1);
+            Logging.LogExit(ModuleName); return variance / (samples.Length - 1);
         }
 
         internal static (double variance, double stdev) SampleStandardDeviation(double[] samples)
         {
-            if (samples == null || samples.Length <= 1) return (0, 0);
+            Logging.LogCall(ModuleName);
+
+            if (samples == null || samples.Length <= 1) {Logging.LogExit(ModuleName); return (0, 0); }
 
             var variance = SampleVariance(samples);
             var stdev = Math.Sqrt(variance);
 
-            return (variance, stdev);
+            Logging.LogExit(ModuleName); return (variance, stdev);
         }
 
         internal static double Rms(double[] data)
         {
-            if (data == null || data.Length == 0) return double.NaN;
+            Logging.LogCall(ModuleName);
+
+
+            if (data == null || data.Length == 0) {Logging.LogExit(ModuleName); return double.NaN; }
 
             double mean = 0;
             ulong m = 0;
             for (var i = 0; i < data.Length; i++) mean += (data[i] * data[i] - mean) / ++m;
 
-            return Math.Sqrt(mean);
+            Logging.LogExit(ModuleName); return Math.Sqrt(mean);
         }
 
         internal static double SqrtSumOfSqrs(double[] list)
         {
-            return list == null || list.Length == 0
+            Logging.LogCall(ModuleName);
+
+
+            Logging.LogExit(ModuleName); return list == null || list.Length == 0
                 ? 0d
                 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
         }
 
         internal static (double skewness, double kurtosis, double mean, double variance, double stdev) Shape(double[] data)
         {
-            if (data == null || data.Length == 0 || data.All(a => a == 0)) return (0.0, 0.0, 0.0, 0.0, 0.0);
+            Logging.LogCall(ModuleName);
+
+            if (data == null || data.Length == 0 || data.All(a => a == 0)) {Logging.LogExit(ModuleName); return (0.0, 0.0, 0.0, 0.0, 0.0); }
 
             var mean = 0.0;
             var error = 0.0;
@@ -329,11 +352,13 @@ namespace SvmFsBatch
                 ? ((double) n * n - 1) / ((n - 2) * (n - 3)) * (n * kurtosis / (error * error) - 3 + 6.0 / (n + 1))
                 : 0;
 
-            return (skewness, kurtosis, mean, variance, stdev);
+            Logging.LogExit(ModuleName); return (skewness, kurtosis, mean, variance, stdev);
         }
 
         public void FixDouble()
         {
+            Logging.LogCall(ModuleName);
+
             FixDouble(ref Sum);
             FixDouble(ref MeanArithmetic);
             FixDouble(ref MeanGeometricCorrected);
@@ -362,41 +387,51 @@ namespace SvmFsBatch
             FixDouble(ref MadMedianQ3);
             FixDouble(ref MadMode);
             FixDouble(ref MadMidRange);
+
+            Logging.LogExit(ModuleName);
         }
 
         public static void FixDouble(ref double value)
         {
+            Logging.LogCall(ModuleName);
+
             const double cDoubleMax = 1.79769e+308;
             const double cDoubleMin = -cDoubleMax;
             const double doubleZero = 0.0;
 
-            if (value == 0 || value >= cDoubleMin && value <= cDoubleMax) return;
+            if (value == 0 || value >= cDoubleMin && value <= cDoubleMax) { Logging.LogExit(ModuleName); return; }
 
             if (double.IsPositiveInfinity(value) || value >= cDoubleMax || value >= double.MaxValue) value = cDoubleMax;
             else if (double.IsNegativeInfinity(value) || value <= cDoubleMin || value <= double.MinValue) value = cDoubleMin;
             else if (double.IsNaN(value)) value = doubleZero;
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static double Mad(double[] values, double? centre)
         {
-            if (values == null || values.Length == 0) return 0;
+            Logging.LogCall(ModuleName);
+
+            if (values == null || values.Length == 0) {Logging.LogExit(ModuleName); return 0; }
 
             if (centre == null) centre = values.Average();
 
             var mad = values.Sum(a => Math.Abs(centre.Value - a)) / values.Length;
 
-            return mad;
+            Logging.LogExit(ModuleName); return mad;
         }
 
         internal static double Percentile(double[] sortedData, double p)
         {
-            if (sortedData == null || sortedData.Length == 0) return 0;
+            Logging.LogCall(ModuleName);
 
-            if (sortedData.Length == 1) return sortedData[0];
+            if (sortedData == null || sortedData.Length == 0) {Logging.LogExit(ModuleName); return 0; }
 
-            if (p >= 100.0) return sortedData[^1];
+                                        if (sortedData.Length == 1) {Logging.LogExit(ModuleName); return sortedData[0]; }
 
-            var position = (sortedData.Length + 1) * p / 100.0;
+                                        if (p >= 100.0) {Logging.LogExit(ModuleName); return sortedData[^1]; }
+
+                                        var position = (sortedData.Length + 1) * p / 100.0;
             double leftNumber;
             double rightNumber;
 
@@ -413,10 +448,10 @@ namespace SvmFsBatch
                 rightNumber = sortedData[1];
             }
 
-            if (leftNumber == rightNumber) return leftNumber;
+            if (leftNumber == rightNumber) {Logging.LogExit(ModuleName); return leftNumber; }
 
-            var part = n - Math.Floor(n);
-            return leftNumber + part * (rightNumber - leftNumber);
+                                        var part = n - Math.Floor(n);
+            Logging.LogExit(ModuleName); return leftNumber + part * (rightNumber - leftNumber);
         }
     }
 }

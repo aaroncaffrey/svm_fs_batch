@@ -15,7 +15,8 @@ namespace SvmFsBatch
 
         internal static async Task<(string CmdLine, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const string methodName = nameof(TrainAsync);
 
@@ -23,7 +24,7 @@ namespace SvmFsBatch
             {
                 try
                 {
-                    return ct.IsCancellationRequested ? default :new (string key, string value)[]
+                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :new (string key, string value)[]
                     {
                         (nameof(libsvmTrainExeFile), libsvmTrainExeFile), (nameof(trainFile), trainFile),
                         (nameof(modelOutFile), modelOutFile), (nameof(stdoutFile), stdoutFile),
@@ -44,18 +45,18 @@ namespace SvmFsBatch
                 }
                 catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-                return ct.IsCancellationRequested ? default :Array.Empty<(string key, string value)>();
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Array.Empty<(string key, string value)>();
             }
 
             string GetParamsStr()
             {
-                try { return ct.IsCancellationRequested ? default :string.Join(", ", GetParams().Select(a => $@"{a.key}=""{a.value}""").ToList()); }
+                try { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :string.Join(", ", GetParams().Select(a => $@"{a.key}=""{a.value}""").ToList()); }
                 catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-                return ct.IsCancellationRequested ? default :"";
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :"";
             }
 
-            if (ct.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var libsvmParams = new List<string>();
             if (quietMode) libsvmParams.Add("-q");
@@ -109,7 +110,7 @@ namespace SvmFsBatch
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) return default;
+                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
                     using var process = Process.Start(start);
                     if (process == null)
                     {
@@ -144,7 +145,7 @@ namespace SvmFsBatch
                     if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
                     if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
 
-                    if (exitCode == 0) return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult);
+                    if (exitCode == 0) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult); }
 
                     Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
                     if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, methodName);
@@ -157,18 +158,19 @@ namespace SvmFsBatch
                     if (tries >= maxTries)
                     {
                         if (rethrow) throw;
-                        return ct.IsCancellationRequested ? default :(cmdLine, null, null);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(cmdLine, null, null);
                     }
 
                     await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                 }
 
-            return ct.IsCancellationRequested ? default :(cmdLine, null, null);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(cmdLine, null, null);
         }
 
         internal static async Task<(string CmdLine, string stdout, string stderr)> PredictAsync(string libsvmPredictExeFile, string testFile, string modelFile, string predictionsOutFile, bool probabilityEstimates, string stdoutFile = null, string stderrFile = null, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const string methodName = nameof(PredictAsync);
 
@@ -176,7 +178,7 @@ namespace SvmFsBatch
             {
                 try
                 {
-                    return new[]
+                    Logging.LogExit(ModuleName); return new[]
                     {
                         (nameof(libsvmPredictExeFile), libsvmPredictExeFile), (nameof(testFile), testFile),
                         (nameof(modelFile), modelFile), (nameof(predictionsOutFile), predictionsOutFile),
@@ -186,18 +188,18 @@ namespace SvmFsBatch
                 }
                 catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-                return ct.IsCancellationRequested ? default :Array.Empty<(string key, string value)>();
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Array.Empty<(string key, string value)>();
             }
 
             string GetParamsStr()
             {
-                try { return ct.IsCancellationRequested ? default :string.Join(", ", GetParams()); }
+                try { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :string.Join(", ", GetParams()); }
                 catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-                return ct.IsCancellationRequested ? default :"";
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :"";
             }
 
-            if (ct.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var libsvmParams = new List<string>();
             if (probabilityEstimates) libsvmParams.Add(@"-b 1");
@@ -227,7 +229,7 @@ namespace SvmFsBatch
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) return default;
+                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
                     using var process = Process.Start(start);
                     if (process == null)
                     {
@@ -261,7 +263,7 @@ namespace SvmFsBatch
                     if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
                     if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
 
-                    if (exitCode == 0) return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult);
+                    if (exitCode == 0) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult); }
 
                     Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
                     if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, methodName);
@@ -274,13 +276,13 @@ namespace SvmFsBatch
                     if (tries >= maxTries)
                     {
                         if (rethrow) throw;
-                        return ct.IsCancellationRequested ? default :(cmdLine, null, null);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (cmdLine, null, null);
                     }
 
                     await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                 }
 
-            return ct.IsCancellationRequested ? default :(cmdLine, null, null);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (cmdLine, null, null);
         }
     }
 }

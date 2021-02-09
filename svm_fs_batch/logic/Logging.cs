@@ -11,8 +11,9 @@ namespace SvmFsBatch
         internal const string ModuleName = nameof(Logging);
         private static readonly Random Random = new Random();
 
-        internal static void WriteLine(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
+        internal static void WriteLine(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0)
         {
+            // [CallerFilePath] string callerFilePath = "",
             //await Task.Run(async ()=> Console.WriteLine($@"[{DateTime.UtcNow:G}] [{_CallerModuleName}.{_CallerMethodName}:{_CallerLineNumber}]: {text}")).ConfigureAwait(false);
             Console.WriteLine($@"[{DateTime.UtcNow:G}] [{Thread.CurrentThread.ManagedThreadId}] [{Task.CurrentId}] [{callerModuleName}.{callerMethodName}:{callerLineNumber}]: {text}");
         }
@@ -42,7 +43,7 @@ namespace SvmFsBatch
 
         internal static async Task WaitAsync(int minSecs, int maxSecs, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             //const string MethodName = nameof(WaitAsync);
 
@@ -53,6 +54,8 @@ namespace SvmFsBatch
 
             try { await Task.Delay(ts, ct).ConfigureAwait(false); }
             catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); }
+
+            Logging.LogExit(ModuleName);
         }
 
 
@@ -64,8 +67,8 @@ namespace SvmFsBatch
 
 
         internal static void LogEvent(string text = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
-            //string _CallerMethodType = "",
-            //(string type, string name, string value)[] _CallerMethodArgs = null
+        //string _CallerMethodType = "",
+        //(string type, string name, string value)[] _CallerMethodArgs = null
 
         {
             //var text2 = $@"{text} --> {_CallerMethodType} <- {_CallerModuleName}.{_CallerMethodName}:{_CallerLineNumber}({string.Join(", ", _CallerMethodArgs?.Select(a => $@"{a.type} {a.name} = ""{a.value}""").ToArray() ?? Array.Empty<string>())})";
@@ -74,41 +77,47 @@ namespace SvmFsBatch
         }
 
         internal static void LogException(Exception e = null, string msg = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0) //,
-            //string _CallerMethodType = "", (string type, string name, string value)[] _CallerMethodArgs = null)
+                                                                                                                                                                                                                                                            //string _CallerMethodType = "", (string type, string name, string value)[] _CallerMethodArgs = null)
         {
             do
             {
-                LogEvent($@"exception: {(!string.IsNullOrWhiteSpace(msg) ? $@"[{nameof(msg)}=""{msg}""]" : "")} [{nameof(e.GetType)}=""{e?.GetType()}""] [{nameof(e.Source)}=""{e?.Source}""] [{nameof(e.Message)}={e?.Message}] [{nameof(e.TargetSite)}=""{e?.TargetSite}""] [{nameof(e.StackTrace)}=""{string.Join(", ", e?.StackTrace?.Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries).Select(a => a.Trim()).ToArray() ?? Array.Empty<string>())}""]", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
+                LogEvent($@"[EXCEPTION] {(!string.IsNullOrWhiteSpace(msg) ? $@"[{nameof(msg)}=""{msg}""]" : "")} [{nameof(e.GetType)}=""{e?.GetType()}""] [{nameof(e.Source)}=""{e?.Source}""] [{nameof(e.Message)}={e?.Message}] [{nameof(e.TargetSite)}=""{e?.TargetSite}""] [{nameof(e.StackTrace)}=""{string.Join(", ", e?.StackTrace?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(a => a.Trim()).ToArray() ?? Array.Empty<string>())}""]", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
                 if (e != null && e != e.InnerException) e = e?.InnerException;
             } while (e != null);
         }
 
-        internal static void LogCall(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogCall(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
-            LogEvent("call start:", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
+            callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
+
+            var callChainStr = string.Join(" -> ", callChain?.Select(a => $"{a.callerModuleName}.{a.callerMethodName}:{a.callerLineNumer}()").ToArray() ?? Array.Empty<string>());
+            LogEvent($"[CALL] {lvl} {callChainStr}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //,_CallerMethodType, _CallerMethodArgs);
         }
 
-        internal static void LogExit(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
+        internal static void LogExit(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
-            LogEvent("call exit:", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
+            callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
+
+            var callChainStr = string.Join(" -> ", callChain?.Select(a => $"{a.callerModuleName}.{a.callerMethodName}:{a.callerLineNumer}()").ToArray() ?? Array.Empty<string>());
+            LogEvent($"[EXIT] {lvl} {callChainStr}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //,_CallerMethodType, _CallerMethodArgs);
         }
 
         internal static void LogLockKnock(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent($"lock knock: {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
+            LogEvent($"[LOCK:KNOCK] {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //, _CallerMethodType, _CallerMethodArgs);
         }
 
         internal static void LogLockEnter(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent($"lock enter: {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
+            LogEvent($"[LOCK:ENTER] {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
         }
 
         internal static void LogLockExit(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
-            LogEvent($"lock exit: {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
+            LogEvent($"[LOCK:EXIT] {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
         }
     }
 }

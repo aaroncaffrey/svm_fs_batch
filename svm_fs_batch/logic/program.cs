@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SvmFsBatch.logic;
 
 namespace SvmFsBatch
 {
@@ -13,9 +14,18 @@ namespace SvmFsBatch
 
 
         internal static ProgramArgs ProgramArgs;
+        internal static Mpstat Mpstat;
 
         internal static async Task Main(string[] args)
         {
+            ulong lvl = 0;
+
+            Logging.LogCall(ModuleName, lvl: lvl + 1);
+
+
+            
+
+
             //var id1 = new IndexData();
             //id1.IdExperimentName = "test";
             //id1.IdColumnArrayIndexes = new int[] { 1, 2, 3 };
@@ -24,7 +34,7 @@ namespace SvmFsBatch
             //var id2 = new IndexData(string.Join(",", id1.CsvValuesArray()));
 
             //var eq = IndexData.CompareReferenceData2(id1, id2);
-            //return;
+            //Logging.LogExit(ModuleName); return;
 
 
             //var rnd = new metrics_box();
@@ -74,7 +84,7 @@ namespace SvmFsBatch
                 (nameof(ProgramArgs.PartitionArrayIndexFirst), "0"),
                 (nameof(ProgramArgs.PartitionArrayIndexLast), "0"),
 
-                (nameof(ProgramArgs.Client), "1"),
+                (nameof(ProgramArgs.Client), "0"),
                 (nameof(ProgramArgs.Server), "1"),
 
                 (nameof(ProgramArgs.DataSetNames), "[1i.aaindex]"),
@@ -93,7 +103,7 @@ namespace SvmFsBatch
             if (ProgramArgs.Setup)
             {
                 await Setup.SetupPbsJobAsync(ProgramArgs, mainCt).ConfigureAwait(false);
-                return;
+                Logging.LogExit(ModuleName, lvl: lvl + 1); return;
             }
 
 
@@ -124,6 +134,13 @@ namespace SvmFsBatch
 
             // Load DataSet
 
+
+            if (Program.ProgramArgs.IsUnix)
+            {
+                Mpstat = new Mpstat();
+                await Mpstat.Start(mainCt);
+            }
+
             var DataSet = new DataSet();
             DataSet.LoadDataSet(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt);
             //await DataSet.LoadDataSetAsync(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt).ConfigureAwait(false);
@@ -152,6 +169,7 @@ namespace SvmFsBatch
                         ProgramArgs.Scales,
                         ProgramArgs.ClassWeights,
                         ProgramArgs.CalcElevenPointThresholds,
+                        lvl: lvl + 1,
                         ct: mainCt).ConfigureAwait(false),
                     mainCt);
 
@@ -162,7 +180,7 @@ namespace SvmFsBatch
             if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
             {
                 //var fsc = Task.Run(async () => await fs_client.x0_feature_selection_client_initialization
-                var fsClientTask = Task.Run(async () => await FsClient.FeatureSelectionClientInitializationAsync(DataSet, ProgramArgs.ExperimentName, instanceId, ProgramArgs.WholeArrayLength, mainCt).ConfigureAwait(false), mainCt);
+                var fsClientTask = Task.Run(async () => await FsClient.FeatureSelectionClientInitializationAsync(DataSet, ProgramArgs.ExperimentName, instanceId, ProgramArgs.WholeArrayLength, lvl: lvl + 1, ct:mainCt).ConfigureAwait(false), mainCt);
 
                 tasks.Add(fsClientTask);
                 //threads.Add(fsc);
@@ -193,26 +211,30 @@ namespace SvmFsBatch
             //}
 
             Logging.LogEvent($"Reached end of {nameof(Program)}.{nameof(Main)}...", ModuleName);
+
+            Logging.LogExit(ModuleName, lvl: lvl + 1);
         }
 
 
         internal static string GetIterationFolder(string resultsRootFolder, string ExperimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const bool hr = false;
 
-            if (iterationIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName);
-            if (groupIndex == null) return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}");
-            return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
+            if (iterationIndex == null) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName); }
+            if (groupIndex == null) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}"); }
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
         }
 
 
         internal static void UpdateMergedCm(DataSet DataSet, (Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
         {
+            Logging.LogCall(ModuleName);
             const string methodName = nameof(UpdateMergedCm);
 
-            if (ct.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             if (predictionFileData.CmList == null) throw new ArgumentOutOfRangeException(nameof(predictionFileData), $@"{ModuleName}.{methodName}.{nameof(predictionFileData)}.{nameof(predictionFileData.CmList)}");
 
@@ -231,22 +253,28 @@ namespace SvmFsBatch
 
                     UpdateMergedCmSingle(DataSet, unrolledIndexData, mergedCvInput, cm, ct);
                 }
+
+            Logging.LogExit(ModuleName);
         }
 
         private static void UpdateMergedCmFromVector((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             if (cm.GridPoint == null) cm.GridPoint = new GridPoint(predictionDataList?.Select(a => a.GridPoint).ToArray());
 
             if ((cm.XTimeGrid == null || cm.XTimeGrid == TimeSpan.Zero) && (predictionDataList?.Any(a => a.gridDur != null) ?? false)) cm.XTimeGrid = new TimeSpan(predictionDataList?.Select(a => a.gridDur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
             if ((cm.XTimeTrain == null || cm.XTimeTrain == TimeSpan.Zero) && (predictionDataList?.Any(a => a.trainDur != null) ?? false)) cm.XTimeTrain = new TimeSpan(predictionDataList?.Select(a => a.trainDur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
             if ((cm.XTimeTest == null || cm.XTimeTest == TimeSpan.Zero) && (predictionDataList?.Any(a => a.predictDur != null) ?? false)) cm.XTimeTest = new TimeSpan(predictionDataList?.Select(a => a.predictDur?.Ticks ?? 0).DefaultIfEmpty(0).Sum() ?? 0);
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static void UpdateMergedCmSingle(DataSet DataSet, IndexData unrolledIndexData, OuterCvInput mergedCvInput, ConfusionMatrix cm, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             cm.XClassName = ProgramArgs.ClassNames?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassName;
             cm.XClassSize = DataSet.ClassSizes?.First(b => b.ClassId == cm.XClassId).class_size ?? -1;
@@ -258,12 +286,15 @@ namespace SvmFsBatch
             //cm.x_time_train = PredictionData_list?.Select(a => a.dur.trainDur).DefaultIfEmpty(0).Sum();
             cm.XOuterCvIndex = mergedCvInput.OuterCvIndex;
             cm.XRepetitionsIndex = mergedCvInput.RepetitionsIndex;
+
+            Logging.LogExit(ModuleName);
         }
 
 
         internal static string GetItemFilename(IndexData unrolledIndex, int repetitionIndex, int outerCvIndex, CancellationToken ct)
         {
-            return ct.IsCancellationRequested ? default :$@"{GetIterationFilename(new[] {unrolledIndex},ct)}_ri[{repetitionIndex}]_oi[{outerCvIndex}]";
+            Logging.LogCall(ModuleName);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :$@"{GetIterationFilename(new[] {unrolledIndex},ct)}_ri[{repetitionIndex}]_oi[{outerCvIndex}]";
         }
 
         //internal static string GetIterationFilename(program_args pa)
@@ -277,24 +308,25 @@ namespace SvmFsBatch
         //        id_repetitions = pa.repetitions,
         //        id_calc_ElevenPoint_thresholds = pa.calc_ElevenPoint_thresholds,
         //    };
-        //    return ct.IsCancellationRequested ? default :GetIterationFilename(new[] {id});
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :GetIterationFilename(new[] {id});
         //}
 
         internal static string GetIterationFilename(IndexData[] indexes, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             static string GetInitials(string name)
             {
                 var initials = string.Join("", name.Replace("_", " ", StringComparison.Ordinal).Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
-                return initials.Length > 2
+                Logging.LogExit(ModuleName); return initials.Length > 2
                     ? /* initials.Substring(0, 2) */ $@"{initials.First()}{initials.Last()}"
                     : initials;
             }
 
             static string Reduce(string text, int max = 30)
             {
-                return text != null && text.Length > max
+                Logging.LogExit(ModuleName); return text != null && text.Length > max
                     ? $"{text.Substring(0, max / 3)}_{text.Substring(text.Length / 2 - (max / 3 - 2) / 2, max / 3 - 2)}_{text.Substring(text.Length - max / 3, max / 3)}"
                     : text;
             }
@@ -338,7 +370,7 @@ namespace SvmFsBatch
 
             if (!iterFn.All(a => fnChars.Contains(a))) throw new Exception();
 
-            return ct.IsCancellationRequested ? default :iterFn;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :iterFn;
         }
 
 

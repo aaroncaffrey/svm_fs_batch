@@ -15,7 +15,9 @@ namespace SvmFsBatch
 
         internal static async Task SetupPbsJobAsync(ProgramArgs programArgs, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             const string methodName = nameof(Setup);
 
@@ -53,11 +55,15 @@ namespace SvmFsBatch
             for (var index = 0; index < pbsScript.pbs_script_lines.Count; index++) Logging.WriteLine($"{index,3}: {pbsScript.pbs_script_lines[index]}", ModuleName, methodName);
 
             Logging.WriteLine();
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static async Task<(List<string> pbs_script_lines, string run_line)> MakePbsScriptAsync(ProgramArgs programArgs, int pbsPpn = 1, bool isJobArray = false, int arrayIndexFirst = 0, int arrayIndexLast = 0, int arrayStepSize = 1, bool rerunnable = true, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const string methodName = nameof(MakePbsScriptAsync);
 
@@ -176,7 +182,7 @@ namespace SvmFsBatch
             await IoProxy.WriteAllLinesAsync(true, ct, pbsFn, pbsScriptLines).ConfigureAwait(false);
             Logging.WriteLine($@"{programArgs.ExperimentName}: Saved PBS script. File: {pbsFn}.");
 
-            return ct.IsCancellationRequested ? default :(pbsScriptLines, runLine);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(pbsScriptLines, runLine);
         }
     }
 }

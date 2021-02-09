@@ -146,10 +146,15 @@ namespace SvmFsBatch
 
         public MetricsBox()
         {
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName);
         }
 
         public MetricsBox(MetricsBox metrics)
         {
+            Logging.LogCall(ModuleName);
+
             CmP = metrics.CmP;
             CmN = metrics.CmN;
             CmPTp = metrics.CmPTp;
@@ -212,11 +217,15 @@ namespace SvmFsBatch
             PF1B08 = metrics.PF1B08;
             PF1B09 = metrics.PF1B09;
             PF1B10 = metrics.PF1B10;
+
+            Logging.LogExit(ModuleName);
         }
 
         internal MetricsBox(MetricsBox[] metricsBoxes)
         {
-            if (metricsBoxes == null || metricsBoxes.Length == 0 || metricsBoxes.All(a => a == null)) return;
+            Logging.LogCall(ModuleName);
+
+            if (metricsBoxes == null || metricsBoxes.Length == 0 || metricsBoxes.All(a => a == null)) { Logging.LogExit(ModuleName); return; }
 
             CmP = metricsBoxes.Where(a => a != null).Select(a => a.CmP).DefaultIfEmpty(0).Average();
             CmN = metricsBoxes.Where(a => a != null).Select(a => a.CmN).DefaultIfEmpty(0).Average();
@@ -284,6 +293,8 @@ namespace SvmFsBatch
 
         internal void SetCm(double? p = null, double? n = null, double? pTp = null, double? pFn = null, double? nTn = null, double? nFp = null)
         {
+            Logging.LogCall(ModuleName);
+
             // set the cm (P, N, TP, FN, TN, FP) inputs whilst allowing omission of calculable values from the non-omitted values
 
             if (p != null && pTp == null && pFn != null) pTp = p - pFn;
@@ -307,10 +318,14 @@ namespace SvmFsBatch
             CmNFp = nFp.Value;
 
             CalculateMetrics();
+
+            Logging.LogExit(ModuleName);
         }
 
         internal void SetRandomPerformance()
         {
+            Logging.LogCall(ModuleName);
+
             CmPTp = CmP / 2.0;
             CmPFn = CmP / 2.0;
 
@@ -318,10 +333,14 @@ namespace SvmFsBatch
             CmNTn = CmN / 2.0;
 
             CalculateMetrics();
+
+            Logging.LogExit(ModuleName);
         }
 
         internal void ApplyImbalanceCorrection1()
         {
+            Logging.LogCall(ModuleName);
+
             if (CmP < CmN)
             {
                 var nCorrect = CmN / CmP;
@@ -350,6 +369,8 @@ namespace SvmFsBatch
 
                 CalculateMetrics();
             }
+
+            Logging.LogExit(ModuleName);
         }
 
         //internal void ApplyImbalanceCorrection2()
@@ -416,6 +437,8 @@ namespace SvmFsBatch
 
         internal void CalculateMetrics()
         {
+            Logging.LogCall(ModuleName);
+
             const double zero = 0.0;
             const double one = 1.0;
             const double two = 2.0;
@@ -573,11 +596,15 @@ namespace SvmFsBatch
             PF1B08 = Fbeta2(PPpv, PTpr, 0.8d);
             PF1B09 = Fbeta2(PPpv, PTpr, 0.9d);
             PF1B10 = Fbeta2(PPpv, PTpr, 1.0d);
+
+            Logging.LogExit(ModuleName);
         }
 
         private void Divide(double divisor)
         {
-            if (divisor == 0) return;
+            Logging.LogCall(ModuleName);
+
+            if (divisor == 0) { Logging.LogExit(ModuleName); return; }
 
             CmP /= divisor;
             CmN /= divisor;
@@ -641,162 +668,182 @@ namespace SvmFsBatch
             PF1B08 /= divisor;
             PF1B09 /= divisor;
             PF1B10 /= divisor;
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static double Fbeta2(double ppv, double tpr, double fbeta)
         {
-            return double.IsNaN(ppv) || double.IsNaN(tpr) || ppv == 0.0d || tpr == 0.0d
+            Logging.LogCall(ModuleName);
+
+            var ret= double.IsNaN(ppv) || double.IsNaN(tpr) || ppv == 0.0d || tpr == 0.0d
                 ? 0.0d
                 : 1 / (fbeta * (1 / ppv) + (1 - fbeta) * (1 / tpr));
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal double[] GetValuesByNames(string[] names)
         {
-            return names.Select(a => GetValueByName(a)).ToArray();
+            Logging.LogCall(ModuleName);
+
+            var ret = names.Select(a => GetValueByName(a)).ToArray();
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal double GetValueByName(string name)
         {
-            var metrics = this;
-            if (string.Equals(name, nameof(metrics.CmP), StringComparison.OrdinalIgnoreCase)) return metrics.CmP;
-            if (string.Equals(name, nameof(metrics.CmN), StringComparison.OrdinalIgnoreCase)) return metrics.CmN;
-            if (string.Equals(name, nameof(metrics.CmPTp), StringComparison.OrdinalIgnoreCase)) return metrics.CmPTp;
-            if (string.Equals(name, nameof(metrics.CmPFn), StringComparison.OrdinalIgnoreCase)) return metrics.CmPFn;
-            if (string.Equals(name, nameof(metrics.CmNTn), StringComparison.OrdinalIgnoreCase)) return metrics.CmNTn;
-            if (string.Equals(name, nameof(metrics.CmNFp), StringComparison.OrdinalIgnoreCase)) return metrics.CmNFp;
-            if (string.Equals(name, nameof(metrics.PTpr), StringComparison.OrdinalIgnoreCase)) return metrics.PTpr;
-            if (string.Equals(name, nameof(metrics.PTnr), StringComparison.OrdinalIgnoreCase)) return metrics.PTnr;
-            if (string.Equals(name, nameof(metrics.PPpv), StringComparison.OrdinalIgnoreCase)) return metrics.PPpv;
-            if (string.Equals(name, nameof(metrics.PPrecision), StringComparison.OrdinalIgnoreCase)) return metrics.PPrecision;
-            if (string.Equals(name, nameof(metrics.PPrevalence), StringComparison.OrdinalIgnoreCase)) return metrics.PPrevalence;
-            if (string.Equals(name, nameof(metrics.PMcr), StringComparison.OrdinalIgnoreCase)) return metrics.PMcr;
-            if (string.Equals(name, nameof(metrics.PEr), StringComparison.OrdinalIgnoreCase)) return metrics.PEr;
-            if (string.Equals(name, nameof(metrics.PNer), StringComparison.OrdinalIgnoreCase)) return metrics.PNer;
-            if (string.Equals(name, nameof(metrics.PCner), StringComparison.OrdinalIgnoreCase)) return metrics.PCner;
-            if (string.Equals(name, nameof(metrics.PKappa), StringComparison.OrdinalIgnoreCase)) return metrics.PKappa;
-            if (string.Equals(name, nameof(metrics.POverlap), StringComparison.OrdinalIgnoreCase)) return metrics.POverlap;
-            if (string.Equals(name, nameof(metrics.PRndAcc), StringComparison.OrdinalIgnoreCase)) return metrics.PRndAcc;
-            if (string.Equals(name, nameof(metrics.PSupport), StringComparison.OrdinalIgnoreCase)) return metrics.PSupport;
-            if (string.Equals(name, nameof(metrics.PBaseRate), StringComparison.OrdinalIgnoreCase)) return metrics.PBaseRate;
-            if (string.Equals(name, nameof(metrics.PYoudenIndex), StringComparison.OrdinalIgnoreCase)) return metrics.PYoudenIndex;
-            if (string.Equals(name, nameof(metrics.PNpv), StringComparison.OrdinalIgnoreCase)) return metrics.PNpv;
-            if (string.Equals(name, nameof(metrics.PFnr), StringComparison.OrdinalIgnoreCase)) return metrics.PFnr;
-            if (string.Equals(name, nameof(metrics.PFpr), StringComparison.OrdinalIgnoreCase)) return metrics.PFpr;
-            if (string.Equals(name, nameof(metrics.PFdr), StringComparison.OrdinalIgnoreCase)) return metrics.PFdr;
-            if (string.Equals(name, nameof(metrics.PFor), StringComparison.OrdinalIgnoreCase)) return metrics.PFor;
-            if (string.Equals(name, nameof(metrics.PAcc), StringComparison.OrdinalIgnoreCase)) return metrics.PAcc;
-            if (string.Equals(name, nameof(metrics.PGMean), StringComparison.OrdinalIgnoreCase)) return metrics.PGMean;
-            if (string.Equals(name, nameof(metrics.PF1S), StringComparison.OrdinalIgnoreCase)) return metrics.PF1S;
-            if (string.Equals(name, nameof(metrics.PG1S), StringComparison.OrdinalIgnoreCase)) return metrics.PG1S;
-            if (string.Equals(name, nameof(metrics.PMcc), StringComparison.OrdinalIgnoreCase)) return metrics.PMcc;
-            if (string.Equals(name, nameof(metrics.PInformedness), StringComparison.OrdinalIgnoreCase)) return metrics.PInformedness;
-            if (string.Equals(name, nameof(metrics.PMarkedness), StringComparison.OrdinalIgnoreCase)) return metrics.PMarkedness;
-            if (string.Equals(name, nameof(metrics.PBalancedAccuracy), StringComparison.OrdinalIgnoreCase)) return metrics.PBalancedAccuracy;
-            if (string.Equals(name, nameof(metrics.PRocAucApproxAll), StringComparison.OrdinalIgnoreCase)) return metrics.PRocAucApproxAll;
-            if (string.Equals(name, nameof(metrics.PRocAucApproxElevenPoint), StringComparison.OrdinalIgnoreCase)) return metrics.PRocAucApproxElevenPoint;
-            if (string.Equals(name, nameof(metrics.PRocAucAll), StringComparison.OrdinalIgnoreCase)) return metrics.PRocAucAll;
-            if (string.Equals(name, nameof(metrics.PPrAucApproxAll), StringComparison.OrdinalIgnoreCase)) return metrics.PPrAucApproxAll;
-            if (string.Equals(name, nameof(metrics.PPrAucApproxElevenPoint), StringComparison.OrdinalIgnoreCase)) return metrics.PPrAucApproxElevenPoint;
-            if (string.Equals(name, nameof(metrics.PPriAucApproxAll), StringComparison.OrdinalIgnoreCase)) return metrics.PPriAucApproxAll;
-            if (string.Equals(name, nameof(metrics.PPriAucApproxElevenPoint), StringComparison.OrdinalIgnoreCase)) return metrics.PPriAucApproxElevenPoint;
-            if (string.Equals(name, nameof(metrics.PApAll), StringComparison.OrdinalIgnoreCase)) return metrics.PApAll;
-            if (string.Equals(name, nameof(metrics.PApElevenPoint), StringComparison.OrdinalIgnoreCase)) return metrics.PApElevenPoint;
-            if (string.Equals(name, nameof(metrics.PApiAll), StringComparison.OrdinalIgnoreCase)) return metrics.PApiAll;
-            if (string.Equals(name, nameof(metrics.PApiElevenPoint), StringComparison.OrdinalIgnoreCase)) return metrics.PApiElevenPoint;
-            if (string.Equals(name, nameof(metrics.PBrierInverseAll), StringComparison.OrdinalIgnoreCase)) return metrics.PBrierInverseAll;
-            if (string.Equals(name, nameof(metrics.PLrp), StringComparison.OrdinalIgnoreCase)) return metrics.PLrp;
-            if (string.Equals(name, nameof(metrics.PLrn), StringComparison.OrdinalIgnoreCase)) return metrics.PLrn;
-            if (string.Equals(name, nameof(metrics.PDor), StringComparison.OrdinalIgnoreCase)) return metrics.PDor;
-            if (string.Equals(name, nameof(metrics.PPrevalenceThreshold), StringComparison.OrdinalIgnoreCase)) return metrics.PPrevalenceThreshold;
-            if (string.Equals(name, nameof(metrics.PCriticalSuccessIndex), StringComparison.OrdinalIgnoreCase)) return metrics.PCriticalSuccessIndex;
-            if (string.Equals(name, nameof(metrics.PF1B00), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B00;
-            if (string.Equals(name, nameof(metrics.PF1B01), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B01;
-            if (string.Equals(name, nameof(metrics.PF1B02), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B02;
-            if (string.Equals(name, nameof(metrics.PF1B03), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B03;
-            if (string.Equals(name, nameof(metrics.PF1B04), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B04;
-            if (string.Equals(name, nameof(metrics.PF1B05), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B05;
-            if (string.Equals(name, nameof(metrics.PF1B06), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B06;
-            if (string.Equals(name, nameof(metrics.PF1B07), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B07;
-            if (string.Equals(name, nameof(metrics.PF1B08), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B08;
-            if (string.Equals(name, nameof(metrics.PF1B09), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B09;
-            if (string.Equals(name, nameof(metrics.PF1B10), StringComparison.OrdinalIgnoreCase)) return metrics.PF1B10;
+            Logging.LogCall(ModuleName);
+
+            
+            if (string.Equals(name, nameof(this.CmP), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.CmP;                                               }
+            if (string.Equals(name, nameof(this.CmN), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.CmN;                                               }
+            if (string.Equals(name, nameof(this.CmPTp), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.CmPTp;                                           }
+            if (string.Equals(name, nameof(this.CmPFn), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.CmPFn;                                           }
+            if (string.Equals(name, nameof(this.CmNTn), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.CmNTn;                                           }
+            if (string.Equals(name, nameof(this.CmNFp), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.CmNFp;                                           }
+            if (string.Equals(name, nameof(this.PTpr), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PTpr;                                             }
+            if (string.Equals(name, nameof(this.PTnr), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PTnr;                                             }
+            if (string.Equals(name, nameof(this.PPpv), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPpv;                                             }
+            if (string.Equals(name, nameof(this.PPrecision), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPrecision;                                 }
+            if (string.Equals(name, nameof(this.PPrevalence), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPrevalence;                               }
+            if (string.Equals(name, nameof(this.PMcr), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PMcr;                                             }
+            if (string.Equals(name, nameof(this.PEr), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PEr;                                               }
+            if (string.Equals(name, nameof(this.PNer), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PNer;                                             }
+            if (string.Equals(name, nameof(this.PCner), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PCner;                                           }
+            if (string.Equals(name, nameof(this.PKappa), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PKappa;                                         }
+            if (string.Equals(name, nameof(this.POverlap), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.POverlap;                                     }
+            if (string.Equals(name, nameof(this.PRndAcc), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PRndAcc;                                       }
+            if (string.Equals(name, nameof(this.PSupport), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PSupport;                                     }
+            if (string.Equals(name, nameof(this.PBaseRate), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PBaseRate;                                   }
+            if (string.Equals(name, nameof(this.PYoudenIndex), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PYoudenIndex;                             }
+            if (string.Equals(name, nameof(this.PNpv), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PNpv;                                             }
+            if (string.Equals(name, nameof(this.PFnr), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PFnr;                                             }
+            if (string.Equals(name, nameof(this.PFpr), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PFpr;                                             }
+            if (string.Equals(name, nameof(this.PFdr), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PFdr;                                             }
+            if (string.Equals(name, nameof(this.PFor), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PFor;                                             }
+            if (string.Equals(name, nameof(this.PAcc), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PAcc;                                             }
+            if (string.Equals(name, nameof(this.PGMean), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PGMean;                                         }
+            if (string.Equals(name, nameof(this.PF1S), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1S;                                             }
+            if (string.Equals(name, nameof(this.PG1S), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PG1S;                                             }
+            if (string.Equals(name, nameof(this.PMcc), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PMcc;                                             }
+            if (string.Equals(name, nameof(this.PInformedness), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PInformedness;                           }
+            if (string.Equals(name, nameof(this.PMarkedness), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PMarkedness;                               }
+            if (string.Equals(name, nameof(this.PBalancedAccuracy), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PBalancedAccuracy;                   }
+            if (string.Equals(name, nameof(this.PRocAucApproxAll), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PRocAucApproxAll;                     }
+            if (string.Equals(name, nameof(this.PRocAucApproxElevenPoint), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PRocAucApproxElevenPoint;     }
+            if (string.Equals(name, nameof(this.PRocAucAll), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PRocAucAll;                                 }
+            if (string.Equals(name, nameof(this.PPrAucApproxAll), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPrAucApproxAll;                       }
+            if (string.Equals(name, nameof(this.PPrAucApproxElevenPoint), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPrAucApproxElevenPoint;       }
+            if (string.Equals(name, nameof(this.PPriAucApproxAll), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPriAucApproxAll;                     }
+            if (string.Equals(name, nameof(this.PPriAucApproxElevenPoint), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPriAucApproxElevenPoint;     }
+            if (string.Equals(name, nameof(this.PApAll), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PApAll;                                         }
+            if (string.Equals(name, nameof(this.PApElevenPoint), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PApElevenPoint;                         }
+            if (string.Equals(name, nameof(this.PApiAll), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PApiAll;                                       }
+            if (string.Equals(name, nameof(this.PApiElevenPoint), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PApiElevenPoint;                       }
+            if (string.Equals(name, nameof(this.PBrierInverseAll), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PBrierInverseAll;                     }
+            if (string.Equals(name, nameof(this.PLrp), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PLrp;                                             }
+            if (string.Equals(name, nameof(this.PLrn), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PLrn;                                             }
+            if (string.Equals(name, nameof(this.PDor), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PDor;                                             }
+            if (string.Equals(name, nameof(this.PPrevalenceThreshold), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PPrevalenceThreshold;             }
+            if (string.Equals(name, nameof(this.PCriticalSuccessIndex), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PCriticalSuccessIndex;           }
+            if (string.Equals(name, nameof(this.PF1B00), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B00;                                         }
+            if (string.Equals(name, nameof(this.PF1B01), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B01;                                         }
+            if (string.Equals(name, nameof(this.PF1B02), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B02;                                         }
+            if (string.Equals(name, nameof(this.PF1B03), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B03;                                         }
+            if (string.Equals(name, nameof(this.PF1B04), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B04;                                         }
+            if (string.Equals(name, nameof(this.PF1B05), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B05;                                         }
+            if (string.Equals(name, nameof(this.PF1B06), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B06;                                         }
+            if (string.Equals(name, nameof(this.PF1B07), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B07;                                         }
+            if (string.Equals(name, nameof(this.PF1B08), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B08;                                         }
+            if (string.Equals(name, nameof(this.PF1B09), StringComparison.OrdinalIgnoreCase)) {Logging.LogExit(ModuleName); return this.PF1B09;                                         }
+            if (string.Equals(name, nameof(this.PF1B10), StringComparison.OrdinalIgnoreCase)) { Logging.LogExit(ModuleName); return this.PF1B10; }
+            
+            Logging.LogExit(ModuleName); 
             return    default;
         }
 
         internal List<double> GetSpecificValues(CrossValidationMetrics crossValidationMetrics)
         {
-            var metricValues = new List<double>();
+            Logging.LogCall(ModuleName);
+
+            var ret = new List<double>();
 
             if (crossValidationMetrics == 0) throw new Exception();
 
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tp)) metricValues.Add(CmPTp);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fn)) metricValues.Add(CmPFn);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tn)) metricValues.Add(CmNTn);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fp)) metricValues.Add(CmNFp);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tpr)) metricValues.Add(PTpr);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tnr)) metricValues.Add(PTnr);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Ppv)) metricValues.Add(PPpv);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Precision)) metricValues.Add(PPrecision);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Prevalence)) metricValues.Add(PPrevalence);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Mcr)) metricValues.Add(PMcr);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Er)) metricValues.Add(PEr);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Ner)) metricValues.Add(PNer);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Cner)) metricValues.Add(PCner);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Kappa)) metricValues.Add(PKappa);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Overlap)) metricValues.Add(POverlap);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RndAcc)) metricValues.Add(PRndAcc);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Support)) metricValues.Add(PSupport);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.BaseRate)) metricValues.Add(PBaseRate);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.YoudenIndex)) metricValues.Add(PYoudenIndex);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Npv)) metricValues.Add(PNpv);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fnr)) metricValues.Add(PFnr);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fpr)) metricValues.Add(PFpr);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fdr)) metricValues.Add(PFdr);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.For)) metricValues.Add(PFor);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Acc)) metricValues.Add(PAcc);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Gm)) metricValues.Add(PGMean);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1S)) metricValues.Add(PF1S);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.G1S)) metricValues.Add(PG1S);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Mcc)) metricValues.Add(PMcc);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Informedness)) metricValues.Add(PInformedness);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Markedness)) metricValues.Add(PMarkedness);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.BalancedAccuracy)) metricValues.Add(PBalancedAccuracy);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RocAucApproxAll)) metricValues.Add(PRocAucApproxAll);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RocAucApproxElevenPoint)) metricValues.Add(PRocAucApproxElevenPoint);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RocAucAll)) metricValues.Add(PRocAucAll);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PrAucApproxAll)) metricValues.Add(PPrAucApproxAll);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PrAucApproxElevenPoint)) metricValues.Add(PPrAucApproxElevenPoint);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PriAucApproxAll)) metricValues.Add(PPriAucApproxAll);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PriAucApproxElevenPoint)) metricValues.Add(PPriAucApproxElevenPoint);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApAll)) metricValues.Add(PApAll);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApElevenPoint)) metricValues.Add(PApElevenPoint);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApiAll)) metricValues.Add(PApiAll);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApiElevenPoint)) metricValues.Add(PApiElevenPoint);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.BrierInverseAll)) metricValues.Add(PBrierInverseAll);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Lrp)) metricValues.Add(PLrp);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Lrn)) metricValues.Add(PLrn);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Dor)) metricValues.Add(PDor);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PrevalenceThreshold)) metricValues.Add(PPrevalenceThreshold);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.CriticalSuccessIndex)) metricValues.Add(PCriticalSuccessIndex);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B00)) metricValues.Add(PF1B00);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B01)) metricValues.Add(PF1B01);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B02)) metricValues.Add(PF1B02);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B03)) metricValues.Add(PF1B03);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B04)) metricValues.Add(PF1B04);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B05)) metricValues.Add(PF1B05);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B06)) metricValues.Add(PF1B06);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B07)) metricValues.Add(PF1B07);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B08)) metricValues.Add(PF1B08);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B09)) metricValues.Add(PF1B09);
-            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B10)) metricValues.Add(PF1B10);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tp)) ret.Add(CmPTp);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fn)) ret.Add(CmPFn);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tn)) ret.Add(CmNTn);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fp)) ret.Add(CmNFp);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tpr)) ret.Add(PTpr);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Tnr)) ret.Add(PTnr);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Ppv)) ret.Add(PPpv);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Precision)) ret.Add(PPrecision);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Prevalence)) ret.Add(PPrevalence);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Mcr)) ret.Add(PMcr);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Er)) ret.Add(PEr);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Ner)) ret.Add(PNer);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Cner)) ret.Add(PCner);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Kappa)) ret.Add(PKappa);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Overlap)) ret.Add(POverlap);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RndAcc)) ret.Add(PRndAcc);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Support)) ret.Add(PSupport);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.BaseRate)) ret.Add(PBaseRate);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.YoudenIndex)) ret.Add(PYoudenIndex);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Npv)) ret.Add(PNpv);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fnr)) ret.Add(PFnr);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fpr)) ret.Add(PFpr);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Fdr)) ret.Add(PFdr);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.For)) ret.Add(PFor);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Acc)) ret.Add(PAcc);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Gm)) ret.Add(PGMean);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1S)) ret.Add(PF1S);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.G1S)) ret.Add(PG1S);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Mcc)) ret.Add(PMcc);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Informedness)) ret.Add(PInformedness);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Markedness)) ret.Add(PMarkedness);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.BalancedAccuracy)) ret.Add(PBalancedAccuracy);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RocAucApproxAll)) ret.Add(PRocAucApproxAll);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RocAucApproxElevenPoint)) ret.Add(PRocAucApproxElevenPoint);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.RocAucAll)) ret.Add(PRocAucAll);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PrAucApproxAll)) ret.Add(PPrAucApproxAll);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PrAucApproxElevenPoint)) ret.Add(PPrAucApproxElevenPoint);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PriAucApproxAll)) ret.Add(PPriAucApproxAll);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PriAucApproxElevenPoint)) ret.Add(PPriAucApproxElevenPoint);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApAll)) ret.Add(PApAll);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApElevenPoint)) ret.Add(PApElevenPoint);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApiAll)) ret.Add(PApiAll);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.ApiElevenPoint)) ret.Add(PApiElevenPoint);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.BrierInverseAll)) ret.Add(PBrierInverseAll);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Lrp)) ret.Add(PLrp);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Lrn)) ret.Add(PLrn);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.Dor)) ret.Add(PDor);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.PrevalenceThreshold)) ret.Add(PPrevalenceThreshold);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.CriticalSuccessIndex)) ret.Add(PCriticalSuccessIndex);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B00)) ret.Add(PF1B00);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B01)) ret.Add(PF1B01);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B02)) ret.Add(PF1B02);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B03)) ret.Add(PF1B03);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B04)) ret.Add(PF1B04);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B05)) ret.Add(PF1B05);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B06)) ret.Add(PF1B06);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B07)) ret.Add(PF1B07);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B08)) ret.Add(PF1B08);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B09)) ret.Add(PF1B09);
+            if (crossValidationMetrics.HasFlag(CrossValidationMetrics.F1B10)) ret.Add(PF1B10);
 
-            return metricValues;
+            Logging.LogExit(ModuleName); 
+            return ret;
         }
 
 
         internal (string name, double value)[] GetPerformanceValueStrings()
         {
-            var result = new (string name, double value)[]
+            Logging.LogCall(ModuleName);
+
+            var ret = new (string name, double value)[]
             {
                 (nameof(CmPTp), CmPTp),
                 (nameof(CmPFn), CmPFn),
@@ -860,12 +907,15 @@ namespace SvmFsBatch
                 (nameof(PF1B10), PF1B10)
             };
 
-            return result;
+            Logging.LogExit(ModuleName); 
+            return ret;
         }
 
         public string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+
+            var ret =  new[]
             {
                 CmP.ToString("G17", NumberFormatInfo.InvariantInfo),
                 CmN.ToString("G17", NumberFormatInfo.InvariantInfo),
@@ -930,11 +980,18 @@ namespace SvmFsBatch
                 PF1B09.ToString("G17", NumberFormatInfo.InvariantInfo),
                 PF1B10.ToString("G17", NumberFormatInfo.InvariantInfo)
             }.Select(a => a.Replace(",", ";", StringComparison.OrdinalIgnoreCase)).ToArray();
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         public string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+            var ret = string.Join(",", CsvValuesArray());
+            
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         [Flags] internal enum CrossValidationMetrics : ulong

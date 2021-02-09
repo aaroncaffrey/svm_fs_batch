@@ -29,10 +29,14 @@ namespace SvmFsBatch
 
         internal GridPoint()
         {
+            Logging.LogCall(ModuleName);
+
         }
 
         public GridPoint(double? cost, double? gamma, double? epsilon, double? coef0, double? degree, double? cvRate)
         {
+            Logging.LogCall(ModuleName);
+
             GpCost = cost;
             GpGamma = gamma;
             GpEpsilon = epsilon;
@@ -53,7 +57,9 @@ namespace SvmFsBatch
 
         internal GridPoint(GridPoint gridPoint)
         {
-            if (gridPoint == null) return;
+            Logging.LogCall(ModuleName);
+
+            if (gridPoint == null) { Logging.LogExit(ModuleName); return; }
 
             GpCost = gridPoint.GpCost;
             GpGamma = gridPoint.GpGamma;
@@ -65,7 +71,9 @@ namespace SvmFsBatch
 
         internal GridPoint(GridPoint[] gridPoints)
         {
-            if (gridPoints == null || gridPoints.Length == 0) return;
+            Logging.LogCall(ModuleName);
+
+            if (gridPoints == null || gridPoints.Length == 0) { Logging.LogExit(ModuleName); return; }
 
             var cost2 = gridPoints.Where(a => a?.GpCost != null).Select(a => a.GpCost).ToArray();
             GpCost = cost2.Length > 0
@@ -100,7 +108,9 @@ namespace SvmFsBatch
 
         internal string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return new[]
             {
                 GpCost?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                 GpGamma?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
@@ -113,7 +123,9 @@ namespace SvmFsBatch
 
         internal string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return string.Join(",", CsvValuesArray());
         }
     }
 }

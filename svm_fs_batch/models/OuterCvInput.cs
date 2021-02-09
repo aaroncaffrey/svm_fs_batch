@@ -2,6 +2,8 @@
 {
     internal class OuterCvInput
     {
+        internal const string ModuleName = nameof(OuterCvInput);
+
         internal string CmFn1;
         internal string CmFn2;
         internal string GridFn;
@@ -17,5 +19,10 @@
         internal (int ClassId, int[] TrainIndexes)[] TrainFoldIndexes;
         internal (int ClassId, int train_size)[] TrainSizes;
         internal string[] TrainText;
+
+        public OuterCvInput()
+        {
+            Logging.LogCall(ModuleName);
+        }
     }
 }

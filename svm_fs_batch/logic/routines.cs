@@ -21,28 +21,34 @@ namespace SvmFsBatch
         //    //for (var whole_array_index = program_args.whole_array_index_first; whole_array_index <= program_args.partition_array_index_first; whole_array_index += program_args.whole_array_step_size) { InstanceId++; }
         //    for (var whole_array_index = (whole_array_index_first <= whole_array_index_last ? whole_array_index_first : whole_array_index_last); !is_in_range(partition_array_index_first, partition_array_index_last, whole_array_index); whole_array_index += whole_array_step_size) InstanceId++;
         //
-        //    return ct.IsCancellationRequested ? default :InstanceId;
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :InstanceId;
         //}
 
         public static int ForIterations(int first, int last, int step)
         {
-            return step > 0 && last >= first || step < 0 && first >= last
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return step > 0 && last >= first || step < 0 && first >= last
                 ? (last - first) / step + 1
                 : 0;
         }
 
         internal static bool IsInRange(int rangeFirst, int rangeLast, int value)
         {
-            return value >= rangeFirst && value <= rangeLast || value >= rangeLast && value <= rangeFirst;
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return value >= rangeFirst && value <= rangeLast || value >= rangeLast && value <= rangeFirst;
         }
 
         public static List<(int from, int to, int step)> FindRanges(List<int> ids)
         {
-            if (ids == null || ids.Count == 0) return new List<(int from, int to, int step)>();
+            Logging.LogCall(ModuleName);
+
+            if (ids == null || ids.Count == 0) {Logging.LogExit(ModuleName); return new List<(int from, int to, int step)>(); }
 
             ids = ids.OrderBy(a => a).Distinct().ToList();
 
-            if (ids.Count == 1) return new List<(int from, int to, int step)> {(ids[0], ids[0], 0)};
+            if (ids.Count == 1) {Logging.LogExit(ModuleName); return new List<(int from, int to, int step)> {(ids[0], ids[0], 0)}; }
 
             var ranges = new List<(int from, int to, int step)>();
 
@@ -71,14 +77,16 @@ namespace SvmFsBatch
                 }
             }
 
-            return ranges;
+            Logging.LogExit(ModuleName); return ranges;
         }
 
         public static string FindRangesStr(List<int> ids)
         {
+            Logging.LogCall(ModuleName);
+
             var ranges = FindRanges(ids);
 
-            return string.Join("_",
+            Logging.LogExit(ModuleName); return string.Join("_",
                 ranges.Select(range => $@"{range.from}" + (range.from != range.to
                     ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1
                         ? $@";{range.step}"
@@ -88,6 +96,8 @@ namespace SvmFsBatch
 
         public static int[] Range(int start, int end, int step)
         {
+            Logging.LogCall(ModuleName);
+
             var ix = ForIterations(start, end, step);
 
             var ret = new int[ix];
@@ -101,7 +111,7 @@ namespace SvmFsBatch
                 stepSum += step;
             }
 
-            return ret;
+            Logging.LogExit(ModuleName); return ret;
         }
 
         //internal static void shuffle<T>(List<T> list, Random random)
@@ -139,7 +149,7 @@ namespace SvmFsBatch
         //                    asInt == 0 && asDouble == 0 ? false : (bool?) null;
         //                if (asBool == null && bool.TryParse(asStr, out var outBool)) asBool = outBool;
 
-        //                return ct.IsCancellationRequested ? default :(asStr: asStr, asInt: asInt, asDouble: asDouble, asBool: asBool);
+        //                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(asStr: asStr, asInt: asInt, asDouble: asDouble, asBool: asBool);
         //            })
         //            .ToArray()
         //        : values
@@ -158,15 +168,17 @@ namespace SvmFsBatch
         //                    asInt == 0 && asDouble == 0 ? false : (bool?) null;
         //                if (asBool == null && bool.TryParse(asStr, out var outBool)) asBool = outBool;
 
-        //                return ct.IsCancellationRequested ? default :(asStr: asStr, asInt: asInt, asDouble: asDouble, asBool: asBool);
+        //                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(asStr: asStr, asInt: asInt, asDouble: asDouble, asBool: asBool);
         //            })
         //            .ToArray();
 
-        //    return ct.IsCancellationRequested ? default :xType;
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xType;
         //}
 
         internal static void Shuffle(this int[] values, Random random)
         {
+            Logging.LogCall(ModuleName);
+
             var maxIndex = values.Length - 1;
 
             for (var n = maxIndex; n >= 0; n--)
@@ -177,11 +189,15 @@ namespace SvmFsBatch
                 values[k] = values[n];
                 values[n] = value;
             }
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static ( (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] class_folds, (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] down_sampled_training_class_folds ) Folds((int ClassId, int class_size)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var classFolds = asParallel
                 ? classSizes.AsParallel().AsOrdered().WithCancellation(ct).Select(a => (a.ClassId, a.class_size, folds: Folds(a.class_size, repetitions, outerCvFolds,ct))).ToArray()
@@ -191,15 +207,17 @@ namespace SvmFsBatch
             {
                 var minNumItemsInFold = classFolds.Min(c => c.folds?.Where(e => e.RepetitionsIndex == b.RepetitionsIndex && e.OuterCvIndex == b.OuterCvIndex).Min(e => e.indexes?.Length ?? 0) ?? 0);
 
-                return ct.IsCancellationRequested ? default :(b.RepetitionsIndex, b.OuterCvIndex, indexes: b.indexes?.Take(minNumItemsInFold).ToArray());
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(b.RepetitionsIndex, b.OuterCvIndex, indexes: b.indexes?.Take(minNumItemsInFold).ToArray());
             }).ToArray())).ToArray();
 
-            return ct.IsCancellationRequested ? default :(classFolds, downSampledTrainingClassFolds);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(classFolds, downSampledTrainingClassFolds);
         }
 
         internal static (int RepetitionsIndex, int OuterCvIndex, int[] indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
-            // folds: returns a list of folds (including the indexes at each fold)... number folds = repetitions (!<1) * outer_cv_folds_to_run (!<1)
+            Logging.LogCall(ModuleName);
+
+            // folds: Logging.LogExit(ModuleName); returns a list of folds (including the indexes at each fold)... number folds = repetitions (!<1) * outer_cv_folds_to_run (!<1)
 
             // outer_cv_folds_to_run is the total number of outer_cv_folds to actually run/process... whereas, outer_cv_folds describes the data partitioning (i.e. 5 would be 5 tests of 80% train & 20% test, where as outer_cv_folds_to_run would reduce the 5 tests to given number).
             if (numClassSamples <= 0) throw new Exception();
@@ -241,12 +259,14 @@ namespace SvmFsBatch
                 foldIndexes.AddRange(outerCvFoldIndexes);
             }
 
-            return ct.IsCancellationRequested ? default :foldIndexes.ToArray();
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :foldIndexes.ToArray();
         }
 
 
         internal static (double num_complete_pct, TimeSpan time_taken, TimeSpan time_remaining) GetETA(int numComplete, int numTotal, DateTime startTime)
         {
+            Logging.LogCall(ModuleName);
+
             var numIncomplete = numTotal - numComplete;
 
             var numCompletePct = numTotal > 0
@@ -263,32 +283,40 @@ namespace SvmFsBatch
 
             var timeRemaining = TimeSpan.FromTicks((long) estTimeRemain);
 
-            return (numCompletePct, timeTaken, timeRemaining);
+            Logging.LogExit(ModuleName); return (numCompletePct, timeTaken, timeRemaining);
         }
 
         internal static void PrintETA(int numComplete, int numTotal, DateTime startTime, string callerModuleName = @"", [CallerMemberName] string callerMethodName = @"")
         {
+            Logging.LogCall(ModuleName);
+
             var x = GetETA(numComplete, numTotal, startTime);
 
             Logging.WriteLine($@"ETA: tasks complete: {numComplete}/{numTotal} ({x.num_complete_pct:0.00}%) [time taken: {x.time_taken:dd\:hh\:mm\:ss\.fff}, time remaining: {(numComplete > 0 ? $@"{x.time_remaining:dd\:hh\:mm\:ss\.fff}" : @"...")}]", callerModuleName, callerMethodName);
+
+            Logging.LogExit(ModuleName);
         }
 
         internal static double StandardDeviationPopulation(double[] values)
         {
-            if (values == null || values.Length < 2) return 0;
+            Logging.LogCall(ModuleName);
+
+            if (values == null || values.Length < 2) {Logging.LogExit(ModuleName); return 0; }
 
             var mean = values.Average();
 
-            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / values.Length);
+            Logging.LogExit(ModuleName); return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / values.Length);
         }
 
         internal static double StandardDeviationSample(double[] values)
         {
-            if (values == null || values.Length < 2) return 0;
+            Logging.LogCall(ModuleName);
+
+            if (values == null || values.Length < 2) {Logging.LogExit(ModuleName); return 0; }
 
             var mean = values.Average();
 
-            return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
+            Logging.LogExit(ModuleName); return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
         internal enum LibsvmKernelType
@@ -310,7 +338,7 @@ namespace SvmFsBatch
         //{
         //    if (samples == null || samples.Length <= 1)
         //    {
-        //        return 0;
+        //        Logging.LogExit(ModuleName); return 0;
         //    }
         //
         //    var variance = 0.0;
@@ -322,23 +350,23 @@ namespace SvmFsBatch
         //        variance += (diff * diff) / ((i + 1.0) * i);
         //    }
         //
-        //    return ct.IsCancellationRequested ? default :variance / (samples.Length - 1);
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :variance / (samples.Length - 1);
         //}
         //
         //public static (double variance, double stdev) sample_standard_deviation(double[] samples)
         //{
         //    if (samples == null || samples.Length <= 1)
         //    {
-        //        return ct.IsCancellationRequested ? default :(0, 0);
+        //        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(0, 0);
         //    }
         //
         //    var variance = sample_variance(samples);
         //    var stdev = Math.Sqrt(variance);
         //
-        //    return ct.IsCancellationRequested ? default :(variance, stdev);
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(variance, stdev);
         //}
 
-        //internal static double sqrt_sumofsqrs(double[] list) { return ct.IsCancellationRequested ? default :list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+        //internal static double sqrt_sumofsqrs(double[] list) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
 
 
         //internal static int for_loop_InstanceId(List<(int current, int max)> points)
@@ -356,7 +384,7 @@ namespace SvmFsBatch
         //    }
 
         //    v += points.Last().current;
-        //    return ct.IsCancellationRequested ? default :v;
+        //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :v;
         //}
 
 

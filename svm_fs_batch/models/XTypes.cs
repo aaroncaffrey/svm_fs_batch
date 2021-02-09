@@ -6,6 +6,8 @@ namespace SvmFsBatch
 {
     internal class XTypes
     {
+        internal const string ModuleName = nameof(XTypes);
+
         internal bool? AsBool;
         internal double? AsDouble;
         internal int? AsInt;
@@ -14,6 +16,8 @@ namespace SvmFsBatch
 
         public XTypes(string value)
         {
+            Logging.LogCall(ModuleName);
+
             AsStr = value;
             AsDouble = double.TryParse(AsStr, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var outDouble)
                 ? outDouble
@@ -31,13 +35,15 @@ namespace SvmFsBatch
 
         internal static XTypes[] GetXTypes(string[] values, bool asParallel = false, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var xType = asParallel
                 ? values.AsParallel().AsOrdered().WithCancellation(ct).Select(asStr => new XTypes(asStr)).ToArray()
                 : values.Select(asStr => new XTypes(asStr)).ToArray();
 
-            return ct.IsCancellationRequested ? default :xType;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xType;
         }
     }
 }

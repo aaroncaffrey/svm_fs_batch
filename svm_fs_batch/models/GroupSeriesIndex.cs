@@ -2,6 +2,8 @@
 {
     internal class GroupSeriesIndex
     {
+        internal const string ModuleName = nameof(GroupArrayIndex);
+
         internal int[] ColumnIndexes;
         internal int GroupArrayIndex;
         internal string GroupFolder;
@@ -15,5 +17,10 @@
         internal bool IsGroupOnlySelection;
         internal bool IsGroupSelected;
         internal Program.Direction SelectionDirection;
+
+        public GroupSeriesIndex()
+        {
+            Logging.LogCall(ModuleName);
+        }
     }
 }

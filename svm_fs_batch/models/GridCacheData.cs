@@ -50,10 +50,13 @@ namespace SvmFsBatch
 
         public GridCacheData()
         {
+            Logging.LogCall(ModuleName);
         }
 
         public GridCacheData(string[] line)
         {
+            Logging.LogCall(ModuleName);
+
             var k = -1;
 
             SvmType = (Routines.LibsvmSvmType) Enum.Parse(typeof(Routines.LibsvmSvmType), line[++k]);
@@ -91,12 +94,16 @@ namespace SvmFsBatch
 
         public string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return string.Join(",", CsvValuesArray());
         }
 
         public string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName); return new[]
             {
                 $@"{SvmType}",
                 $@"{SvmKernel}",
@@ -119,7 +126,9 @@ namespace SvmFsBatch
 
         internal static async Task<GridCacheData[]> ReadCacheFileAsync(string cacheTrainGridCsv, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             const string methodName = nameof(ReadCacheFileAsync);
 
@@ -134,23 +143,25 @@ namespace SvmFsBatch
                     {
                         var line = a.Split(',');
 
-                        return ct.IsCancellationRequested ? default :new GridCacheData(line);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :new GridCacheData(line);
                     }
                     catch (Exception e)
                     {
                         Logging.LogException(e, "", ModuleName, methodName);
-                        return default;
+                        Logging.LogExit(ModuleName); return default;
                     }
                 }).ToArray();
 
             cache = cache.Where(a => a.GridPoint.GpCvRate > 0).ToArray();
 
-            return ct.IsCancellationRequested ? default :cache;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cache;
         }
 
         internal static async Task WriteCacheFileAsync(string cacheTrainGridCsv, GridCacheData[] gridCacheDataList, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return;
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             const string methodName = nameof(WriteCacheFileAsync);
 
@@ -162,6 +173,8 @@ namespace SvmFsBatch
             for (var i = 0; i < gridCacheDataList.Length; i++) lines[i + 1] = gridCacheDataList[i].CsvValuesString();
 
             await IoProxy.WriteAllLinesAsync(true, ct, cacheTrainGridCsv, lines, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+
+            Logging.LogExit(ModuleName);
         }
     }
 }

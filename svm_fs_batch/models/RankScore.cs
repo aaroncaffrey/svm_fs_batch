@@ -2,6 +2,8 @@
 {
     internal class RankScore
     {
+        internal const string ModuleName = nameof(RankScore);
+
         internal static readonly RankScore Empty = new RankScore();
 
         internal static readonly string[] CsvHeaderValuesArray =
@@ -35,9 +37,16 @@
         internal int RsGroupArrayIndex;
         internal int RsIterationIndex;
 
+        public RankScore()
+        {
+            Logging.LogCall(ModuleName);
+        }
+
         internal string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+
+            var ret = new[]
             {
                 $@"{RsIterationIndex}",
                 $@"{RsGroupArrayIndex}",
@@ -52,6 +61,8 @@
                 $@"{RsFsMaxRankIndex}",
                 $@"{RsFsRankIndexPercentile:G17}"
             };
+            Logging.LogExit(ModuleName);
+            return ret;
         }
     }
 }

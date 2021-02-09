@@ -13,7 +13,8 @@ namespace SvmFsBatch
 
         internal static GridPoint GetBestRate(List<GridPoint> gridSearchResults, CancellationToken ct)
         {
-            if (ct.IsCancellationRequested) return default;
+            Logging.LogCall(ModuleName);
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             //const string MethodName = nameof(Getbest_rate);
 
@@ -69,7 +70,7 @@ namespace SvmFsBatch
                 if (isRateBetter || isRateSame) gridPointBest = new GridPoint(result);
             }
 
-            return ct.IsCancellationRequested ? default :gridPointBest;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :gridPointBest;
         }
 
 
@@ -78,9 +79,10 @@ namespace SvmFsBatch
             double? epsilonExpStep = null, //1,
             double? coef0ExpBegin = null, double? coef0ExpEnd = null, double? coef0ExpStep = null, double? degreeExpBegin = null, double? degreeExpEnd = null, double? degreeExpStep = null, CancellationToken ct = default)
         {
+            Logging.LogCall(ModuleName);
             //const string MethodName = nameof(grid_parameter_search);
 
-            if (ct.IsCancellationRequested) return default;
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
 
             var cacheList = await GridCacheData.ReadCacheFileAsync(cacheTrainGridCsv, ct).ConfigureAwait(false);
@@ -215,7 +217,7 @@ namespace SvmFsBatch
             var resultsTasks = asParallel
                 ? searchGridPoints.AsParallel().AsOrdered().WithCancellation(ct).Select(async (point, modelIndex) =>
                 {
-                    if (ct.IsCancellationRequested) return default;
+                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
                     var modelFilename = $@"{trainFile}_{modelIndex + 1}.model";
 
@@ -227,11 +229,11 @@ namespace SvmFsBatch
 
                     var gridPoint = new GridPoint(point.cost, point.gamma, point.epsilon, point.coef0, point.degree, cvRate);
 
-                    return ct.IsCancellationRequested ? default :gridPoint;
+                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :gridPoint;
                 }).ToList()
                 : searchGridPoints.Select(async (point, modelIndex) =>
                 {
-                    if (ct.IsCancellationRequested) return default;
+                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
                     var modelFilename = $@"{trainFile}_{modelIndex + 1}.model";
 
@@ -243,14 +245,14 @@ namespace SvmFsBatch
 
                     var gridPoint = new GridPoint(point.cost, point.gamma, point.epsilon, point.coef0, point.degree, cvRate);
 
-                    return ct.IsCancellationRequested ? default :gridPoint;
+                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :gridPoint;
                 }).ToList();
 
             var results = (await Task.WhenAll(resultsTasks).ConfigureAwait(false)).ToList();
 
             results = results.Where(a => a != null).ToList();
 
-            if (results == null || results.Count == 0) return default;
+            if (results == null || results.Count == 0) { Logging.LogExit(ModuleName);  return default; }
 
             results.AddRange(cacheList.Select(cacheItem => cacheItem.GridPoint).ToArray());
 
@@ -281,28 +283,29 @@ namespace SvmFsBatch
             var bestGridPoint = GetBestRate(results,ct);
 
             //Logging.WriteLine("Grid search complete.", nameof(grid), nameof(grid_parameter_search));
-            return ct.IsCancellationRequested ? default :bestGridPoint;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :bestGridPoint;
         }
 
 
         internal static double LibsvmCvPerf(string[] libsvmResultLines, CancellationToken ct)
         {
+            Logging.LogCall(ModuleName);
             //const string MethodName = nameof(libsvm_cv_perf);
 
             //var v_libsvm_default_cross_validation_index = libsvm_result_lines.FindIndex(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.Ordinal));
             //var v_libsvm_default_cross_validation_str = v_libsvm_default_cross_validation_index < 0 ? "" : libsvm_result_lines[v_libsvm_default_cross_validation_index].Split()[4];
 
-            if (libsvmResultLines == null || libsvmResultLines.Length == 0) return ct.IsCancellationRequested ? default :-1;
+            if (libsvmResultLines == null || libsvmResultLines.Length == 0) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :-1; }
 
             var cvAccuracyLine = libsvmResultLines.FirstOrDefault(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.OrdinalIgnoreCase));
 
-            if (string.IsNullOrWhiteSpace(cvAccuracyLine)) return ct.IsCancellationRequested ? default :-1;
+            if (string.IsNullOrWhiteSpace(cvAccuracyLine)) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :-1; }
 
             var cvAccuracyLineSplit = cvAccuracyLine.Split();
 
             var cvAccuracyStr = cvAccuracyLineSplit[4];
 
-            return ct.IsCancellationRequested ? default :cvAccuracyStr.Last() == '%'
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cvAccuracyStr.Last() == '%'
                 ? double.Parse(cvAccuracyStr[..^1], NumberStyles.Float, NumberFormatInfo.InvariantInfo) / 100
                 : double.Parse(cvAccuracyStr, NumberStyles.Float, NumberFormatInfo.InvariantInfo);
         }

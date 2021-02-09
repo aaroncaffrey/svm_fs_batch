@@ -5,6 +5,8 @@ namespace SvmFsBatch
 {
     internal class DataSetGroupKey : IEquatable<DataSetGroupKey>
     {
+        internal const string ModuleName = nameof(DataSetGroupKey);
+
         internal static readonly DataSetGroupKey Empty = new DataSetGroupKey(null, null, null, null, null, null, null, null, null);
 
         internal static readonly string[] CsvHeaderValuesArray =
@@ -32,13 +34,19 @@ namespace SvmFsBatch
 
         public DataSetGroupKey((string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective) value, int gkGroupIndex = -1, int gkColumnIndex = -1)
         {
+            Logging.LogCall(ModuleName);
+
             Value = value;
             this.gkGroupIndex = gkGroupIndex;
             this.gkColumnIndex = gkColumnIndex;
+
+            Logging.LogExit(ModuleName);
         }
 
         public DataSetGroupKey(string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective, int gkGroupIndex = -1, int gkColumnIndex = -1)
         {
+            Logging.LogCall(ModuleName);
+
             if (!string.IsNullOrEmpty(gkFileTag)) Value.gkFileTag = gkFileTag;
             if (!string.IsNullOrEmpty(gkAlphabet)) Value.gkAlphabet = gkAlphabet;
             if (!string.IsNullOrEmpty(gkStats)) Value.gkStats = gkStats;
@@ -50,10 +58,14 @@ namespace SvmFsBatch
             if (!string.IsNullOrEmpty(gkPerspective)) Value.gkPerspective = gkPerspective;
             this.gkGroupIndex = gkGroupIndex;
             this.gkColumnIndex = gkColumnIndex;
+
+            Logging.LogExit(ModuleName);
         }
 
         public DataSetGroupKey(string[] lineHeader, XTypes[] line, int columnOffset = 0)
         {
+            Logging.LogCall(ModuleName);
+
             var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
                 ? Array.FindIndex(lineHeader, a => a.EndsWith(h))
                 : columnOffset + i)).ToArray();
@@ -61,7 +73,7 @@ namespace SvmFsBatch
             int Hi(string name)
             {
                 var a = headerIndexes.FirstOrDefault(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase));
-                return a == default
+                Logging.LogExit(ModuleName); return a == default
                     ? -1
                     : a.index;
             }
@@ -125,27 +137,41 @@ namespace SvmFsBatch
             if (!string.IsNullOrEmpty(gkPerspective)) Value.gkPerspective = gkPerspective;
             if (gkGroupIndex != null) this.gkGroupIndex = gkGroupIndex.Value;
             if (gkColumnIndex != null) this.gkColumnIndex = gkColumnIndex.Value;
+
+            Logging.LogExit(ModuleName);
         }
 
 
         public bool Equals(DataSetGroupKey other)
         {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
-            //return ct.IsCancellationRequested ? default :value.Equals(other.value);
+            //Logging.LogCall(ModuleName);
 
-            return (Value.gkFileTag ?? "") == (other.Value.gkFileTag ?? "") && (Value.gkAlphabet ?? "") == (other.Value.gkAlphabet ?? "") && (Value.gkStats ?? "") == (other.Value.gkStats ?? "") && (Value.gkDimension ?? "") == (other.Value.gkDimension ?? "") && (Value.gkCategory ?? "") == (other.Value.gkCategory ?? "") && (Value.gkSource ?? "") == (other.Value.gkSource ?? "") && (Value.gkGroup ?? "") == (other.Value.gkGroup ?? "") && (Value.gkMember ?? "") == (other.Value.gkMember ?? "") && (Value.gkPerspective ?? "") == (other.Value.gkPerspective ?? "");
+            if (ReferenceEquals(null, other)) {Logging.LogExit(ModuleName); return false; }
+            if (ReferenceEquals(this, other)) {Logging.LogExit(ModuleName); return true;}
+            //Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :value.Equals(other.value);
+            var ret = (Value.gkFileTag ?? "") == (other.Value.gkFileTag ?? "") && (Value.gkAlphabet ?? "") == (other.Value.gkAlphabet ?? "") && (Value.gkStats ?? "") == (other.Value.gkStats ?? "") && (Value.gkDimension ?? "") == (other.Value.gkDimension ?? "") && (Value.gkCategory ?? "") == (other.Value.gkCategory ?? "") && (Value.gkSource ?? "") == (other.Value.gkSource ?? "") && (Value.gkGroup ?? "") == (other.Value.gkGroup ?? "") && (Value.gkMember ?? "") == (other.Value.gkMember ?? "") && (Value.gkPerspective ?? "") == (other.Value.gkPerspective ?? "");
+
+            //Logging.LogExit(ModuleName);
+            
+            return ret;
         }
 
         internal static DataSetGroupKey FindReference(DataSetGroupKey[] list, DataSetGroupKey item)
         {
-            return list.FirstOrDefault(a => a == item);
+            Logging.LogCall(ModuleName);
+
+            var ret = list.FirstOrDefault(a => a == item);
+            
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
 
         internal string[] CsvValuesArray()
         {
-            return new[]
+            Logging.LogCall(ModuleName);
+
+            var ret = new[]
             {
                 $@"{this.Value.gkFileTag}",
                 $@"{this.Value.gkAlphabet}",
@@ -159,33 +185,54 @@ namespace SvmFsBatch
                 $@"{this.gkGroupIndex}",
                 $@"{this.gkColumnIndex}"
             };
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         internal string CsvValuesString()
         {
-            return string.Join(",", CsvValuesArray());
+            Logging.LogCall(ModuleName);
+
+            var ret = string.Join(",", CsvValuesArray());
+
+            Logging.LogExit(ModuleName);
+            return ret;
         }
 
         public override bool Equals(object obj)
         {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != GetType()) return false;
+            //Logging.LogCall(ModuleName);
+
+            if (ReferenceEquals(null, obj)) {Logging.LogExit(ModuleName); return false; }
+            if (ReferenceEquals(this, obj)) {Logging.LogExit(ModuleName); return true; }
+            if (obj.GetType() != GetType()) {Logging.LogExit(ModuleName); return false; }
+            
+            //Logging.LogExit(ModuleName); 
             return Equals((DataSetGroupKey) obj);
         }
 
         public override int GetHashCode()
         {
+            //Logging.LogCall(ModuleName);
+            //Logging.LogExit(ModuleName); 
+            
             return Value.GetHashCode();
         }
 
         public static bool operator ==(DataSetGroupKey left, DataSetGroupKey right)
         {
+            //Logging.LogCall(ModuleName);
+            //Logging.LogExit(ModuleName); 
+            
             return Equals(left, right);
         }
 
         public static bool operator !=(DataSetGroupKey left, DataSetGroupKey right)
         {
+            //Logging.LogCall(ModuleName);
+            //Logging.LogExit(ModuleName); 
+            
             return !Equals(left, right);
         }
     }
