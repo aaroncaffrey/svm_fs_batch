@@ -18,6 +18,12 @@ namespace SvmFsBatch
 
         internal static async Task Main(string[] args)
         {
+            var x1 = await RpcProxyMethods.ProxyOuterCrossValidationAsync.RpcSendAsync(new[] { new OuterCvInput() }, new IndexData(), default, default, default, default, default);
+            var x2 = await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(default, default, default, default, default, default);
+
+            Console.WriteLine(x1);
+            Console.WriteLine(x2);
+
             ulong lvl = 0;
 
             Logging.LogCall(ModuleName, lvl: lvl + 1);
@@ -130,7 +136,7 @@ namespace SvmFsBatch
             if (totalInstance != ProgramArgs.WholeArrayLength) throw new ArgumentOutOfRangeException(nameof(args), $@"{nameof(ProgramArgs.WholeArrayLength)} = {ProgramArgs.WholeArrayLength}, {nameof(totalInstance)} = {totalInstance}");
 
 
-            Logging.WriteLine($"Array job index: {instanceId} / {totalInstance}. Partition array indexes: {ProgramArgs.PartitionArrayIndexFirst}..{ProgramArgs.PartitionArrayIndexLast}.  Whole array indexes: {ProgramArgs.WholeArrayIndexFirst}..{ProgramArgs.WholeArrayIndexLast}:{ProgramArgs.WholeArrayStepSize} (length: {ProgramArgs.WholeArrayLength}).");
+            Logging.WriteLine($"Array job index: {instanceId} / {totalInstance}. Partition array Indexes: {ProgramArgs.PartitionArrayIndexFirst}..{ProgramArgs.PartitionArrayIndexLast}.  Whole array Indexes: {ProgramArgs.WholeArrayIndexFirst}..{ProgramArgs.WholeArrayIndexLast}:{ProgramArgs.WholeArrayStepSize} (length: {ProgramArgs.WholeArrayLength}).");
 
             // Load DataSet
 
@@ -229,7 +235,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static void UpdateMergedCm(DataSet DataSet, (Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
+        internal static void UpdateMergedCm((Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             const string methodName = nameof(UpdateMergedCm);
@@ -244,20 +250,20 @@ namespace SvmFsBatch
                     {
                         UpdateMergedCmFromVector(predictionDataList, cm, ct);
 
-                        UpdateMergedCmSingle(DataSet, unrolledIndexData, mergedCvInput, cm, ct);
+                        UpdateMergedCmSingle(unrolledIndexData, mergedCvInput, cm, ct);
                     });
             else
                 foreach (var cm in predictionFileData.CmList)
                 {
                     UpdateMergedCmFromVector(predictionDataList, cm, ct);
 
-                    UpdateMergedCmSingle(DataSet, unrolledIndexData, mergedCvInput, cm, ct);
+                    UpdateMergedCmSingle(unrolledIndexData, mergedCvInput, cm, ct);
                 }
 
             Logging.LogExit(ModuleName);
         }
 
-        private static void UpdateMergedCmFromVector((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
+        private static void UpdateMergedCmFromVector((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
@@ -271,16 +277,19 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static void UpdateMergedCmSingle(DataSet DataSet, IndexData unrolledIndexData, OuterCvInput mergedCvInput, ConfusionMatrix cm, CancellationToken ct)
+        internal static void UpdateMergedCmSingle(IndexData unrolledIndexData, OuterCvInput mergedCvInput, ConfusionMatrix cm, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            cm.XClassName = ProgramArgs.ClassNames?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassName;
-            cm.XClassSize = DataSet.ClassSizes?.First(b => b.ClassId == cm.XClassId).class_size ?? -1;
-            cm.XClassTestSize = mergedCvInput.TestSizes?.First(b => b.ClassId == cm.XClassId).test_size ?? -1;
-            cm.XClassTrainSize = mergedCvInput.TrainSizes?.First(b => b.ClassId == cm.XClassId).train_size ?? -1;
-            cm.XClassWeight = unrolledIndexData.IdClassWeights?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassWeight;
+            
+            cm.XClassName = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassName ?? default;
+            cm.XClassSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).ClassSize ?? -1;
+            cm.XDownsampledClassSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).DownsampledClassSize ?? -1;
+
+            cm.XClassTestSize = mergedCvInput.TestSizes?.FirstOrDefault(b => b.ClassId == cm.XClassId).test_size ?? -1;
+            cm.XClassTrainSize = mergedCvInput.TrainSizes?.FirstOrDefault(b => b.ClassId == cm.XClassId).train_size ?? -1;
+            cm.XClassWeight = unrolledIndexData.IdClassWeights?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassWeight ?? default;
             //cm.x_time_grid_search =  PredictionData_list?.Select(a => a.dur.gridDur).DefaultIfEmpty(0).Sum();
             //cm.x_time_test = PredictionData_list?.Select(a => a.dur.predictDur).DefaultIfEmpty(0).Sum();
             //cm.x_time_train = PredictionData_list?.Select(a => a.dur.trainDur).DefaultIfEmpty(0).Sum();

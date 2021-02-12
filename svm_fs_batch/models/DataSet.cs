@@ -16,7 +16,7 @@ namespace SvmFsBatch
         //(
         //    int ClassId,
         //    string ClassName,
-        //    int class_size,
+        //    int ClassSize,
         //    (
         //        (
         //            int row_index,
@@ -45,7 +45,7 @@ namespace SvmFsBatch
         //    )[] val_list
         //)[] value_list;
 
-        internal (int ClassId, int class_size)[] ClassSizes;
+        internal (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize)[] ClassSizes;
 
         //internal (int internal_column_index, int external_column_index, string file_tag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)[] column_header_list;
         internal DataSetGroupKey[] ColumnHeaderList;
@@ -53,9 +53,9 @@ namespace SvmFsBatch
         internal (int ClassId, string ClassName, (int row_index, int col_index, string comment_key, string CommentValue)[][] cl_comment_list)[] CommentList;
 
         // feature values, grouped by class id (with meta data class name and class size)
-        // internal List<(int ClassId, string ClassName, int class_size, List<((int internal_column_index, int external_column_index, string file_tag, string gkAlphabet, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective) column_header, double fv)[]> val_list)> value_list;
+        // internal List<(int ClassId, string ClassName, int ClassSize, List<((int internal_column_index, int external_column_index, string file_tag, string gkAlphabet, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective) column_header, double fv)[]> val_list)> value_list;
 
-        internal ( int ClassId, string ClassName, int class_size, ( ( int row_index, int col_index, string comment_key, string CommentValue )[] row_comment, ( int row_index, int col_index, DataSetGroupKey column_header, double row_column_val )[] row_columns )[] val_list )[] ValueList;
+        internal ( int ClassId, string ClassName, int ClassSize, ( ( int row_index, int col_index, string comment_key, string CommentValue )[] row_comment, ( int row_index, int col_index, DataSetGroupKey column_header, double row_column_val )[] row_columns )[] val_list )[] ValueList;
 
         internal static int[] RemoveDuplicateColumns(DataSet DataSet, int[] queryCols, bool asParallel = false, CancellationToken ct = default)
         {
@@ -488,7 +488,7 @@ namespace SvmFsBatch
         //            vals[rowIndex] = valsTag.SelectMany((aCl, aClIndex) => aCl[rowIndex]).ToArray();
 
         //        var valList = vals.AsParallel().AsOrdered().WithCancellation(ct).Select((row, rowIndex) => (row_comment: CommentList[clIndex].cl_comment_list[rowIndex], row_columns: row.Select((colVal, colIndex) => (row_index: rowIndex, col_index: colIndex, column_header: ColumnHeaderList[colIndex], row_column_val: vals[rowIndex][colIndex])).ToArray())).ToArray();
-        //        Logging.LogExit(ModuleName); return (cl.ClassId, cl.ClassName, class_size: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
+        //        Logging.LogExit(ModuleName); return (cl.ClassId, cl.ClassName, ClassSize: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
         //    }).ToArray();
         //    swValues.Stop();
         //    Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName);
@@ -504,7 +504,7 @@ namespace SvmFsBatch
 
             var t1 = Task.Run(() => LoadDataSetHeaders(dataFilenames, ct), ct);
             var t2 = Task.Run(() => LoadDataSetComments(dataFilenames, ct), ct);
-            Task.WaitAll(new[] {t1, t2});
+            Task.WaitAll(new[] {t1, t2},ct);
 
             if (ColumnHeaderList == null || ColumnHeaderList.Length == 0) throw new Exception();
             if (CommentList == null || CommentList.Length == 0) throw new Exception();
@@ -528,7 +528,7 @@ namespace SvmFsBatch
                     vals[rowIndex] = valsTag.SelectMany((aCl, aClIndex) => aCl[rowIndex]).ToArray();
 
                 var valList = vals.AsParallel().AsOrdered().WithCancellation(ct).Select((row, rowIndex) => (row_comment: CommentList[clIndex].cl_comment_list[rowIndex], row_columns: row.Select((colVal, colIndex) => (row_index: rowIndex, col_index: colIndex, column_header: ColumnHeaderList[colIndex], row_column_val: vals[rowIndex][colIndex])).ToArray())).ToArray();
-                 return (cl.ClassId, cl.ClassName, class_size: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
+                 return (cl.ClassId, cl.ClassName, ClassSize: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
             }).ToArray();
             swValues.Stop();
             Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName, methodName);
@@ -613,7 +613,7 @@ namespace SvmFsBatch
 
         //    await LoadDataSetValuesAsync(dataFilenames, ct).ConfigureAwait(false);
 
-        //    ClassSizes = ValueList.Select(a => (a.ClassId, a.class_size)).ToArray();
+        //    ClassSizes = ValueList.Select(a => (a.ClassId, a.ClassSize)).ToArray();
         //}
 
         internal void LoadDataSet(string DataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames //,
@@ -643,7 +643,7 @@ namespace SvmFsBatch
 
             LoadDataSetValues(dataFilenames, ct);
 
-            ClassSizes = ValueList.Select(a => (a.ClassId, a.class_size)).ToArray();
+            ClassSizes = ValueList.Select(a => (a.ClassId, a.ClassName, a.ClassSize, DownSampledClassSize: ValueList.Where(a => a.ClassSize > 0).Min(a => a.ClassSize))).ToArray();
 
             Logging.LogExit(ModuleName);
         }

@@ -193,27 +193,30 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static ( (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] class_folds, (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] down_sampled_training_class_folds ) Folds((int ClassId, int class_size)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static ( 
+            (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] class_folds, 
+            (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] down_sampled_training_class_folds ) 
+            Folds((int ClassId, string ClassName, int ClassSize, int DownSampledClassSize)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var classFolds = asParallel
-                ? classSizes.AsParallel().AsOrdered().WithCancellation(ct).Select(a => (a.ClassId, a.class_size, folds: Folds(a.class_size, repetitions, outerCvFolds,ct))).ToArray()
-                : classSizes.Select(a => (a.ClassId, a.class_size, folds: Folds(a.class_size, repetitions, outerCvFolds,ct))).ToArray();
+                ? classSizes.AsParallel().AsOrdered().WithCancellation(ct).Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, folds: Folds(a.ClassSize, repetitions, outerCvFolds,ct))).ToArray()
+                : classSizes.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, folds: Folds(a.ClassSize, repetitions, outerCvFolds,ct))).ToArray();
 
-            var downSampledTrainingClassFolds = classFolds.Select(a => (a.ClassId, a.class_size, folds: a.folds?.Select(b =>
+            var downSampledTrainingClassFolds = classFolds.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, folds: a.folds?.Select(b =>
             {
-                var minNumItemsInFold = classFolds.Min(c => c.folds?.Where(e => e.RepetitionsIndex == b.RepetitionsIndex && e.OuterCvIndex == b.OuterCvIndex).Min(e => e.indexes?.Length ?? 0) ?? 0);
-
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(b.RepetitionsIndex, b.OuterCvIndex, indexes: b.indexes?.Take(minNumItemsInFold).ToArray());
+                var minNumItemsInFold = classFolds.Min(c => c.folds?.Where(e => e.RepetitionsIndex == b.RepetitionsIndex && e.OuterCvIndex == b.OuterCvIndex).Min(e => e.Indexes?.Length ?? 0) ?? 0);
+                return ct.IsCancellationRequested ? default :(b.RepetitionsIndex, b.OuterCvIndex, Indexes: b.Indexes?.Take(minNumItemsInFold).ToArray());
             }).ToArray())).ToArray();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(classFolds, downSampledTrainingClassFolds);
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default :(classFolds, downSampledTrainingClassFolds);
         }
 
-        internal static (int RepetitionsIndex, int OuterCvIndex, int[] indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        internal static (int RepetitionsIndex, int OuterCvIndex, int[] Indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             Logging.LogCall(ModuleName);
 
@@ -248,18 +251,19 @@ namespace SvmFsBatch
 
             var indexesPool = Enumerable.Range(0, numClassSamples).ToArray();
 
-            var foldIndexes = new List<(int randomisation, int OuterCvIndex, int[] indexes)>();
+            var foldIndexes = new List<(int randomisation, int OuterCvIndex, int[] Indexes)>();
 
             for (var repetitionsIndex = 0; repetitionsIndex < repetitions; repetitionsIndex++)
             {
                 indexesPool.Shuffle(rand);
 
-                var outerCvFoldIndexes = foldSizes.Select((foldSize, outerCvIndex) => (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, indexes: indexesPool.Skip(foldSizes.Where((b, j) => outerCvIndex > j /* skip previous folds*/).Sum()).Take(foldSize /* take only current fold */).OrderBy(b => b /* order indexes in the current fold numerically */).ToArray())).Where(c => c.indexes != null && c.indexes.Length > 0).ToArray();
+                var outerCvFoldIndexes = foldSizes.Select((foldSize, outerCvIndex) => (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, Indexes: indexesPool.Skip(foldSizes.Where((b, j) => outerCvIndex > j /* skip previous folds*/).Sum()).Take(foldSize /* take only current fold */).OrderBy(b => b /* order indexes in the current fold numerically */).ToArray())).Where(c => c.Indexes != null && c.Indexes.Length > 0).ToArray();
 
                 foldIndexes.AddRange(outerCvFoldIndexes);
             }
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :foldIndexes.ToArray();
+            Logging.LogExit(ModuleName); 
+            return ct.IsCancellationRequested ? default :foldIndexes.ToArray();
         }
 
 

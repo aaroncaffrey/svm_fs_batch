@@ -30,6 +30,7 @@ namespace SvmFsBatch
                 nameof(XClassWeight),
                 nameof(XClassName),
                 nameof(XClassSize),
+                nameof(XDownsampledClassSize),
                 nameof(XClassTrainSize),
                 nameof(XClassTestSize)
             }).Concat(MetricsBox.CsvHeaderValuesArray).Concat(new[]
@@ -61,6 +62,7 @@ namespace SvmFsBatch
         internal int? XClassId;
         internal string XClassName;
         internal double XClassSize;
+        internal double XDownsampledClassSize;
         internal double XClassTestSize;
         internal double XClassTrainSize;
         internal double? XClassWeight;
@@ -341,6 +343,7 @@ namespace SvmFsBatch
             var hiXClassWeight = Hi(nameof(XClassWeight));
             var hiXClassName = Hi(nameof(XClassName));
             var hiXClassSize = Hi(nameof(XClassSize));
+            var hiXDownsampledClassSize = Hi(nameof(XDownsampledClassSize));
             var hiXClassTrainSize = Hi(nameof(XClassTrainSize));
             var hiXClassTestSize = Hi(nameof(XClassTestSize));
             var hiCmP = Hi(nameof(MetricsBox.CmP));
@@ -456,6 +459,7 @@ namespace SvmFsBatch
             if (hiXClassWeight > -1) cm.XClassWeight = xType[hiXClassWeight].AsDouble;
             if (hiXClassName > -1) cm.XClassName = xType[hiXClassName].AsStr;
             if (hiXClassSize > -1) cm.XClassSize = xType[hiXClassSize].AsDouble ?? 0;
+            if (hiXDownsampledClassSize > -1) cm.XDownsampledClassSize = xType[hiXDownsampledClassSize].AsDouble ?? 0;
             if (hiXClassTrainSize > -1) cm.XClassTrainSize = xType[hiXClassTrainSize].AsDouble ?? 0;
             if (hiXClassTestSize > -1) cm.XClassTestSize = xType[hiXClassTestSize].AsDouble ?? 0;
 
@@ -675,6 +679,7 @@ namespace SvmFsBatch
                     XClassWeight?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                     XClassName ?? "",
                     XClassSize.ToString("G17", NumberFormatInfo.InvariantInfo),
+                    XDownsampledClassSize.ToString("G17", NumberFormatInfo.InvariantInfo),
                     XClassTrainSize.ToString("G17", NumberFormatInfo.InvariantInfo),
                     XClassTestSize.ToString("G17", NumberFormatInfo.InvariantInfo)
                 }).Concat(Metrics?.CsvValuesArray() ?? MetricsBox.Empty.CsvValuesArray()).Concat(new[]

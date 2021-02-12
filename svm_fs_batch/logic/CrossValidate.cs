@@ -14,7 +14,7 @@ namespace SvmFsBatch
         internal static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)> InnerCrossValidationAsync(IndexData unrolledIndex, OuterCvInput outerCvInput, bool libsvmTrainProbabilityEstimates = true, bool log = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
 
             const string methodName = nameof(InnerCrossValidationAsync);
@@ -72,114 +72,125 @@ namespace SvmFsBatch
             var predictText = await IoProxy.ReadAllLinesAsync(true, ct, outerCvInput.PredictFn, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
             //Logging.WriteLine($@"Loaded {input.predict_fn}");
 
-            Logging.LogExit(ModuleName); 
+            Logging.LogExit(ModuleName);
+
+            var ret = 
+                (
+                    swGrid != null && swGrid.Elapsed != TimeSpan.Zero ? (TimeSpan?)swGrid.Elapsed : (TimeSpan?)null,
+                    swTrain != null && swTrain.Elapsed != TimeSpan.Zero ? (TimeSpan?)swTrain.Elapsed : (TimeSpan?)null, 
+                    swPredict != null && swPredict.Elapsed != TimeSpan.Zero ? (TimeSpan?)swPredict.Elapsed : (TimeSpan?)null, 
+                    trainGridSearchResult,
+                    predictText
+                );
             
-            return ct.IsCancellationRequested ? default : (swGrid != null && swGrid.Elapsed != TimeSpan.Zero
-                ? (TimeSpan?)swGrid.Elapsed
-                : (TimeSpan?)null, swTrain != null && swTrain.Elapsed != TimeSpan.Zero
-                ? (TimeSpan?)swTrain.Elapsed
-                : (TimeSpan?)null, swPredict != null && swPredict.Elapsed != TimeSpan.Zero
-                ? (TimeSpan?)swPredict.Elapsed
-                : (TimeSpan?)null, trainGridSearchResult, predictText);
+            return ct.IsCancellationRequested ? default : ret;    
         }
 
-        internal static async Task<(IndexData id, ConfusionMatrix cm)[]> CrossValidatePerformanceAsync(DataSet DataSet, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
+        [Flags]
+        internal enum RpcPoint
+        {
+            None = 0,
+            CrossValidatePerformanceAsync = 1,
+            OuterCrossValidationSingleAsync = 2
+        }
+
+        internal static async Task<(IndexData id, ConfusionMatrix cm)[]> CrossValidatePerformanceAsync(bool isMethodCallRpc, RpcPoint rpcPoint, DataSet DataSet, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
-
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
             if (DataSet == null) throw new ArgumentOutOfRangeException(nameof(DataSet));
-            if (string.IsNullOrWhiteSpace(unrolledIndexData.IdExperimentName)) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
             if (unrolledIndexData == null) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
+            if (string.IsNullOrWhiteSpace(unrolledIndexData.IdExperimentName)) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
 
-            // todo: try to reload gkGroup cache file
-            //var groupCacheFiles = Directory.Exists(unrolledIndexData.IdGroupFolder)
-            //    ? Directory.GetFiles(unrolledIndexData.IdGroupFolder, "m_*_full.csv")
-            //    : null;
+            // 1. make outer-cv files
+            var outerCvInputs = await MakeOuterCvInputsAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false);
+            if (outerCvInputs == default) { Logging.LogExit(ModuleName); return default; }
 
-            //if (groupCacheFiles != null && groupCacheFiles.Length > 0)
-            //{
-            //    var results = groupCacheFiles.Select(a => ConfusionMatrix.LoadAsync(a, -1, asParallel, ct)).ToArray();
-            //}
 
-            //Logging.WriteLine(
-            //    $@"{unrolledIndexData.IdExperimentName}: gkGroup cache: Unavailable for iteration {unrolledIndexData.IdIterationIndex} gkGroup {unrolledIndexData.IdGroupArrayIndex}/{unrolledIndexData.IdTotalGroups}");
+            var ocvResult =
+            !isMethodCallRpc && rpcPoint.HasFlag(RpcPoint.CrossValidatePerformanceAsync) ?
 
-            var ocvResult = await OuterCrossValidationAsync(DataSet, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false);
+                // run 1 RPC request which includes all repetitions/outer folds
+                await RpcProxyMethods.ProxyOuterCrossValidationAsync.RpcSendAsync(outerCvInputs, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false)
+            :
+                await OuterCrossValidationAsync(isMethodCallRpc, rpcPoint, outerCvInputs, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false);
+
+            if (ocvResult == default) { Logging.LogExit(ModuleName); return default; }
 
             var groupCmSdList = ocvResult.McvCm.Select(cm => (unrolled_index_data: unrolledIndexData, cm)).ToArray();
-            
-            Logging.LogExit(ModuleName); 
-            return ct.IsCancellationRequested ? default :groupCmSdList;
+            if (groupCmSdList == default) { Logging.LogExit(ModuleName); return default; }
+
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default : groupCmSdList;
         }
 
-        private static async Task<(IndexData id, ConfusionMatrix[] OcvCm, ConfusionMatrix[] McvCm)> OuterCrossValidationAsync(DataSet DataSet, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
+
+        internal static async Task<(IndexData id, ConfusionMatrix[] OcvCm, ConfusionMatrix[] McvCm)> OuterCrossValidationAsync(bool isMethodCallRpc, RpcPoint rpcPoint, OuterCvInput[] outerCvInputs, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             const string methodName = nameof(OuterCrossValidationAsync);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
-
-            if (DataSet == null) throw new ArgumentOutOfRangeException(nameof(DataSet));
-            //if (string.IsNullOrWhiteSpace(ExperimentName)) throw new ArgumentOutOfRangeException(nameof(ExperimentName));
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
             if (unrolledIndexData == null) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
             if (unrolledIndexData.IdColumnArrayIndexes == null || unrolledIndexData.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData), $@"{ModuleName}.{methodName}.{nameof(unrolledIndexData)}.{nameof(unrolledIndexData.IdColumnArrayIndexes)}");
-            //if (selection_test_info == null) throw new ArgumentOutOfRangeException(nameof(selection_test_info));
-            //if (GroupKey == null) throw new ArgumentOutOfRangeException(nameof(GroupKey));
+            if (outerCvInputs == null || outerCvInputs.Length == 0) throw new ArgumentOutOfRangeException(nameof(outerCvInputs));
 
-            // 1. make outer-cv files
-            var outerCvInputs = await MakeOuterCvInputsAsync(DataSet,
-                //column_indexes: test_selected_columns,
-                //group_folder: group_folder,
-                unrolledIndexData,
-                ct: ct).ConfigureAwait(false);
 
-            if (outerCvInputs == default) { Logging.LogExit(ModuleName);  return default; }
-
-            // 2. run libsvm
-            var outerCvInputsResultTasks = asParallel
-                ? outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).AsParallel().AsOrdered().WithCancellation(ct).Select(async outerCvInput => await OuterCrossValidationSingleAsync(DataSet, unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
-                : outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).Select(async outerCvInput => await OuterCrossValidationSingleAsync(DataSet, unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray();
+            // run an RPC for EACH repetition/outer fold
+            var outerCvInputsResultTasks =
+            !isMethodCallRpc && rpcPoint.HasFlag(RpcPoint.OuterCrossValidationSingleAsync) ?
+            (
+            asParallel
+                ? outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).AsParallel().AsOrdered().WithCancellation(ct).Select(async outerCvInput => await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                : outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).Select(async outerCvInput => await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+            )
+            :
+            (
+            // run libsvm on each outer cv partition segment
+            asParallel
+                ? outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).AsParallel().AsOrdered().WithCancellation(ct).Select(async outerCvInput => await OuterCrossValidationSingleAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                : outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).Select(async outerCvInput => await OuterCrossValidationSingleAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+            );
 
             var outerCvInputsResult = await Task.WhenAll(outerCvInputsResultTasks).ConfigureAwait(false);
 
-            if (outerCvInputsResult == null || outerCvInputsResult.Length == 0) { Logging.LogExit(ModuleName);  return default; }
+            if (outerCvInputsResult == null || outerCvInputsResult.Length == 0 || outerCvInputsResult.Any(a => a == default || a.OcvCm == default || a.OcvCm.Length == 0)) { Logging.LogExit(ModuleName); return default; }
 
             // 1a. the ocvi index -1 is merged data
             var mergedCvInput = outerCvInputs.First(a => a.OuterCvIndex == -1);
 
-            if (mergedCvInput == null) { Logging.LogExit(ModuleName);  return default; }
+            if (mergedCvInput == null) { Logging.LogExit(ModuleName); return default; }
 
             var ocvCm = makeOuterCvConfusionMatrices
                 ? outerCvInputsResult.Where(a => a.OcvCm != null).SelectMany(a => a.OcvCm).ToArray()
                 : null;
-            var predictionDataList = outerCvInputsResult.Select(a => a.PredictionData).ToArray();
+            //predictionDataList = outerCvInputsResult;//.Select(a => a.PredictionData).ToArray();
 
             // 3. make confusion matrix from the merged prediction results
             // note: repeated 'labels' lines will be ignored
-            var mergedPredictionText = predictionDataList.SelectMany(a => a.PredictText).ToArray();
+            var mergedPredictionText = outerCvInputsResult.SelectMany(a => a.PredictText).ToArray();
 
             var mergedTestClassSampleIdList = mergedCvInput.TestFoldIndexes.SelectMany(a => a.TestIndexes).ToArray();
 
             var predictionFileData = PerformanceMeasure.LoadPredictionFile(mergedCvInput.TestText, null, mergedPredictionText, unrolledIndexData.IdCalcElevenPointThresholds, mergedTestClassSampleIdList, ct);
             //for (var cm_index = 0; cm_index < prediction_file_data.CmList.Length; cm_index++) { prediction_file_data.CmList[cm_index].unrolled_index_data = unrolled_index_data; }
 
-            if (predictionFileData == default || predictionFileData.prediction_list == null || predictionFileData.prediction_list.Length == 0 || predictionFileData.CmList == null || predictionFileData.CmList.Length == 0) { Logging.LogExit(ModuleName);  return default; }
+            if (predictionFileData == default || predictionFileData.prediction_list == null || predictionFileData.prediction_list.Length == 0 || predictionFileData.CmList == null || predictionFileData.CmList.Length == 0) { Logging.LogExit(ModuleName); return default; }
 
             var mcvCm = predictionFileData.CmList;
 
             // add any missing details to the confusion-matrix
-            Program.UpdateMergedCm(DataSet, predictionFileData, unrolledIndexData, mergedCvInput, predictionDataList, ct: ct);
+            Program.UpdateMergedCm(predictionFileData, unrolledIndexData, mergedCvInput, outerCvInputsResult, ct: ct);
 
-            // save CM for gkGroup
+            // save CM for Group
             if (saveGroupCache)
             {
                 await ConfusionMatrix.SaveAsync(mergedCvInput.CmFn1, /*merged_cv_input.cm_fn2,*/ overwriteCache, mcvCm, ct: ct).ConfigureAwait(false);
-                Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: gkGroup MCV cache: Saved: {unrolledIndexData?.IdIndexStr()} {unrolledIndexData?.IdFoldStr()} {unrolledIndexData?.IdMlStr()}. Files: {mergedCvInput.CmFn1}, {mergedCvInput.CmFn2}.");
+                Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: Group MCV cache: Saved: {unrolledIndexData?.IdIndexStr()} {unrolledIndexData?.IdFoldStr()} {unrolledIndexData?.IdMlStr()}. Files: {mergedCvInput.CmFn1}, {mergedCvInput.CmFn2}.");
             }
             else
             {
-                Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: gkGroup MCV cache: Save disabled: {unrolledIndexData?.IdIndexStr()} {unrolledIndexData?.IdFoldStr()} {unrolledIndexData?.IdMlStr()}. Files: {mergedCvInput.CmFn1}, {mergedCvInput.CmFn2}.");
+                Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: Group MCV cache: Save disabled: {unrolledIndexData?.IdIndexStr()} {unrolledIndexData?.IdFoldStr()} {unrolledIndexData?.IdMlStr()}. Files: {mergedCvInput.CmFn1}, {mergedCvInput.CmFn2}.");
 
                 if (!saveGroupCache && !string.IsNullOrWhiteSpace(unrolledIndexData.IdGroupFolder)) await IoProxy.DeleteDirectoryAsync(true, ct, unrolledIndexData.IdGroupFolder, true).ConfigureAwait(false);
             }
@@ -187,8 +198,7 @@ namespace SvmFsBatch
 
             Logging.LogExit(ModuleName);
 
-            return ct.IsCancellationRequested ? default
-                : (unrolledIndexData, ocvCm, mcvCm);
+            return ct.IsCancellationRequested ? default : (unrolledIndexData, ocvCm, mcvCm);
         }
 
 
@@ -197,7 +207,7 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             const string methodName = nameof(MakeOuterCvInputsAsync);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             const bool preserveFid = false; // whether to keep the original FID in the libsvm training/testing files (note: if not, bear in mind that features with zero values are removed, so this must not distort the ordering...).
 
@@ -251,7 +261,7 @@ namespace SvmFsBatch
                 }
 
             // filenames for merging all repetition indexes and outer cv indexes... as if it were a single test.
-            var mergedFilenamePrefix = Path.Combine(unrolledIndex.IdGroupFolder, $@"m_{Program.GetIterationFilename(new[] { unrolledIndex },ct)}");
+            var mergedFilenamePrefix = Path.Combine(unrolledIndex.IdGroupFolder, $@"m_{Program.GetIterationFilename(new[] { unrolledIndex }, ct)}");
 
             var mergedCvInput = new OuterCvInput
             {
@@ -282,17 +292,17 @@ namespace SvmFsBatch
                 await IoProxy.WriteAllLinesAsync(true, ct, mergedCvInput.TestFn, mergedCvInput.TestText, callerModuleName: ModuleName).ConfigureAwait(false);
             }
 
-            Logging.LogExit(ModuleName); 
-            
-            return ct.IsCancellationRequested ?  default : ocvData;
+            Logging.LogExit(ModuleName);
+
+            return ct.IsCancellationRequested ? default : ocvData;
         }
 
         private static OuterCvInput MakeOuterCvInputsSingle(DataSet DataSet, IndexData unrolledIndex, bool asParallel, int repetitionsIndex, int outerCvIndex, bool preserveFid, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-            var filename = Path.Combine(unrolledIndex.IdGroupFolder, $@"o_{Program.GetItemFilename(unrolledIndex, repetitionsIndex, outerCvIndex,ct)}");
+            var filename = Path.Combine(unrolledIndex.IdGroupFolder, $@"o_{Program.GetItemFilename(unrolledIndex, repetitionsIndex, outerCvIndex, ct)}");
 
             var trainFn = $@"{filename}.train.libsvm";
             var gridFn = $@"{filename}.grid.libsvm";
@@ -364,10 +374,12 @@ namespace SvmFsBatch
         }
 
 
-        internal static async Task<((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText) PredictionData, ConfusionMatrix[] OcvCm)> OuterCrossValidationSingleAsync(DataSet DataSet, IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, CancellationToken ct = default)
+
+
+        internal static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)> OuterCrossValidationSingleAsync(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             ConfusionMatrix[] ocvCm = null;
 
@@ -391,7 +403,7 @@ namespace SvmFsBatch
                     ocvPredictionFileData.CmList[cmIndex].GridPoint = predictionData.GridPoint;
 
                     // add any missing meta details to the confusion-matrix
-                    Program.UpdateMergedCmSingle(DataSet, unrolledIndexData, outerCvInput, ocvPredictionFileData.CmList[cmIndex], ct);
+                    Program.UpdateMergedCmSingle(unrolledIndexData, outerCvInput, ocvPredictionFileData.CmList[cmIndex], ct);
                 }
 
 
@@ -402,9 +414,12 @@ namespace SvmFsBatch
                 {
                     // save outer-cross-validation confusion-matrix CM for gkGroup
                     await ConfusionMatrix.SaveAsync(outerCvInput.CmFn1, /*outer_cv_input.cm_fn2, */overwriteCache, ocvPredictionFileData.CmList, ct: ct).ConfigureAwait(false);
-                    Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: gkGroup OCV cache: Saved: [R({outerCvInput.RepetitionsIndex}/{unrolledIndexData.IdRepetitions}) O({outerCvInput.OuterCvIndex}/{unrolledIndexData.IdOuterCvFolds})] {unrolledIndexData.IdIndexStr()} {unrolledIndexData.IdFoldStr()} {unrolledIndexData.IdMlStr()}. Files: {outerCvInput.CmFn1}, {outerCvInput.CmFn2}.");
+                    Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: Group OCV cache: Saved: [R({outerCvInput.RepetitionsIndex}/{unrolledIndexData.IdRepetitions}) O({outerCvInput.OuterCvIndex}/{unrolledIndexData.IdOuterCvFolds})] {unrolledIndexData.IdIndexStr()} {unrolledIndexData.IdFoldStr()} {unrolledIndexData.IdMlStr()}. Files: {outerCvInput.CmFn1}, {outerCvInput.CmFn2}.");
                 }
-                else { Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: gkGroup OCV cache: Save disabled: [R({outerCvInput.RepetitionsIndex}/{unrolledIndexData.IdRepetitions}) O({outerCvInput.OuterCvIndex}/{unrolledIndexData.IdOuterCvFolds})] {unrolledIndexData.IdIndexStr()} {unrolledIndexData.IdFoldStr()} {unrolledIndexData.IdMlStr()}. Files: {outerCvInput.CmFn1}, {outerCvInput.CmFn2}."); }
+                else
+                {
+                    Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: Group OCV cache: Save disabled: [R({outerCvInput.RepetitionsIndex}/{unrolledIndexData.IdRepetitions}) O({outerCvInput.OuterCvIndex}/{unrolledIndexData.IdOuterCvFolds})] {unrolledIndexData.IdIndexStr()} {unrolledIndexData.IdFoldStr()} {unrolledIndexData.IdMlStr()}. Files: {outerCvInput.CmFn1}, {outerCvInput.CmFn2}.");
+                }
             }
 
             // delete temporary files
@@ -412,9 +427,11 @@ namespace SvmFsBatch
             catch (Exception e) { Logging.LogException(e, "", ModuleName); }
             // note: do not delete the confusion-matrix: await io_proxy.Delete(outer_cv_input.cm_fn).ConfigureAwait(false);
 
-            Logging.LogExit(ModuleName); 
-            
-            return ct.IsCancellationRequested ? default : (predictionData, ocvCm);
+            Logging.LogExit(ModuleName);
+
+
+
+            return ct.IsCancellationRequested ? default : (predictionData.gridDur, predictionData.trainDur, predictionData.predictDur, predictionData.GridPoint, predictionData.PredictText, ocvCm);
         }
     }
 }

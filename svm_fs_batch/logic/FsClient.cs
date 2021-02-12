@@ -22,10 +22,10 @@ namespace SvmFsBatch
                 var unrolledIndexList = new[] {id};
 
                 var resultsTasks = asParallel
-                    ? unrolledIndexList.AsParallel().AsOrdered().WithCancellation(ct).Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
+                    ? unrolledIndexList.AsParallel().AsOrdered().WithCancellation(ct).Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(true, CrossValidate.RpcPoint.None, DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
                         //.SelectMany(a => a)
                         .ToArray()
-                    : unrolledIndexList.Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
+                    : unrolledIndexList.Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(true, CrossValidate.RpcPoint.None, DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
                         //.SelectMany(a => a)
                         .ToArray();
 

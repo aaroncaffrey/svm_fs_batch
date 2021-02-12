@@ -547,7 +547,7 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
 
 
-            if (IsDisposed || ct.IsCancellationRequested) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return; }
+            if (IsDisposed || ct.IsCancellationRequested) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default; }
 
             var rid = TcpClientExtra.ReadTcpClientRemoteAddress(client);
             Logging.LogEvent($@"Pool ""{PoolName}"".  Connection established. Local address: {rid.localAddress}:{rid.localPort}. Remote address: {rid.remoteAddress}:{rid.remotePort}.", ModuleName);

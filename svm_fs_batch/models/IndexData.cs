@@ -41,12 +41,12 @@ namespace SvmFsBatch
 
         internal bool IdCalcElevenPointThresholds;
 
-        internal (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdClassFolds;
+        internal (int ClassId, string ClassName, int ClassSize, int DownsampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdClassFolds;
 
         internal (int ClassId, double ClassWeight)[] IdClassWeights;
         internal int[] IdColumnArrayIndexes;
 
-        internal (int ClassId, int class_size, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdDownSampledTrainClassFolds;
+        internal (int ClassId, string ClassName, int ClassSize, int DownsampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdDownSampledTrainClassFolds;
 
         internal string IdExperimentName;
         internal int IdGroupArrayIndex = -1;
@@ -168,8 +168,8 @@ namespace SvmFsBatch
                 $@"{string.Join(";", IdGroupArrayIndexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";", IdColumnArrayIndexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";", IdClassWeights?.Select(a => $"{a.ClassId}:{a.ClassWeight:G17}").ToArray() ?? Array.Empty<string>())}",
-                $@"{string.Join(";", IdClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.class_size}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
-                $@"{string.Join(";", IdDownSampledTrainClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.class_size}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
+                $@"{string.Join(";", IdClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.ClassName}", $@"{a.ClassSize}", $@"{a.DownsampledClassSize}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
+                $@"{string.Join(";", IdDownSampledTrainClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.ClassName}", $@"{a.ClassSize}", $@"{a.DownsampledClassSize}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
                 $@"{IdGroupFolder}"
             };
 
@@ -264,8 +264,10 @@ namespace SvmFsBatch
                 {
                     var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries);
                     var classId = int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-                    var classSize = int.Parse(b[1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-                    var folds = b[2].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
+                    var className = b[1];
+                    var classSize = int.Parse(b[2], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+                    var downSampledClassSize = int.Parse(b[3], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+                    var folds = b[4].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
                     {
                         var e = d.Split('~', StringSplitOptions.RemoveEmptyEntries);
                         var repetitionsIndex = int.Parse(e[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -274,7 +276,7 @@ namespace SvmFsBatch
 
                         Logging.LogExit(ModuleName); return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
                     }).ToArray();
-                    Logging.LogExit(ModuleName); return (ClassId: classId, class_size: classSize, folds);
+                    Logging.LogExit(ModuleName); return (ClassId: classId, ClassName: className, ClassSize: classSize, DownsampledClassSize: downSampledClassSize, folds);
                 }).ToArray();
 
             //  ;:|~/
@@ -283,8 +285,10 @@ namespace SvmFsBatch
                 {
                     var b = a.Split(':', StringSplitOptions.RemoveEmptyEntries);
                     var classId = int.Parse(b[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-                    var classSize = int.Parse(b[1], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-                    var folds = b[2].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
+                    var className = b[1];
+                    var classSize = int.Parse(b[2], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+                    var downSampledClassSize = int.Parse(b[3], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+                    var folds = b[4].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
                     {
                         var e = d.Split('~', StringSplitOptions.RemoveEmptyEntries);
                         var repetitionsIndex = int.Parse(e[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -293,7 +297,7 @@ namespace SvmFsBatch
 
                         Logging.LogExit(ModuleName); return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
                     }).ToArray();
-                    Logging.LogExit(ModuleName); return (ClassId: classId, class_size: classSize, folds);
+                    Logging.LogExit(ModuleName); return (ClassId: classId, ClassName: className, ClassSize: classSize, DownsampledClassSize: downSampledClassSize, folds);
                 }).ToArray();
 
             if (hiIdGroupFolder > -1) IdGroupFolder = xType[hiIdGroupFolder].AsStr;
@@ -491,7 +495,7 @@ namespace SvmFsBatch
 
                         for (var i = 0; i < x1a.IdClassFolds.Length; i++)
                         {
-                            if (x1a.IdClassFolds[i].ClassId != x2a.IdClassFolds[i].ClassId || x1a.IdClassFolds[i].class_size != x2a.IdClassFolds[i].class_size || (x1a.IdClassFolds[i].folds?.Length ?? 0) != (x2a.IdClassFolds[i].folds?.Length ?? 0))
+                            if (x1a.IdClassFolds[i].ClassId != x2a.IdClassFolds[i].ClassId || x1a.IdClassFolds[i].ClassSize != x2a.IdClassFolds[i].ClassSize || (x1a.IdClassFolds[i].folds?.Length ?? 0) != (x2a.IdClassFolds[i].folds?.Length ?? 0) || !string.Equals(x1a.IdClassFolds[i].ClassName, x2a.IdClassFolds[i].ClassName, StringComparison.OrdinalIgnoreCase))
                             {
                                 ret.IdClassFolds = false;
                                 break;
@@ -529,7 +533,7 @@ namespace SvmFsBatch
 
                         for (var i = 0; i < x1a.IdDownSampledTrainClassFolds.Length; i++)
                         {
-                            if (x1a.IdDownSampledTrainClassFolds[i].ClassId != x2a.IdDownSampledTrainClassFolds[i].ClassId || x1a.IdDownSampledTrainClassFolds[i].class_size != x2a.IdDownSampledTrainClassFolds[i].class_size || (x1a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0))
+                            if (x1a.IdDownSampledTrainClassFolds[i].ClassId != x2a.IdDownSampledTrainClassFolds[i].ClassId || x1a.IdDownSampledTrainClassFolds[i].ClassSize != x2a.IdDownSampledTrainClassFolds[i].ClassSize || (x1a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0) != (x2a.IdDownSampledTrainClassFolds[i].folds?.Length ?? 0) || !string.Equals(x1a.IdDownSampledTrainClassFolds[i].ClassName, x2a.IdDownSampledTrainClassFolds[i].ClassName, StringComparison.OrdinalIgnoreCase))
                             {
                                 ret.IdDownSampledTrainClassFolds = false;
                                 break;
@@ -752,8 +756,8 @@ namespace SvmFsBatch
         //    column_array_indexes = index_data.column_array_indexes.ToArray();
         //
         //    ClassWeights = index_data.ClassWeights?.ToArray();
-        //    class_folds = index_data.class_folds?.Select(a => (a.ClassId, a.class_size, a.folds?.Select(b => (b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes?.ToArray())).ToArray())).ToArray();
-        //    down_sampled_train_class_folds = index_data.down_sampled_train_class_folds?.Select(a => (a.ClassId, a.class_size, a.folds?.Select(b => (b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes?.ToArray())).ToArray())).ToArray();
+        //    class_folds = index_data.class_folds?.Select(a => (a.ClassId, a.ClassSize, a.folds?.Select(b => (b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes?.ToArray())).ToArray())).ToArray();
+        //    down_sampled_train_class_folds = index_data.down_sampled_train_class_folds?.Select(a => (a.ClassId, a.ClassSize, a.folds?.Select(b => (b.RepetitionsIndex, b.OuterCvIndex, b.ClassSampleIndexes?.ToArray())).ToArray())).ToArray();
         //
         //    total_whole_indexes = index_data.total_whole_indexes;
         //    total_partition_indexes = index_data.total_partition_indexes;
