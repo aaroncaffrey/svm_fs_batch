@@ -1,22 +1,22 @@
 ﻿namespace SvmFsBatch
 {
-    internal class GroupSeriesIndex
+    public class GroupSeriesIndex
     {
-        internal const string ModuleName = nameof(GroupArrayIndex);
+        public const string ModuleName = nameof(GroupArrayIndex);
 
-        internal int[] ColumnIndexes;
-        internal int GroupArrayIndex;
-        internal string GroupFolder;
-        internal int[] GroupIndexes;
-        internal DataSetGroupKey GroupKey;
-        internal bool IsGroupBaseGroup;
-        internal bool IsGroupBlacklisted;
+        public int[] ColumnIndexes;
+        public int GroupArrayIndex;
+        public string GroupFolder;
+        public int[] GroupIndexes;
+        public DataSetGroupKey GroupKey;
+        public bool IsGroupBaseGroup;
+        public bool IsGroupBlacklisted;
 
-        internal bool IsGroupIndexValid;
-        internal bool IsGroupLastWinner;
-        internal bool IsGroupOnlySelection;
-        internal bool IsGroupSelected;
-        internal Program.Direction SelectionDirection;
+        public bool IsGroupIndexValid;
+        public bool IsGroupLastWinner;
+        public bool IsGroupOnlySelection;
+        public bool IsGroupSelected;
+        public Program.Direction SelectionDirection;
 
         public GroupSeriesIndex()
         {

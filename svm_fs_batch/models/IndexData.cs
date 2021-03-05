@@ -7,13 +7,14 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class IndexData
+    public class IndexData
     {
         public const string ModuleName = nameof(IndexData);
-        internal static readonly IndexData Empty = new IndexData();
+        public static readonly IndexData Empty = new IndexData();
 
         public static readonly string[] CsvHeaderValuesArray = DataSetGroupKey.CsvHeaderValuesArray.Select(a => /*"id_" +*/ a).ToArray().Concat(new[]
         {
+            nameof(IdJobUid),
             nameof(IdIterationIndex),
             nameof(IdGroupArrayIndex),
             nameof(IdTotalGroups),
@@ -39,33 +40,35 @@ namespace SvmFsBatch
 
         public static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
 
-        internal bool IdCalcElevenPointThresholds;
+        public bool IdCalcElevenPointThresholds;
 
-        internal (int ClassId, string ClassName, int ClassSize, int DownsampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdClassFolds;
+        public (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdClassFolds;
 
-        internal (int ClassId, double ClassWeight)[] IdClassWeights;
-        internal int[] IdColumnArrayIndexes;
+        public (int ClassId, double ClassWeight)[] IdClassWeights;
+        public int[] IdColumnArrayIndexes;
 
-        internal (int ClassId, string ClassName, int ClassSize, int DownsampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdDownSampledTrainClassFolds;
+        public (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdDownSampledTrainClassFolds;
 
-        internal string IdExperimentName;
-        internal int IdGroupArrayIndex = -1;
-        internal int[] IdGroupArrayIndexes;
-        internal string IdGroupFolder;
+        public int IdJobUid;
 
-        internal DataSetGroupKey IdGroupKey;
-        internal int IdInnerCvFolds = 5;
-        internal int IdIterationIndex = -1;
-        internal int IdNumColumns;
-        internal int IdNumGroups;
-        internal int IdOuterCvFolds = 5;
-        internal int IdOuterCvFoldsToRun = 1;
-        internal int IdRepetitions = 5;
-        internal Scaling.ScaleFunction IdScaleFunction = Scaling.ScaleFunction.Rescale;
-        internal Program.Direction IdSelectionDirection;
-        internal Routines.LibsvmKernelType IdSvmKernel = Routines.LibsvmKernelType.Rbf;
-        internal Routines.LibsvmSvmType IdSvmType = Routines.LibsvmSvmType.CSvc;
-        internal int IdTotalGroups = -1;
+        public string IdExperimentName;
+        public int IdGroupArrayIndex = -1;
+        public int[] IdGroupArrayIndexes;
+        public string IdGroupFolder;
+
+        public DataSetGroupKey IdGroupKey;
+        public int IdInnerCvFolds = 5;
+        public int IdIterationIndex = -1;
+        public int IdNumColumns;
+        public int IdNumGroups;
+        public int IdOuterCvFolds = 5;
+        public int IdOuterCvFoldsToRun = 1;
+        public int IdRepetitions = 5;
+        public Scaling.ScaleFunction IdScaleFunction = Scaling.ScaleFunction.Rescale;
+        public Program.Direction IdSelectionDirection;
+        public Routines.LibsvmKernelType IdSvmKernel = Routines.LibsvmKernelType.Rbf;
+        public Routines.LibsvmSvmType IdSvmType = Routines.LibsvmSvmType.CSvc;
+        public int IdTotalGroups = -1;
 
         public IndexData()
         {
@@ -114,7 +117,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal IndexData(string[] lineHeader, XTypes[] xType, int columnOffset = 0)
+        public IndexData(string[] lineHeader, XTypes[] xType, int columnOffset = 0)
         {
             Logging.LogCall(ModuleName);
 
@@ -123,15 +126,15 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        //internal int unrolled_whole_index = -1;
-        //internal int unrolled_partition_index = -1;
-        //internal int unrolled_InstanceId = -1;
-        //internal int total_whole_indexes = -1;
-        //internal int total_partition_indexes = -1;
-        //internal int TotalInstances = -1;
+        //public int unrolled_whole_index = -1;
+        //public int unrolled_partition_index = -1;
+        //public int unrolled_InstanceId = -1;
+        //public int total_whole_indexes = -1;
+        //public int total_partition_indexes = -1;
+        //public int TotalInstances = -1;
 
 
-        internal void ClearSupplemental()
+        public void ClearSupplemental()
         {
             Logging.LogCall(ModuleName);
 
@@ -150,6 +153,7 @@ namespace SvmFsBatch
 
             var x2 = new[]
             {
+                $@"{IdJobUid}",
                 $@"{IdIterationIndex}",
                 $@"{IdGroupArrayIndex}",
                 $@"{IdTotalGroups}",
@@ -168,8 +172,8 @@ namespace SvmFsBatch
                 $@"{string.Join(";", IdGroupArrayIndexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";", IdColumnArrayIndexes ?? Array.Empty<int>())}",
                 $@"{string.Join(";", IdClassWeights?.Select(a => $"{a.ClassId}:{a.ClassWeight:G17}").ToArray() ?? Array.Empty<string>())}",
-                $@"{string.Join(";", IdClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.ClassName}", $@"{a.ClassSize}", $@"{a.DownsampledClassSize}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
-                $@"{string.Join(";", IdDownSampledTrainClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.ClassName}", $@"{a.ClassSize}", $@"{a.DownsampledClassSize}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
+                $@"{string.Join(";", IdClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.ClassName}", $@"{a.ClassSize}", $@"{a.DownSampledClassSize}", $@"{a.ClassFeatures}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
+                $@"{string.Join(";", IdDownSampledTrainClassFolds?.Select(a => string.Join(":", $@"{a.ClassId}", $@"{a.ClassName}", $@"{a.ClassSize}", $@"{a.DownSampledClassSize}", $@"{a.ClassFeatures}", $@"{string.Join("|", a.folds?.Select(b => string.Join("~", $@"{b.RepetitionsIndex}", $@"{b.OuterCvIndex}", $@"{string.Join("/", b.ClassSampleIndexes ?? Array.Empty<int>())}")).ToArray() ?? Array.Empty<string>())}")).ToArray() ?? Array.Empty<string>())}",
                 $@"{IdGroupFolder}"
             };
 
@@ -190,7 +194,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal void SetValues(string[] lineHeader, XTypes[] xType, int columnOffset = 0)
+        public void SetValues(string[] lineHeader, XTypes[] xType, int columnOffset = 0)
         {
             Logging.LogCall(ModuleName);
 
@@ -212,6 +216,7 @@ namespace SvmFsBatch
 
             if (IdGroupKey.Value == default) IdGroupKey = null;
 
+            var hiIdJobUid = Hi(nameof(IdJobUid));
             var hiIdIterationIndex = Hi(nameof(IdIterationIndex));
             var hiIdGroupArrayIndex = Hi(nameof(IdGroupArrayIndex));
             var hiIdTotalGroups = Hi(nameof(IdTotalGroups));
@@ -234,6 +239,7 @@ namespace SvmFsBatch
             var hiIdDownSampledTrainClassFolds = Hi(nameof(IdDownSampledTrainClassFolds));
             var hiIdGroupFolder = Hi(nameof(IdGroupFolder));
 
+            if (hiIdJobUid > -1) IdJobUid = xType[hiIdJobUid].AsInt ?? -1;
             if (hiIdIterationIndex > -1) IdIterationIndex = xType[hiIdIterationIndex].AsInt ?? -1;
             if (hiIdGroupArrayIndex > -1) IdGroupArrayIndex = xType[hiIdGroupArrayIndex].AsInt ?? -1;
             if (hiIdTotalGroups > -1) IdTotalGroups = xType[hiIdTotalGroups].AsInt ?? -1;
@@ -267,7 +273,8 @@ namespace SvmFsBatch
                     var className = b[1];
                     var classSize = int.Parse(b[2], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
                     var downSampledClassSize = int.Parse(b[3], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-                    var folds = b[4].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
+                    var classFeatures = int.Parse(b[4], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+                    var folds = b[5].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
                     {
                         var e = d.Split('~', StringSplitOptions.RemoveEmptyEntries);
                         var repetitionsIndex = int.Parse(e[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -276,7 +283,7 @@ namespace SvmFsBatch
 
                         Logging.LogExit(ModuleName); return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
                     }).ToArray();
-                    Logging.LogExit(ModuleName); return (ClassId: classId, ClassName: className, ClassSize: classSize, DownsampledClassSize: downSampledClassSize, folds);
+                    Logging.LogExit(ModuleName); return (ClassId: classId, ClassName: className, ClassSize: classSize, DownSampledClassSize: downSampledClassSize, ClassFeatures: classFeatures, folds);
                 }).ToArray();
 
             //  ;:|~/
@@ -288,7 +295,8 @@ namespace SvmFsBatch
                     var className = b[1];
                     var classSize = int.Parse(b[2], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
                     var downSampledClassSize = int.Parse(b[3], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
-                    var folds = b[4].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
+                    var classFeatures = int.Parse(b[4], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
+                    var folds = b[5].Split('|', StringSplitOptions.RemoveEmptyEntries).Select(d =>
                     {
                         var e = d.Split('~', StringSplitOptions.RemoveEmptyEntries);
                         var repetitionsIndex = int.Parse(e[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
@@ -297,7 +305,7 @@ namespace SvmFsBatch
 
                         Logging.LogExit(ModuleName); return (RepetitionsIndex: repetitionsIndex, OuterCvIndex: outerCvIndex, ClassSampleIndexes: classSampleIndexes);
                     }).ToArray();
-                    Logging.LogExit(ModuleName); return (ClassId: classId, ClassName: className, ClassSize: classSize, DownsampledClassSize: downSampledClassSize, folds);
+                    Logging.LogExit(ModuleName); return (ClassId: classId, ClassName: className, ClassSize: classSize, DownSampledClassSize: downSampledClassSize, ClassFeatures: classFeatures, folds);
                 }).ToArray();
 
             if (hiIdGroupFolder > -1) IdGroupFolder = xType[hiIdGroupFolder].AsStr;
@@ -315,7 +323,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal string IdIndexStr()
+        public string IdIndexStr()
         {
             Logging.LogCall(ModuleName);
 
@@ -341,7 +349,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal string IdMlStr()
+        public string IdMlStr()
         {
             Logging.LogCall(ModuleName);
 
@@ -363,7 +371,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal string IdFoldStr()
+        public string IdFoldStr()
         {
             Logging.LogCall(ModuleName);
 
@@ -384,7 +392,34 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal static IndexData FindFirstReference(IndexData[] list, IndexData data1, IndexDataSearchOptions idso = null)
+        public static (int index, IndexData id) FindFirstReference((int index, IndexData id)[] list, IndexData data1, IndexDataSearchOptions idso = null)
+        {
+            Logging.LogCall(ModuleName);
+
+            if (data1 == null) { Logging.LogExit(ModuleName); return default; }
+
+            // find proper index_data instance for this newly loaded ConfusionMatrix instance
+            var ret = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2.id, idso));
+
+            Logging.LogExit(ModuleName);
+            return ret;
+        }
+
+
+        public static (int index, IndexData id) FindLastReference((int index, IndexData id)[] list, IndexData data1, IndexDataSearchOptions idso = null)
+        {
+            Logging.LogCall(ModuleName);
+
+            if (data1 == null) { Logging.LogExit(ModuleName); return default; }
+
+            // find proper index_data instance for this newly loaded ConfusionMatrix instance
+            var ret = list.LastOrDefault(data2 => CompareReferenceData(data1, data2.id, idso));
+
+            Logging.LogExit(ModuleName);
+            return ret;
+        }
+
+        public static IndexData FindFirstReference(IndexData[] list, IndexData data1, IndexDataSearchOptions idso = null)
         {
             Logging.LogCall(ModuleName);
 
@@ -397,7 +432,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal static IndexData FindLastReference(IndexData[] list, IndexData data1, IndexDataSearchOptions idso = null)
+        public static IndexData FindLastReference(IndexData[] list, IndexData data1, IndexDataSearchOptions idso = null)
         {
             Logging.LogCall(ModuleName);
 
@@ -410,7 +445,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal static bool CompareReferenceData(IndexData data1, IndexData data2, IndexDataSearchOptions idso = null)
+        public static bool CompareReferenceData(IndexData data1, IndexData data2, IndexDataSearchOptions idso = null)
         {
             Logging.LogCall(ModuleName);
 
@@ -427,6 +462,7 @@ namespace SvmFsBatch
                 (!idso.IdGroupFolder || comp.IdGroupFolder) &&
                 (!idso.IdGroupKey || comp.IdGroupKey) &&
                 (!idso.IdInnerCvFolds || comp.IdInnerCvFolds) &&
+                (!idso.IdJobUid || comp.IdJobUid) &&
                 (!idso.IdIterationIndex || comp.IdIterationIndex) &&
                 (!idso.IdNumColumns || comp.IdNumColumns) &&
                 (!idso.IdNumGroups || comp.IdNumGroups) &&
@@ -445,13 +481,14 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal static IndexDataSearchOptions CompareReferenceData2(IndexData x1a, IndexData x2a, IndexDataSearchOptions idso = null)
+        public static IndexDataSearchOptions CompareReferenceData2(IndexData x1a, IndexData x2a, IndexDataSearchOptions idso = null)
         {
             Logging.LogCall(ModuleName);
 
             var ret = new IndexDataSearchOptions();
 
             // primitives
+            ret.IdJobUid = x1a.IdJobUid == x2a.IdJobUid;
             ret.IdCalcElevenPointThresholds = x1a.IdCalcElevenPointThresholds == x2a.IdCalcElevenPointThresholds;
             ret.IdExperimentName = x1a.IdExperimentName == x2a.IdExperimentName || (string.IsNullOrEmpty(x1a.IdExperimentName) && string.IsNullOrEmpty(x2a.IdExperimentName));
             ret.IdGroupArrayIndex = x1a.IdGroupArrayIndex == x2a.IdGroupArrayIndex;
@@ -557,36 +594,38 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal class IndexDataSearchOptions
+        public class IndexDataSearchOptions
         {
-            internal bool IdCalcElevenPointThresholds = true;
-            internal bool IdClassWeights = true;
-            internal bool IdColumnArrayIndexes = true;
-            internal bool IdExperimentName = true;
-            internal bool IdGroupArrayIndex = true;
-            internal bool IdGroupArrayIndexes = true;
-            internal bool IdGroupFolder = true;
-            internal bool IdGroupKey = true;
-            internal bool IdInnerCvFolds = true;
-            internal bool IdIterationIndex = true;
-            internal bool IdNumColumns = true;
-            internal bool IdNumGroups = true;
-            internal bool IdOuterCvFolds = true;
-            internal bool IdOuterCvFoldsToRun = true;
-            internal bool IdRepetitions = true;
-            internal bool IdScaleFunction = true;
-            internal bool IdSelectionDirection = true;
-            internal bool IdSvmKernel = true;
-            internal bool IdSvmType = true;
-            internal bool IdTotalGroups = true;
-            internal bool IdClassFolds = true;
-            internal bool IdDownSampledTrainClassFolds = true;
+            public bool IdJobUid = true;
+            public bool IdCalcElevenPointThresholds = true;
+            public bool IdClassWeights = true;
+            public bool IdColumnArrayIndexes = true;
+            public bool IdExperimentName = true;
+            public bool IdGroupArrayIndex = true;
+            public bool IdGroupArrayIndexes = true;
+            public bool IdGroupFolder = true;
+            public bool IdGroupKey = true;
+            public bool IdInnerCvFolds = true;
+            public bool IdIterationIndex = true;
+            public bool IdNumColumns = true;
+            public bool IdNumGroups = true;
+            public bool IdOuterCvFolds = true;
+            public bool IdOuterCvFoldsToRun = true;
+            public bool IdRepetitions = true;
+            public bool IdScaleFunction = true;
+            public bool IdSelectionDirection = true;
+            public bool IdSvmKernel = true;
+            public bool IdSvmType = true;
+            public bool IdTotalGroups = true;
+            public bool IdClassFolds = true;
+            public bool IdDownSampledTrainClassFolds = true;
 
-            internal bool AnyTrue()
+            public bool AnyTrue()
             {
                 Logging.LogCall(ModuleName);
 
-                var ret = 
+                var ret =
+                    IdJobUid ||
                     IdCalcElevenPointThresholds ||
                     IdClassWeights ||
                     IdColumnArrayIndexes ||
@@ -615,11 +654,12 @@ namespace SvmFsBatch
                 return ret;
             }
 
-            internal bool AllTrue()
+            public bool AllTrue()
             {
                 Logging.LogCall(ModuleName);
 
                 var ret =
+                    IdJobUid &&
                     IdCalcElevenPointThresholds &&
                     IdClassWeights &&
                     IdColumnArrayIndexes &&
@@ -648,12 +688,13 @@ namespace SvmFsBatch
                 return ret;
             }
 
-            internal bool[] Values()
+            public bool[] Values()
             {
                 Logging.LogCall(ModuleName);
 
                 var ret = new[]
                 {
+                    IdJobUid,
                     IdCalcElevenPointThresholds,
                     IdClassWeights,
                     IdColumnArrayIndexes,
@@ -684,7 +725,7 @@ namespace SvmFsBatch
         }
 
 
-        //internal static index_data find_best_match_reference(index_data[] list, index_data data)
+        //public static index_data find_best_match_reference(index_data[] list, index_data data)
         //{
         //    if (data == null) { Logging.LogExit(ModuleName);  return null; }
         //

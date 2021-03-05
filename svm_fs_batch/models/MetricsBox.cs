@@ -5,10 +5,10 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class MetricsBox
+    public class MetricsBox
     {
         public const string ModuleName = nameof(MetricsBox);
-        internal static readonly MetricsBox Empty = new MetricsBox();
+        public static readonly MetricsBox Empty = new MetricsBox();
 
 
         public static readonly string[] CsvHeaderValuesArray =
@@ -78,71 +78,71 @@ namespace SvmFsBatch
         };
 
         public static readonly string CsvHeaderValuesString = string.Join(",", CsvHeaderValuesArray);
-        internal double CmN;
-        internal double CmNFp;
-        internal double CmNTn;
+        public double CmN;
+        public double CmNFp;
+        public double CmNTn;
 
-        internal double CmP;
-        internal double CmPFn;
+        public double CmP;
+        public double CmPFn;
 
-        internal double CmPTp;
-        internal double PAcc;
-        internal double PApAll;
-        internal double PApElevenPoint;
-        internal double PApiAll;
-        internal double PApiElevenPoint;
-        internal double PBalancedAccuracy;
-        internal double PBaseRate;
-        internal double PBrierInverseAll;
-        internal double PCner;
-        internal double PCriticalSuccessIndex;
-        internal double PDor;
-        internal double PEr;
-        internal double PF1B00;
-        internal double PF1B01;
-        internal double PF1B02;
-        internal double PF1B03;
-        internal double PF1B04;
-        internal double PF1B05;
-        internal double PF1B06;
-        internal double PF1B07;
-        internal double PF1B08;
-        internal double PF1B09;
-        internal double PF1B10;
-        internal double PF1S;
-        internal double PFdr;
-        internal double PFnr;
-        internal double PFor;
-        internal double PFpr;
-        internal double PG1S;
-        internal double PGMean;
-        internal double PInformedness;
-        internal double PKappa;
-        internal double PLrn;
-        internal double PLrp;
-        internal double PMarkedness;
-        internal double PMcc;
-        internal double PMcr;
-        internal double PNer;
-        internal double PNpv;
-        internal double POverlap;
-        internal double PPpv;
-        internal double PPrAucApproxAll;
-        internal double PPrAucApproxElevenPoint;
-        internal double PPrecision;
-        internal double PPrevalence;
-        internal double PPrevalenceThreshold;
-        internal double PPriAucApproxAll;
-        internal double PPriAucApproxElevenPoint;
-        internal double PRndAcc;
-        internal double PRocAucAll;
-        internal double PRocAucApproxAll;
-        internal double PRocAucApproxElevenPoint;
-        internal double PSupport;
-        internal double PTnr;
+        public double CmPTp;
+        public double PAcc;
+        public double PApAll;
+        public double PApElevenPoint;
+        public double PApiAll;
+        public double PApiElevenPoint;
+        public double PBalancedAccuracy;
+        public double PBaseRate;
+        public double PBrierInverseAll;
+        public double PCner;
+        public double PCriticalSuccessIndex;
+        public double PDor;
+        public double PEr;
+        public double PF1B00;
+        public double PF1B01;
+        public double PF1B02;
+        public double PF1B03;
+        public double PF1B04;
+        public double PF1B05;
+        public double PF1B06;
+        public double PF1B07;
+        public double PF1B08;
+        public double PF1B09;
+        public double PF1B10;
+        public double PF1S;
+        public double PFdr;
+        public double PFnr;
+        public double PFor;
+        public double PFpr;
+        public double PG1S;
+        public double PGMean;
+        public double PInformedness;
+        public double PKappa;
+        public double PLrn;
+        public double PLrp;
+        public double PMarkedness;
+        public double PMcc;
+        public double PMcr;
+        public double PNer;
+        public double PNpv;
+        public double POverlap;
+        public double PPpv;
+        public double PPrAucApproxAll;
+        public double PPrAucApproxElevenPoint;
+        public double PPrecision;
+        public double PPrevalence;
+        public double PPrevalenceThreshold;
+        public double PPriAucApproxAll;
+        public double PPriAucApproxElevenPoint;
+        public double PRndAcc;
+        public double PRocAucAll;
+        public double PRocAucApproxAll;
+        public double PRocAucApproxElevenPoint;
+        public double PSupport;
+        public double PTnr;
 
-        internal double PTpr;
-        internal double PYoudenIndex;
+        public double PTpr;
+        public double PYoudenIndex;
 
         public MetricsBox()
         {
@@ -221,7 +221,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal MetricsBox(MetricsBox[] metricsBoxes)
+        public MetricsBox(MetricsBox[] metricsBoxes)
         {
             Logging.LogCall(ModuleName);
 
@@ -291,7 +291,7 @@ namespace SvmFsBatch
             PF1B10 = metricsBoxes.Where(a => a != null).Select(a => a.PF1B10).DefaultIfEmpty(0).Average();
         }
 
-        internal void SetCm(double? p = null, double? n = null, double? pTp = null, double? pFn = null, double? nTn = null, double? nFp = null)
+        public void SetCm(double? p = null, double? n = null, double? pTp = null, double? pFn = null, double? nTn = null, double? nFp = null)
         {
             Logging.LogCall(ModuleName);
 
@@ -322,7 +322,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal void SetRandomPerformance()
+        public void SetRandomPerformance()
         {
             Logging.LogCall(ModuleName);
 
@@ -337,7 +337,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal void ApplyImbalanceCorrection1()
+        public void ApplyImbalanceCorrection1()
         {
             Logging.LogCall(ModuleName);
 
@@ -373,7 +373,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        //internal void ApplyImbalanceCorrection2()
+        //public void ApplyImbalanceCorrection2()
         //{
         //    var correction = (cm_P <= cm_N) ? 1 + (1 - (cm_P / cm_N)) : 1 + (1 - (cm_N / cm_P));
         //
@@ -435,7 +435,7 @@ namespace SvmFsBatch
         //    p_F1B_10 *= correction;
         //}
 
-        internal void CalculateMetrics()
+        public void CalculateMetrics()
         {
             Logging.LogCall(ModuleName);
 
@@ -600,7 +600,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        private void Divide(double divisor)
+        public void Divide(double divisor)
         {
             Logging.LogCall(ModuleName);
 
@@ -672,7 +672,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static double Fbeta2(double ppv, double tpr, double fbeta)
+        public static double Fbeta2(double ppv, double tpr, double fbeta)
         {
             Logging.LogCall(ModuleName);
 
@@ -684,7 +684,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal double[] GetValuesByNames(string[] names)
+        public double[] GetValuesByNames(string[] names)
         {
             Logging.LogCall(ModuleName);
 
@@ -693,7 +693,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal double GetValueByName(string name)
+        public double GetValueByName(string name)
         {
             Logging.LogCall(ModuleName);
 
@@ -765,7 +765,7 @@ namespace SvmFsBatch
             return    default;
         }
 
-        internal List<double> GetSpecificValues(CrossValidationMetrics crossValidationMetrics)
+        public List<double> GetSpecificValues(CrossValidationMetrics crossValidationMetrics)
         {
             Logging.LogCall(ModuleName);
 
@@ -839,7 +839,7 @@ namespace SvmFsBatch
         }
 
 
-        internal (string name, double value)[] GetPerformanceValueStrings()
+        public (string name, double value)[] GetPerformanceValueStrings()
         {
             Logging.LogCall(ModuleName);
 
@@ -994,7 +994,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        [Flags] internal enum CrossValidationMetrics : ulong
+        [Flags] public enum CrossValidationMetrics : ulong
         {
             None = 0UL, Tp = 1UL << 01, Fn = 1UL << 02,
             Tn = 1UL << 03, Fp = 1UL << 04, Tpr = 1UL << 05,

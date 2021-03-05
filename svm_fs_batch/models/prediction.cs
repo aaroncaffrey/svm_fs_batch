@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal class Prediction
+    public class Prediction
     {
         public const string ModuleName = nameof(Prediction);
-        internal static readonly Prediction Empty = new Prediction();
+        public static readonly Prediction Empty = new Prediction();
 
-        //internal string[] test_row_vector; // test_row_vector is not saved/loaded
+        //public string[] test_row_vector; // test_row_vector is not saved/loaded
 
-        internal static readonly string[] CsvHeaderValuesArray =
+        public static readonly string[] CsvHeaderValuesArray =
         {
             nameof(PredictionIndex),
             nameof(ClassSampleId),
@@ -24,14 +24,14 @@ namespace SvmFsBatch
             nameof(Comment)
         };
 
-        internal static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
-        internal int ClassSampleId; /* composite key with real_ClassId for unique id */
-        internal (string CommentHeader, string CommentValue)[] Comment;
-        internal int PredictedClassId;
+        public static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
+        public int ClassSampleId; /* composite key with real_ClassId for unique id */
+        public (string CommentHeader, string CommentValue)[] Comment;
+        public int PredictedClassId;
 
-        internal int PredictionIndex;
-        internal (int ClassId, double ProbabilityEstimate)[] ProbabilityEstimates;
-        internal int RealClassId;
+        public int PredictionIndex;
+        public (int ClassId, double ProbabilityEstimate)[] ProbabilityEstimates;
+        public int RealClassId;
 
         public Prediction()
         {
@@ -82,7 +82,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal string[] CsvValuesArray()
+        public string[] CsvValuesArray()
         {
             Logging.LogCall(ModuleName);
 
@@ -100,7 +100,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal string CsvValuesString()
+        public string CsvValuesString()
         {
             Logging.LogCall(ModuleName);
 
@@ -159,7 +159,7 @@ namespace SvmFsBatch
             }
         }*/
 
-        /*internal string str()
+        /*public string str()
          {
              // 0;-1;1;2;p1:0.6;p-1:0.4;cval=xyz|0;-1;1;2;p1:0.6;p-1:0.4;cval=abc
  
@@ -183,7 +183,7 @@ namespace SvmFsBatch
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(SaveAsync);
+            const string MethodName = nameof(SaveAsync);
             
             var predList = cmList.SelectMany(a => a.cm.Predictions).ToList();
 
@@ -261,7 +261,7 @@ namespace SvmFsBatch
                             lines[cmPredIndex + 1] = string.Join(@",", values);
                         });
                 });
-            await IoProxy.WriteAllLinesAsync(true, ct, predictionListFilename, lines, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+            await IoProxy.WriteAllLinesAsync(true, ct, predictionListFilename, lines, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
             Logging.LogExit(ModuleName);
         }

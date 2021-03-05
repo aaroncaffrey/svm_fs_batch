@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal static class PerformanceMeasure
+    public static class PerformanceMeasure
     {
         public const string ModuleName = nameof(PerformanceMeasure);
 
-        internal static readonly double[] ElevenPoints = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0};
+        public static readonly double[] ElevenPoints = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0};
 
-        internal static List<ConfusionMatrix> CountPredictionError(Prediction[] predictionList, double? threshold = null, int? thresholdClass = null, bool calculateAuc = true, bool asParallel = false, CancellationToken ct = default)
+        public static List<ConfusionMatrix> CountPredictionError(Prediction[] predictionList, double? threshold = null, int? thresholdClass = null, bool calculateAuc = true, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -88,7 +88,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static double AreaUnderCurveTrapz((double x, double y)[] coordinateList) //, bool interpolation = true)
+        public static double AreaUnderCurveTrapz((double x, double y)[] coordinateList) //, bool interpolation = true)
         {
             Logging.LogCall(ModuleName);
             //var param_list = new List<(string key, string value)>()
@@ -109,15 +109,15 @@ namespace SvmFsBatch
         }
 
 
-        internal static async Task<Prediction[]> LoadPredictionFileProbabilityValuesAsync((string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files, bool asParallel = false, CancellationToken ct = default)
+        public static async Task<Prediction[]> LoadPredictionFileProbabilityValuesAsync((string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             // method untested
-            const string methodName = nameof(LoadPredictionFileProbabilityValuesAsync);
+            const string MethodName = nameof(LoadPredictionFileProbabilityValuesAsync);
 
-            //var lines = files.AsParallel().AsOrdered().WithCancellation(ct).Select(async (a, i) =>
+            //var lines = files.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async (a, i) =>
             //        (
             //            test_file_lines: await io_proxy.ReadAllLines(true, ct, a.test_file, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false),
             //            test_comments_file_lines: await io_proxy.ReadAllLines(true, ct, a.test_comments_file, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false),
@@ -127,11 +127,11 @@ namespace SvmFsBatch
 
 
             var linesTasks = asParallel
-                ? files.AsParallel().AsOrdered().WithCancellation(ct).Select(async (a, i) => (test_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false), test_comments_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_comments_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false), prediction_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.prediction_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false), test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file)
-                    ? await IoProxy.ReadAllLinesAsync(true, ct, a.test_class_sample_id_list_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false)
+                ? files.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async (a, i) => (test_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false), test_comments_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_comments_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false), prediction_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.prediction_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false), test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file)
+                    ? await IoProxy.ReadAllLinesAsync(true, ct, a.test_class_sample_id_list_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)
                     : null)).ToArray()
-                : files.Select(async (a, i) => (test_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false), test_comments_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_comments_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false), prediction_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.prediction_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false), test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file)
-                    ? await IoProxy.ReadAllLinesAsync(true, ct, a.test_class_sample_id_list_file, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false)
+                : files.Select(async (a, i) => (test_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false), test_comments_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.test_comments_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false), prediction_file_lines: await IoProxy.ReadAllLinesAsync(true, ct, a.prediction_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false), test_class_sample_id_list_lines: !string.IsNullOrWhiteSpace(a.test_class_sample_id_list_file)
+                    ? await IoProxy.ReadAllLinesAsync(true, ct, a.test_class_sample_id_list_file, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)
                     : null)).ToArray();
 
             var lines = await Task.WhenAll(linesTasks).ConfigureAwait(false);
@@ -150,7 +150,7 @@ namespace SvmFsBatch
                     throw new ArgumentOutOfRangeException(nameof(files));
 
             lines = asParallel
-                ? lines.AsParallel().AsOrdered().WithCancellation(ct).Select((a, i) => (a.test_file_lines, a.test_comments_file_lines.Skip(1 /* skip header */).ToArray(), a.prediction_file_lines.Skip(i > 0 && predictionHasHeaders
+                ? lines.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((a, i) => (a.test_file_lines, a.test_comments_file_lines.Skip(1 /* skip header */).ToArray(), a.prediction_file_lines.Skip(i > 0 && predictionHasHeaders
                     ? 1
                     : 0).ToArray(), a.test_class_sample_id_list_lines)).ToArray()
                 : lines.Select((a, i) => (a.test_file_lines, a.test_comments_file_lines.Skip(1 /* skip header */).ToArray(), a.prediction_file_lines.Skip(i > 0 && predictionHasHeaders
@@ -168,12 +168,12 @@ namespace SvmFsBatch
         }
 
 
-        internal static async Task<Prediction[]> LoadPredictionFileProbabilityValuesAsync(string testFile, string testCommentsFile, string predictionFile, string testSampleIdListFile = null, CancellationToken ct = default)
+        public static async Task<Prediction[]> LoadPredictionFileProbabilityValuesAsync(string testFile, string testCommentsFile, string predictionFile, string testSampleIdListFile = null, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            const string methodName = nameof(LoadPredictionFileProbabilityValuesAsync);
+            const string MethodName = nameof(LoadPredictionFileProbabilityValuesAsync);
             
 
             //if (string.IsNullOrWhiteSpace(test_file) || !await io_proxy.Exists(test_file, nameof(performance_measure), nameof(load_prediction_file_regression_values)).ConfigureAwait(false) || new FileInfo(test_file).Length == 0)
@@ -196,23 +196,23 @@ namespace SvmFsBatch
             //    throw new Exception($@"Error: Prediction output file not available for access: ""{prediction_file}"".");
             //}
 
-            var testFileLines = await IoProxy.ReadAllLinesAsync(true, ct, testFile, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+            var testFileLines = await IoProxy.ReadAllLinesAsync(true, ct, testFile, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
-            var testCommentsFileLines = !string.IsNullOrWhiteSpace(testCommentsFile) && IoProxy.ExistsFile(false, testCommentsFile, ModuleName, methodName)
-                ? await IoProxy.ReadAllLinesAsync(true, ct, testCommentsFile, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false)
+            var testCommentsFileLines = !string.IsNullOrWhiteSpace(testCommentsFile) && IoProxy.ExistsFile(false, testCommentsFile, ModuleName, MethodName)
+                ? await IoProxy.ReadAllLinesAsync(true, ct, testCommentsFile, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)
                 : null;
 
-            var predictionFileLines = await IoProxy.ReadAllLinesAsync(true, ct, predictionFile, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+            var predictionFileLines = await IoProxy.ReadAllLinesAsync(true, ct, predictionFile, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
             var testSampleIdListLines = !string.IsNullOrWhiteSpace(testSampleIdListFile)
-                ? await IoProxy.ReadAllLinesAsync(true, ct, testSampleIdListFile, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false)
+                ? await IoProxy.ReadAllLinesAsync(true, ct, testSampleIdListFile, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)
                 : null;
             var testClassSampleIdList = testSampleIdListLines?.Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
 
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :LoadPredictionFileProbabilityValuesFromText(testFileLines, testCommentsFileLines, predictionFileLines, testClassSampleIdList, ct: ct);
         }
 
-        internal static Prediction[] LoadPredictionFileProbabilityValuesFromText(string[] testFileLines, string[] testCommentsFileLines, string[] predictionFileLines, int[] testClassSampleIdList, bool asParallel = false, CancellationToken ct = default)
+        public static Prediction[] LoadPredictionFileProbabilityValuesFromText(string[] testFileLines, string[] testCommentsFileLines, string[] predictionFileLines, int[] testClassSampleIdList, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -264,7 +264,7 @@ namespace SvmFsBatch
 
 
             var predictionList = asParallel
-                ? Enumerable.Range(0, totalPredictions).AsParallel().AsOrdered().WithCancellation(ct).Select(predictionIndex =>
+                ? Enumerable.Range(0, totalPredictions).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(predictionIndex =>
                 {
                     var probabilityEstimates = predictionFileData[predictionIndex].Length <= 1
                         ? Array.Empty<(int ClassId, double ProbabilityEstimate)>()
@@ -334,7 +334,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :predictionList;
         }
 
-        //internal static (List<prediction> prediction_list, List<ConfusionMatrix> CmList) load_prediction_file(List<(string test_file, string test_comments_file, string prediction_file)> files, bool calc_ElevenPoint_thresholds)
+        //public static (List<prediction> prediction_list, List<ConfusionMatrix> CmList) load_prediction_file(List<(string test_file, string test_comments_file, string prediction_file)> files, bool calc_ElevenPoint_thresholds)
         //{
 
 
@@ -345,7 +345,7 @@ namespace SvmFsBatch
 
         //}
 
-        internal static async Task<(Prediction[] prediction_list, ConfusionMatrix[] CmList)> LoadPredictionFileAsync(string testFile, string testCommentsFile, string predictionFile, bool calcElevenPointThresholds, CancellationToken ct)
+        public static async Task<(Prediction[] prediction_list, ConfusionMatrix[] CmList)> LoadPredictionFileAsync(string testFile, string testCommentsFile, string predictionFile, bool calcElevenPointThresholds, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -365,8 +365,8 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(predictionList, cmList);
         }
 
-        //internal static (List<prediction> prediction_list, List<ConfusionMatrix> CmList) load_prediction_file(string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, bool calc_ElevenPoint_thresholds, int[] test_class_sample_id_list)
-        internal static (Prediction[] prediction_list, ConfusionMatrix[] CmList) LoadPredictionFile(string[] testFileLines, string[] testCommentsFileLines, string[] predictionFileLines, bool calcElevenPointThresholds, int[] testClassSampleIdList, CancellationToken ct)
+        //public static (List<prediction> prediction_list, List<ConfusionMatrix> CmList) load_prediction_file(string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, bool calc_ElevenPoint_thresholds, int[] test_class_sample_id_list)
+        public static (Prediction[] prediction_list, ConfusionMatrix[] CmList) LoadPredictionFile(string[] testFileLines, string[] testCommentsFileLines, string[] predictionFileLines, bool calcElevenPointThresholds, int[] testClassSampleIdList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -387,7 +387,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(predictionList, cmList);
         }
 
-        internal static ConfusionMatrix[] LoadPredictionFile(Prediction[] predictionList, bool calcElevenPointThresholds, CancellationToken ct)
+        public static ConfusionMatrix[] LoadPredictionFile(Prediction[] predictionList, bool calcElevenPointThresholds, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -459,7 +459,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :confusionMatrixList.ToArray();
         }
 
-        internal static double Brier(Prediction[] predictionList, int positiveId, CancellationToken ct)
+        public static double Brier(Prediction[] predictionList, int positiveId, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -477,7 +477,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :brierScore;
         }
 
-        internal static (double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, (double x, double y)[] roc_xy, (double x, double y)[] pr_xy, (double x, double y)[] pri_xy) CalculateRocAucPrecisionRecallAuc(Prediction[] predictionList, int positiveId, ThresholdType thresholdType = ThresholdType.AllThresholds, CancellationToken ct = default)
+        public static (double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, (double x, double y)[] roc_xy, (double x, double y)[] pr_xy, (double x, double y)[] pri_xy) CalculateRocAucPrecisionRecallAuc(Prediction[] predictionList, int positiveId, ThresholdType thresholdType = ThresholdType.AllThresholds, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -533,7 +533,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(rocAucApprox, rocAucActual, prAucApprox, priAucApprox, ap, api, roc_xy: rocPlotCoords, pr_xy: prPlotCoords, pri_xy: priPlotCoords);
         }
 
-        private static ConfusionMatrix[] GetThesholdConfusionMatrices(Prediction[] predictionList, int positiveId, ThresholdType thresholdType, int negativeId, CancellationToken ct)
+        public static ConfusionMatrix[] GetThesholdConfusionMatrices(Prediction[] predictionList, int positiveId, ThresholdType thresholdType, int negativeId, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -559,7 +559,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :thresholdConfusionMatrixList;
         }
 
-        private static double CalculateRocAuc(Prediction[] predictionList, int positiveId, double p, double n, CancellationToken ct)
+        public static double CalculateRocAuc(Prediction[] predictionList, int positiveId, double p, double n, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -579,7 +579,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :rocAucActual;
         }
 
-        private static (double x, double y)[] CalculateRocPlot(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
+        public static (double x, double y)[] CalculateRocPlot(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -612,7 +612,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xy1;
         }
 
-        //private static (double x, double y)[] calc_pri_plot(ConfusionMatrix[] threshold_confusion_matrix_list)
+        //public static (double x, double y)[] calc_pri_plot(ConfusionMatrix[] threshold_confusion_matrix_list)
         //{
         //    if (threshold_confusion_matrix_list == null || threshold_confusion_matrix_list.Length == 0) { Logging.LogExit(ModuleName);  return null; }
         //
@@ -638,7 +638,7 @@ namespace SvmFsBatch
         //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xy;
         //}
 
-        private static (double x, double y)[] CalculatePrecisionRecallPlot(ConfusionMatrix[] thresholdConfusionMatrixList, bool interpolate, CancellationToken ct)
+        public static (double x, double y)[] CalculatePrecisionRecallPlot(ConfusionMatrix[] thresholdConfusionMatrixList, bool interpolate, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -686,7 +686,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xy1;
         }
 
-        private static double CalculateAveragePrecisionInterpolated(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
+        public static double CalculateAveragePrecisionInterpolated(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -712,7 +712,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :apiResult;
         }
 
-        private static double CalculateAveragePrecision(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
+        public static double CalculateAveragePrecision(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -733,7 +733,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :apResult;
         }
 
-        internal enum ThresholdType
+        public enum ThresholdType
         {
             AllThresholds, ElevenPoints
         }

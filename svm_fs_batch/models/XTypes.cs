@@ -4,15 +4,20 @@ using System.Threading;
 
 namespace SvmFsBatch
 {
-    internal class XTypes
+    public class XTypes
     {
-        internal const string ModuleName = nameof(XTypes);
+        public const string ModuleName = nameof(XTypes);
 
-        internal bool? AsBool;
-        internal double? AsDouble;
-        internal int? AsInt;
-        internal long? AsLong;
-        internal string AsStr;
+        public bool? AsBool;
+        public double? AsDouble;
+        public int? AsInt;
+        public long? AsLong;
+        public string AsStr;
+
+        public XTypes()
+        {
+
+        }
 
         public XTypes(string value)
         {
@@ -33,14 +38,14 @@ namespace SvmFsBatch
             if (AsBool == null && bool.TryParse(AsStr, out var outBool)) AsBool = outBool;
         }
 
-        internal static XTypes[] GetXTypes(string[] values, bool asParallel = false, CancellationToken ct = default)
+        public static XTypes[] GetXTypes(string[] values, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var xType = asParallel
-                ? values.AsParallel().AsOrdered().WithCancellation(ct).Select(asStr => new XTypes(asStr)).ToArray()
+                ? values.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(asStr => new XTypes(asStr)).ToArray()
                 : values.Select(asStr => new XTypes(asStr)).ToArray();
 
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xType;

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal class GridCacheData
+    public class GridCacheData
     {
         public const string ModuleName = nameof(GridCacheData);
-        //internal double rate;
+        //public double rate;
 
 
         public static readonly string[] CsvHeaderValuesArray =
@@ -33,20 +33,20 @@ namespace SvmFsBatch
         };
 
         public static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
-        internal GridPoint GridPoint;
-        internal int InnerCvFolds;
+        public GridPoint GridPoint;
+        public int InnerCvFolds;
 
-        internal int OuterCvFolds;
+        public int OuterCvFolds;
 
-        //internal int outer_cv_folds_to_run;
-        internal int OuterCvIndex;
-        internal bool ProbabilityEstimates;
-        internal int Repetitions;
-        internal int RepetitionsIndex;
-        internal bool ShrinkingHeuristics;
-        internal Routines.LibsvmKernelType SvmKernel;
+        //public int outer_cv_folds_to_run;
+        public int OuterCvIndex;
+        public bool ProbabilityEstimates;
+        public int Repetitions;
+        public int RepetitionsIndex;
+        public bool ShrinkingHeuristics;
+        public Routines.LibsvmKernelType SvmKernel;
 
-        internal Routines.LibsvmSvmType SvmType;
+        public Routines.LibsvmSvmType SvmType;
 
         public GridCacheData()
         {
@@ -124,20 +124,20 @@ namespace SvmFsBatch
             }.Select(a => a.Replace(",", ";", StringComparison.OrdinalIgnoreCase)).ToArray();
         }
 
-        internal static async Task<GridCacheData[]> ReadCacheFileAsync(string cacheTrainGridCsv, CancellationToken ct)
+        public static async Task<GridCacheData[]> ReadCacheFileAsync(string cacheTrainGridCsv, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            const string methodName = nameof(ReadCacheFileAsync);
+            const string MethodName = nameof(ReadCacheFileAsync);
 
             
 
             var cache = Array.Empty<GridCacheData>();
 
-            if (await IoProxy.IsFileAvailableAsync(true, ct, cacheTrainGridCsv, false, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false))
-                cache = (await IoProxy.ReadAllLinesAsync(true, ct, cacheTrainGridCsv, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false) ?? Array.Empty<string>()).Skip(1 /* skip header line */).Select(a =>
+            if (await IoProxy.IsFileAvailableAsync(true, ct, cacheTrainGridCsv, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false))
+                cache = (await IoProxy.ReadAllLinesAsync(true, ct, cacheTrainGridCsv, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false) ?? Array.Empty<string>()).Skip(1 /* skip header line */).Select(a =>
                 {
                     try
                     {
@@ -147,7 +147,7 @@ namespace SvmFsBatch
                     }
                     catch (Exception e)
                     {
-                        Logging.LogException(e, "", ModuleName, methodName);
+                        Logging.LogException(e, "", ModuleName, MethodName);
                         Logging.LogExit(ModuleName); return default;
                     }
                 }).ToArray();
@@ -157,13 +157,13 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cache;
         }
 
-        internal static async Task WriteCacheFileAsync(string cacheTrainGridCsv, GridCacheData[] gridCacheDataList, CancellationToken ct)
+        public static async Task WriteCacheFileAsync(string cacheTrainGridCsv, GridCacheData[] gridCacheDataList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(WriteCacheFileAsync);
+            const string MethodName = nameof(WriteCacheFileAsync);
 
             
 
@@ -172,7 +172,7 @@ namespace SvmFsBatch
 
             for (var i = 0; i < gridCacheDataList.Length; i++) lines[i + 1] = gridCacheDataList[i].CsvValuesString();
 
-            await IoProxy.WriteAllLinesAsync(true, ct, cacheTrainGridCsv, lines, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+            await IoProxy.WriteAllLinesAsync(true, ct, cacheTrainGridCsv, lines, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
             Logging.LogExit(ModuleName);
         }

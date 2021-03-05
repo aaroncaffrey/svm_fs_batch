@@ -3,11 +3,16 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class Stats
+    public class Stats
     {
-        internal const string ModuleName = nameof(Stats);
+        public const string ModuleName = nameof(Stats);
 
-        internal static readonly string[] CsvHeaderValuesArray =
+        public Stats()
+        {
+
+        }
+
+        public static readonly string[] CsvHeaderValuesArray =
         {
             nameof(AbsSum),
             nameof(Count),
@@ -46,45 +51,45 @@ namespace SvmFsBatch
             nameof(Variance)
         };
 
-        internal static readonly string CsvHeaderValuesString = string.Join(",", CsvHeaderValuesArray);
-        internal double AbsSum;
-        internal uint Count;
-        internal uint CountDistinctValues;
-        internal uint CountEven;
-        internal uint CountNonZeroValues;
-        internal uint CountOdd;
-        internal uint CountZeroValues;
-        internal double DevStandard;
-        internal double InterquartileRange;
-        internal double Kurtosis;
-        internal double MadMeanArithmetic;
-        internal double MadMeanGeometricCorrected;
-        internal double MadMeanHarmonicCorrected;
-        internal double MadMedianQ1;
-        internal double MadMedianQ2;
-        internal double MadMedianQ3;
-        internal double MadMidRange;
-        internal double MadMode;
-        internal double Max;
-        internal double MeanArithmetic;
-        internal double MeanGeometricCorrected;
-        internal double MeanHarmonicCorrected;
-        internal double MedianQ1;
-        internal double MedianQ2;
-        internal double MedianQ3;
-        internal double MidRange;
-        internal double Min;
-        internal double Modality;
-        internal double Mode;
-        internal double Range;
-        internal double RootMeanSquare;
-        internal double Skewness;
-        internal double SrSos;
-        internal double Sum;
-        internal double Variance;
+        public static readonly string CsvHeaderValuesString = string.Join(",", CsvHeaderValuesArray);
+        public double AbsSum;
+        public uint Count;
+        public uint CountDistinctValues;
+        public uint CountEven;
+        public uint CountNonZeroValues;
+        public uint CountOdd;
+        public uint CountZeroValues;
+        public double DevStandard;
+        public double InterquartileRange;
+        public double Kurtosis;
+        public double MadMeanArithmetic;
+        public double MadMeanGeometricCorrected;
+        public double MadMeanHarmonicCorrected;
+        public double MadMedianQ1;
+        public double MadMedianQ2;
+        public double MadMedianQ3;
+        public double MadMidRange;
+        public double MadMode;
+        public double Max;
+        public double MeanArithmetic;
+        public double MeanGeometricCorrected;
+        public double MeanHarmonicCorrected;
+        public double MedianQ1;
+        public double MedianQ2;
+        public double MedianQ3;
+        public double MidRange;
+        public double Min;
+        public double Modality;
+        public double Mode;
+        public double Range;
+        public double RootMeanSquare;
+        public double Skewness;
+        public double SrSos;
+        public double Sum;
+        public double Variance;
 
 
-        internal Stats(double[] data, bool presorted = false)
+        public Stats(double[] data, bool presorted = false)
         {
             Logging.LogCall(ModuleName);
 
@@ -147,7 +152,7 @@ namespace SvmFsBatch
             FixDouble();
         }
 
-        internal string[] CsvValuesArray()
+        public string[] CsvValuesArray()
         {
             Logging.LogCall(ModuleName);
             Logging.LogExit(ModuleName); return new[]
@@ -190,14 +195,14 @@ namespace SvmFsBatch
             };
         }
 
-        internal string CsvValuesString()
+        public string CsvValuesString()
         {
             Logging.LogCall(ModuleName);
 
             Logging.LogExit(ModuleName); return string.Join(",", CsvValuesArray());
         }
 
-        internal static (double zeros, double nonzeros, double corrected) GeometricMean(double[] values)
+        public static (double zeros, double nonzeros, double corrected) GeometricMean(double[] values)
         {
             Logging.LogCall(ModuleName);
 
@@ -239,7 +244,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return (resultZeros, resultNonzeros, resultCorrected);
         }
 
-        internal static (double zeros, double nonzeros, double corrected) HarmonicMean(double[] values)
+        public static (double zeros, double nonzeros, double corrected) HarmonicMean(double[] values)
         {
             Logging.LogCall(ModuleName);
 
@@ -258,7 +263,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return (resultZeros, resultNonzeros, resultCorrected);
         }
 
-        internal static double SampleVariance(double[] samples)
+        public static double SampleVariance(double[] samples)
         {
             Logging.LogCall(ModuleName);
 
@@ -276,7 +281,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return variance / (samples.Length - 1);
         }
 
-        internal static (double variance, double stdev) SampleStandardDeviation(double[] samples)
+        public static (double variance, double stdev) SampleStandardDeviation(double[] samples)
         {
             Logging.LogCall(ModuleName);
 
@@ -288,7 +293,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return (variance, stdev);
         }
 
-        internal static double Rms(double[] data)
+        public static double Rms(double[] data)
         {
             Logging.LogCall(ModuleName);
 
@@ -302,7 +307,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return Math.Sqrt(mean);
         }
 
-        internal static double SqrtSumOfSqrs(double[] list)
+        public static double SqrtSumOfSqrs(double[] list)
         {
             Logging.LogCall(ModuleName);
 
@@ -312,7 +317,7 @@ namespace SvmFsBatch
                 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
         }
 
-        internal static (double skewness, double kurtosis, double mean, double variance, double stdev) Shape(double[] data)
+        public static (double skewness, double kurtosis, double mean, double variance, double stdev) Shape(double[] data)
         {
             Logging.LogCall(ModuleName);
 
@@ -408,7 +413,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static double Mad(double[] values, double? centre)
+        public static double Mad(double[] values, double? centre)
         {
             Logging.LogCall(ModuleName);
 
@@ -421,7 +426,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return mad;
         }
 
-        internal static double Percentile(double[] sortedData, double p)
+        public static double Percentile(double[] sortedData, double p)
         {
             Logging.LogCall(ModuleName);
 

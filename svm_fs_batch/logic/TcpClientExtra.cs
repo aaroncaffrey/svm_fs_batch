@@ -11,29 +11,29 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal static class TcpClientExtra
+    public static class TcpClientExtra
     {
-        internal const string ModuleName = nameof(TcpClientExtra);
+        public const string ModuleName = nameof(TcpClientExtra);
 
-        //internal static TimeSpan TimeoutConnect = TimeSpan.FromMilliseconds(10);
-        //internal static TimeSpan TimeoutReconnect = TimeSpan.FromDays(10);
+        //public static TimeSpan TimeoutConnect = TimeSpan.FromMilliseconds(10);
+        //public static TimeSpan TimeoutReconnect = TimeSpan.FromDays(10);
 
-        ////internal static TimeSpan timeout_check_tcp_state = TimeSpan.FromMilliseconds(1);
-        //internal static TimeSpan TimeoutTcpConnectionNoReceiveSinceConnect = TimeSpan.FromMilliseconds(20);
-        //internal static TimeSpan TimeoutTcpConnectionNoReceive = TimeSpan.FromMilliseconds(60);
-        //internal static TimeSpan TimeoutTcpNeedPing = TimeSpan.FromMilliseconds(20);
+        ////public static TimeSpan timeout_check_tcp_state = TimeSpan.FromMilliseconds(1);
+        //public static TimeSpan TimeoutTcpConnectionNoReceiveSinceConnect = TimeSpan.FromMilliseconds(20);
+        //public static TimeSpan TimeoutTcpConnectionNoReceive = TimeSpan.FromMilliseconds(60);
+        //public static TimeSpan TimeoutTcpNeedPing = TimeSpan.FromMilliseconds(20);
 
-        //internal static TimeSpan DelayConnectLoop = TimeSpan.FromMilliseconds(1);
-        //internal static TimeSpan DelayReadLoop = TimeSpan.FromMilliseconds(1);
+        //public static TimeSpan DelayConnectLoop = TimeSpan.FromMilliseconds(1);
+        //public static TimeSpan DelayReadLoop = TimeSpan.FromMilliseconds(1);
 
-        //internal static TimeSpan DelayWriteLoop = TimeSpan.FromMilliseconds(1);
+        //public static TimeSpan DelayWriteLoop = TimeSpan.FromMilliseconds(1);
 
-        ////internal static TimeSpan delay_check_tcp_state = TimeSpan.FromMilliseconds(10);
-        //internal static TimeSpan DelayTcpKeepAlive = TimeSpan.FromMilliseconds(10);
-        //internal static TimeSpan DelayListenLoop = TimeSpan.FromMilliseconds(1);
+        ////public static TimeSpan delay_check_tcp_state = TimeSpan.FromMilliseconds(10);
+        //public static TimeSpan DelayTcpKeepAlive = TimeSpan.FromMilliseconds(10);
+        //public static TimeSpan DelayListenLoop = TimeSpan.FromMilliseconds(1);
 
 
-        internal static void SetTimeouts(TcpClient client, NetworkStream stream)
+        public static void SetTimeouts(TcpClient client, NetworkStream stream)
         {
             Logging.LogCall(ModuleName);
 
@@ -55,11 +55,15 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task WriteRawFixedLengthAsync(TcpClient client, NetworkStream stream, byte[] data, CancellationToken ct)
+        public static async Task<bool> WriteRawFixedLengthAsync(TcpClient client, NetworkStream stream, byte[] data, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             try
             {
@@ -67,15 +71,16 @@ namespace SvmFsBatch
                 {
                     await stream.WriteAsync(data, ct).ConfigureAwait(false);
                     await stream.FlushAsync(ct).ConfigureAwait(false);
+                    return true;
                 }
             }
             catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
             Logging.LogExit(ModuleName);
+            return default;
         }
 
-
-        internal static void WriteRawFixedLength(TcpClient client, NetworkStream stream, byte[] data)
+        public static void WriteRawFixedLength(TcpClient client, NetworkStream stream, byte[] data)
         {
             Logging.LogCall(ModuleName);
 
@@ -92,13 +97,17 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task<byte[]> ReadRawFixedLengthAsync(TcpClient client, NetworkStream stream, int length, CancellationToken ct)
+        public static async Task<byte[]> ReadRawFixedLengthAsync(TcpClient client, NetworkStream stream, int length, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             if (length <= 0) { Logging.LogExit(ModuleName);  return default; }
+
+            var now1 = DateTime.Now;
+            var timeRead = now1;
+            var timePoll = now1;
 
             var bytes = new byte[length];
             var pos = 0;
@@ -110,13 +119,28 @@ namespace SvmFsBatch
                     var bytesRead = await stream.ReadAsync(bytes, pos, bytes.Length - pos, ct).ConfigureAwait(false);
                     pos += bytesRead;
 
+                    if (bytesRead>0)
+                    {
+                        timeRead = DateTime.Now;
+                    }
+
                     if (bytesRead == 0 && pos < length && !ct.IsCancellationRequested)
                     {
                         await Task.Delay(TimeSpan.FromMilliseconds(1), ct).ConfigureAwait(false);
 
-                        var pollOk = TcpClientExtra.PollTcpClientConnection(client);
+                        var now = DateTime.UtcNow;
 
-                        if (!pollOk) break;
+                        var elapsedRead = now - timeRead;
+                        var elapsedPoll = now - timePoll;
+                        var zeroTimeout = TimeSpan.FromSeconds(60*60);
+
+                        if (elapsedPoll >= zeroTimeout && elapsedRead >= zeroTimeout)
+                        {
+                            var pollOk = TcpClientExtra.PollTcpClientConnection(client);
+                            timePoll = now;
+
+                            if (!pollOk) break;
+                        }
                     }
                 }
                 //catch (OperationCanceledException)
@@ -131,13 +155,21 @@ namespace SvmFsBatch
                 }
             //}
 
-            if (pos == 0) { Logging.LogExit(ModuleName);  return default; }
-            if (pos != length) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : bytes[..pos]; }
+            if (pos == 0) { 
+                Logging.LogExit(ModuleName);  
+                return default; 
+            }
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : bytes;
+            if (pos != length) {
+                Logging.LogExit(ModuleName); 
+                return ct.IsCancellationRequested ? default : bytes[..pos]; 
+            }
+
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default : bytes;
         }
 
-        //internal static byte[] ReadRawFixedLength(TcpClient client, NetworkStream stream, int length, CancellationToken ct)
+        //public static byte[] ReadRawFixedLength(TcpClient client, NetworkStream stream, int length, CancellationToken ct)
         //{
         //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
         //
@@ -173,11 +205,11 @@ namespace SvmFsBatch
         //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : bytes;
         //}
 
-        internal static async Task<(bool challenge_correct, Guid remote_guid)> ChallengeRequestAsync(bool isServer, TcpClient client, NetworkStream stream, byte[] localClientGuidBytes = null, byte[] remoteClientGuidBytesExpected = null, CancellationToken ct = default)
+        public static async Task<(bool challenge_correct, Guid remote_guid)> ChallengeRequestAsync(bool isServer, TcpClient client, NetworkStream stream, byte[] localClientGuidBytes = null, byte[] remoteClientGuidBytesExpected = null, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (localClientGuidBytes == null || localClientGuidBytes.Length == 0) throw new ArgumentOutOfRangeException(nameof(localClientGuidBytes));
-            if (!isServer && (remoteClientGuidBytesExpected == null || remoteClientGuidBytesExpected.Length == 0 || remoteClientGuidBytesExpected.All(a => a == 0))) throw new ArgumentOutOfRangeException(nameof(remoteClientGuidBytesExpected));
+            //if (!isServer && (remoteClientGuidBytesExpected == null || remoteClientGuidBytesExpected.Length == 0 || remoteClientGuidBytesExpected.All(a => a == 0))) throw new ArgumentOutOfRangeException(nameof(remoteClientGuidBytesExpected));
 
             TcpClientExtra.KeepAlive(client.Client);
             TcpClientExtra.SetTimeouts(client, stream);
@@ -200,8 +232,8 @@ namespace SvmFsBatch
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, localCt);//, externalCancellationToken);
             var linkedCt = linkedCts.Token;
 
-            var protocolName = "232e91fb-2804-4ef4-83a6-5ff45a6b0f95";
-            var secretKey = string.Join("_", protocolName, Program.ProgramArgs.ServerGuid);
+
+            var secretKey = string.Join("_", "a70d2bcb-bcd1-40fc-acbf-9d02a78d7b63", Program.ProgramArgs.ProtocolKey);// Program.ProgramArgs.ServerGuid
             var secret = Encoding.UTF8.GetBytes(Convert.ToBase64String(Encoding.UTF8.GetBytes(secretKey)));
             const int guidBytesLen = 128 / 8; //Guid.Empty.ToByteArray().Length;
             const int shaBytesLen = 256 / 8; //Sha.ComputeHash(new byte[1]).Length;
@@ -223,9 +255,10 @@ namespace SvmFsBatch
                     {
                         // 1. send local challenge code
                         var challengeSent = Guid.NewGuid().ToByteArray();
-                        await WriteRawFixedLengthAsync(client, stream, challengeSent, linkedCt).ConfigureAwait(false);
+                        var writeChallengeOk=await WriteRawFixedLengthAsync(client, stream, challengeSent, linkedCt).ConfigureAwait(false);
+                        if (!writeChallengeOk) { return default; }
                         //if (logOkEvent) Logging.LogEvent(, $"local challenge has been sent {string.Join("-", challengeSent.Select(a => $"{a:000}"))}");
-                        
+
                         // 2. read remote challenge code
                         var challengeReceived = await ReadRawFixedLengthAsync(client, stream, guidBytesLen, linkedCt).ConfigureAwait(false);
                         if (challengeReceived == null || challengeReceived.Length != guidBytesLen) {  return default; }
@@ -241,7 +274,8 @@ namespace SvmFsBatch
                         //if (logOkEvent) Logging.LogEvent(, "solved challenges");
 
                         // 4. reply to remote challenge
-                        await WriteRawFixedLengthAsync(client, stream, challengeAnswerSent, linkedCt).ConfigureAwait(false);
+                        var writeChallengeAnswerOk = await WriteRawFixedLengthAsync(client, stream, challengeAnswerSent, linkedCt).ConfigureAwait(false);
+                        if (!writeChallengeAnswerOk) { return default; }
                         //if (logOkEvent) Logging.LogEvent(, $"replied solution to challenge {string.Join("-", challengeAnswerSent.Select(a => $"{a:000}").ToArray())}");
 
                         // 5. read challenge response
@@ -255,8 +289,11 @@ namespace SvmFsBatch
                         //if (logOkEvent) Logging.LogEvent(, "local challenge response was correct");
 
                         // 6. send local guid to identify this connection
-                        if (localClientGuidBytes != null) await WriteRawFixedLengthAsync(client, stream, localClientGuidBytes, linkedCt).ConfigureAwait(false);
-
+                        if (localClientGuidBytes != null)
+                        {
+                            var writeLocalClientGuidOk = await WriteRawFixedLengthAsync(client, stream, localClientGuidBytes, linkedCt).ConfigureAwait(false);
+                            if (!writeLocalClientGuidOk) { return default; }
+                        }
                         // 7. read and compare remote connection guid
                         remoteClientGuidReceivedBytes = await ReadRawFixedLengthAsync(client, stream, guidBytesLen, linkedCt).ConfigureAwait(false);
                         if (remoteClientGuidReceivedBytes == null || remoteClientGuidReceivedBytes.Length != guidBytesLen || remoteClientGuidReceivedBytes.All(a=>a==0)) {  return default; }
@@ -298,7 +335,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        //////internal static (bool challenge_correct, Guid remote_guid) ChallengeRequest(TcpClient client, NetworkStream stream, byte[] localClientGuid = null, byte[] remoteClientGuidExpected = null, CancellationToken ct = default)
+        //////public static (bool challenge_correct, Guid remote_guid) ChallengeRequest(TcpClient client, NetworkStream stream, byte[] localClientGuid = null, byte[] remoteClientGuidExpected = null, CancellationToken ct = default)
         //////{
         //////    //#if DEBUG
         //////    //            Logging.LogCall( ModuleName);
@@ -442,9 +479,9 @@ namespace SvmFsBatch
         //////    //Logging.LogExit(ModuleName); return default;
         //////}
 
-        //private static readonly byte[] _bytesFrameCode = new byte[] {0, 0, 0, 0,     1, 1, 1, 1,      2, 2, 2, 2,     3, 3, 3, 3,     4, 4, 4, 4,  5, 5 ,5 ,5 };
+        //public static readonly byte[] _bytesFrameCode = new byte[] {0, 0, 0, 0,     1, 1, 1, 1,      2, 2, 2, 2,     3, 3, 3, 3,     4, 4, 4, 4,  5, 5 ,5 ,5 };
         
-        //    internal static async Task<bool> WriteFrameAsync(ulong frameId, ulong frameType, string text, TcpClient client, NetworkStream stream, CancellationToken ct)
+        //    public static async Task<bool> WriteFrameAsync(ulong frameId, ulong frameType, string text, TcpClient client, NetworkStream stream, CancellationToken ct)
         //{
         //    Logging.LogCall(ModuleName);
 
@@ -478,7 +515,7 @@ namespace SvmFsBatch
         //}
 
 
-        //internal static bool WriteFrame(ulong frameId, ulong frameType, string text, TcpClient client, NetworkStream stream, CancellationToken ct)
+        //public static bool WriteFrame(ulong frameId, ulong frameType, string text, TcpClient client, NetworkStream stream, CancellationToken ct)
         //{
         //    Logging.LogCall(ModuleName);
 
@@ -512,7 +549,7 @@ namespace SvmFsBatch
 
         
 
-        //internal static (bool readOk, ulong frameId, ulong frameType, int frameLength, byte[] bytesTextIn, string textIn, string[] textInLines) ReadFrame(TcpClient client, NetworkStream stream, CancellationToken ct)
+        //public static (bool readOk, ulong frameId, ulong frameType, int frameLength, byte[] bytesTextIn, string textIn, string[] textInLines) ReadFrame(TcpClient client, NetworkStream stream, CancellationToken ct)
         //{
         //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
@@ -544,7 +581,7 @@ namespace SvmFsBatch
         //    Logging.LogExit(ModuleName); return default;
         //}
 
-        //internal static async Task CloseAsync(ulong frameId, TcpClient client, NetworkStream stream, CancellationToken ct)
+        //public static async Task CloseAsync(ulong frameId, TcpClient client, NetworkStream stream, CancellationToken ct)
         //{
         //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
@@ -559,7 +596,7 @@ namespace SvmFsBatch
         //    catch (Exception e) { Logging.LogException(e, "", ModuleName); }
         //}
 
-        //internal static void Close(ulong frameId, TcpClient client, NetworkStream stream, CancellationToken ct)
+        //public static void Close(ulong frameId, TcpClient client, NetworkStream stream, CancellationToken ct)
         //{
         //    if (stream != null)
         //        try { WriteFrame(frameId, (ulong) PayloadFrameTypes.FrameTypeClose, "close", client, stream, ct); }
@@ -572,21 +609,21 @@ namespace SvmFsBatch
         //    catch (Exception e) { Logging.LogException(e, "", ModuleName); }
         //}
 
-        internal static (IPAddress localAddress, int localPort, IPAddress remoteAddress, int remotePort) ReadTcpClientRemoteAddress(TcpClient client)
+        public static (IPAddress localAddress, int localPort, IPAddress remoteAddress, int remotePort) ReadTcpClientRemoteAddress(TcpClient client)
         {
             Logging.LogCall(ModuleName);
 
             Logging.LogExit(ModuleName); return ReadTcpClientRemoteAddress(client.Client);
         }
 
-        internal static (IPAddress localAddress, int localPort, IPAddress remoteAddress, int remotePort) ReadTcpClientRemoteAddress(TcpListener server)
+        public static (IPAddress localAddress, int localPort, IPAddress remoteAddress, int remotePort) ReadTcpClientRemoteAddress(TcpListener server)
         {
             Logging.LogCall(ModuleName);
 
             Logging.LogExit(ModuleName); return ReadTcpClientRemoteAddress(server.Server);
         }
 
-        internal static (IPAddress localAddress, int localPort, IPAddress remoteAddress, int remotePort) ReadTcpClientRemoteAddress(Socket client)
+        public static (IPAddress localAddress, int localPort, IPAddress remoteAddress, int remotePort) ReadTcpClientRemoteAddress(Socket client)
         {
             Logging.LogCall(ModuleName);
 
@@ -606,7 +643,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static bool PollTcpClientConnection(TcpClient client)
+        public static bool PollTcpClientConnection(TcpClient client)
         {
             Logging.LogCall(ModuleName);
 
@@ -629,7 +666,7 @@ namespace SvmFsBatch
             return socketConnected;
         }
 
-        internal static TcpState ReadTcpState(TcpClient tcpClient)
+        public static TcpState ReadTcpState(TcpClient tcpClient)
         {
             Logging.LogCall(ModuleName);
 
@@ -673,7 +710,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static void KeepAlive(Socket socket)
+        public static void KeepAlive(Socket socket)
         {
             Logging.LogCall(ModuleName);
 
@@ -685,7 +722,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static bool PollSocketConnection(Socket clientSocket)
+        public static bool PollSocketConnection(Socket clientSocket)
         {
             Logging.LogCall(ModuleName);
 
@@ -735,7 +772,15 @@ namespace SvmFsBatch
             }
         }
 
-        internal enum PayloadFrameTypes : ulong
+        public enum RpcFrameTypes : ulong
+        {
+            RpcMethodCall,
+            RpcMethodCallAccept,
+            RpcMethodParameters,
+            RpcMethodReturn
+        }
+
+        public enum PayloadFrameTypes : ulong
         {
             FrameTypePing, FrameTypePingAcknowledge, FrameTypeRpcRequest1,
             FrameTypeRpcAcknowledge1, FrameTypeBreak, FrameTypeBreakAcknowledge,

@@ -9,30 +9,35 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch.logic
 {
-    internal class Mpstat
+    public class Mpstat
     {
-        internal const string ModuleName = nameof(Mpstat);
+        public const string ModuleName = nameof(Mpstat);
 
-        internal string[] Data;
-        internal double[] DataDouble;
-        internal Queue<double[]> DataDoubleHistory = new Queue<double[]>();
-        internal string[] Header;
-        internal int Interval = 5; // the number of seconds between queries in mpstat (must be an int of 1 or more)
-        internal int IntervalHistory = 60; // the number of seconds to keep data records for (i.e. 65 / 5 = 12 records)
-        internal Process Process;
-        internal bool State;
-        internal string[] SysInfo;
-        internal Task Task;
-        internal DateTime TimeUpdate;
-        internal CancellationToken ct = default;
+        public string[] Data;
+        public double[] DataDouble;
+        public Queue<double[]> DataDoubleHistory = new Queue<double[]>();
+        public string[] Header;
+        public int Interval = 5; // the number of seconds between queries in mpstat (must be an int of 1 or more)
+        public int IntervalHistory = 60; // the number of seconds to keep data records for (i.e. 65 / 5 = 12 records)
+        public Process Process;
+        public bool State;
+        public string[] SysInfo;
+        public Task Task;
+        public DateTime TimeUpdate;
+        public CancellationToken ct = default;
 
-        internal bool IsRunning()
+        public Mpstat()
+        {
+
+        }
+
+        public bool IsRunning()
         {
             Logging.LogCall(ModuleName);
             Logging.LogExit(ModuleName); return Process != null && !Process.HasExited;
         }
 
-        internal bool IsResponsive()
+        public bool IsResponsive()
         {
             Logging.LogCall(ModuleName);
             if (!IsRunning()) {Logging.LogExit(ModuleName); return false; }
@@ -43,7 +48,7 @@ namespace SvmFsBatch.logic
             return secondsSinceUpdate <= IntervalHistory;
         }
 
-        internal double GetIdle()
+        public double GetIdle()
         {
             Logging.LogCall(ModuleName);
             if (Task == null || Task.IsCompleted) Start(this.ct).Wait(this.ct);
@@ -63,7 +68,7 @@ namespace SvmFsBatch.logic
         }
 
 
-        internal double GetAverageIdle()
+        public double GetAverageIdle()
         {
             Logging.LogCall(ModuleName);
             if (Task == null || Task.IsCompleted) Start(this.ct).Wait(this.ct);
@@ -82,7 +87,7 @@ namespace SvmFsBatch.logic
             return default;
         }
 
-        private async Task RunAsync()
+        public async Task RunAsync()
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
@@ -108,18 +113,18 @@ namespace SvmFsBatch.logic
                     Logging.LogException(e);
                     //throw;
                 }
-            }, ct);
+            }, ct).ConfigureAwait(false);
 
             Logging.LogExit(ModuleName);
         }
 
-        internal async Task Start(CancellationToken ct)
+        public async Task Start(CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             this.ct = ct;
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
             
-            await RunAsync();
+            await RunAsync().ConfigureAwait(false);
 
             if (Process != null)
             {
@@ -177,7 +182,7 @@ namespace SvmFsBatch.logic
                         if (State && Process.HasExited && !this.ct.IsCancellationRequested)
                         {
                             // rerun if killed externally
-                            await RunAsync();
+                            await RunAsync().ConfigureAwait(false);
                         }
                     }
                 },ct);
@@ -186,7 +191,7 @@ namespace SvmFsBatch.logic
             Logging.LogExit(ModuleName);
         }
 
-        internal async Task StopAsync()
+        public async Task StopAsync()
         {
             Logging.LogCall(ModuleName);
             State = false;

@@ -6,15 +6,15 @@ using System.Threading;
 
 namespace SvmFsBatch
 {
-    internal static class Routines
+    public static class Routines
     {
         public const string ModuleName = nameof(Routines);
 
-        //[ThreadStatic] private static Random _local;
+        //[ThreadStatic] public static Random _local;
 
-        //internal static Random this_threads_random => _local ?? (_local = new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId)));
+        //public static Random this_threads_random => _local ?? (_local = new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId)));
 
-        //internal static int GetInstanceId(int whole_array_index_first, int whole_array_index_last, int whole_array_step_size, int partition_array_index_first, int partition_array_index_last)
+        //public static int GetInstanceId(int whole_array_index_first, int whole_array_index_last, int whole_array_step_size, int partition_array_index_first, int partition_array_index_last)
         //{
         //    var InstanceId = -1;
         //
@@ -33,7 +33,7 @@ namespace SvmFsBatch
                 : 0;
         }
 
-        internal static bool IsInRange(int rangeFirst, int rangeLast, int value)
+        public static bool IsInRange(int rangeFirst, int rangeLast, int value)
         {
             Logging.LogCall(ModuleName);
 
@@ -114,7 +114,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ret;
         }
 
-        //internal static void shuffle<T>(List<T> list, Random random)
+        //public static void shuffle<T>(List<T> list, Random random)
         //{
         //    for (var n = list.Count - 1; n >= 0; n--)
         //    {
@@ -126,14 +126,14 @@ namespace SvmFsBatch
         //    }
         //}
 
-        //internal static (string asStr, int? asInt, double? asDouble, bool? asBool)[] x_types(CancellationToken ct,
+        //public static (string asStr, int? asInt, double? asDouble, bool? asBool)[] x_types(CancellationToken ct,
         //    string[] values, bool asParallel = false)
         //{
         //    var xType = asParallel
         //        ? values
         //            .AsParallel()
         //            .AsOrdered()
-        //            .WithCancellation(ct)
+        //            /*.WithCancellation(ct)*/
         //            .Select(asStr =>
         //            {
         //                var asDouble =
@@ -175,7 +175,7 @@ namespace SvmFsBatch
         //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xType;
         //}
 
-        internal static void Shuffle(this int[] values, Random random)
+        public static void Shuffle(this int[] values, Random random)
         {
             Logging.LogCall(ModuleName);
 
@@ -193,20 +193,20 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static ( 
-            (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] class_folds, 
-            (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] down_sampled_training_class_folds ) 
-            Folds((int ClassId, string ClassName, int ClassSize, int DownSampledClassSize)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        public static ( 
+            (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] class_folds, 
+            (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] down_sampled_training_class_folds ) 
+            Folds((int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures)[] classSizes, int repetitions, int outerCvFolds, bool asParallel = false, CancellationToken ct = default) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var classFolds = asParallel
-                ? classSizes.AsParallel().AsOrdered().WithCancellation(ct).Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, folds: Folds(a.ClassSize, repetitions, outerCvFolds,ct))).ToArray()
-                : classSizes.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, folds: Folds(a.ClassSize, repetitions, outerCvFolds,ct))).ToArray();
+                ? classSizes.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, a.ClassFeatures, folds: Folds(a.ClassSize, repetitions, outerCvFolds,ct))).ToArray()
+                : classSizes.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, a.ClassFeatures, folds: Folds(a.ClassSize, repetitions, outerCvFolds,ct))).ToArray();
 
-            var downSampledTrainingClassFolds = classFolds.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, folds: a.folds?.Select(b =>
+            var downSampledTrainingClassFolds = classFolds.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize, a.ClassFeatures, folds: a.folds?.Select(b =>
             {
                 var minNumItemsInFold = classFolds.Min(c => c.folds?.Where(e => e.RepetitionsIndex == b.RepetitionsIndex && e.OuterCvIndex == b.OuterCvIndex).Min(e => e.Indexes?.Length ?? 0) ?? 0);
                 return ct.IsCancellationRequested ? default :(b.RepetitionsIndex, b.OuterCvIndex, Indexes: b.Indexes?.Take(minNumItemsInFold).ToArray());
@@ -216,7 +216,7 @@ namespace SvmFsBatch
             return ct.IsCancellationRequested ? default :(classFolds, downSampledTrainingClassFolds);
         }
 
-        internal static (int RepetitionsIndex, int OuterCvIndex, int[] Indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
+        public static (int RepetitionsIndex, int OuterCvIndex, int[] Indexes)[] Folds(int numClassSamples, int repetitions, int outerCvFolds, CancellationToken ct) //, int outer_cv_folds_to_run = 0, int fold_size_limit = 0)
         {
             Logging.LogCall(ModuleName);
 
@@ -267,7 +267,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static (double num_complete_pct, TimeSpan time_taken, TimeSpan time_remaining) GetETA(int numComplete, int numTotal, DateTime startTime)
+        public static (double num_complete_pct, TimeSpan time_taken, TimeSpan time_remaining) GetETA(int numComplete, int numTotal, DateTime startTime)
         {
             Logging.LogCall(ModuleName);
 
@@ -290,7 +290,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return (numCompletePct, timeTaken, timeRemaining);
         }
 
-        internal static void PrintETA(int numComplete, int numTotal, DateTime startTime, string callerModuleName = @"", [CallerMemberName] string callerMethodName = @"")
+        public static void PrintETA(int numComplete, int numTotal, DateTime startTime, string callerModuleName = @"", [CallerMemberName] string callerMethodName = @"")
         {
             Logging.LogCall(ModuleName);
 
@@ -301,7 +301,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static double StandardDeviationPopulation(double[] values)
+        public static double StandardDeviationPopulation(double[] values)
         {
             Logging.LogCall(ModuleName);
 
@@ -312,7 +312,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / values.Length);
         }
 
-        internal static double StandardDeviationSample(double[] values)
+        public static double StandardDeviationSample(double[] values)
         {
             Logging.LogCall(ModuleName);
 
@@ -323,14 +323,14 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
-        internal enum LibsvmKernelType
+        public enum LibsvmKernelType
         {
             //@default = Rbf,
             Linear = 0, Polynomial = 1, Rbf = 2,
             Sigmoid = 3, Precomputed = 4
         }
 
-        internal enum LibsvmSvmType
+        public enum LibsvmSvmType
         {
             //@default = CSvc,
             CSvc = 0, NuSvc = 1, OneClassSvm = 2,
@@ -370,10 +370,10 @@ namespace SvmFsBatch
         //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(variance, stdev);
         //}
 
-        //internal static double sqrt_sumofsqrs(double[] list) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
+        //public static double sqrt_sumofsqrs(double[] list) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :list == null || list.Count == 0 ? 0 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a))); }
 
 
-        //internal static int for_loop_InstanceId(List<(int current, int max)> points)
+        //public static int for_loop_InstanceId(List<(int current, int max)> points)
         //{
         //    //var jid = (i * max_j * max_k) + (j * max_k) + k;
         //    //var job_id = (i * max_j * max_k * max_l) + (j * max_k * max_l) + (k * max_l) + l;
@@ -392,12 +392,12 @@ namespace SvmFsBatch
         //}
 
 
-        //internal static void wait_any<T>(IList<Task<T>> tasks, int max_tasks = -1)
+        //public static void wait_any<T>(IList<Task<T>> tasks, int max_tasks = -1)
         //{
         //    wait_any(tasks.ToArray<Task>(), max_tasks);
         //}
 
-        //internal static void wait_any(IList<Task> tasks, int max_tasks = -1)
+        //public static void wait_any(IList<Task> tasks, int max_tasks = -1)
         //{
         //    if (max_tasks == -1)
         //    {

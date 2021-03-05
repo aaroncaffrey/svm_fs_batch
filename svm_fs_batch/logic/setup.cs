@@ -9,17 +9,22 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal class Setup
+    public class Setup
     {
         public const string ModuleName = nameof(Setup);
 
-        internal static async Task SetupPbsJobAsync(ProgramArgs programArgs, CancellationToken ct)
+        public Setup()
+        {
+
+        }
+
+        public static async Task SetupPbsJobAsync(ProgramArgs programArgs, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(Setup);
+            const string MethodName = nameof(Setup);
 
             
             programArgs.Setup = false;
@@ -39,33 +44,33 @@ namespace SvmFsBatch
             var setupArrayEnd = setupTotalInstances - 1;
             var setupArrayStep = 1;
 
-            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(programArgs.SetupTotalVcpus)} = {programArgs.SetupTotalVcpus}", ModuleName, methodName);
-            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(programArgs.SetupInstanceVcpus)} = {programArgs.SetupInstanceVcpus}", ModuleName, methodName);
-            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupTotalInstances)} = {setupTotalInstances}", ModuleName, methodName);
+            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(programArgs.SetupTotalVcpus)} = {programArgs.SetupTotalVcpus}", ModuleName, MethodName);
+            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(programArgs.SetupInstanceVcpus)} = {programArgs.SetupInstanceVcpus}", ModuleName, MethodName);
+            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupTotalInstances)} = {setupTotalInstances}", ModuleName, MethodName);
             Logging.WriteLine();
 
-            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupArrayStart)} = {setupArrayStart}", ModuleName, methodName);
-            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupArrayEnd)} = {setupArrayEnd}", ModuleName, methodName);
-            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupArrayStep)} = {setupArrayStep}", ModuleName, methodName);
+            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupArrayStart)} = {setupArrayStart}", ModuleName, MethodName);
+            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupArrayEnd)} = {setupArrayEnd}", ModuleName, MethodName);
+            Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupArrayStep)} = {setupArrayStep}", ModuleName, MethodName);
             Logging.WriteLine();
 
 
             var pbsScript = await MakePbsScriptAsync(programArgs, programArgs.SetupInstanceVcpus, true, setupArrayStart, setupArrayEnd, setupArrayStep, ct: ct).ConfigureAwait(false);
 
-            for (var index = 0; index < pbsScript.pbs_script_lines.Count; index++) Logging.WriteLine($"{index,3}: {pbsScript.pbs_script_lines[index]}", ModuleName, methodName);
+            for (var index = 0; index < pbsScript.pbs_script_lines.Count; index++) Logging.WriteLine($"{index,3}: {pbsScript.pbs_script_lines[index]}", ModuleName, MethodName);
 
             Logging.WriteLine();
 
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task<(List<string> pbs_script_lines, string run_line)> MakePbsScriptAsync(ProgramArgs programArgs, int pbsPpn = 1, bool isJobArray = false, int arrayIndexFirst = 0, int arrayIndexLast = 0, int arrayStepSize = 1, bool rerunnable = true, CancellationToken ct = default)
+        public static async Task<(List<string> pbs_script_lines, string run_line)> MakePbsScriptAsync(ProgramArgs programArgs, int pbsPpn = 1, bool isJobArray = false, int arrayIndexFirst = 0, int arrayIndexLast = 0, int arrayStepSize = 1, bool rerunnable = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            const string methodName = nameof(MakePbsScriptAsync);
+            const string MethodName = nameof(MakePbsScriptAsync);
 
             if (isJobArray && arrayStepSize == 0) throw new ArgumentOutOfRangeException(nameof(arrayStepSize));
             //-ExperimentName test2 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 5 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 5
@@ -158,7 +163,7 @@ namespace SvmFsBatch
                 pbsProgramArgs.Add((nameof(programArgs.WholeArrayStepSize), $@"{arrayStepSize}"));
 
                 var arrayRange = Routines.Range(arrayIndexFirst, arrayIndexLast, arrayStepSize);
-                Logging.WriteLine($@"{nameof(arrayRange)}: {string.Join(@", ", arrayRange)}", ModuleName, methodName);
+                Logging.WriteLine($@"{nameof(arrayRange)}: {string.Join(@", ", arrayRange)}", ModuleName, MethodName);
             }
 
             foreach (var programArg in programArgs.Args)

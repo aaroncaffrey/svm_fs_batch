@@ -9,16 +9,16 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal static class Libsvm
+    public static class Libsvm
     {
         public const string ModuleName = nameof(Libsvm);
 
-        internal static async Task<(string CmdLine, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
+        public static async Task<(string CmdLine, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double ClassWeight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            const string methodName = nameof(TrainAsync);
+            const string MethodName = nameof(TrainAsync);
 
             (string key, string value)[] GetParams()
             {
@@ -32,7 +32,7 @@ namespace SvmFsBatch
                         (nameof(gamma), gamma?.ToString() ?? ""), (nameof(epsilon), epsilon?.ToString() ?? ""),
                         (nameof(coef0), coef0?.ToString() ?? ""), (nameof(degree), degree?.ToString() ?? ""),
                         (nameof(classWeights), classWeights != null
-                            ? string.Join(";", classWeights.Select(a => $@"{a.ClassId}={a.weight}").ToList())
+                            ? string.Join(";", classWeights.Select(a => $@"{a.ClassId}={a.ClassWeight}").ToList())
                             : ""),
                         (nameof(svmType), svmType.ToString()), (nameof(svmKernel), svmKernel.ToString()),
                         (nameof(innerCvFolds), innerCvFolds?.ToString() ?? ""),
@@ -78,7 +78,7 @@ namespace SvmFsBatch
                 for (var classWeightIndex = 0; classWeightIndex < classWeights.Length; classWeightIndex++)
                 {
                     var classWeight = classWeights[classWeightIndex];
-                    libsvmParams.Add($@"-w{classWeight.ClassId} {classWeight.weight}");
+                    libsvmParams.Add($@"-w{classWeight.ClassId} {classWeight.ClassWeight}");
                 }
             }
 
@@ -114,12 +114,12 @@ namespace SvmFsBatch
                     using var process = Process.Start(start);
                     if (process == null)
                     {
-                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
                     }
 
-                    if (log) Logging.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    if (log) Logging.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, MethodName);
                     //var exited = process.WaitForExit((int) Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
 
                     using var delayCts = new CancellationTokenSource();
@@ -128,11 +128,11 @@ namespace SvmFsBatch
                     var exited = process.HasExited;
                     if (!exited)
                     {
-                        Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
                         try { process.Kill();
                             await process.WaitForExitAsync(ct).ConfigureAwait(false);
                         }
-                        catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, methodName); }
+                        catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, MethodName); }
 
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
@@ -140,21 +140,21 @@ namespace SvmFsBatch
 
                     var stdoutResult = process?.StandardOutput?.ReadToEnd() ?? "";
                     var stderrResult = process?.StandardError?.ReadToEnd() ?? "";
-                    if (log) Logging.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    if (log) Logging.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, MethodName);
                     var exitCode = process.ExitCode;
-                    if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
-                    if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
                     if (exitCode == 0) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult); }
 
-                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
-                    if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, methodName);
-                    if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName, methodName);
+                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+                    if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, MethodName);
+                    if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName, MethodName);
                     await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                 }
                 catch (Exception e1)
                 {
-                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{GetParamsStr()}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{GetParamsStr()}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
                     if (tries >= maxTries)
                     {
                         if (rethrow) throw;
@@ -167,12 +167,12 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(cmdLine, null, null);
         }
 
-        internal static async Task<(string CmdLine, string stdout, string stderr)> PredictAsync(string libsvmPredictExeFile, string testFile, string modelFile, string predictionsOutFile, bool probabilityEstimates, string stdoutFile = null, string stderrFile = null, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
+        public static async Task<(string CmdLine, string stdout, string stderr)> PredictAsync(string libsvmPredictExeFile, string testFile, string modelFile, string predictionsOutFile, bool probabilityEstimates, string stdoutFile = null, string stderrFile = null, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            const string methodName = nameof(PredictAsync);
+            const string MethodName = nameof(PredictAsync);
 
             (string key, string value)[] GetParams()
             {
@@ -233,12 +233,12 @@ namespace SvmFsBatch
                     using var process = Process.Start(start);
                     if (process == null)
                     {
-                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
                     }
 
-                    if (log) Logging.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    if (log) Logging.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, MethodName);
                     //var exited = process.WaitForExit((int) Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
                     using var delayCts = new CancellationTokenSource();
                     await Task.WhenAny(process.WaitForExitAsync(ct), Task.Delay(TimeSpan.FromMinutes(45), delayCts.Token)).ConfigureAwait(false);
@@ -248,9 +248,9 @@ namespace SvmFsBatch
 
                     if (!exited)
                     {
-                        Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                        Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
                         try { process.Kill(); await process.WaitForExitAsync(ct).ConfigureAwait(false); }
-                        catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, methodName); }
+                        catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName, MethodName); }
 
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
@@ -258,21 +258,21 @@ namespace SvmFsBatch
 
                     var stdoutResult = process?.StandardOutput?.ReadToEnd() ?? "";
                     var stderrResult = process?.StandardError?.ReadToEnd() ?? "";
-                    if (log) Logging.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, methodName);
+                    if (log) Logging.WriteLine($"Exited process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, MethodName);
                     var exitCode = process.ExitCode;
-                    if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
-                    if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(stdoutFile) && !string.IsNullOrWhiteSpace(stdoutResult)) await IoProxy.AppendAllTextAsync(true, ct, stdoutFile, stdoutResult, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(stderrFile) && !string.IsNullOrWhiteSpace(stderrResult)) await IoProxy.AppendAllTextAsync(true, ct, stderrFile, stderrResult, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
                     if (exitCode == 0) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(cmdLine, stdoutResult, stderrResult); }
 
-                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
-                    if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, methodName);
-                    if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName, methodName);
+                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+                    if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName, MethodName);
+                    if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName, MethodName);
                     await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                 }
                 catch (Exception e1)
                 {
-                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{GetParamsStr()}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, methodName);
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{GetParamsStr()}"" ) {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
                     if (tries >= maxTries)
                     {
                         if (rethrow) throw;

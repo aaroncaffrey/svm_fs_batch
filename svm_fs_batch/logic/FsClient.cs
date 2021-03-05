@@ -7,50 +7,50 @@ using SvmFsBatch.logic;
 
 namespace SvmFsBatch
 {
-    internal class FsClient
+    public static class FsClient
     {
         public const string ModuleName = nameof(FsClient);
 
 
-        internal static async Task<string> CrossValidatePerformanceRequestAsync(DataSet DataSet, bool asParallel, IndexData id, ulong lvl = 0, CancellationToken ct = default)
-        {
-            Logging.LogCall(ModuleName,lvl:lvl+1);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName,lvl:lvl+1);  return default; }
+        //public static async Task<string> CrossValidatePerformanceRequestAsync(DataSet DataSet, bool asParallel, IndexData id, ulong lvl = 0, CancellationToken ct = default)
+        //{
+           // Logging.LogCall(ModuleName,lvl:lvl+1);
+            //if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName,lvl:lvl+1);  return default; }
 
-            try
-            {
-                var unrolledIndexList = new[] {id};
+            //try
+            //{
+            //    var unrolledIndexList = new[] {id};
 
-                var resultsTasks = asParallel
-                    ? unrolledIndexList.AsParallel().AsOrdered().WithCancellation(ct).Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(true, CrossValidate.RpcPoint.None, DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
-                        //.SelectMany(a => a)
-                        .ToArray()
-                    : unrolledIndexList.Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(true, CrossValidate.RpcPoint.None, DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
-                        //.SelectMany(a => a)
-                        .ToArray();
+            //    var resultsTasks = asParallel
+            //        ? unrolledIndexList.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(null, CrossValidate.RpcPoint.None, DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
+            //            //.SelectMany(a => a)
+            //            .ToArray()
+            //        : unrolledIndexList.Select(async unrolledIndexData => await CrossValidate.CrossValidatePerformanceAsync(null, CrossValidate.RpcPoint.None, DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false)).Where(a => a != default)
+            //            //.SelectMany(a => a)
+            //            .ToArray();
 
-                var results = (await Task.WhenAll(resultsTasks).ConfigureAwait(false)).Where(a => a != default).SelectMany(a => a).Where(a => a != default).ToArray();
+            //    var results = (await Task.WhenAll(resultsTasks).ConfigureAwait(false)).Where(a => a != default).SelectMany(a => a).Where(a => a != default).ToArray();
 
-                var lines = results.Select(a => $"{a.id.CsvValuesString()},{a.cm.CsvValuesString()}").ToList();
+            //    var lines = results.Select(a => $"{a.id.CsvValuesString()},{a.cm.CsvValuesString()}").ToList();
 
-                lines.Insert(0, $"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
+            //    lines.Insert(0, $"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
 
-                var text = string.Join(Environment.NewLine, lines) + Environment.NewLine;
+            //    var text = string.Join(Environment.NewLine, lines) + Environment.NewLine;
 
-                Logging.LogExit(ModuleName, lvl: lvl + 1);
-                return ct.IsCancellationRequested ? default : text;
-            }
-            catch (Exception e)
-            {
-                Logging.LogException(e, "", ModuleName);
-            }
+            //    Logging.LogExit(ModuleName, lvl: lvl + 1);
+            //    return ct.IsCancellationRequested ? default : text;
+            //}
+            //catch (Exception e)
+            //{
+            //    Logging.LogException(e, "", ModuleName);
+            //}
             
-            Logging.LogExit(ModuleName, lvl: lvl + 1);
-            return default;
-        }
+            //Logging.LogExit(ModuleName, lvl: lvl + 1);
+          //  return default;
+        //}
 
 
-        internal static async Task FeatureSelectionClientInitializationAsync(DataSet DataSet, string ExperimentName, int instanceId, int totalInstances, ulong lvl = 0, CancellationToken ct = default)
+        public static async Task FeatureSelectionClientInitializationAsync(DataSet DataSet, string ExperimentName, int instanceId, int totalInstances, ulong lvl = 0, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName, lvl:lvl+1);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName,lvl:lvl+1); return; }
@@ -63,8 +63,8 @@ namespace SvmFsBatch
 
             // no need to gkGroup DataSet on client - server provides column indexes within whole DataSet
 
-            const string methodName = nameof(FeatureSelectionClientInitializationAsync);
-            Logging.WriteLine($"{methodName}()", ModuleName, methodName);
+            const string MethodName = nameof(FeatureSelectionClientInitializationAsync);
+            Logging.WriteLine($"{MethodName}()", ModuleName, MethodName);
 
 
             var tasks = new List<Task>();

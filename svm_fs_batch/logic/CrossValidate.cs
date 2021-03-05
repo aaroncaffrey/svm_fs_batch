@@ -7,17 +7,17 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal class CrossValidate
+    public static class CrossValidate
     {
         public const string ModuleName = nameof(CrossValidate);
 
-        internal static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)> InnerCrossValidationAsync(IndexData unrolledIndex, OuterCvInput outerCvInput, bool libsvmTrainProbabilityEstimates = true, bool log = false, CancellationToken ct = default)
+        public static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)> InnerCrossValidationAsync(IndexData unrolledIndex, OuterCvInput outerCvInput, bool libsvmTrainProbabilityEstimates = true, bool log = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
 
-            const string methodName = nameof(InnerCrossValidationAsync);
+            const string MethodName = nameof(InnerCrossValidationAsync);
 
             var trainStdoutFilename = "";
             var trainStderrFilename = "";
@@ -38,7 +38,24 @@ namespace SvmFsBatch
                     var trainGridStdoutFile = "";
                     var trainGridStderrFile = "";
 
-                    trainGridSearchResult = await Grid.GridParameterSearchAsync(true, Program.ProgramArgs.LibsvmTrainRuntime, outerCvInput.GridFn, outerCvInput.TrainFn, trainGridStdoutFile, trainGridStderrFile, unrolledIndex.IdClassWeights, unrolledIndex.IdSvmType, unrolledIndex.IdSvmKernel, unrolledIndex.IdRepetitions, outerCvInput.RepetitionsIndex, unrolledIndex.IdOuterCvFolds, outerCvInput.OuterCvIndex, unrolledIndex.IdInnerCvFolds, libsvmTrainProbabilityEstimates, ct: ct).ConfigureAwait(false);
+                    trainGridSearchResult = await Grid.GridParameterSearchAsync(
+                        asParallel: true,
+                        libsvmTrainExe: Program.ProgramArgs.LibsvmTrainRuntime, 
+                        cacheTrainGridCsv: outerCvInput.GridFn, 
+                        trainFile: outerCvInput.TrainFn,
+                        trainStdoutFile: trainGridStdoutFile, 
+                        trainStderrFile: trainGridStderrFile, 
+                        classWeights: unrolledIndex.IdClassWeights, 
+                        svmType: unrolledIndex.IdSvmType, 
+                        svmKernel: unrolledIndex.IdSvmKernel, 
+                        repetitions: unrolledIndex.IdRepetitions, 
+                        repetitionsIndex: outerCvInput.RepetitionsIndex, 
+                        outerCvFolds: unrolledIndex.IdOuterCvFolds, 
+                        outerCvIndex: outerCvInput.OuterCvIndex, 
+                        innerCvFolds: unrolledIndex.IdInnerCvFolds,
+                        probabilityEstimates: libsvmTrainProbabilityEstimates,
+                        ct: ct
+                        ).ConfigureAwait(false);
                 }
 
                 swGrid.Stop();
@@ -49,107 +66,141 @@ namespace SvmFsBatch
 
             // train
             var swTrain = Stopwatch.StartNew();
-            var trainResult = await Libsvm.TrainAsync(Program.ProgramArgs.LibsvmTrainRuntime, outerCvInput.TrainFn, outerCvInput.ModelFn, trainStdoutFilename, trainStderrFilename, trainGridSearchResult.GpCost, trainGridSearchResult.GpGamma, trainGridSearchResult.GpEpsilon, trainGridSearchResult.GpCoef0, trainGridSearchResult.GpDegree, null, unrolledIndex.IdSvmType, unrolledIndex.IdSvmKernel, null, libsvmTrainProbabilityEstimates, ct: ct).ConfigureAwait(false);
+            var trainResult = await Libsvm.TrainAsync(
+                libsvmTrainExeFile: Program.ProgramArgs.LibsvmTrainRuntime, 
+                trainFile: outerCvInput.TrainFn,
+                modelOutFile: outerCvInput.ModelFn,
+                stdoutFile: trainStdoutFilename,
+                stderrFile: trainStderrFilename,
+                cost: trainGridSearchResult.GpCost, 
+                gamma: trainGridSearchResult.GpGamma, 
+                epsilon: trainGridSearchResult.GpEpsilon, 
+                coef0: trainGridSearchResult.GpCoef0, 
+                degree: trainGridSearchResult.GpDegree,
+                //classWeights: null,
+                classWeights: unrolledIndex.IdClassWeights,
+                svmType: unrolledIndex.IdSvmType, 
+                svmKernel: unrolledIndex.IdSvmKernel,
+                innerCvFolds: null, 
+                probabilityEstimates: libsvmTrainProbabilityEstimates, 
+                ct: ct
+                ).ConfigureAwait(false);
             swTrain.Stop();
             //var sw_trainDur = sw_train.ElapsedMilliseconds;
 
-            if (log && !string.IsNullOrWhiteSpace(trainResult.CmdLine)) Logging.WriteLine(trainResult.CmdLine, ModuleName, methodName);
-            if (log && !string.IsNullOrWhiteSpace(trainResult.stdout)) trainResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stdout)}: {line}", ModuleName, methodName));
-            if (log && !string.IsNullOrWhiteSpace(trainResult.stderr)) trainResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stderr)}: {line}", ModuleName, methodName));
+            if (log && !string.IsNullOrWhiteSpace(trainResult.CmdLine)) Logging.WriteLine(trainResult.CmdLine, ModuleName, MethodName);
+            if (log && !string.IsNullOrWhiteSpace(trainResult.stdout)) trainResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stdout)}: {line}", ModuleName, MethodName));
+            if (log && !string.IsNullOrWhiteSpace(trainResult.stderr)) trainResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stderr)}: {line}", ModuleName, MethodName));
 
 
             // predict
             var swPredict = Stopwatch.StartNew();
-            var predictResult = await Libsvm.PredictAsync(Program.ProgramArgs.LibsvmPredictRuntime, outerCvInput.TestFn, outerCvInput.ModelFn, outerCvInput.PredictFn, libsvmTrainProbabilityEstimates, predictStdoutFilename, predictStderrFilename, ct: ct).ConfigureAwait(false);
+            var predictResult = await Libsvm.PredictAsync(
+
+                libsvmPredictExeFile: Program.ProgramArgs.LibsvmPredictRuntime,
+                testFile: outerCvInput.TestFn,
+                modelFile: outerCvInput.ModelFn,
+                predictionsOutFile: outerCvInput.PredictFn, 
+                probabilityEstimates: libsvmTrainProbabilityEstimates,
+                stdoutFile: predictStdoutFilename, 
+                stderrFile: predictStderrFilename,
+                ct: ct
+                
+                ).ConfigureAwait(false);
 
             swPredict.Stop();
             //var sw_predictDur = sw_train.ElapsedMilliseconds;
 
-            if (log && !string.IsNullOrWhiteSpace(predictResult.CmdLine)) Logging.WriteLine(predictResult.CmdLine, ModuleName, methodName);
-            if (log && !string.IsNullOrWhiteSpace(predictResult.stdout)) predictResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stdout)}: {line}", ModuleName, methodName));
-            if (log && !string.IsNullOrWhiteSpace(predictResult.stderr)) predictResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stderr)}: {line}", ModuleName, methodName));
+            if (log && !string.IsNullOrWhiteSpace(predictResult.CmdLine)) Logging.WriteLine(predictResult.CmdLine, ModuleName, MethodName);
+            if (log && !string.IsNullOrWhiteSpace(predictResult.stdout)) predictResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stdout)}: {line}", ModuleName, MethodName));
+            if (log && !string.IsNullOrWhiteSpace(predictResult.stderr)) predictResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stderr)}: {line}", ModuleName, MethodName));
 
-            var predictText = await IoProxy.ReadAllLinesAsync(true, ct, outerCvInput.PredictFn, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+            var predictText = await IoProxy.ReadAllLinesAsync(true, ct, outerCvInput.PredictFn, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
             //Logging.WriteLine($@"Loaded {input.predict_fn}");
 
             Logging.LogExit(ModuleName);
 
-            var ret = 
+            var ret =
                 (
                     swGrid != null && swGrid.Elapsed != TimeSpan.Zero ? (TimeSpan?)swGrid.Elapsed : (TimeSpan?)null,
-                    swTrain != null && swTrain.Elapsed != TimeSpan.Zero ? (TimeSpan?)swTrain.Elapsed : (TimeSpan?)null, 
-                    swPredict != null && swPredict.Elapsed != TimeSpan.Zero ? (TimeSpan?)swPredict.Elapsed : (TimeSpan?)null, 
+                    swTrain != null && swTrain.Elapsed != TimeSpan.Zero ? (TimeSpan?)swTrain.Elapsed : (TimeSpan?)null,
+                    swPredict != null && swPredict.Elapsed != TimeSpan.Zero ? (TimeSpan?)swPredict.Elapsed : (TimeSpan?)null,
                     trainGridSearchResult,
                     predictText
                 );
-            
-            return ct.IsCancellationRequested ? default : ret;    
+
+            return ct.IsCancellationRequested ? default : ret;
         }
 
         [Flags]
-        internal enum RpcPoint
+        public enum RpcPoint
         {
             None = 0,
             CrossValidatePerformanceAsync = 1,
             OuterCrossValidationSingleAsync = 2
         }
 
-        internal static async Task<(IndexData id, ConfusionMatrix cm)[]> CrossValidatePerformanceAsync(bool isMethodCallRpc, RpcPoint rpcPoint, DataSet DataSet, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
+        public static async Task<(IndexData id, ConfusionMatrix cm)[]> CrossValidatePerformanceAsync(ConnectionPool CP, RpcPoint rpcPoint, OuterCvInput[] outerCvInputs, OuterCvInput mergedCvInput, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
-            if (DataSet == null) throw new ArgumentOutOfRangeException(nameof(DataSet));
-            if (unrolledIndexData == null) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
+            //if (DataSet == null) throw new ArgumentOutOfRangeException(nameof(DataSet));
+            if (unrolledIndexData == default) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
             if (string.IsNullOrWhiteSpace(unrolledIndexData.IdExperimentName)) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
+            if (outerCvInputs == default) return default;
+            if (mergedCvInput == default) return default;
 
             // 1. make outer-cv files
-            var outerCvInputs = await MakeOuterCvInputsAsync(DataSet, unrolledIndexData, ct: ct).ConfigureAwait(false);
-            if (outerCvInputs == default) { Logging.LogExit(ModuleName); return default; }
+            //() makeOuterCvInputsRet = MakeOuterCvInputs(DataSet, unrolledIndexData, asParallel, ct: ct);
+            //if (makeOuterCvInputsRet == default) { Logging.LogExit(ModuleName); return default; }
 
-
+                // 2. call rpc method
             var ocvResult =
-            !isMethodCallRpc && rpcPoint.HasFlag(RpcPoint.CrossValidatePerformanceAsync) ?
+            rpcPoint.HasFlag(RpcPoint.CrossValidatePerformanceAsync) ?
 
                 // run 1 RPC request which includes all repetitions/outer folds
-                await RpcProxyMethods.ProxyOuterCrossValidationAsync.RpcSendAsync(outerCvInputs, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false)
+                await RpcProxyMethods.ProxyOuterCrossValidationAsync.RpcSendAsync(CP, outerCvInputs, mergedCvInput, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false)
             :
-                await OuterCrossValidationAsync(isMethodCallRpc, rpcPoint, outerCvInputs, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false);
+                await OuterCrossValidationRpcAsync(CP, rpcPoint, outerCvInputs, mergedCvInput, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false);
 
             if (ocvResult == default) { Logging.LogExit(ModuleName); return default; }
 
+            // 3. flatten result
             var groupCmSdList = ocvResult.McvCm.Select(cm => (unrolled_index_data: unrolledIndexData, cm)).ToArray();
             if (groupCmSdList == default) { Logging.LogExit(ModuleName); return default; }
 
+            // 4. return result
             Logging.LogExit(ModuleName);
             return ct.IsCancellationRequested ? default : groupCmSdList;
         }
 
 
-        internal static async Task<(IndexData id, ConfusionMatrix[] OcvCm, ConfusionMatrix[] McvCm)> OuterCrossValidationAsync(bool isMethodCallRpc, RpcPoint rpcPoint, OuterCvInput[] outerCvInputs, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
+        public static async Task<(IndexData id, ConfusionMatrix[] OcvCm, ConfusionMatrix[] McvCm)> OuterCrossValidationRpcAsync(ConnectionPool CP, RpcPoint rpcPoint, OuterCvInput[] outerCvInputs, OuterCvInput mergedCvInput, IndexData unrolledIndexData, bool makeOuterCvConfusionMatrices, bool overwriteCache = false, bool saveGroupCache = false, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            const string methodName = nameof(OuterCrossValidationAsync);
+            const string MethodName = nameof(OuterCrossValidationRpcAsync);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
             if (unrolledIndexData == null) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
-            if (unrolledIndexData.IdColumnArrayIndexes == null || unrolledIndexData.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData), $@"{ModuleName}.{methodName}.{nameof(unrolledIndexData)}.{nameof(unrolledIndexData.IdColumnArrayIndexes)}");
+            if (unrolledIndexData.IdColumnArrayIndexes == null || unrolledIndexData.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndexData)}.{nameof(unrolledIndexData.IdColumnArrayIndexes)}");
             if (outerCvInputs == null || outerCvInputs.Length == 0) throw new ArgumentOutOfRangeException(nameof(outerCvInputs));
+            if (mergedCvInput == null) throw new ArgumentOutOfRangeException(nameof(mergedCvInput));
 
 
             // run an RPC for EACH repetition/outer fold
             var outerCvInputsResultTasks =
-            !isMethodCallRpc && rpcPoint.HasFlag(RpcPoint.OuterCrossValidationSingleAsync) ?
+            rpcPoint.HasFlag(RpcPoint.OuterCrossValidationSingleAsync) ?
             (
             asParallel
-                ? outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).AsParallel().AsOrdered().WithCancellation(ct).Select(async outerCvInput => await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
-                : outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).Select(async outerCvInput => await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                ? outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async outerCvInput => await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(CP, unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                : outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/Select(async outerCvInput => await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(CP, unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
             )
             :
             (
             // run libsvm on each outer cv partition segment
             asParallel
-                ? outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).AsParallel().AsOrdered().WithCancellation(ct).Select(async outerCvInput => await OuterCrossValidationSingleAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
-                : outerCvInputs.Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).Select(async outerCvInput => await OuterCrossValidationSingleAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                ? outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async outerCvInput => await OuterCrossValidationSingleRpcAsync( unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                : outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/Select(async outerCvInput => await OuterCrossValidationSingleRpcAsync( unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
             );
 
             var outerCvInputsResult = await Task.WhenAll(outerCvInputsResultTasks).ConfigureAwait(false);
@@ -157,9 +208,8 @@ namespace SvmFsBatch
             if (outerCvInputsResult == null || outerCvInputsResult.Length == 0 || outerCvInputsResult.Any(a => a == default || a.OcvCm == default || a.OcvCm.Length == 0)) { Logging.LogExit(ModuleName); return default; }
 
             // 1a. the ocvi index -1 is merged data
-            var mergedCvInput = outerCvInputs.First(a => a.OuterCvIndex == -1);
+            //var mergedCvInput = outerCvInputs.First(a => a.OuterCvIndex == -1);
 
-            if (mergedCvInput == null) { Logging.LogExit(ModuleName); return default; }
 
             var ocvCm = makeOuterCvConfusionMatrices
                 ? outerCvInputsResult.Where(a => a.OcvCm != null).SelectMany(a => a.OcvCm).ToArray()
@@ -202,19 +252,21 @@ namespace SvmFsBatch
         }
 
 
-        internal static async Task<OuterCvInput[]> MakeOuterCvInputsAsync(DataSet DataSet, IndexData unrolledIndex, bool asParallel = false, CancellationToken ct = default)
+        public static /*async Task<*/(OuterCvInput[] outerCvInputs, OuterCvInput mergedCvInput)/*>*/ MakeOuterCvInputs(DataSet dataSet, IndexData unrolledIndex, bool preserveFid = false, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            const string methodName = nameof(MakeOuterCvInputsAsync);
+            const string MethodName = nameof(MakeOuterCvInputs);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+            if (dataSet == default) return default;
+            if (unrolledIndex == default) return default;
 
-            const bool preserveFid = false; // whether to keep the original FID in the libsvm training/testing files (note: if not, bear in mind that features with zero values are removed, so this must not distort the ordering...).
+            //const bool preserveFid = false; // whether to keep the original FID in the libsvm training/testing files (note: if not, bear in mind that features with zero values are removed, so this must not distort the ordering...).
 
-            if (unrolledIndex.IdColumnArrayIndexes == null || unrolledIndex.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdColumnArrayIndexes)}");
-            if (unrolledIndex.IdRepetitions <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdRepetitions)}");
-            if (unrolledIndex.IdOuterCvFolds <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFolds)}");
-            if (unrolledIndex.IdOuterCvFoldsToRun < 0 || unrolledIndex.IdOuterCvFoldsToRun > unrolledIndex.IdOuterCvFolds) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFoldsToRun)}");
+            if (unrolledIndex.IdColumnArrayIndexes == null || unrolledIndex.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdColumnArrayIndexes)}");
+            if (unrolledIndex.IdRepetitions <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdRepetitions)}");
+            if (unrolledIndex.IdOuterCvFolds <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFolds)}");
+            if (unrolledIndex.IdOuterCvFoldsToRun < 0 || unrolledIndex.IdOuterCvFoldsToRun > unrolledIndex.IdOuterCvFolds) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFoldsToRun)}");
 
 
             // ensure columns in correct order, and has class id
@@ -224,10 +276,13 @@ namespace SvmFsBatch
             var totalRepetitions = unrolledIndex.IdRepetitions == 0
                 ? 1
                 : unrolledIndex.IdRepetitions;
+
             var totalOuterFoldsToRun = unrolledIndex.IdOuterCvFoldsToRun == 0
                 ? unrolledIndex.IdOuterCvFolds
                 : unrolledIndex.IdOuterCvFoldsToRun;
+
             var pairIndexes = new (int RepetitionsIndex, int OuterCvIndex)[totalRepetitions * totalOuterFoldsToRun];
+
             var pairIndexesIndex = 0;
             for (var repetitionsCvIndex = 0; repetitionsCvIndex < totalRepetitions; repetitionsCvIndex++)
                 for (var outerCvIndex = 0; outerCvIndex < totalOuterFoldsToRun; outerCvIndex++)
@@ -236,31 +291,11 @@ namespace SvmFsBatch
             if (pairIndexesIndex < pairIndexes.Length) throw new Exception();
 
             var ocvData = asParallel
-                ? pairIndexes.AsParallel().AsOrdered().WithCancellation(ct).Select(pairIndex => MakeOuterCvInputsSingle(DataSet, unrolledIndex, asParallel, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, preserveFid, ct)).ToArray()
-                : pairIndexes.Select(pairIndex => MakeOuterCvInputsSingle(DataSet, unrolledIndex, asParallel, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, preserveFid, ct)).ToArray();
+                ? pairIndexes.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(pairIndex => MakeOuterCvInputsSingle(dataSet, unrolledIndex, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, preserveFid, asParallel, ct)).ToArray()
+                : pairIndexes.Select(pairIndex => MakeOuterCvInputsSingle(dataSet, unrolledIndex, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, preserveFid, asParallel, ct)).ToArray();
 
-            if (asParallel)
-            {
-                Parallel.ForEach(ocvData,
-                   async item =>
-                   {
-                       if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
+            if (ocvData.Any(a=> a == default)) return default;
 
-                       await IoProxy.WriteAllLinesAsync(true, ct, item.TrainFn, item.TrainText, callerModuleName: ModuleName).ConfigureAwait(false);
-                       await IoProxy.WriteAllLinesAsync(true, ct, item.TestFn, item.TestText, callerModuleName: ModuleName).ConfigureAwait(false);
-                   });
-
-            }
-            else
-                for (var index = 0; index < ocvData.Length; index++)
-                {
-                    if (ct.IsCancellationRequested) break;
-
-                    await IoProxy.WriteAllLinesAsync(true, ct, ocvData[index].TrainFn, ocvData[index].TrainText, callerModuleName: ModuleName).ConfigureAwait(false);
-                    await IoProxy.WriteAllLinesAsync(true, ct, ocvData[index].TestFn, ocvData[index].TestText, callerModuleName: ModuleName).ConfigureAwait(false);
-                }
-
-            // filenames for merging all repetition indexes and outer cv indexes... as if it were a single test.
             var mergedFilenamePrefix = Path.Combine(unrolledIndex.IdGroupFolder, $@"m_{Program.GetIterationFilename(new[] { unrolledIndex }, ct)}");
 
             var mergedCvInput = new OuterCvInput
@@ -281,23 +316,49 @@ namespace SvmFsBatch
                 TrainFoldIndexes = ocvData.SelectMany(a => a.TrainFoldIndexes).GroupBy(a => a.ClassId).Select(a => (ClassId: a.Key, TrainIndexes: a.SelectMany(b => b.TrainIndexes).ToArray())).ToArray(),
                 TestFoldIndexes = ocvData.SelectMany(a => a.TestFoldIndexes).GroupBy(a => a.ClassId).Select(a => (ClassId: a.Key, TestIndexes: a.SelectMany(b => b.TestIndexes).ToArray())).ToArray()
             };
-            ocvData = new[] { mergedCvInput }.Concat(ocvData).ToArray();
+
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default : (ocvData, mergedCvInput);
+
+            /*
+            if (asParallel)
+            {
+                Parallel.ForEach(ocvData,
+                   async item =>
+                   {
+                       if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
+
+                       await IoProxy.WriteAllLinesAsync(true, ct, item.TrainFn, item.TrainText, callerModuleName: ModuleName).ConfigureAwait(false);
+                       await IoProxy.WriteAllLinesAsync(true, ct, item.TestFn, item.TestText, callerModuleName: ModuleName).ConfigureAwait(false);
+                   });
+
+            }
+            else
+                for (var index = 0; index < ocvData.Length; index++)
+                {
+                    if (ct.IsCancellationRequested) break;
+
+                    await IoProxy.WriteAllLinesAsync(true, ct, ocvData[index].TrainFn, ocvData[index].TrainText, callerModuleName: ModuleName).ConfigureAwait(false);
+                    await IoProxy.WriteAllLinesAsync(true, ct, ocvData[index].TestFn, ocvData[index].TestText, callerModuleName: ModuleName).ConfigureAwait(false);
+                }
+            */
+            // filenames for merging all repetition indexes and outer cv indexes... as if it were a single test.
+
+            //ocvData = new[] { mergedCvInput }.Concat(ocvData).ToArray();
 
             //var test_class_sample_id_list = merged_cv_input.test_fold_indexes.SelectMany(a => a.TestIndexes).ToList();
 
-            var saveMergedFiles = false;
-            if (saveMergedFiles)
-            {
-                await IoProxy.WriteAllLinesAsync(true, ct, mergedCvInput.TrainFn, mergedCvInput.TrainText, callerModuleName: ModuleName).ConfigureAwait(false);
-                await IoProxy.WriteAllLinesAsync(true, ct, mergedCvInput.TestFn, mergedCvInput.TestText, callerModuleName: ModuleName).ConfigureAwait(false);
-            }
+            //var saveMergedFiles = false;
+            //if (saveMergedFiles)
+            //{
+            //    await IoProxy.WriteAllLinesAsync(true, ct, mergedCvInput.TrainFn, mergedCvInput.TrainText, callerModuleName: ModuleName).ConfigureAwait(false);
+            //    await IoProxy.WriteAllLinesAsync(true, ct, mergedCvInput.TestFn, mergedCvInput.TestText, callerModuleName: ModuleName).ConfigureAwait(false);
+            //}
 
-            Logging.LogExit(ModuleName);
 
-            return ct.IsCancellationRequested ? default : ocvData;
         }
 
-        private static OuterCvInput MakeOuterCvInputsSingle(DataSet DataSet, IndexData unrolledIndex, bool asParallel, int repetitionsIndex, int outerCvIndex, bool preserveFid, CancellationToken ct)
+        public static OuterCvInput MakeOuterCvInputsSingle(DataSet dataSet, IndexData unrolledIndex, int repetitionsIndex, int outerCvIndex, bool preserveFid, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
@@ -314,38 +375,49 @@ namespace SvmFsBatch
 
             var trainFoldIndexes = asParallel
                 ? unrolledIndex.IdDownSampledTrainClassFolds /* down sample for training */
-                    .AsParallel().AsOrdered().WithCancellation(ct).Select(a => (a.ClassId, TrainIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex != outerCvIndex /* do not select test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray()
+                    .AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(a => (a.ClassId, TrainIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex != outerCvIndex /* do not select test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray()
                 : unrolledIndex.IdDownSampledTrainClassFolds /* down sample for training */
                     .Select(a => (a.ClassId, TrainIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex != outerCvIndex /* do not select test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray();
 
+            
             var trainSizes = trainFoldIndexes.Select(a => (a.ClassId, train_size: a.TrainIndexes?.Length ?? 0)).ToArray();
-            var trainRowValues = DataSet.GetRowFeatures(trainFoldIndexes, unrolledIndex.IdColumnArrayIndexes, ct: ct);
+            var trainRowValues = dataSet.GetRowFeatures(trainFoldIndexes, unrolledIndex.IdColumnArrayIndexes, ct: ct);
             var trainScaling = DataSet.GetScalingParams(trainRowValues, unrolledIndex.IdColumnArrayIndexes);
             var trainRowScaledValues = DataSet.GetScaledRows(trainRowValues, /*column_indexes,*/
                 trainScaling,
                 unrolledIndex.IdScaleFunction);
-            var trainText = asParallel
-                ? trainRowScaledValues.AsParallel().AsOrdered().WithCancellation(ct).Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
-                : trainRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+            //var trainText = asParallel
+            //    ? trainRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
+            //    : trainRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
 
-            //var v = train_fold_indexes.Select(a => a.indexes.Select(ix => DataSet.value_list.First(b => b.ClassId == a.ClassId).val_list[ix].row_comment).ToArray()).ToArray();
+
+            var trainText = asParallel
+            ? trainRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
+            : trainRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+
+            //var v = train_fold_indexes.Select(a => a.indexes.Select(ix => DataSet.value_list.First(b => b.ClassId == a.ClassId).val_list[ix].RowComment).ToArray()).ToArray();
 
 
             var testFoldIndexes = asParallel
                 ? unrolledIndex.IdClassFolds /* natural distribution for testing */
-                    .AsParallel().AsOrdered().WithCancellation(ct).Select(a => (a.ClassId, TestIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex == outerCvIndex /* select only test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray()
+                    .AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(a => (a.ClassId, TestIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex == outerCvIndex /* select only test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray()
                 : unrolledIndex.IdClassFolds /* natural distribution for testing */
                     .Select(a => (a.ClassId, TestIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex == outerCvIndex /* select only test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray();
 
             var testSizes = testFoldIndexes.Select(a => (a.ClassId, test_size: a.TestIndexes?.Length ?? 0)).ToArray();
-            var testRowValues = DataSet.GetRowFeatures(testFoldIndexes, unrolledIndex.IdColumnArrayIndexes, ct: ct);
+            var testRowValues = dataSet.GetRowFeatures(testFoldIndexes, unrolledIndex.IdColumnArrayIndexes, ct: ct);
             var testScaling = trainScaling; /* scale test data with training data */
             var testRowScaledValues = DataSet.GetScaledRows(testRowValues, /*column_indexes,*/
                 testScaling,
                 unrolledIndex.IdScaleFunction);
+            //var testText = asParallel
+            //    ? testRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
+            //    : testRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+
+
             var testText = asParallel
-                ? testRowScaledValues.AsParallel().AsOrdered().WithCancellation(ct).Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
-                : testRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+                ? testRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
+                : testRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
 
             Logging.LogExit(ModuleName);
 
@@ -376,10 +448,12 @@ namespace SvmFsBatch
 
 
 
-        internal static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)> OuterCrossValidationSingleAsync(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, CancellationToken ct = default)
+        public static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)> OuterCrossValidationSingleRpcAsync(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+
+            await Task.WhenAll(IoProxy.WriteAllLinesAsync(true, ct, outerCvInput.TrainFn, outerCvInput.TrainText, callerModuleName: ModuleName), IoProxy.WriteAllLinesAsync(true, ct, outerCvInput.TestFn, outerCvInput.TestText, callerModuleName: ModuleName)).ConfigureAwait(false);
 
             ConfusionMatrix[] ocvCm = null;
 

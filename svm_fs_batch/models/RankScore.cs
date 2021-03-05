@@ -1,12 +1,12 @@
 ﻿namespace SvmFsBatch
 {
-    internal class RankScore
+    public class RankScore
     {
-        internal const string ModuleName = nameof(RankScore);
+        public const string ModuleName = nameof(RankScore);
 
-        internal static readonly RankScore Empty = new RankScore();
+        public static readonly RankScore Empty = new RankScore();
 
-        internal static readonly string[] CsvHeaderValuesArray =
+        public static readonly string[] CsvHeaderValuesArray =
         {
             nameof(RsIterationIndex),
             nameof(RsGroupArrayIndex),
@@ -22,27 +22,27 @@
             nameof(RsFsRankIndexPercentile)
         };
 
-        internal int RsFsMaxRankIndex;
+        public int RsFsMaxRankIndex;
 
-        internal int RsFsRankIndex;
-        internal double RsFsRankIndexPercentile;
+        public int RsFsRankIndex;
+        public double RsFsRankIndexPercentile;
 
-        internal double RsFsScore;
+        public double RsFsScore;
 
-        internal double RsFsScoreChangeBest;
-        internal double RsFsScoreChangeGroup;
-        internal double RsFsScoreChangeLast;
-        internal double RsFsScorePercentile;
+        public double RsFsScoreChangeBest;
+        public double RsFsScoreChangeGroup;
+        public double RsFsScoreChangeLast;
+        public double RsFsScorePercentile;
 
-        internal int RsGroupArrayIndex;
-        internal int RsIterationIndex;
+        public int RsGroupArrayIndex;
+        public int RsIterationIndex;
 
         public RankScore()
         {
             Logging.LogCall(ModuleName);
         }
 
-        internal string[] CsvValuesArray()
+        public string[] CsvValuesArray()
         {
             Logging.LogCall(ModuleName);
 

@@ -5,34 +5,40 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal partial class RpcProxyMethods
+    public partial class RpcProxyMethods
     {
         // OuterCrossValidationSingleAsync Proxy:
 
-        internal class ProxyOuterCrossValidationSingleAsync
+        public class ProxyOuterCrossValidationSingleAsync
         {
 
-            internal const string ProxyMethod = nameof(CrossValidate.OuterCrossValidationSingleAsync);
+            public const string ModuleName = nameof(ProxyOuterCrossValidationSingleAsync);
+            public const string ProxyMethod = nameof(CrossValidate.OuterCrossValidationSingleRpcAsync);
 
-            internal class Params
+            public ProxyOuterCrossValidationSingleAsync()
             {
-                internal IndexData unrolledIndexData;
-                internal OuterCvInput outerCvInput;
-                internal bool makeOuterCvConfusionMatrices = false;
-                internal bool overwriteCache = false;
-                internal bool saveGroupCache = false;
 
-                internal (IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices, bool overwriteCache, bool saveGroupCache) ToTuple()
+            }
+
+            public class Params
+            {
+                public IndexData unrolledIndexData;
+                public OuterCvInput outerCvInput;
+                public bool makeOuterCvConfusionMatrices = false;
+                public bool overwriteCache = false;
+                public bool saveGroupCache = false;
+
+                public (IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices, bool overwriteCache, bool saveGroupCache) ToTuple()
                 {
                     return (unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache);
                 }
 
-                internal Params()
+                public Params()
                 {
 
                 }
 
-                internal Params(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false)
+                public Params(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false)
                 {
                     this.unrolledIndexData = unrolledIndexData;
                     this.outerCvInput = outerCvInput;
@@ -41,19 +47,19 @@ namespace SvmFsBatch
                     this.saveGroupCache = saveGroupCache;
                 }
 
-                internal string ToJson()
+                public string ToJson()
                 {
                     var jsonSerializerOptions = new JsonSerializerOptions { IncludeFields = true };
                     var jsonSerialized = JsonSerializer.Serialize<Params>(this, jsonSerializerOptions);
                     return jsonSerialized;
                 }
 
-                internal static string ToJson(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false)
+                public static string ToJson(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false)
                 {
                     return new Params(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache).ToJson();
                 }
 
-                internal static Params FromJson(string jsonSerialized)
+                public static Params FromJson(string jsonSerialized)
                 {
                     var jsonSerializerOptions = new JsonSerializerOptions { IncludeFields = true };
                     var jsonDeserialized = JsonSerializer.Deserialize<Params>(jsonSerialized, jsonSerializerOptions);
@@ -61,7 +67,7 @@ namespace SvmFsBatch
                 }
             }
 
-            internal class Result
+            public class Result
             {
                 TimeSpan? gridDur;
                 TimeSpan? trainDur;
@@ -70,17 +76,17 @@ namespace SvmFsBatch
                 string[] PredictText;
                 ConfusionMatrix[] OcvCm;
 
-                internal (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm) ToTuple()
+                public (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm) ToTuple()
                 {
                     return (gridDur, trainDur, predictDur, GridPoint, PredictText, OcvCm);
                 }
 
-                internal Result()
+                public Result()
                 {
 
                 }
 
-                internal Result(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)
+                public Result(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)
                 {
                     this.gridDur = gridDur;
                     this.trainDur = trainDur;
@@ -90,24 +96,24 @@ namespace SvmFsBatch
                     this.OcvCm = OcvCm;
                 }
 
-                internal string ToJson()
+                public string ToJson()
                 {
                     var jsonSerializerOptions = new JsonSerializerOptions { IncludeFields = true };
                     var jsonSerialized = JsonSerializer.Serialize<Result>(this, jsonSerializerOptions);
                     return jsonSerialized;
                 }
 
-                internal static string ToJson((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm) result)
+                public static string ToJson((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm) result)
                 {
                     return new Result(result.gridDur, result.trainDur, result.predictDur, result.GridPoint, result.PredictText, result.OcvCm).ToJson();
                 }
 
-                internal static string ToJson(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)
+                public static string ToJson(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)
                 {
                     return new Result(gridDur, trainDur, predictDur, GridPoint, PredictText, OcvCm).ToJson();
                 }
 
-                internal static Result FromJson(string jsonSerialized)
+                public static Result FromJson(string jsonSerialized)
                 {
                     var jsonSerializerOptions = new JsonSerializerOptions { IncludeFields = true };
                     var jsonDeserialized = JsonSerializer.Deserialize<Result>(jsonSerialized, jsonSerializerOptions);
@@ -117,7 +123,7 @@ namespace SvmFsBatch
                 
             }        
      
-            internal static async Task<string> RpcReceiveAsync(string jsonTextParameters, CancellationToken ct = default)
+            public static async Task<string> RpcReceiveAsync(string jsonTextParameters, CancellationToken ct = default)
             {
                 Logging.LogCall(ModuleName);
                 if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
@@ -127,7 +133,7 @@ namespace SvmFsBatch
                 var p = Params.FromJson(jsonTextParameters);
 
                 // 2. run requested RPC call
-                var result = await CrossValidate.OuterCrossValidationSingleAsync(unrolledIndexData: p.unrolledIndexData, outerCvInput: p.outerCvInput, makeOuterCvConfusionMatrices: p.makeOuterCvConfusionMatrices, overwriteCache: p.overwriteCache, saveGroupCache: p.saveGroupCache, ct: ct);
+                var result = await CrossValidate.OuterCrossValidationSingleRpcAsync( unrolledIndexData: p.unrolledIndexData, outerCvInput: p.outerCvInput, makeOuterCvConfusionMatrices: p.makeOuterCvConfusionMatrices, overwriteCache: p.overwriteCache, saveGroupCache: p.saveGroupCache, ct: ct).ConfigureAwait(false);
 
                 // 3. encode result as json
                 var jsonResult = Result.ToJson(result);
@@ -137,10 +143,11 @@ namespace SvmFsBatch
                 return jsonResult;
             }
 
-            internal static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)> RpcSendAsync(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, CancellationToken ct = default)
+            public static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)> RpcSendAsync(ConnectionPool CP, IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, CancellationToken ct = default)
             {
-                // run OuterCrossValidationAsync on a remote RPC server
+                // run OuterCrossValidationSingleAsync on a remote RPC server
                 Logging.LogCall(ModuleName);
+                if (CP == null || CP.IsDisposed) throw new ArgumentOutOfRangeException(nameof(CP));
                 if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
                 if (unrolledIndexData == null) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
                 if (outerCvInput == null) throw new ArgumentOutOfRangeException(nameof(outerCvInput));
@@ -149,17 +156,33 @@ namespace SvmFsBatch
                 var jsonParams = new Params(unrolledIndexData: unrolledIndexData, outerCvInput: outerCvInput, makeOuterCvConfusionMatrices: makeOuterCvConfusionMatrices, overwriteCache: overwriteCache, saveGroupCache: saveGroupCache).ToJson();
 
                 // 2. send rpc method call with json parameters over tcp
-                Console.WriteLine(jsonParams);
+                // 2a. get a RPC server connection
+                // 2b. send RPC request over RPC server connection
 
-                // 3. receive resposne in json
-                var jsonResult = "";
 
-                // 4. decode response
-                var result = Result.FromJson(jsonResult).ToTuple();
+                while (!ct.IsCancellationRequested)
+                {
+                    var cpm = CP.GetNextClient(ModuleName);
+                    if (cpm == default) { try { await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, "", ModuleName); } continue; }
 
-                // 5. return result
+                    var writeRpcCallOk = await cpm.WriteFrameAsync(new[] { ((ulong)TcpClientExtra.RpcFrameTypes.RpcMethodCall, ProxyMethod), ((ulong)TcpClientExtra.RpcFrameTypes.RpcMethodParameters, jsonParams) }, ModuleName).ConfigureAwait(false); ;
+                    if (!writeRpcCallOk) { cpm?.Close(); continue; }
+
+                    // 2c. read to see if request accepted.
+                    var frameRpcCallAccepted = await cpm.ReadFrameTimeoutAsync(60,ModuleName).ConfigureAwait(false); 
+                    if (!frameRpcCallAccepted.readOk || frameRpcCallAccepted.frameType != (ulong)TcpClientExtra.RpcFrameTypes.RpcMethodCallAccept) { cpm?.Close(); continue; }
+
+                    // 2d. wait for read result
+                    var frameRpcCallResult = await cpm.ReadFrameTimeoutAsync(60*60,ModuleName).ConfigureAwait(false); 
+                    if (!frameRpcCallResult.readOk || frameRpcCallResult.frameType != (ulong)TcpClientExtra.RpcFrameTypes.RpcMethodReturn) { cpm?.Close(); continue; }
+                    var result = Result.FromJson(frameRpcCallResult.textIn).ToTuple();
+
+                    Logging.LogExit(ModuleName);
+                    return result;
+                }
+
                 Logging.LogExit(ModuleName);
-                return result;
+                return default;
             }
         }
 

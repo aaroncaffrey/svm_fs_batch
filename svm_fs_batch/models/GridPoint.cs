@@ -3,12 +3,12 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class GridPoint
+    public class GridPoint
     {
         public const string ModuleName = nameof(GridPoint);
-        internal static readonly GridPoint Empty = new GridPoint();
+        public static readonly GridPoint Empty = new GridPoint();
 
-        internal static readonly string[] CsvHeaderValuesArray =
+        public static readonly string[] CsvHeaderValuesArray =
         {
             nameof(GpCost),
             nameof(GpGamma),
@@ -18,16 +18,16 @@ namespace SvmFsBatch
             nameof(GpCvRate)
         };
 
-        internal static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
-        internal double? GpCoef0;
+        public static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
+        public double? GpCoef0;
 
-        internal double? GpCost;
-        internal double? GpCvRate;
-        internal double? GpDegree;
-        internal double? GpEpsilon;
-        internal double? GpGamma;
+        public double? GpCost;
+        public double? GpCvRate;
+        public double? GpDegree;
+        public double? GpEpsilon;
+        public double? GpGamma;
 
-        internal GridPoint()
+        public GridPoint()
         {
             Logging.LogCall(ModuleName);
 
@@ -55,7 +55,7 @@ namespace SvmFsBatch
         //    this.cv_rate = point.cv_rate;
         //}
 
-        internal GridPoint(GridPoint gridPoint)
+        public GridPoint(GridPoint gridPoint)
         {
             Logging.LogCall(ModuleName);
 
@@ -69,7 +69,7 @@ namespace SvmFsBatch
             GpCvRate = gridPoint.GpCvRate;
         }
 
-        internal GridPoint(GridPoint[] gridPoints)
+        public GridPoint(GridPoint[] gridPoints)
         {
             Logging.LogCall(ModuleName);
 
@@ -106,7 +106,7 @@ namespace SvmFsBatch
                 : null;
         }
 
-        internal string[] CsvValuesArray()
+        public string[] CsvValuesArray()
         {
             Logging.LogCall(ModuleName);
 
@@ -121,7 +121,7 @@ namespace SvmFsBatch
             };
         }
 
-        internal string CsvValuesString()
+        public string CsvValuesString()
         {
             Logging.LogCall(ModuleName);
 

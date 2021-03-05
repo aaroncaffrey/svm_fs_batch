@@ -10,14 +10,18 @@ using SvmFsBatch.logic;
 
 namespace SvmFsBatch
 {
-    internal class ConnectionPoolMember
+    public class ConnectionPoolMember
     {
-        private ulong _FrameId;
-        //private ulong _WriteFrameId;
-        //private Queue<(ulong frameId, byte[])> _WriteQueue = new Queue<(ulong frameId, byte[])>();
+        public ulong _FrameId;
+        //public ulong _WriteFrameId;
+        //public Queue<(ulong frameId, byte[])> _WriteQueue = new Queue<(ulong frameId, byte[])>();
 
+        public ConnectionPoolMember()
+        {
 
-        internal async Task<bool> WriteFrameAsync(ulong frameType, string text, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        }
+
+        public async Task<bool> WriteFrameAsync((ulong frameType, string text)[] dataArray, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
 
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
@@ -33,28 +37,42 @@ namespace SvmFsBatch
             {
                 if (!_isDisposed && Client != null && Stream != null && Client.Connected && Stream.CanWrite)
                 {
-                    ulong frameId = 0;
+                    var frameData = new List<byte[]>();
 
-                    lock (ObjectLock) { frameId = ++_FrameId; }
+                    foreach (var data in dataArray)
+                    {
+                        ulong frameId = 0;
 
-                    var bytesText = !string.IsNullOrEmpty(text) ? Encoding.UTF8.GetBytes(text)
-                        : Array.Empty<byte>();
-                    var bytesFrameId = BitConverter.GetBytes(frameId);
-                    var bytesFrameType = BitConverter.GetBytes(frameType);
-                    var bytesFrameLength = BitConverter.GetBytes((ulong)bytesText.Length);
-                    var frame = new[] { _bytesFrameCode, bytesFrameId, bytesFrameType, bytesFrameLength, bytesText/*, _bytesFrameCode*/ }.SelectMany(a => a).ToArray();
+                        lock (ObjectLock) { frameId = ++_FrameId; }
 
-                    //lock (ObjectLock)
-                    //{
-                    //    _WriteQueue.Enqueue(frame);
-                    //    var writeFrameId = _WriteFrameId++;
-                    //}
+                        var bytesText = !string.IsNullOrEmpty(data.text) ? Encoding.UTF8.GetBytes(data.text)
+                            : Array.Empty<byte>();
+                        var bytesFrameId = BitConverter.GetBytes(frameId);
+                        var bytesFrameType = BitConverter.GetBytes(data.frameType);
+                        var bytesFrameLength = BitConverter.GetBytes((ulong)bytesText.Length);
 
-                    await Stream.WriteAsync(frame, Ct).ConfigureAwait(false);
+                        frameData.Add(_bytesFrameCode);
+                        frameData.Add(bytesFrameId);
+                        frameData.Add(bytesFrameType);
+                        frameData.Add(bytesFrameLength);
+                        frameData.Add(bytesText);
+
+                        //var frame = new[] { _bytesFrameCode, bytesFrameId, bytesFrameType, bytesFrameLength, bytesText }.SelectMany(a => a).ToArray();
+                        //frameList.Add(frame);
+                    }
+
+                    var frameDataBytes = frameData.SelectMany(a => a).ToArray();
+
+                    await Stream.WriteAsync(frameDataBytes, Ct).ConfigureAwait(false);
                     await Stream.FlushAsync(Ct).ConfigureAwait(false);
-                    timeWrite = DateTime.Now;
 
-                    Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return true;
+                    if (frameDataBytes.Length > 0)
+                    {
+                        timeWrite = DateTime.Now;
+                    }
+
+                    Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
+                    return true;
                 }
             }
             catch (Exception e)
@@ -62,11 +80,29 @@ namespace SvmFsBatch
                 Logging.LogException(e, "", ModuleName);
             }
 
+
             Close(callChain: callChain, lvl: lvl + 1);
-            Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return false;
+            Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
+            return default;
         }
 
-        internal async Task<byte[]> ReadRawFixedLengthAsync(int frameLength, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public async Task<byte[]> ReadRawFixedLengthTimeoutAsync(int timeoutSeconds, int frameLength, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        {
+            var readTask = Task.Run(async () => await ReadRawFixedLengthAsync(frameLength, callerModuleName, callerMethodName, callerLineNumber, callChain, lvl).ConfigureAwait(false));
+            var timeoutTask = Task.Run(async () => await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds)).ConfigureAwait(false));
+            try { await Task.WhenAny(readTask, timeoutTask).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+
+            if (!readTask.IsCompletedSuccessfully)
+            {
+                Logging.LogEvent("ReadRawFixedLengthTimeoutAsync: Timeout.");
+                Close();
+                return default;
+            }
+
+            return readTask.Result;
+        }
+
+        public async Task<byte[]> ReadRawFixedLengthAsync(int frameLength, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
 
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
@@ -117,7 +153,8 @@ namespace SvmFsBatch
                         await Task.Delay(TimeSpan.FromMilliseconds(1), Ct).ConfigureAwait(false);
 
                         if (!IsActive(callChain: callChain, lvl: lvl + 1)) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return default; }
-                    } else break;
+                    }
+                    else break;
                 }
             }
             catch (Exception e)
@@ -141,7 +178,25 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return Ct.IsCancellationRequested ? default : bytes;
         }
 
-        internal async Task<(bool readOk, ulong frameId, ulong frameType, int frameLength, byte[] bytesTextIn, string textIn, string[] textInLines)> ReadFrameAsync(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+
+        public async Task<(bool readOk, ulong frameId, ulong frameType, int frameLength, byte[] bytesTextIn, string textIn, string[] textInLines)> ReadFrameTimeoutAsync(int timeoutSeconds = 60, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        {
+            var readTask = Task.Run(async () => await ReadFrameAsync().ConfigureAwait(false));
+            var timeoutTask = Task.Run(async () => await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds)).ConfigureAwait(false));
+
+            try { await Task.WhenAny(readTask, timeoutTask).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+
+            if (!readTask.IsCompletedSuccessfully)
+            {
+                Logging.LogEvent("ReadFrameTimeoutAsync: Timeout.");
+                Close();
+                return default;
+            }
+
+            return readTask.Result;
+        }
+
+        public async Task<(bool readOk, ulong frameId, ulong frameType, int frameLength, byte[] bytesTextIn, string textIn, string[] textInLines)> ReadFrameAsync(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -169,7 +224,7 @@ namespace SvmFsBatch
                 if (headerExt != null && headerExt.Length > 0) header = header.Concat(headerExt).ToArray();
 
                 if (Ct.IsCancellationRequested)
-                { 
+                {
                     Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
                     return default;
                 }
@@ -180,7 +235,7 @@ namespace SvmFsBatch
 
                     if (!IsActive(callChain: callChain, lvl: lvl + 1))
                     {
-                        Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); 
+                        Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
                         return default;
                     }
                 }
@@ -204,9 +259,9 @@ namespace SvmFsBatch
                 }
             }
 
-            if ((header?.Length??0) != headerLen)
+            if ((header?.Length ?? 0) != headerLen)
             {
-                Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); 
+                Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
                 return default;
             }
 
@@ -238,16 +293,16 @@ namespace SvmFsBatch
 
                 Logging.LogEvent($"!!!! {nameof(ReadFrameAsync)} WHILE 2 !!!! {whileCnt2}");
 
-                var bytesTextInExt = await ReadRawFixedLengthAsync(frameLength - bytesTextIn.Length, callChain: callChain, lvl: lvl + 1).ConfigureAwait(false) ;
+                var bytesTextInExt = await ReadRawFixedLengthAsync(frameLength - bytesTextIn.Length, callChain: callChain, lvl: lvl + 1).ConfigureAwait(false);
 
-                if ((bytesTextInExt?.Length??0) > 0)
+                if ((bytesTextInExt?.Length ?? 0) > 0)
                 {
                     bytesTextIn = bytesTextIn.Concat(bytesTextInExt).ToArray();
                 }
 
                 if (Ct.IsCancellationRequested)
                 {
-                    Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); 
+                    Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
                     return default;
                 }
 
@@ -257,7 +312,7 @@ namespace SvmFsBatch
 
                     if (!IsActive(callChain: callChain, lvl: lvl + 1))
                     {
-                        Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); 
+                        Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
                         return default;
                     }
                 }
@@ -282,7 +337,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        //internal void JoinPool(ConnectionPool cp, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        //public void JoinPool(ConnectionPool cp, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         //{
         //    callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
         //    Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -302,7 +357,7 @@ namespace SvmFsBatch
         //    }
         //}
 
-        internal void Unreserve(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void Unreserve(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -320,7 +375,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal bool Reserve(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public bool Reserve(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -339,36 +394,38 @@ namespace SvmFsBatch
             }
         }
 
-        private const string ModuleName = nameof(ConnectionPoolMember);
-        private bool _isDisposed;
-        internal CancellationTokenSource Cts = new CancellationTokenSource();
-        internal CancellationToken Ct = default;
+        public const string ModuleName = nameof(ConnectionPoolMember);
+        public bool _isDisposed;
+        public CancellationTokenSource Cts = new CancellationTokenSource();
+        public CancellationToken Ct = default;
 
-        internal bool IsReserved { get; private set; }
+        public bool IsReserved;
 
-        internal ConnectionPool Cp;
+        public ConnectionPool Cp;
 
-        internal TcpClient Client;
+        public TcpClient Client;
+        public string ConnectHost;
+        public int ConnectPort;
 
-        internal DateTime timeWrite;
-        internal DateTime timeReceive;
-        internal DateTime timePoll;
+        public DateTime timeWrite = DateTime.UtcNow;
+        public DateTime timeReceive = DateTime.UtcNow;
+        public DateTime timePoll = DateTime.UtcNow;
 
-        internal Guid LocalGuid;
-        internal byte[] LocalGuidBytes;
+        public Guid LocalGuid;
+        public byte[] LocalGuidBytes;
 
-        internal string LocalHost;
-        internal int LocalPort;
+        public string LocalHost;
+        public int LocalPort;
 
-        internal Guid RemoteGuid;
-        internal byte[] RemoteGuidBytes;
-        internal string RemoteHost;
-        internal int RemotePort;
-        internal NetworkStream Stream;
-        internal object ObjectLock = new object();
+        public Guid RemoteGuid;
+        public byte[] RemoteGuidBytes;
+        public string RemoteHost;
+        public int RemotePort;
+        public NetworkStream Stream;
+        public object ObjectLock = new object();
 
 
-        internal bool HasRemoteGuid(byte[] queryRemoteGuidBytes, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public bool HasRemoteGuid(byte[] queryRemoteGuidBytes, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -398,7 +455,8 @@ namespace SvmFsBatch
                     if (isEmptyRemoteGuidBytes && isEmptyQueryRemoteGuidBytes)
                     {
                         ret = true;
-                    } else if (isEmptyRemoteGuidBytes || isEmptyQueryRemoteGuidBytes)
+                    }
+                    else if (isEmptyRemoteGuidBytes || isEmptyQueryRemoteGuidBytes)
                     {
                         ret = false;
                     }
@@ -417,7 +475,7 @@ namespace SvmFsBatch
             }
         }
 
-        internal bool IsActive(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public bool IsActive(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -461,15 +519,24 @@ namespace SvmFsBatch
                     return false;
                 }
 
-                // tcp connected
-                var pollOk = TcpClientExtra.PollTcpClientConnection(Client);
-                timePoll = DateTime.UtcNow;
-                
-                if (!pollOk)
+                var now = DateTime.UtcNow;
+                var elapsedRead = now - timeReceive;
+                var elapsedWrite = now - timeWrite;
+                var elapsedPoll = now - timePoll;
+                var timeout = TimeSpan.FromSeconds(10);
+
+                if (elapsedPoll >= timeout && elapsedRead >= timeout && elapsedWrite >= timeout)
                 {
-                    Close(callChain: callChain, lvl: lvl + 1);
-                    Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
-                    return false;
+                    // tcp connected
+                    timePoll = now;
+                    var pollOk = TcpClientExtra.PollTcpClientConnection(Client);
+
+                    if (!pollOk)
+                    {
+                        Close(callChain: callChain, lvl: lvl + 1);
+                        Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
+                        return false;
+                    }
                 }
 
                 Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -477,7 +544,7 @@ namespace SvmFsBatch
             }
         }
 
-        internal ConnectionPoolMember(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public ConnectionPoolMember(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -487,7 +554,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        //internal bool IsConnected(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        //public bool IsConnected(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         //{
         //    callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
         //    Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -512,7 +579,7 @@ namespace SvmFsBatch
         //    }
         //}
 
-        internal void Close(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void Close(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -525,44 +592,53 @@ namespace SvmFsBatch
                 lock (ObjectLock)
                 {
                     if (_isDisposed) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return; }
-
-                    Logging.LogEvent($@"{Cp?.PoolName ?? "Not pooled"}: Connection pool: Connection closed.", ModuleName);
-
-                    Reserve(callChain: callChain, lvl: lvl + 1);
-
                     _isDisposed = true;
-
-                    try { Stream?.Close(); }
-                    catch (Exception) { }
-
-                    try { Client?.Close(); }
-                    catch (Exception) { }
-
-                    try { Cts?.Cancel(); }
-                    catch (Exception) { }
-
-                    try { Cts?.Dispose(); }
-                    catch (Exception) { }
-
-                    Cts = default;
-                    Ct = default;
-                    Client = default;
-                    Stream = default;
-                    LocalGuid = default;
-                    LocalGuidBytes = default;
-                    RemoteGuid = default;
-                    RemoteGuidBytes = default;
-                    LocalHost = default;
-                    LocalPort = default;
-                    RemoteHost = default;
-                    RemotePort = default;
-                    Cp = default;
-                    timeWrite = default;
-                    timeReceive = default;
-                    timePoll = default;
-                    IsReserved = default;
-                    _FrameId = default;
                 }
+
+                Logging.LogEvent($@"{Cp?.PoolName ?? "Not pooled"}: Connection pool: Connection closed.", ModuleName);
+
+                Cp?.Remove(this, ModuleName, callChain: callChain, lvl: lvl + 1);
+
+                IsReserved = true;
+                //Reserve(callChain: callChain, lvl: lvl + 1);
+
+                
+
+                try { Stream?.Close(); }
+                catch (Exception) { }
+
+                try { Client?.Close(); }
+                catch (Exception) { }
+
+                try { Cts?.Cancel(); }
+                catch (Exception) { }
+
+                try { Cts?.Dispose(); }
+                catch (Exception) { }
+
+                Cts = default;
+                Ct = default;
+                Client = default;
+                Stream = default;
+                LocalGuid = default;
+                LocalGuidBytes = default;
+                RemoteGuid = default;
+                RemoteGuidBytes = default;
+                LocalHost = default;
+                LocalPort = default;
+                RemoteHost = default;
+                RemotePort = default;
+                Cp = default;
+                timeWrite = default;
+                timeReceive = default;
+                timePoll = default;
+                IsReserved = default;
+                _FrameId = default;
+                ConnectHost = default;
+                ConnectPort = default;
+
+
+
 
                 //ObjectLock = default;
             }

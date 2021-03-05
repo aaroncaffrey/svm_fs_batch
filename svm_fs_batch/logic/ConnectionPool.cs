@@ -10,27 +10,67 @@ using System.Threading.Tasks.Dataflow;
 
 namespace SvmFsBatch
 {
-    internal class ConnectionPool
+    public class ConnectionPool
     {
-        internal const string ModuleName = nameof(ConnectionPool);
+        public const string ModuleName = nameof(ConnectionPool);
 
-        internal bool IsDisposed;
-        internal List<ConnectionPoolMember> Pool = new List<ConnectionPoolMember>();
-        internal CancellationToken PoolCt { get; private set; }
-        internal CancellationTokenSource PoolCts = new CancellationTokenSource();
-        internal readonly object PoolLock = new object();
-        internal Queue<byte[]> PoolRemoteGuidQueue = new Queue<byte[]>();
-        internal Task Task;
-        internal bool IsServer;
-        internal Guid LocalPoolGuid;
-        internal byte[] LocalPoolGuidBytes;
-        internal Guid RemoteServerPoolGuid;
-        internal byte[] RemoteServerPoolGuidBytes;
-        internal CancellationTokenSource LinkedCts;
-        internal CancellationToken LinkedCt;
-        internal string PoolName;
+        public bool IsDisposed;
+        public List<ConnectionPoolMember> Pool = new List<ConnectionPoolMember>();
+        public CancellationToken PoolCt;
+        public CancellationTokenSource PoolCts = new CancellationTokenSource();
+        public readonly object PoolLock = new object();
+        public Queue<byte[]> PoolRemoteGuidQueue = new Queue<byte[]>();
+        public Task Task;
+        public bool IsServer;
+        public Guid LocalPoolGuid;
+        public byte[] LocalPoolGuidBytes;
+        public CancellationTokenSource LinkedCts;
+        public CancellationToken LinkedCt;
+        public string PoolName = "Pool";
 
-        public ConnectionPool(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        
+        public Guid RemoteServerPoolGuid = default;
+        public byte[] RemoteServerPoolGuidBytes = default;
+
+      
+
+        public void RandomLocalGuid()
+        {
+            LocalPoolGuid = Guid.NewGuid();
+            LocalPoolGuidBytes = LocalPoolGuid.ToByteArray();
+        }
+
+        public ConnectionPool()
+        {
+            RandomLocalGuid();
+            StartStatsTask();
+        }
+
+        public Task StartStatsTask()
+        {
+            // write number of clients etc.
+            var task = Task.Run(async ()=> {
+                while (!IsDisposed && !this.LinkedCt.IsCancellationRequested)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(10));
+
+                    lock (PoolLock)
+                    {
+                        if (IsDisposed) return;
+
+                        var active = CountActive();
+                        
+                        Console.WriteLine($@"Connection pool status: LocalPoolGuid = ""{LocalPoolGuid:N}"", RemoteServerPoolGuid = ""{RemoteServerPoolGuid:N}"", PoolRemoteGuidQueue = ""{(PoolRemoteGuidQueue?.Count??0)} items"", Pool = ""Reserved = {active.reserved}, Unreserved = {active.unreserved}, Total = {active.total}"".");
+                    }
+                }
+
+            });
+
+            return task;
+            // timeout clients which didn't read/write for timeout duration
+        }
+
+        public ConnectionPool(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0) : this()
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -39,9 +79,9 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        
 
-        internal int Count(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+
+        public int Count(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
 
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
@@ -62,7 +102,7 @@ namespace SvmFsBatch
             }
         }
 
-        internal (int reserved, int unreserved, int total) CountActive(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public (int reserved, int unreserved, int total) CountActive(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
 
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
@@ -95,7 +135,7 @@ namespace SvmFsBatch
             }
         }
 
-        internal int CountRemoteGuids(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public int CountRemoteGuids(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
 
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
@@ -113,7 +153,7 @@ namespace SvmFsBatch
             }
         }
 
-        internal void PollPool(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void PollPool(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
 
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
@@ -126,7 +166,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal ConnectionPoolMember GetNextClient(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public ConnectionPoolMember GetNextClient(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -164,7 +204,7 @@ namespace SvmFsBatch
             return default;
         }
 
-        //internal bool Poll(ConnectionPoolMember cpm)
+        //public bool Poll(ConnectionPoolMember cpm)
         //{
         //    lock (_poolLock)
         //    {
@@ -177,7 +217,7 @@ namespace SvmFsBatch
         //    }
         //}
 
-        internal void Clean(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void Clean(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -204,16 +244,18 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal void CloseAll(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void CloseAll(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
 
             if (IsDisposed) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return; }
 
+
             lock (PoolLock)
             {
                 if (IsDisposed) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return; }
+                
 
 
                 for (var index = Pool.Count - 1; index >= 0; index--)
@@ -229,7 +271,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal void QueueGuid(byte[] RemoteGuidBytes, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void QueueGuid(byte[] RemoteGuidBytes, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -246,7 +288,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal void Add(ConnectionPoolMember cpm, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void AddCPM(ConnectionPoolMember cpm, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -272,22 +314,22 @@ namespace SvmFsBatch
 
                 var activeConnections = CountActive(callChain: callChain, lvl: lvl + 1);
 
-                if (IsServer || (!IsServer && activeConnections.total < Program.ProgramArgs.ClientConnectionPoolSize))
-                {
+                //if (IsServer || (!IsServer && activeConnections.total < Program.ProgramArgs.ClientConnectionPoolSize))
+                //{
                     Pool.Add(cpm);
                     cpm.Cp = this;
                     QueueGuid(cpm.RemoteGuidBytes, callChain: callChain, lvl: lvl + 1);
-                }
-                else
-                {
-                    cpm.Close(callChain: callChain, lvl: lvl + 1);
-                }
+                //}
+                //else
+                //{
+                    //cpm.Close(callChain: callChain, lvl: lvl + 1);
+                //}
             }
 
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal void Remove(ConnectionPoolMember cpm, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public void Remove(ConnectionPoolMember cpm, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -296,14 +338,17 @@ namespace SvmFsBatch
             {
                 if (this.IsDisposed || this.Pool == null) { Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1); return; }
 
-                Pool.Remove(cpm);
-
+                try
+                {
+                    Pool.Remove(cpm);
+                }
+                catch (Exception) { }
             }
 
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal async Task StopAsync(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public async Task StopAsync(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -328,15 +373,136 @@ namespace SvmFsBatch
                 PoolCt = default;
                 Task = null;
                 PoolName = null;
-            }
 
-            IsDisposed = true;
+                IsDisposed = true;
+            }
             //_poolLock = null;
 
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal void Start(bool isServer, string localPoolName, Guid localPoolGuid, Guid remoteServerPoolGuid, CancellationToken ct, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public async Task<ConnectionPoolMember> ConnectAcceptAsync(TcpListener listener, int timeoutSeconds = 10)
+        {
+            Logging.LogCall(ModuleName);
+
+            var incomingClientConnect = Task.Run(async () =>
+            {
+                if (!LinkedCt.IsCancellationRequested) { try { return await listener.AcceptTcpClientAsync().ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, "", ModuleName); } }
+                return default;
+            }, LinkedCt);
+
+            do
+            {
+                // await up to 10 seconds
+                await Task.WhenAny(incomingClientConnect, Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), LinkedCt)).ConfigureAwait(false);
+
+                // check if client_connect task didn't finish
+                if (!incomingClientConnect.IsCompleted)
+                {
+                    // if didn't finish, check if cancellation requested
+                    if (LinkedCt.IsCancellationRequested)
+                    {
+                        Logging.LogEvent($@"Pool ""{PoolName}"".  Cancellation requested on {nameof(LinkedCt)}.", ModuleName);
+                        this.CloseAll();
+                        break;
+                    }
+                }
+                //else { break; }
+            } while (!incomingClientConnect.IsCompleted);
+
+            if (incomingClientConnect.IsCompletedSuccessfully && incomingClientConnect.Result != default)
+            {
+                var client = incomingClientConnect.Result;
+
+                if (client.Connected)
+                {
+                    var cpm = await AddClient(client, default/*, callChain: callChain, lvl: lvl + 1*/).ConfigureAwait(false);
+
+                    if (cpm != default)
+                    {
+                        Logging.LogExit(ModuleName);
+                        return cpm;
+                    }
+                }
+
+                try { client?.Close(); } catch (Exception) { }
+                Logging.LogExit(ModuleName);
+                return default;
+            }
+
+            Logging.LogExit(ModuleName);
+            return default;
+        }
+
+        public async Task<ConnectionPoolMember> ConnectAsync(string host, int port, int timeoutSeconds = 10, int reconnectDelaySeconds = 1, int reconnectRetries = 0)
+        {
+            Logging.LogCall(ModuleName);
+            var tries = 0;
+            while (!LinkedCt.IsCancellationRequested && tries <= reconnectRetries)
+            {
+                tries++;
+
+                try
+                {
+                    using var connectCts = new CancellationTokenSource();
+                    var connectCt = connectCts.Token;
+                    using var connectLinkedCts = CancellationTokenSource.CreateLinkedTokenSource(LinkedCt, connectCt);
+                    var connectLinkedCt = connectLinkedCts.Token;
+
+                    var client = new TcpClient();
+                    var outgoingClientConnect = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            Logging.LogEvent($"Connection pool: Establishing outgoing connecting to {host}:{port}.", ModuleName);
+                            await client.ConnectAsync(host, port, connectLinkedCt).ConfigureAwait(false);
+                        }
+                        catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+                    }, connectLinkedCt);
+
+                    try { await Task.WhenAny(outgoingClientConnect, Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), connectLinkedCt)).ConfigureAwait(false); } catch (Exception) { }
+                    try { connectCts.Cancel(); } catch (Exception) { }
+
+                    if (!outgoingClientConnect.IsCompletedSuccessfully || client == null || client.Client == null || !client.Connected)
+                    {
+                        Logging.LogEvent("Connection pool: Outgoing connection timed out.", ModuleName);
+
+                        try { client.Close(); } catch (Exception) { }
+                        try { await Task.Delay(TimeSpan.FromSeconds(reconnectDelaySeconds), LinkedCt).ConfigureAwait(false); } catch (Exception) { }
+                        continue;
+                    }
+
+                    if (client.Connected)
+                    {
+                        var cpm = await AddClient(client, default/*, callChain: callChain, lvl: lvl + 1*/).ConfigureAwait(false);
+
+                        if (cpm != default)
+                        {
+                            cpm.ConnectHost = host;
+                            cpm.ConnectPort = port;
+
+                            Logging.LogExit(ModuleName);
+                            return cpm;
+                        }
+                    }
+
+                    try { client?.Close(); } catch (Exception) { }
+                    continue;
+                }
+                catch (Exception e)
+                {
+                    Logging.LogEvent("Connection pool: Outgoing connection timed out.", ModuleName);
+                    Logging.LogException(e, "", ModuleName);
+
+                    try { await Task.Delay(TimeSpan.FromSeconds(1), LinkedCt).ConfigureAwait(false); } catch (Exception) { }
+                }
+            }
+
+            Logging.LogExit(ModuleName);
+            return default;
+        }
+
+        public void Start(bool isServer, string localPoolName, Guid localPoolGuid, Guid remoteServerPoolGuid, CancellationToken ct, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -357,7 +523,7 @@ namespace SvmFsBatch
             this.LinkedCt = LinkedCts.Token;
 
 
-            Task = System.Threading.Tasks.Task.Run(async () =>
+            Task = Task.Run(async () =>
                 {
 
 
@@ -414,105 +580,28 @@ namespace SvmFsBatch
                                 Logging.LogEvent($@"Pool ""{PoolName}"". Pool reserved: {activeConnections.reserved}. Pool unreserved: {activeConnections.unreserved}. Pool total: {activeConnections.total}. Total hosts: {totalHosts}.", ModuleName);
                             }
 
-                            TcpClient client = null;
+                            try { await Task.Delay(TimeSpan.FromMilliseconds(1), LinkedCt).ConfigureAwait(false); } catch (Exception) { }
+                            
 
+                            ConnectionPoolMember cpm = null;
 
                             if (!IsServer)
                             {
-                                try { await Task.Delay(TimeSpan.FromMilliseconds(1), LinkedCt).ConfigureAwait(false); } catch (Exception) { }
-
-
-
                                 if (activeConnections.total < Program.ProgramArgs.ClientConnectionPoolSize)
-
-                                    try
-                                    {
-                                        var outgoingClient = new TcpClient();
-                                        var outgoingClientConnect = Task.Run(async () =>
-                                            {
-                                                try
-                                                {
-                                                    Logging.LogEvent($"Connection pool: Establishing outgoing connecting to {Program.ProgramArgs.ServerIp}:{Program.ProgramArgs.ServerPort}.", ModuleName);
-                                                    await outgoingClient.ConnectAsync(Program.ProgramArgs.ServerIp, Program.ProgramArgs.ServerPort, LinkedCt).ConfigureAwait(false);
-                                                }
-                                                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
-                                            },
-                                            LinkedCt);
-
-                                        try { await Task.WhenAny(outgoingClientConnect, Task.Delay(TimeSpan.FromSeconds(10), LinkedCt)).ConfigureAwait(false); } catch (Exception) { }
-
-                                        if (!outgoingClientConnect.IsCompletedSuccessfully || outgoingClient == null || outgoingClient.Client == null || !outgoingClient.Connected)
-                                        {
-                                            Logging.LogEvent("Connection pool: Outgoing connection timed out.", ModuleName);
-                                            try { outgoingClient.Close(); } catch (Exception) { }
-                                            try { await Task.Delay(TimeSpan.FromSeconds(1), LinkedCt).ConfigureAwait(false); } catch (Exception) { }
-                                            continue;
-                                        }
-
-                                        client = outgoingClient;
-
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Logging.LogEvent("Connection pool: Outgoing connection timed out.", ModuleName);
-                                        Logging.LogException(e, "", ModuleName);
-
-                                        try { await Task.Delay(TimeSpan.FromSeconds(1), LinkedCt).ConfigureAwait(false); } catch (Exception) { }
-                                    }
-                            }
-
-                            else if (IsServer)
-                            {
-                                try { await Task.Delay(TimeSpan.FromMilliseconds(1), LinkedCt).ConfigureAwait(false); } catch (Exception) { }
-
-                                var incomingClientConnect = Task.Run(async () =>
-                                    {
-                                        if (!LinkedCt.IsCancellationRequested) { return ct.IsCancellationRequested ? default : await listener.AcceptTcpClientAsync().ConfigureAwait(false); }
-                                        return default;
-                                    },
-                                    LinkedCt);
-
-                                do
                                 {
-                                    // await up to 10 seconds
-                                    var first = await Task.WhenAny(incomingClientConnect, Task.Delay(TimeSpan.FromSeconds(10), LinkedCt)).ConfigureAwait(false);
-
-                                    // check if client_connect task didn't finish
-                                    if (!incomingClientConnect.IsCompleted) //Successfully)
-                                    {
-                                        // if didn't finish, check if cancellation requested
-                                        if (LinkedCt.IsCancellationRequested)
-                                        {
-                                            Logging.LogEvent($@"Pool ""{localPoolName}"".  Cancellation requested on {nameof(LinkedCt)}.", ModuleName);
-                                            break;
-                                        }
-                                    }
-                                    else { break; }
-                                } while (!incomingClientConnect.IsCompleted);
-
-                                if (incomingClientConnect.IsCompletedSuccessfully)
-                                {
-                                    client = incomingClientConnect.Result;
+                                    await ConnectAsync(host: Program.ProgramArgs.ServerIp, port: Program.ProgramArgs.ServerPort, timeoutSeconds: 10, reconnectDelaySeconds: 1, reconnectRetries: 0).ConfigureAwait(false);
                                 }
                             }
-
-                            if (LinkedCt.IsCancellationRequested)
+                            else if (IsServer)
                             {
-                                if (client != null)
-                                    try { client.Close(); }
-                                    catch (Exception) { }
-
-                                break;
+                                await ConnectAcceptAsync(listener: listener, timeoutSeconds: 10).ConfigureAwait(false);
                             }
 
-                            if (client == null)
+                            if (cpm == null)
                             {
                                 await Task.Delay(TimeSpan.FromSeconds(1), LinkedCt).ConfigureAwait(false);
                                 continue;
                             }
-
-
-                            await AddClient(client, ct, callChain:callChain, lvl:lvl+1);
                         }
                         catch (Exception)
                         {
@@ -541,7 +630,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName, callChain: callChain, lvl: lvl + 1);
         }
 
-        internal async Task<ConnectionPoolMember> AddClient(TcpClient client, CancellationToken ct, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
+        public async Task<ConnectionPoolMember> AddClient(TcpClient client, CancellationToken ct, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
             Logging.LogCall(ModuleName, callChain: callChain, lvl: lvl + 1);
@@ -564,7 +653,7 @@ namespace SvmFsBatch
                     var remoteGuid = handshake.remote_guid;
                     var remoteGuidBytes = remoteGuid.ToByteArray();
 
-                    Logging.LogEvent($@"Pool ""{PoolName}"".  Challenge {(handshake.challenge_correct ? "successful" : "failed")}. Local address: {rid.localAddress}:{rid.localPort} ({LocalPoolGuid}). Remote address: {rid.remoteAddress}:{rid.remotePort} ({handshake.remote_guid}).");
+                    Logging.LogEvent($@"Pool ""{PoolName}"".  Challenge {(handshake.challenge_correct ? "successful" : "failed")}. Local address: {rid.localAddress}:{rid.localPort} ({LocalPoolGuid:N}). Remote address: {rid.remoteAddress}:{rid.remotePort} ({handshake.remote_guid:N}).");
 
                     if (handshake.challenge_correct)
                     {
@@ -582,7 +671,7 @@ namespace SvmFsBatch
                             RemotePort = rid.remotePort,
                         };
 
-                        Add(cpm,
+                        AddCPM(cpm,
                             callChain: callChain,
                             lvl: lvl + 1);
 

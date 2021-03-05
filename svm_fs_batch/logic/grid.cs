@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal static class Grid
+    public static class Grid
     {
         public const string ModuleName = nameof(Grid);
 
-        internal static GridPoint GetBestRate(List<GridPoint> gridSearchResults, CancellationToken ct)
+        public static GridPoint GetBestRate(List<GridPoint> gridSearchResults, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -74,7 +74,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static async Task<GridPoint> GridParameterSearchAsync(bool asParallel, string libsvmTrainExe, string cacheTrainGridCsv, string trainFile, string trainStdoutFile, string trainStderrFile, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int repetitions = -1, int repetitionsIndex = -1, int outerCvFolds = -1, int outerCvIndex = -1, int innerCvFolds = 5, bool probabilityEstimates = false, bool shrinkingHeuristics = true, bool quietMode = true, int memoryLimitMb = 1024, TimeSpan? pointMaxTime = null, double? costExpBegin = -5, double? costExpEnd = 15, double? costExpStep = 2, double? gammaExpBegin = 3, double? gammaExpEnd = -15, double? gammaExpStep = -2, double? epsilonExpBegin = null, //8,
+        public static async Task<GridPoint> GridParameterSearchAsync(bool asParallel, string libsvmTrainExe, string cacheTrainGridCsv, string trainFile, string trainStdoutFile, string trainStderrFile, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int repetitions = -1, int repetitionsIndex = -1, int outerCvFolds = -1, int outerCvIndex = -1, int innerCvFolds = 5, bool probabilityEstimates = false, bool shrinkingHeuristics = true, bool quietMode = true, int memoryLimitMb = 1024, TimeSpan? pointMaxTime = null, double? costExpBegin = -5, double? costExpEnd = 15, double? costExpStep = 2, double? gammaExpBegin = 3, double? gammaExpEnd = -15, double? gammaExpStep = -2, double? epsilonExpBegin = null, //8,
             double? epsilonExpEnd = null, //-1,
             double? epsilonExpStep = null, //1,
             double? coef0ExpBegin = null, double? coef0ExpEnd = null, double? coef0ExpStep = null, double? degreeExpBegin = null, double? degreeExpEnd = null, double? degreeExpStep = null, CancellationToken ct = default)
@@ -215,7 +215,7 @@ namespace SvmFsBatch
 
 
             var resultsTasks = asParallel
-                ? searchGridPoints.AsParallel().AsOrdered().WithCancellation(ct).Select(async (point, modelIndex) =>
+                ? searchGridPoints.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async (point, modelIndex) =>
                 {
                     if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
@@ -287,7 +287,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static double LibsvmCvPerf(string[] libsvmResultLines, CancellationToken ct)
+        public static double LibsvmCvPerf(string[] libsvmResultLines, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             //const string MethodName = nameof(libsvm_cv_perf);

@@ -3,13 +3,13 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class DataSetGroupKey : IEquatable<DataSetGroupKey>
+    public class DataSetGroupKey : IEquatable<DataSetGroupKey>
     {
-        internal const string ModuleName = nameof(DataSetGroupKey);
+        public const string ModuleName = nameof(DataSetGroupKey);
 
-        internal static readonly DataSetGroupKey Empty = new DataSetGroupKey(null, null, null, null, null, null, null, null, null);
+        public static readonly DataSetGroupKey Empty = new DataSetGroupKey(null, null, null, null, null, null, null, null, null);
 
-        internal static readonly string[] CsvHeaderValuesArray =
+        public static readonly string[] CsvHeaderValuesArray =
         {
             nameof(DataSetGroupKey.Value.gkFileTag),
             nameof(DataSetGroupKey.Value.gkAlphabet),
@@ -24,13 +24,19 @@ namespace SvmFsBatch
             nameof(gkColumnIndex)
         };
 
-        internal static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
+        public static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
 
-        internal int gkColumnIndex = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
+        public int gkColumnIndex = -1; // note: column_index not used for equality checking, because it can change if extra/alternative data is loaded... all lookups should be done by string values.
 
-        internal int gkGroupIndex = -1; // note: for internal use only... value subject to change.
+        public int gkGroupIndex = -1; // note: for public use only... value subject to change.
 
-        internal (string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective) Value;
+        public (string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective) Value;
+
+
+        public DataSetGroupKey()
+        {
+
+        }
 
         public DataSetGroupKey((string gkFileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string gkGroup, string gkMember, string gkPerspective) value, int gkGroupIndex = -1, int gkColumnIndex = -1)
         {
@@ -156,7 +162,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal static DataSetGroupKey FindReference(DataSetGroupKey[] list, DataSetGroupKey item)
+        public static DataSetGroupKey FindReference(DataSetGroupKey[] list, DataSetGroupKey item)
         {
             Logging.LogCall(ModuleName);
 
@@ -167,7 +173,7 @@ namespace SvmFsBatch
         }
 
 
-        internal string[] CsvValuesArray()
+        public string[] CsvValuesArray()
         {
             Logging.LogCall(ModuleName);
 
@@ -190,7 +196,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal string CsvValuesString()
+        public string CsvValuesString()
         {
             Logging.LogCall(ModuleName);
 

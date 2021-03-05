@@ -3,20 +3,25 @@ using System.Linq;
 
 namespace SvmFsBatch
 {
-    internal class Scaling
+    public class Scaling
     {
         public const string ModuleName = nameof(Scaling);
-        internal double AbsSum;
-        internal double Average;
-        internal double ColumnMax;
-        internal double ColumnMin;
+        public double AbsSum;
+        public double Average;
+        public double ColumnMax;
+        public double ColumnMin;
 
-        internal double NonZero;
-        internal double RescaleScaleMax = +1;
+        public double NonZero;
+        public double RescaleScaleMax = +1;
 
-        internal double RescaleScaleMin = -1;
-        internal double Srsos;
-        internal double Stdev;
+        public double RescaleScaleMin = -1;
+        public double Srsos;
+        public double Stdev;
+
+        public Scaling()
+        {
+
+        }
 
         public Scaling(int[] yCol) : this(yCol.Select(a => (double) a).ToArray())
         {
@@ -38,7 +43,7 @@ namespace SvmFsBatch
             ColumnMax = yCol.Max();
         }
 
-        internal static double SqrtSumOfSqrs(double[] list)
+        public static double SqrtSumOfSqrs(double[] list)
         {
             Logging.LogCall(ModuleName);
 
@@ -47,7 +52,7 @@ namespace SvmFsBatch
                 : Math.Sqrt(list.Sum(a => Math.Abs(a) * Math.Abs(a)));
         }
 
-        internal static double StandardDeviationSample(double[] values)
+        public static double StandardDeviationSample(double[] values)
         {
             Logging.LogCall(ModuleName);
 
@@ -58,7 +63,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
-        internal double[] Scale(double[] values, ScaleFunction scaleFunction)
+        public double[] Scale(double[] values, ScaleFunction scaleFunction)
         {
             Logging.LogCall(ModuleName);
 
@@ -67,7 +72,7 @@ namespace SvmFsBatch
                 : values.Select(a => Scale(a, scaleFunction)).ToArray();
         }
 
-        internal double Scale(double value, ScaleFunction scaleFunction)
+        public double Scale(double value, ScaleFunction scaleFunction)
         {
             Logging.LogCall(ModuleName);
 
@@ -132,7 +137,7 @@ namespace SvmFsBatch
             }
         }
 
-        internal enum ScaleFunction
+        public enum ScaleFunction
         {
             None, Rescale, Normalisation,
             Standardisation, L0Norm, L1Norm,

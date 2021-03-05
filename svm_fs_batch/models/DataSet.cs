@@ -4,15 +4,16 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal class DataSet
+    public class DataSet
     {
         public const string ModuleName = nameof(DataSet);
-        //internal 
+        //public 
         //(
         //    int ClassId,
         //    string ClassName,
@@ -23,14 +24,14 @@ namespace SvmFsBatch
         //            int col_index,
         //            string comment_key,
         //            string CommentValue
-        //        )[] row_comment,
+        //        )[] RowComment,
         //        (
         //            int row_index,
         //            int col_index,
         //            (
         //                int internal_column_index,
         //                int external_column_index,
-        //                string file_tag,
+        //                string gkFileTag,
         //                string gkAlphabet,
         //                string gkStats,
         //                string gkDimension,
@@ -41,51 +42,304 @@ namespace SvmFsBatch
         //                string gkPerspective
         //            ) column_header,
         //            double row_column_val
-        //        )[] row_columns
+        //        )[] RowColumns
         //    )[] val_list
         //)[] value_list;
 
-        internal (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize)[] ClassSizes;
+        public (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures)[] ClassSizes;
 
-        //internal (int internal_column_index, int external_column_index, string file_tag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)[] column_header_list;
-        internal DataSetGroupKey[] ColumnHeaderList;
+        //public (int internal_column_index, int external_column_index, string FileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)[] column_header_list;
+        public DataSetGroupKey[] ColumnHeaderList;
 
-        internal (int ClassId, string ClassName, (int row_index, int col_index, string comment_key, string CommentValue)[][] cl_comment_list)[] CommentList;
+        public (int ClassId, string ClassName, (int CommentRowIndex, int CommentColumnIndex, string CommentKey, string CommentValue)[][] ClassCommentList)[] CommentList;
 
         // feature values, grouped by class id (with meta data class name and class size)
-        // internal List<(int ClassId, string ClassName, int ClassSize, List<((int internal_column_index, int external_column_index, string file_tag, string gkAlphabet, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective) column_header, double fv)[]> val_list)> value_list;
+        // public List<(int ClassId, string ClassName, int ClassSize, List<((int internal_column_index, int external_column_index, string FileTag, string gkAlphabet, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective) column_header, double fv)[]> val_list)> value_list;
 
-        internal ( int ClassId, string ClassName, int ClassSize, ( ( int row_index, int col_index, string comment_key, string CommentValue )[] row_comment, ( int row_index, int col_index, DataSetGroupKey column_header, double row_column_val )[] row_columns )[] val_list )[] ValueList;
+        public (int ClassId, string ClassName, int ClassSize, ((int CommentRowIndex, int CommentColumnIndex, string CommentKey, string CommentValue)[] RowComment, (int RowIndex, int ColumnIndex, DataSetGroupKey ColumnHeader, double RowColumnValue)[] RowColumns)[] ClassValueList)[] ValueList;
 
-        internal static int[] RemoveDuplicateColumns(DataSet DataSet, int[] queryCols, bool asParallel = false, CancellationToken ct = default)
+        public DataSet()
+        {
+
+        }
+
+        public static List<double[]> ReadBinaryValueFile(string inputFile, bool asStream)
+        {
+            Logging.LogCall();
+
+            Logging.LogEvent($@"Loading {inputFile}");
+
+            var lines = new List<double[]>();
+
+            if (asStream)
+            {
+                var f = File.Open(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+
+                while (f.CanRead)
+                {
+                    var buffer1 = new byte[sizeof(int)];
+                    var b1 = f.Read(buffer1);
+                    if (b1 == 0) break;
+                    var len = BitConverter.ToInt32(buffer1);
+
+                    if (len > 0)
+                    {
+                        var buffer2 = new byte[sizeof(double) * len];
+                        var b2 = f.Read(buffer2);
+                        if (b2 == 0) break;
+
+                        var values = new double[buffer2.Length / sizeof(double)];
+                        for (int i = 0; i < values.Length; i++) { values[i] = BitConverter.ToDouble(buffer2, i * sizeof(double)); }
+
+                        lines.Add(values);
+                    }
+                }
+
+                f.Close();
+                f.Dispose();
+            }
+            else
+            {
+                var bytes = File.ReadAllBytes(inputFile);
+                var b = 0;
+                
+                while (b < bytes.Length)
+                {
+                    var lineLen = BitConverter.ToInt32(bytes, b);
+                    b += sizeof(int);
+
+                    if (lineLen > 0)
+                    {
+                        var values = new double[lineLen];
+                        for (int i = 0; i < lineLen; i++)
+                        {
+                            values[i] = BitConverter.ToDouble(bytes, b);
+                            b += sizeof(double);
+                        }
+
+                        lines.Add(values);
+                    }
+                }
+            }
+
+            Logging.LogEvent($@"Loaded {inputFile}");
+            Logging.LogExit();
+            return lines;
+        }
+
+        public static string[][] ReadCsv(string inputFile)
+        {
+            Logging.LogCall();
+            //Logging.LogEvent($@"Loading {inputFile}");
+
+            var result = new List<string[]>();
+
+            foreach (var line in File.ReadLines(inputFile))
+            {
+                var lineSplit = line.Split(',');
+
+                result.Add(lineSplit);
+            }
+
+            //Logging.LogEvent($@"Loaded {inputFile}");
+            Logging.LogExit();
+
+            return result.ToArray();
+        }
+
+        public static string[][] ReadBinaryCsv(string inputFile)
+        {
+            var outputFileSteam = File.Open(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+            //Logging.LogEvent($@"Loading {inputFile}");
+
+            var result = new List<string[]>();
+
+            while (outputFileSteam.CanRead)
+            {
+                var lineSizeBuffer = new byte[sizeof(int)];
+                var b1 = outputFileSteam.Read(lineSizeBuffer);
+                if (b1 == 0) break;
+                var lineSize = BitConverter.ToInt32(lineSizeBuffer);
+
+                var lineSplit = new string[lineSize];
+                if (lineSize > 0)
+                {
+                    for (var i = 0; i < lineSize; i++)
+                    {
+                        var strlenBuffer = new byte[sizeof(int)];
+                        var b2 = outputFileSteam.Read(strlenBuffer);
+                        if (b2 == 0) break;
+                        var strlen = BitConverter.ToInt32(strlenBuffer);
+                        //if (strlen==0) break;
+
+                        if (strlen > 0)
+                        {
+                            var buffer = new byte[strlen];
+                            var b3 = outputFileSteam.Read(buffer);
+                            if (b3 == 0) break;
+                            lineSplit[i] = Encoding.UTF8.GetString(buffer);
+                        }
+                    }
+                }
+
+                result.Add(lineSplit);
+            }
+
+            outputFileSteam.Flush(true);
+            outputFileSteam.Close();
+            outputFileSteam.Dispose();
+
+            //Logging.LogEvent($@"Loaded {inputFile}");
+            Logging.LogExit();
+
+            return result.ToArray();
+        }
+
+        public static List<string[]> ConvertCsvTextFileToBinary(string inputFile, string outputFile)
+        {
+            Logging.LogCall();
+            Logging.LogEvent($@"Converting {inputFile} to {outputFile}");
+
+            var outputFileSteam = File.Open(outputFile, FileMode.Create, FileAccess.Write, FileShare.None);
+
+            var result = new List<string[]>();
+
+            void sendInt(int value)
+            {
+                outputFileSteam.Write(BitConverter.GetBytes(value));
+            }
+
+            void sendStr(string str)
+            {
+                var strbytes = Encoding.UTF8.GetBytes(str);
+                var strlen = strbytes.Length;
+                sendInt(strlen);
+                outputFileSteam.Write(strbytes);
+            }
+
+            foreach (var line in File.ReadLines(inputFile))
+            {
+                var lineSplit = line.Split(',');
+
+                sendInt(lineSplit.Length);
+
+                foreach (var s in lineSplit)
+                {
+                    sendStr(s);
+                }
+
+                result.Add(lineSplit);
+            }
+
+            outputFileSteam.Flush(true);
+            outputFileSteam.Close();
+            outputFileSteam.Dispose();
+
+            Logging.LogEvent($@"Converted {inputFile} to {outputFile}");
+            Logging.LogExit();
+            return result;
+        }
+
+        public static List<double[]> ConvertCsvValueFileToBinary(string inputFile, string outputFile)
+        {
+            Logging.LogCall();
+            Logging.LogEvent($@"Converting {inputFile} to {outputFile}");
+
+            if (File.Exists(outputFile))
+            {
+                Logging.LogExit();
+                Logging.LogEvent($@"Converting {inputFile} to {outputFile} - output file already exists.");
+
+                return null;
+            }
+
+            var lines = new List<double[]>();
+
+            var tempOutputFile = Path.Combine(Path.GetDirectoryName(outputFile), $"tmp_{Guid.NewGuid():N}.bin");
+
+            var outputFileSteam = File.Open(outputFile, FileMode.Create, FileAccess.Write, FileShare.None);
+
+            //void writeInts(int[] values)
+            //{
+            //    outputFileSteam.Write(BitConverter.GetBytes(values.Length));
+            //    for (var index = 0; index < values.Length; index++)
+            //    {
+            //        outputFileSteam.Write(BitConverter.GetBytes(values[index]));
+            //    }
+            //}
+
+            void writeDoubles(double[] values)
+            {
+                // write record length
+                outputFileSteam.Write(BitConverter.GetBytes(values.Length));
+
+                // write record contents
+                for (var index = 0; index < values.Length; index++)
+                {
+                    outputFileSteam.Write(BitConverter.GetBytes(values[index]));
+                }
+            }
+
+
+            foreach (var line in File.ReadLines(inputFile).Skip(1))
+            {
+
+
+                var lineSplit = line.Split(',');
+
+                var lineDoubles = lineSplit.AsParallel().AsOrdered().Select(a => double.Parse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray();
+                writeDoubles(lineDoubles);
+                lines.Add(lineDoubles);
+            }
+
+            outputFileSteam.Flush(true);
+            outputFileSteam.Close();
+            outputFileSteam.Dispose();
+
+            try { File.Move(tempOutputFile, outputFile); }
+            catch (Exception)
+            {
+                try { File.Delete(tempOutputFile); }
+                catch (Exception) { }
+            }
+
+
+            Logging.LogEvent($@"Converted {inputFile} to {outputFile}");
+            Logging.LogExit();
+            return lines;
+
+        }
+
+        public static int[] RemoveDuplicateColumns(DataSet DataSet, int[] queryCols, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             //const string MethodName = nameof(remove_duplicate_columns);
             // remove duplicate columns (may exist in separate groups)
             //var query_col_dupe_check = idr.DataSet_instance_list_grouped.SelectMany(a => a.examples).SelectMany(a => query_cols.Select(b => (query_col: b, fv: a.feature_data[b].fv)).ToList()).GroupBy(b => b.query_col).Select(b => (query_col: b.Key, values: b.Select(c => c.fv).ToList())).ToList();
 
-            if (queryCols == null || queryCols.Length <= 1) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :queryCols; } //throw new ArgumentOutOfRangeException(nameof(query_cols));
+            if (queryCols == null || queryCols.Length <= 1) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : queryCols; } //throw new ArgumentOutOfRangeException(nameof(query_cols));
             //if (query_cols.Length <= 1) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :query_cols;}
 
             var queryColDupeCheck = asParallel
-                ? queryCols.AsParallel().AsOrdered().WithCancellation(ct).Select(colIndex => DataSet.ValueList.SelectMany(classValues => classValues.val_list.Select((row, rowIndex) =>
+                ? queryCols.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(colIndex => DataSet.ValueList.SelectMany(classValues => classValues.ClassValueList.Select((row, rowIndex) =>
                 {
-                    var rc = row.row_columns[colIndex];
+                    var rc = row.RowColumns[colIndex];
 
-                    if (rc.col_index != colIndex || rc.row_index != rowIndex) throw new Exception();
+                    if (rc.ColumnIndex != colIndex || rc.RowIndex != rowIndex) throw new Exception();
 
-                     return ct.IsCancellationRequested ? default :rc.row_column_val;
+                    return ct.IsCancellationRequested ? default : rc.RowColumnValue;
                 }).ToArray()).ToArray()).ToArray()
-                : queryCols.Select(colIndex => DataSet.ValueList.SelectMany(classValues => classValues.val_list.Select((row, rowIndex) =>
+                : queryCols.Select(colIndex => DataSet.ValueList.SelectMany(classValues => classValues.ClassValueList.Select((row, rowIndex) =>
                 {
-                    var rc = row.row_columns[colIndex];
+                    var rc = row.RowColumns[colIndex];
 
-                    if (rc.col_index != colIndex || rc.row_index != rowIndex) throw new Exception();
+                    if (rc.ColumnIndex != colIndex || rc.RowIndex != rowIndex) throw new Exception();
 
-                     return ct.IsCancellationRequested ? default :rc.row_column_val;
+                    return ct.IsCancellationRequested ? default : rc.RowColumnValue;
                 }).ToArray()).ToArray()).ToArray();
 
 
@@ -96,15 +350,15 @@ namespace SvmFsBatch
             var indexPairs = new (int x, int y)[queryColDupeCheck.Length * (queryColDupeCheck.Length - 1) / 2];
             var k = 0;
             for (var i = startIndex; i < queryColDupeCheck.Length; i++)
-            for (var j = startIndex; j < queryColDupeCheck.Length; j++)
-            {
-                if (i <= j) continue;
+                for (var j = startIndex; j < queryColDupeCheck.Length; j++)
+                {
+                    if (i <= j) continue;
 
-                indexPairs[k++] = (i, j);
-            }
+                    indexPairs[k++] = (i, j);
+                }
 
             var seqEq = asParallel
-                ? indexPairs.AsParallel().AsOrdered().WithCancellation(ct).Select(a => queryColDupeCheck[a.x].SequenceEqual(queryColDupeCheck[a.y])).ToArray()
+                ? indexPairs.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(a => queryColDupeCheck[a.x].SequenceEqual(queryColDupeCheck[a.y])).ToArray()
                 : indexPairs.Select(a => queryColDupeCheck[a.x].SequenceEqual(queryColDupeCheck[a.y])).ToArray();
             var dupeClusters = new List<List<int>>();
 
@@ -129,44 +383,102 @@ namespace SvmFsBatch
                 }
 
             var indexesToRemove = asParallel
-                ? dupeClusters.AsParallel().AsOrdered().WithCancellation(ct).Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray()
+                ? dupeClusters.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray()
                 : dupeClusters.Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray();
 
 
             if (indexesToRemove.Length > 0)
             {
                 var ret = queryCols.Except(indexesToRemove).ToArray();
-//#if DEBUG
-//                Logging.WriteLine($"Removed duplicate columns: [{string.Join(", ", indexes_to_remove)}].", program.ModuleName, MethodName);
-//                Logging.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program.ModuleName, MethodName);
-//                Logging.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program.ModuleName, MethodName);
-//#endif
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :ret;
+                //#if DEBUG
+                //                Logging.WriteLine($"Removed duplicate columns: [{string.Join(", ", indexes_to_remove)}].", program.ModuleName, MethodName);
+                //                Logging.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program.ModuleName, MethodName);
+                //                Logging.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program.ModuleName, MethodName);
+                //#endif
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : ret;
             }
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :queryCols;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : queryCols;
         }
 
-        internal double[][] GetRowFeatures((int ClassId, int[] row_indexes)[] classRowIndexes, int[] columnIndexes, bool asParallel = false, CancellationToken ct = default)
+        public double[][] GetRowFeatures((int ClassId, int[] row_indexes)[] classRowIndexes, int[] columnIndexes, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
-            if (columnIndexes.First() != 0) throw new Exception(); // class id missing
+            if (columnIndexes.First() != 0) throw new ArgumentOutOfRangeException(nameof(columnIndexes)); // class id missing
 
             var classRows = asParallel
-                ? classRowIndexes.AsParallel().AsOrdered().WithCancellation(ct).Select(classRowIndex => GetClassRowFeatures(classRowIndex.ClassId, classRowIndex.row_indexes, columnIndexes)).ToList()
+                ? classRowIndexes.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(classRowIndex => GetClassRowFeatures(classRowIndex.ClassId, classRowIndex.row_indexes, columnIndexes)).ToList()
                 : classRowIndexes.Select(classRowIndex => GetClassRowFeatures(classRowIndex.ClassId, classRowIndex.row_indexes, columnIndexes)).ToList();
 
-            var rows = classRows.SelectMany(a => a.as_rows).ToArray();
+            var rows = classRows.SelectMany(a => a.AsRows).ToArray();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :rows;
+            Logging.LogExit(ModuleName);
+
+            return ct.IsCancellationRequested ? default : rows;
         }
 
-        internal static Scaling[] GetScalingParams(double[][] rows, int[] columnIndexes)
+        public DataSet GetFeaturesAsReducedDataSet(int[] columnIndexes, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
+
+            if (columnIndexes.First() != 0) throw new ArgumentOutOfRangeException(nameof(columnIndexes)); // class id missing
+
+
+            var filteredDataSet = new DataSet();
+            filteredDataSet.ValueList = this.ValueList.Select(cl => (cl.ClassId, cl.ClassName, cl.ClassSize, ClassValueList: cl.ClassValueList.Select(c => (RowComment: c.RowComment, RowColumns: columnIndexes.Select(ci => c.RowColumns[ci]).ToArray())).ToArray())).ToArray();
+            filteredDataSet.ColumnHeaderList = columnIndexes.Select(ci => this.ColumnHeaderList[ci]).ToArray();
+            filteredDataSet.CommentList = this.CommentList;
+            filteredDataSet.ClassSizes = this.ClassSizes;
+
+
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default : filteredDataSet;
+        }
+
+        public double[/*class*/][/*row*/][/*column*/] GetFeaturesAsValues(int[] columnIndexes, bool asParallel = false, CancellationToken ct = default)
+        {
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
+
+            if (columnIndexes.First() != 0) throw new ArgumentOutOfRangeException(nameof(columnIndexes)); // class id missing
+
+
+            var result = this.ValueList.Select(cl => cl.ClassValueList.Select(c => columnIndexes.Select(ci => c.RowColumns[ci].RowColumnValue).ToArray()).ToArray()).ToArray();
+
+
+
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default : result;
+        }
+
+        public static Scaling[] GetScalingParams(double[][] rows, int[] columnIndexes, CancellationToken ct = default)
+        {
+
+            Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             var cols = columnIndexes.Select((columnIndex, xIndex) => rows.Select(row => row[xIndex /* column_index -> x_index*/]).ToArray()).ToArray();
             var sp = cols.Select((col, xIndex) => xIndex == 0 /* do not scale class id */
@@ -176,10 +488,16 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return sp;
         }
 
-        public static double[][] GetScaledRows(double[][] rows, /*List<int> column_indexes,*/ Scaling[] sp, Scaling.ScaleFunction sf)
+        public static double[][] GetScaledRows(double[][] rows, /*List<int> column_indexes,*/ Scaling[] sp, Scaling.ScaleFunction sf, CancellationToken ct = default)
         {
+
             Logging.LogCall(ModuleName);
 
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
             //var cols = column_indexes.Select((column_index, x_index) => rows.Select(row => row[x_index /* column_index -> x_index*/]).ToArray()).ToArray();
             //var cols_scaled = cols.Select((v, x_index) =)
 
@@ -190,16 +508,23 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return rowsScaled;
         }
 
-        internal (double[ /*row*/][ /*col*/] as_rows, double[ /*col*/][ /*row*/] as_cols) GetClassRowFeatures(int classId, int[] rowIndexes, int[] columnIndexes)
+        public (double[ /*row*/][ /*col*/] AsRows, double[ /*col*/][ /*row*/] AsColumns) GetClassRowFeatures(int classId, int[] rowIndexes, int[] columnIndexes, CancellationToken ct = default)
         {
+
             Logging.LogCall(ModuleName);
+
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             if (columnIndexes.First() != 0) throw new Exception(); // class id missing
 
             var asRows = new double[rowIndexes.Length][];
             var asCols = new double[columnIndexes.Length][];
 
-            var v = ValueList.First(a => a.ClassId == classId).val_list;
+            var v = ValueList.First(a => a.ClassId == classId).ClassValueList;
 
             for (var yIndex = 0; yIndex < rowIndexes.Length; yIndex++)
             {
@@ -209,8 +534,8 @@ namespace SvmFsBatch
                 for (var xIndex = 0; xIndex < columnIndexes.Length; xIndex++)
                 {
                     var colIndex = columnIndexes[xIndex];
-                    //as_rows[row_index][col_index] = v[row_index].row_columns[col_index].row_column_val;
-                    asRows[yIndex][xIndex] = v[rowIndex].row_columns[colIndex].row_column_val;
+                    //AsRows[row_index][col_index] = v[row_index].RowColumns[col_index].row_column_val;
+                    asRows[yIndex][xIndex] = v[rowIndex].RowColumns[colIndex].RowColumnValue;
                 }
             }
 
@@ -223,15 +548,15 @@ namespace SvmFsBatch
                 for (var yIndex = 0; yIndex < rowIndexes.Length; yIndex++)
                 {
                     var rowIndex = rowIndexes[yIndex];
-                    //as_cols[col_index][row_index] = v[row_index].row_columns[col_index].row_column_val;
-                    asCols[xIndex][yIndex] = v[rowIndex].row_columns[colIndex].row_column_val;
+                    //AsColumns[col_index][row_index] = v[row_index].RowColumns[col_index].row_column_val;
+                    asCols[xIndex][yIndex] = v[rowIndex].RowColumns[colIndex].RowColumnValue;
                 }
             }
 
             Logging.LogExit(ModuleName); return (asRows, asCols);
         }
 
-        //internal async Task DataSet_loader(CancellationToken ct, string[] DataSet_names)// = "[1i.aaindex]")//"2i,2n")//, bool split_by_file_tag = true, bool split_by_groups = true)
+        //public async Task DataSet_loader(CancellationToken ct, string[] DataSet_names)// = "[1i.aaindex]")//"2i,2n")//, bool split_by_FileTag = true, bool split_by_groups = true)
         //{
         //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
         //    if (DataSet_names == null || DataSet_names.Length == 0 || DataSet_names.Any(string.IsNullOrWhiteSpace)) throw new ArgumentOutOfRangeException(nameof(DataSet_names));
@@ -245,7 +570,7 @@ namespace SvmFsBatch
         //    await LoadDataSet(
         //        ct,
         //        DataSet_folder: program.program_args.DataSet_dir,
-        //        file_tags: DataSet_names,//.Split(',', StringSplitOptions.RemoveEmptyEntries), // "2i"
+        //        FileTags: DataSet_names,//.Split(',', StringSplitOptions.RemoveEmptyEntries), // "2i"
         //        ClassNames: program.program_args.ClassNames,
         //        perform_integrity_checks: false,
         //        required_default: required_default,
@@ -254,7 +579,7 @@ namespace SvmFsBatch
 
         //}
 
-        //private async Task LoadDataSetHeadersAsync(List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> dataFilenames, CancellationToken ct)
+        //public async Task LoadDataSetHeadersAsync(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames, CancellationToken ct)
         //{
         //    Logging.LogCall(ModuleName);
 
@@ -264,11 +589,11 @@ namespace SvmFsBatch
         //    Logging.WriteLine(@"Start: reading headers.", ModuleName);
         //    var swHeader = Stopwatch.StartNew();
 
-        //    ColumnHeaderList = dataFilenames.First( /* headers are same for all classes, so only load first class headers */).header_csv_filenames.AsParallel().AsOrdered().WithCancellation(ct).SelectMany((fileInfo, fileIndex) =>
+        //    ColumnHeaderList = dataFilenames.First( /* headers are same for all classes, so only load first class headers */).headerCsvFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.SelectMany((fileInfo, fileIndex) =>
         //    {
         //        Logging.LogExit(ModuleName); return IoProxy.ReadAllLinesAsync(true, ct, fileInfo.filename, callerModuleName: ModuleName).Result.Skip(fileIndex == 0
         //            ? 1
-        //            : 2 /*skip header line, and if not first file, class id line too */).AsParallel().AsOrdered().WithCancellation(ct).Select((line, lineIndex) =>
+        //            : 2 /*skip header line, and if not first file, class id line too */).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((line, lineIndex) =>
         //            {
         //                var row = line.Split(',');
 
@@ -278,7 +603,7 @@ namespace SvmFsBatch
         //                        //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
         //                        fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
         //                            ? ""
-        //                            : fileInfo.file_tag,
+        //                            : fileInfo.FileTag,
         //                        row[1],
         //                        row[2],
         //                        row[3],
@@ -293,7 +618,7 @@ namespace SvmFsBatch
         //                        //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
         //                        fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
         //                            ? ""
-        //                            : fileInfo.file_tag,
+        //                            : fileInfo.FileTag,
         //                        row[1],
         //                        "",
         //                        row[2],
@@ -315,13 +640,13 @@ namespace SvmFsBatch
         //        });
 
 
-        //    //header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.gkAlphabet, a.gkStats, a.gkDimension, a.gkCategory, a.gkSource, a.@gkGroup, a.gkMember, a.gkPerspective)).ToArray();
+        //    //header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.FileTag, a.gkAlphabet, a.gkStats, a.gkDimension, a.gkCategory, a.gkSource, a.@gkGroup, a.gkMember, a.gkPerspective)).ToArray();
         //    swHeader.Stop();
         //    Logging.WriteLine($@"Finish: reading headers ({swHeader.Elapsed}).", ModuleName);
         //}
 
 
-        private void LoadDataSetHeaders(List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> dataFilenames, CancellationToken ct)
+        public void LoadDataSetHeaders(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
@@ -331,44 +656,48 @@ namespace SvmFsBatch
             Logging.WriteLine(@"Start: reading headers.", ModuleName);
             var swHeader = Stopwatch.StartNew();
 
-            ColumnHeaderList = dataFilenames.First( /* headers are same for all classes, so only load first class headers */).header_csv_filenames.AsParallel().AsOrdered().WithCancellation(ct).SelectMany((fileInfo, fileIndex) =>
+            ColumnHeaderList = dataFilenames.First( /* headers are same for all classes, so only load first class headers */).headerCsvFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.SelectMany((fileInfo, fileIndex) =>
             {
                 return IoProxy.ReadAllLines(true, ct, fileInfo.filename, callerModuleName: ModuleName).Skip(fileIndex == 0
                     ? 1
-                    : 2 /*skip header line, and if not first file, class id line too */).AsParallel().AsOrdered().WithCancellation(ct).Select((line, lineIndex) =>
+                    : 2 /*skip header line, and if not first file, class id line too */).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((line, lineIndex) =>
                     {
                         var row = line.Split(',');
 
                         if (row.Length == 9)
-                        { return new DataSetGroupKey(
-                                //internal_column_index: -1, 
-                                //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
-                                fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
-                                    ? ""
-                                    : fileInfo.file_tag,
-                                row[1],
-                                row[2],
-                                row[3],
-                                row[4],
-                                row[5],
-                                row[6],
-                                row[7],
-                                row[8]);}
+                        {
+                            return new DataSetGroupKey(
+                                  //internal_column_index: -1, 
+                                  //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
+                                  fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
+                                      ? ""
+                                      : fileInfo.FileTag,
+                                  row[1],
+                                  row[2],
+                                  row[3],
+                                  row[4],
+                                  row[5],
+                                  row[6],
+                                  row[7],
+                                  row[8]);
+                        }
                         if (row.Length == 8)
-                        { return new DataSetGroupKey(
-                                //internal_column_index: -1, 
-                                //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
-                                fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
-                                    ? ""
-                                    : fileInfo.file_tag,
-                                row[1],
-                                "",
-                                row[2],
-                                row[3],
-                                row[4],
-                                row[5],
-                                row[6],
-                                row[7]);}
+                        {
+                            return new DataSetGroupKey(
+                                  //internal_column_index: -1, 
+                                  //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
+                                  fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
+                                      ? ""
+                                      : fileInfo.FileTag,
+                                  row[1],
+                                  "",
+                                  row[2],
+                                  row[3],
+                                  row[4],
+                                  row[5],
+                                  row[6],
+                                  row[7]);
+                        }
                         throw new Exception();
                     }).ToArray();
             }).ToArray();
@@ -382,32 +711,32 @@ namespace SvmFsBatch
                 });
 
 
-            //header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.file_tag, a.gkAlphabet, a.gkStats, a.gkDimension, a.gkCategory, a.gkSource, a.@gkGroup, a.gkMember, a.gkPerspective)).ToArray();
+            //header_list = header_list.AsParallel().AsOrdered().Select((a, internal_column_index) => (internal_column_index, a.external_column_index, a.FileTag, a.gkAlphabet, a.gkStats, a.gkDimension, a.gkCategory, a.gkSource, a.@gkGroup, a.gkMember, a.gkPerspective)).ToArray();
             swHeader.Stop();
             Logging.WriteLine($@"Finish: reading headers ({swHeader.Elapsed}).", ModuleName);
 
             Logging.LogExit(ModuleName);
         }
 
-        //private async Task LoadDataSetCommentsAsync(List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> dataFilenames, CancellationToken ct)
+        //public async Task LoadDataSetCommentsAsync(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames, CancellationToken ct)
         //{
         //    Logging.LogCall(ModuleName);
 
         //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-        //    const string methodName = nameof(LoadDataSetCommentsAsync);
+        //    const string MethodName = nameof(LoadDataSetCommentsAsync);
 
         //    // 2. comment files. (same class with same samples = same data)
-        //    Logging.WriteLine(@"Start: reading comments.", ModuleName, methodName);
+        //    Logging.WriteLine(@"Start: reading comments.", ModuleName, MethodName);
         //    var swComment = Stopwatch.StartNew();
 
-        //    var commentList2 = dataFilenames.AsParallel().AsOrdered().WithCancellation(ct).Select(async cl =>
+        //    var commentList2 = dataFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async cl =>
         //    {
-        //        var commentLines = (await IoProxy.ReadAllLinesAsync(true, ct, cl.comment_csv_filenames.First().filename, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false)).AsParallel().AsOrdered().WithCancellation(ct).Select(line => line.Split(',')).ToArray();
+        //        var commentLines = (await IoProxy.ReadAllLinesAsync(true, ct, cl.commentCsvFilenames.First().filename, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(line => line.Split(',')).ToArray();
         //        var commentHeader = commentLines.First();
-        //        var clCommentList = commentLines.Skip(1 /*skip header*/).AsParallel().AsOrdered().WithCancellation(ct).Select((rowSplit, rowIndex) =>
+        //        var clCommentList = commentLines.Skip(1 /*skip header*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((rowSplit, rowIndex) =>
         //        {
-        //            var keyValueList = rowSplit.AsParallel().AsOrdered().WithCancellation(ct).Select((colData, colIndex) => (row_index: rowIndex, col_index: colIndex, comment_key: commentHeader[colIndex], CommentValue: colData)).ToArray();
+        //            var keyValueList = rowSplit.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((colData, colIndex) => (row_index: rowIndex, col_index: colIndex, comment_key: commentHeader[colIndex], CommentValue: colData)).ToArray();
 
         //            Logging.LogExit(ModuleName); return keyValueList;
         //        }).ToArray();
@@ -417,49 +746,49 @@ namespace SvmFsBatch
         //    CommentList = await Task.WhenAll(commentList2).ConfigureAwait(false);
 
         //    swComment.Stop();
-        //    Logging.WriteLine($@"Finish: reading comments ({swComment.Elapsed}).", ModuleName, methodName);
+        //    Logging.WriteLine($@"Finish: reading comments ({swComment.Elapsed}).", ModuleName, MethodName);
         //}
 
-        private void LoadDataSetComments(List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> dataFilenames, CancellationToken ct)
+        public void LoadDataSetComments(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(LoadDataSetComments);
+            const string MethodName = nameof(LoadDataSetComments);
 
             // 2. comment files. (same class with same samples = same data)
-            Logging.WriteLine(@"Start: reading comments.", ModuleName, methodName);
+            Logging.WriteLine(@"Start: reading comments.", ModuleName, MethodName);
             var swComment = Stopwatch.StartNew();
 
-            var commentList2 = dataFilenames.AsParallel().AsOrdered().WithCancellation(ct).Select(cl =>
+            var commentList2 = dataFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(cl =>
             {
-                var commentLines = (IoProxy.ReadAllLines(true, ct, cl.comment_csv_filenames.First().filename, callerModuleName: ModuleName, callerMethodName: methodName)).AsParallel().AsOrdered().WithCancellation(ct).Select(line => line.Split(',')).ToArray();
+                var commentLines = (IoProxy.ReadAllLines(true, ct, cl.commentCsvFilenames.First().filename, callerModuleName: ModuleName, callerMethodName: MethodName)).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(line => line.Split(',')).ToArray();
                 var commentHeader = commentLines.First();
-                var clCommentList = commentLines.Skip(1 /*skip header*/).AsParallel().AsOrdered().WithCancellation(ct).Select((rowSplit, rowIndex) =>
+                var clCommentList = commentLines.Skip(1 /*skip header*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((rowSplit, commentRowIndex) =>
                 {
-                    var keyValueList = rowSplit.AsParallel().AsOrdered().WithCancellation(ct).Select((colData, colIndex) => (row_index: rowIndex, col_index: colIndex, comment_key: commentHeader[colIndex], CommentValue: colData)).ToArray();
+                    var keyValueList = rowSplit.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((CommentValue, commentColumnIndex) => (CommentRowIndex: commentRowIndex, CommentColumnIndex: commentColumnIndex, CommentKey: commentHeader[commentColumnIndex], CommentValue: CommentValue)).ToArray();
 
-                     return keyValueList;
+                    return keyValueList;
                 }).ToArray();
-                 return (cl.ClassId, cl.ClassName, cl_comment_list: clCommentList);
+                return (cl.ClassId, cl.ClassName, cl_comment_list: clCommentList);
             }).ToArray();
 
             CommentList = commentList2;
 
             swComment.Stop();
-            Logging.WriteLine($@"Finish: reading comments ({swComment.Elapsed}).", ModuleName, methodName);
+            Logging.WriteLine($@"Finish: reading comments ({swComment.Elapsed}).", ModuleName, MethodName);
 
             Logging.LogExit(ModuleName);
         }
 
-        //private async Task LoadDataSetValuesAsync(List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> dataFilenames, CancellationToken ct)
+        //public async Task LoadDataSetValuesAsync(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames, CancellationToken ct)
         //{
         //    Logging.LogCall(ModuleName);
 
         //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            
+
 
 
         //    var t1 = Task.Run(async () => await LoadDataSetHeadersAsync(dataFilenames, ct).ConfigureAwait(false), ct);
@@ -473,13 +802,13 @@ namespace SvmFsBatch
         //    Logging.WriteLine(@"Start: reading values.", ModuleName);
         //    var swValues = Stopwatch.StartNew();
 
-        //    ValueList = dataFilenames.AsParallel().AsOrdered().WithCancellation(ct).Select((cl, clIndex) =>
+        //    ValueList = dataFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((cl, clIndex) =>
         //    {
         //        // 3. experimental sample data
-        //        var valsTag = cl.values_csv_filenames.AsParallel().AsOrdered().WithCancellation(ct).Select((fileInfo, fileInfoIndex) => IoProxy.ReadAllLinesAsync(true, ct, fileInfo.filename, callerModuleName: ModuleName).ConfigureAwait(false).GetAwaiter().GetResult() //.Result
-        //            .Skip(1 /*skip header - col index only*/).AsParallel().AsOrdered().WithCancellation(ct).Select((row, rowIndex) => row.Split(',').Skip(fileInfoIndex == 0
+        //        var valsTag = cl.valuesCsvFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((fileInfo, fileInfoIndex) => IoProxy.ReadAllLinesAsync(true, ct, fileInfo.filename, callerModuleName: ModuleName).ConfigureAwait(false).GetAwaiter().GetResult() //.Result
+        //            .Skip(1 /*skip header - col index only*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((row, rowIndex) => row.Split(',').Skip(fileInfoIndex == 0
         //                ? 0
-        //                : 1 /*skip class id*/).AsParallel().AsOrdered().WithCancellation(ct).Select((col, colIndex) => double.Parse(col, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray()).ToArray()).ToArray();
+        //                : 1 /*skip class id*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((col, colIndex) => double.Parse(col, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray()).ToArray()).ToArray();
 
         //        var vals = new double[valsTag.First().Length /* number of rows */][ /* columns */];
 
@@ -487,39 +816,71 @@ namespace SvmFsBatch
         //            //vals[row_index] = new double[vals_tag.Sum(a=> a[row_index].Length)];
         //            vals[rowIndex] = valsTag.SelectMany((aCl, aClIndex) => aCl[rowIndex]).ToArray();
 
-        //        var valList = vals.AsParallel().AsOrdered().WithCancellation(ct).Select((row, rowIndex) => (row_comment: CommentList[clIndex].cl_comment_list[rowIndex], row_columns: row.Select((colVal, colIndex) => (row_index: rowIndex, col_index: colIndex, column_header: ColumnHeaderList[colIndex], row_column_val: vals[rowIndex][colIndex])).ToArray())).ToArray();
+        //        var valList = vals.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((row, rowIndex) => (RowComment: CommentList[clIndex].cl_comment_list[rowIndex], RowColumns: row.Select((colVal, colIndex) => (row_index: rowIndex, col_index: colIndex, column_header: ColumnHeaderList[colIndex], row_column_val: vals[rowIndex][colIndex])).ToArray())).ToArray();
         //        Logging.LogExit(ModuleName); return (cl.ClassId, cl.ClassName, ClassSize: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
         //    }).ToArray();
         //    swValues.Stop();
         //    Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName);
         //}
 
-        private void LoadDataSetValues(List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> dataFilenames, CancellationToken ct)
+        public void LoadDataSetValues(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(LoadDataSetValues);
+            const string MethodName = nameof(LoadDataSetValues);
 
-            var t1 = Task.Run(() => LoadDataSetHeaders(dataFilenames, ct), ct);
-            var t2 = Task.Run(() => LoadDataSetComments(dataFilenames, ct), ct);
-            Task.WaitAll(new[] {t1, t2},ct);
+
+            var taskLoadValues = Task.Run(() => dataFilenames.AsParallel().AsOrdered().Select((cl, clIndex) =>
+            /*{
+                var valsTagBin =*/ cl.valuesCsvFilenames.AsParallel().AsOrdered().Select((fileInfo, fileInfoIndex) =>
+                {
+                    var binName = $"{fileInfo.filename}.bin";
+
+                    var binExists = File.Exists(binName) && new FileInfo(binName).Length > 0;
+
+                    if (!binExists)
+                    {
+                        ConvertCsvValueFileToBinary(fileInfo.filename, binName);
+                    }
+
+                    return ReadBinaryValueFile(binName, asStream: false).ToArray();
+                }).ToArray()/*;
+
+                // code to load CSV instead of bin:
+                //// 3. experimental sample data
+                //var valsTag = cl.valuesCsvFilenames.AsParallel().AsOrdered().Select((fileInfo, fileInfoIndex) => IoProxy.ReadAllLines(true, ct, fileInfo.filename, callerModuleName: ModuleName)
+                //    .Skip(1 /*skip header - col index only* /).AsParallel().AsOrdered().Select((row, rowIndex) => row.Split(',').Skip(fileInfoIndex == 0
+                //        ? 0
+                //        : 1 /*skip class id* /).AsParallel().AsOrdered().Select((col, colIndex) => double.Parse(col, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray()).ToArray()).ToArray();
+
+                return valsTagBin;
+            }*/).ToArray(), ct);
+            var taskLoadHeaders = Task.Run(() => LoadDataSetHeaders(dataFilenames, ct), ct);
+            var taskLoadComments = Task.Run(() => LoadDataSetComments(dataFilenames, ct), ct);
+            Task.WaitAll(new[] { taskLoadValues, taskLoadHeaders, taskLoadComments }, ct);
+
+            var values1 = taskLoadValues.Result;
 
             if (ColumnHeaderList == null || ColumnHeaderList.Length == 0) throw new Exception();
             if (CommentList == null || CommentList.Length == 0) throw new Exception();
 
             // 3. values
-            Logging.WriteLine(@"Start: reading values.", ModuleName, methodName);
+            Logging.WriteLine(@"Start: reading values.", ModuleName, MethodName);
             var swValues = Stopwatch.StartNew();
 
-            ValueList = dataFilenames.AsParallel().AsOrdered().WithCancellation(ct).Select((cl, clIndex) =>
+
+
+            ValueList = dataFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((cl, clIndex) =>
             {
                 // 3. experimental sample data
-                var valsTag = cl.values_csv_filenames.AsParallel().AsOrdered().WithCancellation(ct).Select((fileInfo, fileInfoIndex) => IoProxy.ReadAllLines(true, ct, fileInfo.filename, callerModuleName: ModuleName)
-                    .Skip(1 /*skip header - col index only*/).AsParallel().AsOrdered().WithCancellation(ct).Select((row, rowIndex) => row.Split(',').Skip(fileInfoIndex == 0
-                        ? 0
-                        : 1 /*skip class id*/).AsParallel().AsOrdered().WithCancellation(ct).Select((col, colIndex) => double.Parse(col, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray()).ToArray()).ToArray();
+                //var valsTag = cl.valuesCsvFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((fileInfo, fileInfoIndex) => IoProxy.ReadAllLines(true, ct, fileInfo.filename, callerModuleName: ModuleName)
+                //    .Skip(1 /*skip header - col index only*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((row, rowIndex) => row.Split(',').Skip(fileInfoIndex == 0
+                //        ? 0
+                //        : 1 /*skip class id*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((col, colIndex) => double.Parse(col, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray()).ToArray()).ToArray();
+
+                var valsTag = values1[clIndex];
 
                 var vals = new double[valsTag.First().Length /* number of rows */][ /* columns */];
 
@@ -527,65 +888,72 @@ namespace SvmFsBatch
                     //vals[row_index] = new double[vals_tag.Sum(a=> a[row_index].Length)];
                     vals[rowIndex] = valsTag.SelectMany((aCl, aClIndex) => aCl[rowIndex]).ToArray();
 
-                var valList = vals.AsParallel().AsOrdered().WithCancellation(ct).Select((row, rowIndex) => (row_comment: CommentList[clIndex].cl_comment_list[rowIndex], row_columns: row.Select((colVal, colIndex) => (row_index: rowIndex, col_index: colIndex, column_header: ColumnHeaderList[colIndex], row_column_val: vals[rowIndex][colIndex])).ToArray())).ToArray();
-                 return (cl.ClassId, cl.ClassName, ClassSize: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
+                var valList = vals.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((row, rowIndex) => (RowComment: CommentList[clIndex].ClassCommentList[rowIndex], RowColumns: row.Select((colVal, colIndex) => (rowIndex: rowIndex, colIndex: colIndex, ColumnHeader: ColumnHeaderList[colIndex], row_column_val: vals[rowIndex][colIndex])).ToArray())).ToArray();
+                return (cl.ClassId, cl.ClassName, ClassSize: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
             }).ToArray();
+
             swValues.Stop();
-            Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName, methodName);
+            Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName, MethodName);
+
+            // check same lengths...
+            var lengths = new List<int>();
+            lengths.Add(ColumnHeaderList.Length);
+            lengths.AddRange(ValueList.SelectMany(a => a.ClassValueList.Select(b => b.RowColumns.Length).ToArray()).ToArray());
+            if (lengths.Distinct().Count() != 1) throw new Exception("The feature value column lengths mismatch.");
 
             Logging.LogExit(ModuleName);
         }
 
-        private List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> GetDataFilenames(string DataSetFolder, string[] fileTags, IList<(int ClassId, string ClassName)> classNames)
+        public List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string Filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string Filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> CommentCsvFilenames)> GetDataFilenames(string DataSetFolder, string[] fileTags, IList<(int ClassId, string ClassName)> classNames)
         {
             Logging.LogCall(ModuleName);
 
-            const string methodName = nameof(GetDataFilenames);
+            const string MethodName = nameof(GetDataFilenames);
 
             var dataFilenames = classNames.Select(cl =>
             {
-                // (string file_tag, int ClassId, string ClassName, string filename)
-                var valuesCsvFilenames = fileTags.Select(gkFileTag => (file_tag: gkFileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"f_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
-                var headerCsvFilenames = fileTags.Select(gkFileTag => (file_tag: gkFileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"h_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
-                var commentCsvFilenames = fileTags.Select(gkFileTag => (file_tag: gkFileTag, cl.ClassId, cl.ClassName, filename: Path.Combine(DataSetFolder, $@"c_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                // (string FileTag, int ClassId, string ClassName, string filename)
+                var valuesCsvFilenames = fileTags.Select(gkFileTag => (FileTag: gkFileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"f_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var headerCsvFilenames = fileTags.Select(gkFileTag => (FileTag: gkFileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"h_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var commentCsvFilenames = fileTags.Select(gkFileTag => (FileTag: gkFileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"c_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
 
-                 return (cl.ClassId, cl.ClassName, values_csv_filenames: valuesCsvFilenames, header_csv_filenames: headerCsvFilenames, comment_csv_filenames: commentCsvFilenames);
+                return (cl.ClassId, cl.ClassName, valuesCsvFilenames: valuesCsvFilenames, headerCsvFilenames: headerCsvFilenames, commentCsvFilenames: commentCsvFilenames);
             }).ToList();
 
             foreach (var cl in dataFilenames)
             {
-                Logging.WriteLine($@"{nameof(cl.values_csv_filenames)}: {string.Join(", ", cl.values_csv_filenames)}", ModuleName, methodName);
-                Logging.WriteLine($@"{nameof(cl.header_csv_filenames)}: {string.Join(", ", cl.header_csv_filenames)}", ModuleName, methodName);
-                Logging.WriteLine($@"{nameof(cl.comment_csv_filenames)}: {string.Join(", ", cl.comment_csv_filenames)}", ModuleName, methodName);
+                Logging.WriteLine($@"{nameof(cl.valuesCsvFilenames)}: {string.Join(", ", cl.valuesCsvFilenames)}", ModuleName, MethodName);
+                Logging.WriteLine($@"{nameof(cl.headerCsvFilenames)}: {string.Join(", ", cl.headerCsvFilenames)}", ModuleName, MethodName);
+                Logging.WriteLine($@"{nameof(cl.commentCsvFilenames)}: {string.Join(", ", cl.commentCsvFilenames)}", ModuleName, MethodName);
             }
 
             Logging.LogExit(ModuleName); return dataFilenames;
         }
 
-        private void CheckDataFiles(List<(int ClassId, string ClassName, List<(string file_tag, int ClassId, string ClassName, string filename)> values_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> header_csv_filenames, List<(string file_tag, int ClassId, string ClassName, string filename)> comment_csv_filenames)> dataFilenames)
+        public void CheckDataFiles(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames)
         {
             Logging.LogCall(ModuleName);
 
-            const string methodName = nameof(CheckDataFiles);
+            const string MethodName = nameof(CheckDataFiles);
 
             // don't try to read any data until checking all files exist...
             if (dataFilenames == null || dataFilenames.Count == 0) throw new Exception();
             foreach (var cl in dataFilenames)
             {
-                if (cl.values_csv_filenames == null || cl.values_csv_filenames.Count == 0 || cl.values_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) throw new Exception($@"{ModuleName}.{methodName}: {nameof(cl.values_csv_filenames)} is empty");
-                if (cl.header_csv_filenames == null || cl.header_csv_filenames.Count == 0 || cl.header_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) throw new Exception($@"{ModuleName}.{methodName}: {nameof(cl.header_csv_filenames)} is empty");
-                if (cl.comment_csv_filenames == null || cl.comment_csv_filenames.Count == 0 || cl.comment_csv_filenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) throw new Exception($@"{ModuleName}.{methodName}: {nameof(cl.comment_csv_filenames)} is empty");
+                if (cl.valuesCsvFilenames == null || cl.valuesCsvFilenames.Count == 0 || cl.valuesCsvFilenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) throw new Exception($@"{ModuleName}.{MethodName}: {nameof(cl.valuesCsvFilenames)} is empty");
+                if (cl.headerCsvFilenames == null || cl.headerCsvFilenames.Count == 0 || cl.headerCsvFilenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) throw new Exception($@"{ModuleName}.{MethodName}: {nameof(cl.headerCsvFilenames)} is empty");
+                if (cl.commentCsvFilenames == null || cl.commentCsvFilenames.Count == 0 || cl.commentCsvFilenames.Any(a => string.IsNullOrWhiteSpace(a.filename))) throw new Exception($@"{ModuleName}.{MethodName}: {nameof(cl.commentCsvFilenames)} is empty");
 
-                if (cl.values_csv_filenames.Any(b => !IoProxy.ExistsFile(false, b.filename, ModuleName, methodName))) throw new Exception($@"{ModuleName}.{methodName}: missing input files: {string.Join(@", ", cl.values_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
-                if (cl.header_csv_filenames.Any(b => !IoProxy.ExistsFile(false, b.filename, ModuleName, methodName))) throw new Exception($@"{ModuleName}.{methodName}: missing input files: {string.Join(@", ", cl.header_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
-                if (cl.comment_csv_filenames.Any(b => !IoProxy.ExistsFile(false, b.filename, ModuleName, methodName))) throw new Exception($@"{ModuleName}.{methodName}: missing input files: {string.Join(@", ", cl.comment_csv_filenames.Where(a => !File.Exists(a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+                if (cl.valuesCsvFilenames.Any(b => !IoProxy.ExistsFile(false, b.filename, ModuleName, MethodName))) throw new Exception($@"{ModuleName}.{MethodName}: missing input files: {string.Join(@", ", cl.valuesCsvFilenames.Where(a => !IoProxy.ExistsFile(true, a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+                if (cl.headerCsvFilenames.Any(b => !IoProxy.ExistsFile(false, b.filename, ModuleName, MethodName))) throw new Exception($@"{ModuleName}.{MethodName}: missing input files: {string.Join(@", ", cl.headerCsvFilenames.Where(a => !IoProxy.ExistsFile(true, a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
+                if (cl.commentCsvFilenames.Any(b => !IoProxy.ExistsFile(false, b.filename, ModuleName, MethodName))) throw new Exception($@"{ModuleName}.{MethodName}: missing input files: {string.Join(@", ", cl.commentCsvFilenames.Where(a => !IoProxy.ExistsFile(true, a.filename) || new FileInfo(a.filename).Length == 0).Select(a => a.filename).ToArray())}");
             }
 
             Logging.LogExit(ModuleName);
         }
 
 
-        //internal async Task LoadDataSetAsync(string DataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames //,
+        //public async Task LoadDataSetAsync(string DataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames //,
         //    //bool perform_integrity_checks = false,
         //    //bool required_default = true,
         //    //IList<(bool required, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)> required_matches = null
@@ -595,17 +963,17 @@ namespace SvmFsBatch
 
         //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-        //    const string methodName = nameof(LoadDataSetAsync);
+        //    const string MethodName = nameof(LoadDataSetAsync);
 
 
         //    if (fileTags == null || fileTags.Length == 0 || fileTags.Any(string.IsNullOrWhiteSpace)) throw new ArgumentOutOfRangeException(nameof(fileTags));
 
 
         //    classNames = classNames.OrderBy(a => a.ClassId).ToList();
-        //    foreach (var cl in classNames) Logging.WriteLine($@"{cl.ClassId:+#;-#;+0} = {cl.ClassName}", ModuleName, methodName);
+        //    foreach (var cl in classNames) Logging.WriteLine($@"{cl.ClassId:+#;-#;+0} = {cl.ClassName}", ModuleName, MethodName);
 
         //    fileTags = fileTags.OrderBy(a => a).ToArray();
-        //    foreach (var gkFileTag in fileTags) Logging.WriteLine($@"{gkFileTag}: {gkFileTag}", ModuleName, methodName);
+        //    foreach (var gkFileTag in fileTags) Logging.WriteLine($@"{gkFileTag}: {gkFileTag}", ModuleName, MethodName);
 
         //    var dataFilenames = GetDataFilenames(DataSetFolder, fileTags, classNames);
         //    CheckDataFiles(dataFilenames);
@@ -616,42 +984,98 @@ namespace SvmFsBatch
         //    ClassSizes = ValueList.Select(a => (a.ClassId, a.ClassSize)).ToArray();
         //}
 
-        internal void LoadDataSet(string DataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames //,
-            //bool perform_integrity_checks = false,
-            //bool required_default = true,
-            //IList<(bool required, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)> required_matches = null
+        public void LoadDataSet(string DataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames //,
+                                                                                                                                             //bool perform_integrity_checks = false,
+                                                                                                                                             //bool required_default = true,
+                                                                                                                                             //IList<(bool required, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)> required_matches = null
             , CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(LoadDataSet);
+            const string MethodName = nameof(LoadDataSet);
 
 
             if (fileTags == null || fileTags.Length == 0 || fileTags.Any(string.IsNullOrWhiteSpace)) throw new ArgumentOutOfRangeException(nameof(fileTags));
 
 
             classNames = classNames.OrderBy(a => a.ClassId).ToList();
-            foreach (var cl in classNames) Logging.WriteLine($@"{cl.ClassId:+#;-#;+0} = {cl.ClassName}", ModuleName, methodName);
+            foreach (var cl in classNames) Logging.WriteLine($@"{cl.ClassId:+#;-#;+0} = {cl.ClassName}", ModuleName, MethodName);
 
             fileTags = fileTags.OrderBy(a => a).ToArray();
-            foreach (var gkFileTag in fileTags) Logging.WriteLine($@"{gkFileTag}: {gkFileTag}", ModuleName, methodName);
+            foreach (var gkFileTag in fileTags) Logging.WriteLine($@"{gkFileTag}: {gkFileTag}", ModuleName, MethodName);
 
             var dataFilenames = GetDataFilenames(DataSetFolder, fileTags, classNames);
             CheckDataFiles(dataFilenames);
 
             LoadDataSetValues(dataFilenames, ct);
 
-            ClassSizes = ValueList.Select(a => (a.ClassId, a.ClassName, a.ClassSize, DownSampledClassSize: ValueList.Where(a => a.ClassSize > 0).Min(a => a.ClassSize))).ToArray();
+
+            var numfeatures = ColumnHeaderList.Length;
+
+            ClassSizes = ValueList.Select(a => (a.ClassId, a.ClassName, a.ClassSize, DownSampledClassSize: ValueList.Where(a => a.ClassSize > 0).Min(a => a.ClassSize), ClassFeatures: a.ClassValueList.First().RowColumns.Length)).ToArray();
 
             Logging.LogExit(ModuleName);
         }
+
+        /*public void SaveBinary()
+        {
+            var f = File.Open("test", FileMode.Create, FileAccess.Write, FileShare.None);
+
+            void sendInt(int value)
+            {
+                f.Write(BitConverter.GetBytes(value));
+            }
+
+            void sendDouble(double value)
+            {
+                f.Write(BitConverter.GetBytes(value));
+            }
+
+            void sendStr(string str)
+            {
+                var strbytes = Encoding.UTF8.GetBytes(str);
+                var strlen = strbytes.Length;
+                sendInt(strlen);
+                f.Write(strbytes);
+            }
+
+            foreach (var a in ValueList)
+            {
+                f.Write(BitConverter.GetBytes(a.ClassId));
+                sendStr(a.ClassName);
+                sendInt(a.ClassSize);
+
+                foreach (var b in a.ClassValueList)
+                {
+                    foreach (var c in b.RowComment)
+                    {
+                        sendInt(c.CommentRowIndex);
+                        sendInt(c.CommentColumnIndex);
+                        sendStr(c.CommentKey);
+                        sendStr(c.CommentValue);
+                    }
+
+                    foreach (var d in b.RowColumns)
+                    {
+                        sendStr(d.ColumnHeader.);
+                        sendInt(d.RowIndex);
+                        sendInt(d.ColumnIndex);
+                        sendDouble(d.RowColumnValue);
+                    }
+                }
+            }
+
+
+            f.Close();
+            f.Dispose();
+        }*/
     }
 }
 //{
 //    // all comment headers should be equal
-//    var CommentHeaders = file_data.SelectMany(a => a.comment_csv_data.Select(b => b.header_row).ToList()).ToList();
+//    var CommentHeaders = file_data.SelectMany(a => a.commentCsv_data.Select(b => b.header_row).ToList()).ToList();
 //    for (var ci = 0; ci < CommentHeaders.Count; ci++)
 //    {
 //        for (var cj = 0; cj < CommentHeaders.Count; cj++)
@@ -665,7 +1089,7 @@ namespace SvmFsBatch
 
 //{
 //    // all headers headers should be equal
-//    var headers_headers = file_data.SelectMany(a => a.header_csv_data.Select(b => b.header_row).ToList()).ToList();
+//    var headers_headers = file_data.SelectMany(a => a.headerCsv_data.Select(b => b.header_row).ToList()).ToList();
 //    for (var ci = 0; ci < headers_headers.Count; ci++)
 //    {
 //        for (var cj = 0; cj < headers_headers.Count; cj++)
@@ -678,17 +1102,17 @@ namespace SvmFsBatch
 //}
 
 
-// READ HEADER CSV FILE - ALL CLASSES HAVE THE SAME HEADERS/FEATURES within the same file_tag (will change for each one, e.g. 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p)
-// same file_tag -> same headers... different file_tag -> different headers
-//file_tags.Select(a=>a.).Select(a => file_data.First(b => b.header_csv_data.First(c => c.file_tag == a));
-//var all_headers = file_data.SelectMany(a => a.header_csv_data).ToList();
-//var first_headers = file_tags.Select(a => all_headers.First(b => b.file_tag == a)).ToList();
+// READ HEADER CSV FILE - ALL CLASSES HAVE THE SAME HEADERS/FEATURES within the same FileTag (will change for each one, e.g. 1i, 1n, 1p, 2i, 2n, 2p, 3i, 3n, 3p)
+// same FileTag -> same headers... different FileTag -> different headers
+//FileTags.Select(a=>a.).Select(a => file_data.First(b => b.headerCsv_data.First(c => c.FileTag == a));
+//var all_headers = file_data.SelectMany(a => a.headerCsv_data).ToList();
+//var first_headers = FileTags.Select(a => all_headers.First(b => b.FileTag == a)).ToList();
 
 
 //var feature_catalog = first_headers.AsParallel().AsOrdered().SelectMany((tag_headers, tag_headers_index) =>
 //    tag_headers.data_rows.Select((row, row_index) =>
 //    //.SelectMany((cl, cl_index) => 
-//    //cl.header_csv_data.First(/* first file - all file_tag header files are the same */).data_rows.AsParallel().AsOrdered().Select((row, row_index) =>
+//    //cl.headerCsv_data.First(/* first file - all FileTag header files are the same */).data_rows.AsParallel().AsOrdered().Select((row, row_index) =>
 //    {
 //        var internal_fid = row_index;
 //        for (var i = 0; i < tag_headers_index; i++)
@@ -696,7 +1120,7 @@ namespace SvmFsBatch
 //            internal_fid += first_headers[i].data_rows.Count;
 //        }
 
-//        //if (file_tag_index != 0 && row_index == 0)
+//        //if (FileTag_index != 0 && row_index == 0)
 //        //{
 //        //}
 
@@ -754,7 +1178,7 @@ namespace SvmFsBatch
 //        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(
 //            internal_fid: internal_fid,
 //            external_fid: external_fid,
-//            file_tag: tag_headers.file_tag,
+//            FileTag: tag_headers.FileTag,
 //            gkAlphabet: gkAlphabet,
 //            gkDimension: gkDimension,
 //            gkCategory: gkCategory,
@@ -770,39 +1194,39 @@ namespace SvmFsBatch
 //    }).ToList()).ToList();
 
 ////var feature_catalog = feature_catalog_data.Select((a,i) => 
-////    (internal_fid:i, a.external_fid, a.file_tag, a.gkAlphabet, a.gkDimension, a.gkCategory, a.gkSource, a.gkGroup, a.gkMember, a.gkPerspective)
+////    (internal_fid:i, a.external_fid, a.FileTag, a.gkAlphabet, a.gkDimension, a.gkCategory, a.gkSource, a.gkGroup, a.gkMember, a.gkPerspective)
 ////).ToList();
 
-////if (cl.values_csv_data.Select(a => a.data_rows.Select(b => b.Length).ToList()).Distinct().Count() != 1) throw new Exception();
+////if (cl.valuesCsv_data.Select(a => a.data_rows.Select(b => b.Length).ToList()).Distinct().Count() != 1) throw new Exception();
 
-////var sample_data = file_data.Select(cl => cl.values_csv_data.SelectMany(tag => tag.data_key_value_list).ToList()).ToList();
+////var sample_data = file_data.Select(cl => cl.valuesCsv_data.SelectMany(tag => tag.data_key_value_list).ToList()).ToList();
 //var sample_data = file_data.Select(cl =>
 //{
 //    // check same number of samples per tag
-//    if (cl.values_csv_data.Select(a => a.data_key_value_list.Count).Distinct().Count() != 1) throw new Exception();
+//    if (cl.valuesCsv_data.Select(a => a.data_key_value_list.Count).Distinct().Count() != 1) throw new Exception();
 
 //    var header_row = new List<string>();
 //    var data_rows = new List<List<double>>();
 //    for (var i = 0; i < )
-//    var data_row_key_value_list = new List<(string key, double value, List<(string key, string value)> header, List<(string key, string value)> row_comments)>();
+//    var data_row_key_value_list = new List<(string key, double value, List<(string key, string value)> header, List<(string key, string value)> RowComments)>();
 
-//    for (var tag_index = 0; tag_index < cl.values_csv_data.Count; tag_index++)
+//    for (var tag_index = 0; tag_index < cl.valuesCsv_data.Count; tag_index++)
 //    {
-//        header_row.AddRange(cl.values_csv_data[tag_index].header_row);
+//        header_row.AddRange(cl.valuesCsv_data[tag_index].header_row);
 
-//        if (tag_index == 0) data_rows.AddRange(cl.values_csv_data[tag_index].data_rows);
+//        if (tag_index == 0) data_rows.AddRange(cl.valuesCsv_data[tag_index].data_rows);
 //        else data_rows = data_rows.Select(a => a).ToList();
 
-//        data_row_key_value_list.AddRange(cl.values_csv_data[tag_index].data_row_key_value_list);
+//        data_row_key_value_list.AddRange(cl.valuesCsv_data[tag_index].data_row_key_value_list);
 //    }
 
 //    // merge tags
 
 //    Logging.LogExit(ModuleName); return 0;
-//    //Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cl.values_csv_data.SelectMany(tag => tag.data_key_value_list).ToList();
+//    //Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cl.valuesCsv_data.SelectMany(tag => tag.data_key_value_list).ToList();
 //}).ToList();
 
-// class [ example id ] [ file_tag , fid ] = fv
+// class [ example id ] [ FileTag , fid ] = fv
 // class [ ] 
 
 // limit DataSet to required matches...
@@ -839,7 +1263,7 @@ if (required_matches != null && required_matches.Count > 0)
             required[i][0] = true;
 
             var x = header_data[i].headers.Where((a, i) => required[i][a.fid]).ToList();
-            header_data[i] = (header_data[i].file_tag, x);
+            header_data[i] = (header_data[i].FileTag, x);
         }
     }
 }*/
@@ -920,15 +1344,15 @@ if (perform_integrity_checks)
     {
         save_DataSet(DataSet, new List<(int ClassId, string header_filename, string data_filename)>()
     {
-        (+1, Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSet_header_csv_files[0])}_updated{Path.GetExtension(DataSet_header_csv_files[0])}"), Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSet_csv_files[0])}_updated{Path.GetExtension(DataSet_csv_files[0])}")),
-        (-1, Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSet_header_csv_files[1])}_updated{Path.GetExtension(DataSet_header_csv_files[1])}"), Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSet_csv_files[1])}_updated{Path.GetExtension(DataSet_csv_files[0])}"))
+        (+1, Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSet_headerCsvFiles[0])}_updated{Path.GetExtension(DataSet_headerCsvFiles[0])}"), Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSetCsvFiles[0])}_updated{Path.GetExtension(DataSetCsvFiles[0])}")),
+        (-1, Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSet_headerCsvFiles[1])}_updated{Path.GetExtension(DataSet_headerCsvFiles[1])}"), Path.Combine(DataSet_folder, $"{Path.GetFileNameWithoutExtension(DataSetCsvFiles[1])}_updated{Path.GetExtension(DataSetCsvFiles[0])}"))
     }); // Path.Combine(DataSet_folder, "updated_headers.csv"), Path.Combine(DataSet_folder, "updated_DataSet.csv"));
     }
 }
 */
 
 
-/*private static bool matches(string text, string search_pattern)
+/*public static bool matches(string text, string search_pattern)
 {
     if (string.IsNullOrWhiteSpace(search_pattern) || search_pattern == "*")
     {
@@ -959,7 +1383,7 @@ if (perform_integrity_checks)
 }*/
 
 /*
-internal static double[][][] Getcolumn_data_by_class(DataSet DataSet) // [column][row]
+public static double[][][] Getcolumn_data_by_class(DataSet DataSet) // [column][row]
 {
     //Logging.WriteLine("...", ModuleName, nameof(Getcolumn_data_by_class));
 
@@ -980,7 +1404,7 @@ internal static double[][][] Getcolumn_data_by_class(DataSet DataSet) // [column
 */
 
 /*
-internal static double[][] Getcolumn_data(DataSet DataSet) // [column][row]
+public static double[][] Getcolumn_data(DataSet DataSet) // [column][row]
 {
     //Logging.WriteLine("...", ModuleName, nameof(Getcolumn_data));
 
@@ -996,7 +1420,7 @@ internal static double[][] Getcolumn_data(DataSet DataSet) // [column][row]
 */
 
 /*
-internal static void remove_large_groups(DataSet DataSet, int max_group_size)
+public static void remove_large_groups(DataSet DataSet, int max_group_size)
 {
     
     const string MethodName = nameof(remove_large_groups);
@@ -1025,7 +1449,7 @@ internal static void remove_large_groups(DataSet DataSet, int max_group_size)
 */
 
 /*
-internal static void remove_duplicate_groups(DataSet DataSet)
+public static void remove_duplicate_groups(DataSet DataSet)
 {
     
     //const string MethodName = nameof(remove_duplicate_groups);
@@ -1175,7 +1599,7 @@ internal static void remove_duplicate_groups(DataSet DataSet)
 */
 
 /*
-internal static void save_DataSet(DataSet DataSet, List<(int ClassId, string header_filename, string data_filename)> filenames)
+public static void save_DataSet(DataSet DataSet, List<(int ClassId, string header_filename, string data_filename)> filenames)
 {
     
     const string MethodName = nameof(save_DataSet);
@@ -1197,9 +1621,9 @@ internal static void save_DataSet(DataSet DataSet, List<(int ClassId, string hea
         var header = DataSet.DataSet_headers.Select(a => $@"{a.fid},{a.gkAlphabet},{a.gkDimension},{a.gkCategory},{a.gkSource},{a.gkGroup},{a.gkMember},{a.gkPerspective}").ToList();
         header.Insert(0, $@"fid,gkAlphabet,gkDimension,gkCategory,gkSource,gkGroup,gkMember,gkPerspective");
 
-        await io_proxy.WriteAllLines(true, ClassId_filenames.header_filename, header);
+        await io_proxy.WriteAllLines(true, ClassId_filenames.header_filename, header).ConfigureAwait(false);
 
-        await io_proxy.WriteAllLines(true, ClassId_filenames.data_filename, data);
+        await io_proxy.WriteAllLines(true, ClassId_filenames.data_filename, data).ConfigureAwait(false);
     }
 
     Logging.WriteLine("finished saving...", _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
@@ -1207,8 +1631,8 @@ internal static void save_DataSet(DataSet DataSet, List<(int ClassId, string hea
 */
 
 /*
-internal static void remove_empty_features(DataSet DataSet, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2)
-internal static void remove_empty_features(DataSet DataSet, int min_distinct_numbers = 2)
+public static void remove_empty_features(DataSet DataSet, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2)
+public static void remove_empty_features(DataSet DataSet, int min_distinct_numbers = 2)
 {
     
     const string MethodName = nameof(remove_empty_features);
@@ -1253,8 +1677,8 @@ internal static void remove_empty_features(DataSet DataSet, int min_distinct_num
 }
 */
 /*
-//internal static void remove_empty_features_by_class(DataSet DataSet, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2, string stats_filename = null)
-internal static void remove_empty_features_by_class(DataSet DataSet, int min_distinct_numbers = 2, string stats_filename = null)
+//public static void remove_empty_features_by_class(DataSet DataSet, double min_non_zero_pct = 0.25, int min_distinct_numbers = 2, string stats_filename = null)
+public static void remove_empty_features_by_class(DataSet DataSet, int min_distinct_numbers = 2, string stats_filename = null)
 {
     const string MethodName = nameof(remove_empty_features_by_class);
 
@@ -1370,13 +1794,13 @@ internal static void remove_empty_features_by_class(DataSet DataSet, int min_dis
         var data = new List<string>();
         data.Add("cid,fid,num_distinct_values,num_values_zero,num_values_zero_pct,num_values_non_zero,num_values_non_zero_pct,overlap,overlap_pct,non_overlap,non_overlap_pct");
         data.AddRange(class_stats.Select(a => $@"{a.cid},{a.fid},{a.num_distinct_values},{a.num_values_zero},{a.num_values_zero_pct},{a.num_values_non_zero},{a.num_values_non_zero_pct},{a.overlap},{a.overlap_pct},{a.non_overlap},{a.non_overlap_pct}").ToList());
-        await io_proxy.WriteAllLines(true, stats_filename, data);
+        await io_proxy.WriteAllLines(true, stats_filename, data).ConfigureAwait(false);
     }
 }
 */
 
 /*
-internal static void remove_fids(DataSet DataSet, List<int> fids_to_remove)
+public static void remove_fids(DataSet DataSet, List<int> fids_to_remove)
 {
     //Logging.WriteLine("...", ModuleName, nameof(remove_fids));
 
@@ -1409,7 +1833,7 @@ internal static void remove_fids(DataSet DataSet, List<int> fids_to_remove)
 }
 */
 /*
-internal static List<(int fid, double value)> parse_csv_line_doubles(string line, bool[] required = null)
+public static List<(int fid, double value)> parseCsv_line_doubles(string line, bool[] required = null)
 {
     var result = new List<(int fid, double value)>();
 
@@ -1443,7 +1867,7 @@ internal static List<(int fid, double value)> parse_csv_line_doubles(string line
     Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :result;
 }
 */
-/* internal static List<string> parse_csv_line_strings(string line)
+/* public static List<string> parseCsv_line_strings(string line)
  {
      var result = new List<string>();
 
@@ -1476,7 +1900,7 @@ internal static List<(int fid, double value)> parse_csv_line_doubles(string line
  }*/
 
 
-/*internal static double fix_double(string double_value)
+/*public static double fix_double(string double_value)
 {
     const char infinity = '∞';
     const string neg_infinity = "-∞";
@@ -1493,7 +1917,7 @@ internal static List<(int fid, double value)> parse_csv_line_doubles(string line
     else Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :0d;
 }*/
 
-/*internal static double fix_double(double value)
+/*public static double fix_double(double value)
 {
     // the doubles must be compatible with libsvm which is written in C (C and CSharp have different min/max values for double)
     const double c_double_max = (double)1.79769e+308;

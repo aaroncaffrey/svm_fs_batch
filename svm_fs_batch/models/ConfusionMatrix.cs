@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace SvmFsBatch
 {
-    internal class ConfusionMatrix
+    public class ConfusionMatrix
     {
         public const string ModuleName = nameof(ConfusionMatrix);
 
-        internal static readonly ConfusionMatrix Empty = new ConfusionMatrix {UnrolledIndexData = IndexData.Empty, GridPoint = GridPoint.Empty, Metrics = MetricsBox.Empty};
+        public static readonly ConfusionMatrix Empty = new ConfusionMatrix {UnrolledIndexData = IndexData.Empty, GridPoint = GridPoint.Empty, Metrics = MetricsBox.Empty};
 
 
-        internal static readonly string[] CsvHeaderValuesArray =
+        public static readonly string[] CsvHeaderValuesArray =
             //index_data.CsvHeaderValuesArray.Select(a => $"id_{a}").ToArray()
             GridPoint.CsvHeaderValuesArray.Concat(new[]
             {
@@ -30,7 +30,8 @@ namespace SvmFsBatch
                 nameof(XClassWeight),
                 nameof(XClassName),
                 nameof(XClassSize),
-                nameof(XDownsampledClassSize),
+                nameof(XDownSampledClassSize),
+                nameof(XClassFeatureSize),
                 nameof(XClassTrainSize),
                 nameof(XClassTestSize)
             }).Concat(MetricsBox.CsvHeaderValuesArray).Concat(new[]
@@ -46,37 +47,38 @@ namespace SvmFsBatch
                 nameof(Predictions)
             }).ToArray();
 
-        internal static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
-        internal GridPoint GridPoint;
-        internal MetricsBox Metrics;
-        internal Prediction[] Predictions;
-        internal (double x, double y)[] PriXyStrAll;
-        internal (double x, double y)[] PriXyStrElevenPoint;
-        internal (double x, double y)[] PrXyStrAll;
-        internal (double x, double y)[] PrXyStrElevenPoint;
-        internal (double x, double y)[] RocXyStrAll;
-        internal (double x, double y)[] RocXyStrElevenPoint;
-        internal double[] Thresholds;
+        public static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
+        public GridPoint GridPoint;
+        public MetricsBox Metrics;
+        public Prediction[] Predictions;
+        public (double x, double y)[] PriXyStrAll;
+        public (double x, double y)[] PriXyStrElevenPoint;
+        public (double x, double y)[] PrXyStrAll;
+        public (double x, double y)[] PrXyStrElevenPoint;
+        public (double x, double y)[] RocXyStrAll;
+        public (double x, double y)[] RocXyStrElevenPoint;
+        public double[] Thresholds;
 
-        internal IndexData UnrolledIndexData;
-        internal int? XClassId;
-        internal string XClassName;
-        internal double XClassSize;
-        internal double XDownsampledClassSize;
-        internal double XClassTestSize;
-        internal double XClassTrainSize;
-        internal double? XClassWeight;
-        internal int XOuterCvIndex = -1;
-        internal double? XPredictionThreshold = -1;
-        internal double? XPredictionThresholdClass;
-        internal int XRepetitionsIndex = -1;
-        internal TimeSpan? XTimeGrid;
-        internal TimeSpan? XTimeTest;
-        internal TimeSpan? XTimeTrain;
+        public IndexData UnrolledIndexData;
+        public int? XClassId;
+        public string XClassName;
+        public double XClassSize;
+        public double XDownSampledClassSize;
+        public double XClassFeatureSize;
+        public double XClassTestSize;
+        public double XClassTrainSize;
+        public double? XClassWeight;
+        public int XOuterCvIndex = -1;
+        public double? XPredictionThreshold = -1;
+        public double? XPredictionThresholdClass;
+        public int XRepetitionsIndex = -1;
+        public TimeSpan? XTimeGrid;
+        public TimeSpan? XTimeTest;
+        public TimeSpan? XTimeTrain;
 
         // note: load does not load the rd/sd part of the cm file.  this has to be recalculated after loading the cm.
 
-        internal void ClearSupplemental()
+        public void ClearSupplemental()
         {
             Logging.LogCall(ModuleName);
 
@@ -97,7 +99,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
+        public static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
             bool overwrite, ConfusionMatrix[] xList, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
@@ -109,7 +111,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
+        public static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
             bool overwrite, (IndexData id, ConfusionMatrix cm, RankScore rs)[] xList, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
@@ -128,7 +130,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
+        public static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/
             bool overwrite, (IndexData id, ConfusionMatrix cm)[] xList, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
@@ -148,13 +150,13 @@ namespace SvmFsBatch
         }
 
 
-        internal static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/ bool overwrite, IndexData[] idList, ConfusionMatrix[] cmList, RankScore[] rsList, bool asParallel = true, CancellationToken ct = default)
+        public static async Task SaveAsync(string cmFullFilename, /*string cm_summary_filename,*/ bool overwrite, IndexData[] idList, ConfusionMatrix[] cmList, RankScore[] rsList, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(SaveAsync);
+            const string MethodName = nameof(SaveAsync);
 
             
 
@@ -169,10 +171,10 @@ namespace SvmFsBatch
             if (lens.Length == 0 || lensDistinctCount > 1) throw new Exception($@"Array length of {nameof(idList)}, {nameof(cmList)}, and {nameof(rsList)} do not match.");
             var lensMax = lens.Max();
 
-            var saveFull = saveFullReq && (overwrite || !await IoProxy.IsFileAvailableAsync(true, ct, cmFullFilename, false, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false));
+            var saveFull = saveFullReq && (overwrite || !await IoProxy.IsFileAvailableAsync(true, ct, cmFullFilename, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false));
             //var save_summary = save_summary_req && (overwrite || !await io_proxy.IsFileAvailable(true, ct, cm_summary_filename, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName));
 
-            if (saveFullReq && !saveFull) Logging.WriteLine($@"Not overwriting file: {cmFullFilename}", ModuleName, methodName);
+            if (saveFullReq && !saveFull) Logging.WriteLine($@"Not overwriting file: {cmFullFilename}", ModuleName, MethodName);
 
             //if (save_summary_req && !save_summary) Logging.WriteLine($@"Not overwriting file: {cm_summary_filename}", ModuleName, MethodName);
 
@@ -239,8 +241,8 @@ namespace SvmFsBatch
 
             if (linesFull != null && linesFull.Length > 0)
             {
-                await IoProxy.WriteAllLinesAsync(true, ct, cmFullFilename, linesFull, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
-                Logging.WriteLine($@"Saved: {cmFullFilename} ({linesFull.Length} lines)", ModuleName, methodName);
+                await IoProxy.WriteAllLinesAsync(true, ct, cmFullFilename, linesFull, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
+                Logging.WriteLine($@"Saved: {cmFullFilename} ({linesFull.Length} lines)", ModuleName, MethodName);
             }
 
             //if (lines_summary != null && lines_summary.Length > 0)
@@ -254,20 +256,20 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task<ConfusionMatrix[]> LoadAsync(string filename, int columnOffset = -1, bool asParallel = true, CancellationToken ct = default)
+        public static async Task<ConfusionMatrix[]> LoadFileAsync(string filename, int columnOffset = -1, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            const string methodName = nameof(LoadAsync);
+            const string MethodName = nameof(LoadFileAsync);
             
-            var lines = await IoProxy.ReadAllLinesAsync(true, ct, filename, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
-            var ret = Load(lines, columnOffset, asParallel, ct);
+            var lines = await IoProxy.ReadAllLinesAsync(true, ct, filename, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
+            var ret = LoadLines(lines, columnOffset, asParallel, ct);
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :ret;
         }
 
-        internal static ConfusionMatrix[] Load(string[] lines, int columnOffset = -1, bool asParallel = true, CancellationToken ct = default)
+        public static ConfusionMatrix[] LoadLines(string[] lines, int columnOffset = -1, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
@@ -294,7 +296,7 @@ namespace SvmFsBatch
             var cmList = asParallel
                 ? lines.Skip(hasHeaderLine
                     ? 1
-                    : 0).Where(a => !string.IsNullOrWhiteSpace(a)).AsParallel().AsOrdered().WithCancellation(ct).Select(line => LoadLine(columnOffset, lineHeader, line, asParallel, ct)).Where(a => a != null).ToArray()
+                    : 0).Where(a => !string.IsNullOrWhiteSpace(a)).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(line => LoadLine(columnOffset, lineHeader, line, asParallel, ct)).Where(a => a != null).ToArray()
                 : lines.Skip(hasHeaderLine
                     ? 1
                     : 0).Where(a => !string.IsNullOrWhiteSpace(a)).Select(line => LoadLine(columnOffset, lineHeader, line, asParallel, ct)).Where(a => a != null).ToArray();
@@ -303,7 +305,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cmList;
         }
 
-        private static ConfusionMatrix LoadLine(int columnOffset, string[] lineHeader, string line, bool asParallel = true, CancellationToken ct = default)
+        public static ConfusionMatrix LoadLine(int columnOffset, string[] lineHeader, string line, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
@@ -343,7 +345,8 @@ namespace SvmFsBatch
             var hiXClassWeight = Hi(nameof(XClassWeight));
             var hiXClassName = Hi(nameof(XClassName));
             var hiXClassSize = Hi(nameof(XClassSize));
-            var hiXDownsampledClassSize = Hi(nameof(XDownsampledClassSize));
+            var hiXDownSampledClassSize = Hi(nameof(XDownSampledClassSize));
+            var hiXClassFeatureSize = Hi(nameof(XClassFeatureSize));
             var hiXClassTrainSize = Hi(nameof(XClassTrainSize));
             var hiXClassTestSize = Hi(nameof(XClassTestSize));
             var hiCmP = Hi(nameof(MetricsBox.CmP));
@@ -459,7 +462,8 @@ namespace SvmFsBatch
             if (hiXClassWeight > -1) cm.XClassWeight = xType[hiXClassWeight].AsDouble;
             if (hiXClassName > -1) cm.XClassName = xType[hiXClassName].AsStr;
             if (hiXClassSize > -1) cm.XClassSize = xType[hiXClassSize].AsDouble ?? 0;
-            if (hiXDownsampledClassSize > -1) cm.XDownsampledClassSize = xType[hiXDownsampledClassSize].AsDouble ?? 0;
+            if (hiXDownSampledClassSize > -1) cm.XDownSampledClassSize = xType[hiXDownSampledClassSize].AsDouble ?? 0;
+            if (hiXClassFeatureSize > -1) cm.XClassFeatureSize = xType[hiXClassFeatureSize].AsDouble ?? 0;
             if (hiXClassTrainSize > -1) cm.XClassTrainSize = xType[hiXClassTrainSize].AsDouble ?? 0;
             if (hiXClassTestSize > -1) cm.XClassTestSize = xType[hiXClassTestSize].AsDouble ?? 0;
 
@@ -588,8 +592,12 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cm;
         }
 
+        public ConfusionMatrix()
+        {
 
-        internal void CalculateThesholdMetrics(MetricsBox metrics, bool calculateAuc, Prediction[] predictionList, CancellationToken ct)
+        }
+
+        public void CalculateThesholdMetrics(MetricsBox metrics, bool calculateAuc, Prediction[] predictionList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
@@ -657,7 +665,7 @@ namespace SvmFsBatch
         }
 
 
-        internal string[] CsvValuesArray()
+        public string[] CsvValuesArray()
         {
             Logging.LogCall(ModuleName);
 
@@ -679,7 +687,9 @@ namespace SvmFsBatch
                     XClassWeight?.ToString("G17", NumberFormatInfo.InvariantInfo) ?? "",
                     XClassName ?? "",
                     XClassSize.ToString("G17", NumberFormatInfo.InvariantInfo),
-                    XDownsampledClassSize.ToString("G17", NumberFormatInfo.InvariantInfo),
+                    XDownSampledClassSize.ToString("G17", NumberFormatInfo.InvariantInfo),
+                    XClassFeatureSize.ToString("G17", NumberFormatInfo.InvariantInfo),
+
                     XClassTrainSize.ToString("G17", NumberFormatInfo.InvariantInfo),
                     XClassTestSize.ToString("G17", NumberFormatInfo.InvariantInfo)
                 }).Concat(Metrics?.CsvValuesArray() ?? MetricsBox.Empty.CsvValuesArray()).Concat(new[]

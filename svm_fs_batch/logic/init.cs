@@ -5,11 +5,11 @@ using System.Threading;
 
 namespace SvmFsBatch
 {
-    internal class Init
+    public static class Init
     {
         public const string ModuleName = nameof(Init);
 
-        internal static void SetThreadCounts()
+        public static void SetThreadCounts()
         {
             Logging.LogCall(ModuleName);
             ThreadPool.SetMinThreads(Environment.ProcessorCount * 10, Environment.ProcessorCount * 10);
@@ -32,34 +32,34 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static void CloseNotifications(CancellationToken ct) //, CancellationTokenSource cts = null)
+        public static void CloseNotifications(CancellationToken ct) //, CancellationTokenSource cts = null)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(CloseNotifications);
+            const string MethodName = nameof(CloseNotifications);
             //if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
             Console.CancelKeyPress += (sender, eventArgs) =>
             {
-                Logging.WriteLine(@"Console.CancelKeyPress", ModuleName, methodName);
+                Logging.WriteLine(@"Console.CancelKeyPress", ModuleName, MethodName);
                 //if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
             AssemblyLoadContext.Default.Unloading += context =>
             {
-                Logging.WriteLine(@"AssemblyLoadContext.Default.Unloading", ModuleName, methodName);
+                Logging.WriteLine(@"AssemblyLoadContext.Default.Unloading", ModuleName, MethodName);
                 //if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
             AppDomain.CurrentDomain.ProcessExit += (sender, eventArgs) =>
             {
-                Logging.WriteLine(@"AppDomain.CurrentDomain.ProcessExit", ModuleName, methodName);
+                Logging.WriteLine(@"AppDomain.CurrentDomain.ProcessExit", ModuleName, MethodName);
                 //if (cts != null && !cts.IsCancellationRequested) cts?.Cancel();
             };
 
             Logging.LogExit(ModuleName);
         }
 
-        internal static void CheckX64()
+        public static void CheckX64()
         {
             Logging.LogCall(ModuleName);
             var isX64 = IntPtr.Size == 8;
@@ -68,7 +68,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static void SetGcMode()
+        public static void SetGcMode()
         {
             Logging.LogCall(ModuleName);
             GCSettings.LatencyMode = GCLatencyMode.Batch;

@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 
 namespace SvmFsBatch
 {
-    internal class ProgramArgs
+    public class ProgramArgs
     {
         public const string ModuleName = nameof(ProgramArgs);
 
-        internal static string[] CsvHeaderValuesArray =
+        public static string[] CsvHeaderValuesArray =
         {
             nameof(Folds),
             nameof(Repetitions),
@@ -60,84 +60,90 @@ namespace SvmFsBatch
         };
 
 
-        internal (string key, string asStr, int? asInt, double? asDouble, bool? asBool)[] Args;
+        public (string key, string asStr, int? asInt, double? asDouble, bool? asBool)[] Args;
 
-        internal bool CalcElevenPointThresholds;
+        public bool CalcElevenPointThresholds;
 
+        public string ProtocolKey = "232e91fb-2804-4ef4-83a6-5ff45a6b0f95";
 
-        internal (int ClassId, string ClassName)[] ClassNames;
-        internal (int ClassId, double ClassWeight)[][] ClassWeights;
+        public (int ClassId, string ClassName)[] ClassNames;
+        public (int ClassId, double ClassWeight)[][] ClassWeights;
 
-        internal bool Client;
-        internal int ClientConnectionPoolSize = 10;
-        internal Guid ClientGuid = Guid.NewGuid();
+        public bool Client;
+        public int ClientConnectionPoolSize = 10;
+        public Guid ClientGuid = Guid.NewGuid();
 
-        internal string DataSetDir;
-        internal string[] DataSetNames;
+        public string DataSetDir;
+        public string[] DataSetNames;
 
-        //internal bool run_local = false;
-        internal string ExperimentName = "";
+        //public bool run_local = false;
+        public string ExperimentName = "";
 
         // note: use 'folds' to set repetitions, outer_cv_folds and inner_folds to the same value
-        internal int? Folds;
-        internal int InnerFolds = 5;
-        internal bool IsUnix = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        public int? Folds;
+        public int InnerFolds = 5;
+        public bool IsUnix = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
-        internal bool IsWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        public bool IsWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-        internal string JobId = "";
-        internal string JobName = "";
-        internal Routines.LibsvmKernelType[] Kernels = {Routines.LibsvmKernelType.Rbf};
-        internal string LibsvmPredictRuntime;
-        internal string LibsvmTrainRuntime;
+        public string JobId = "";
+        public string JobName = "";
+        public Routines.LibsvmKernelType[] Kernels = {Routines.LibsvmKernelType.Rbf};
+        public string LibsvmPredictRuntime;
+        public string LibsvmTrainRuntime;
 
-        internal int NegativeClassId = -1;
-        internal string NegativeClassName = @"standard_coil";
-        internal int OuterCvFolds = 5;
-        internal int OuterCvFoldsToRun;
+        public int NegativeClassId = -1;
+        public string NegativeClassName = @"standard_coil";
+        public int OuterCvFolds = 5;
+        public int OuterCvFoldsToRun;
 
         // partition array parameters (pbs only provides partition_array_index_first, whole_array_step_size is given by the script, and partition_array_index_last is calculated from it, if not provided)
-        internal int PartitionArrayIndexFirst = -1; // start index for current instance
-        internal int PartitionArrayIndexLast = -1; // last index for current instance
-        internal int PositiveClassId = +1;
-        internal string PositiveClassName = @"dimorphic_coil";
+        public int PartitionArrayIndexFirst = -1; // start index for current instance
+        public int PartitionArrayIndexLast = -1; // last index for current instance
+        public int PositiveClassId = +1;
+        public string PositiveClassName = @"dimorphic_coil";
 
-        internal int Repetitions = 1;
-        internal string ResultsRootFolder;
-        internal Scaling.ScaleFunction[] Scales = {Scaling.ScaleFunction.Rescale};
+        public int Repetitions = 1;
+        public string ResultsRootFolder;
+        public Scaling.ScaleFunction[] Scales = {Scaling.ScaleFunction.Rescale};
 
-        internal int ScoringClassId = +1;
+        public int ScoringClassId = +1;
 
-        internal string[] ScoringMetrics = {nameof(MetricsBox.PF1S) /*nameof(metrics_box.p_MCC),*/ /*nameof(metrics_box.p_API_All)*/};
+        public string[] ScoringMetrics = {nameof(MetricsBox.PF1S) /*nameof(metrics_box.p_MCC),*/ /*nameof(metrics_box.p_API_All)*/};
 
-        internal bool Server;
-        internal int ServerBacklog = 1000;
-        internal Guid ServerGuid = new Guid("d2d95e16-d086-4b58-ba29-8b9b84e41be5");
+        public bool Server;
+        public int ServerBacklog = 1000;
+        public Guid ServerGuid = new Guid("d2d95e16-d086-4b58-ba29-8b9b84e41be5");
 
-        internal string ServerIp = "127.0.0.1";
-        internal int ServerPort = 64727;
+        public string ServerIp = "127.0.0.1";
+        public int ServerPort = 64727;
 
         // parameters for -setup only to generate pbs script to run array job
-        internal bool Setup;
-        internal int SetupInstanceVcpus = -1;
-        internal int SetupTotalVcpus = -1;
-        internal string SvmFsBatchHome;
+        public bool Setup;
+        public int SetupInstanceVcpus = -1;
+        public int SetupTotalVcpus = -1;
+        public string SvmFsBatchHome;
 
-        internal Routines.LibsvmSvmType[] SvmTypes = {Routines.LibsvmSvmType.CSvc};
-        internal string UserHome;
+        public Routines.LibsvmSvmType[] SvmTypes = {Routines.LibsvmSvmType.CSvc};
+        public string UserHome;
 
 
         // whole array parameters
-        internal int WholeArrayIndexFirst = -1; // start index of whole array
-        internal int WholeArrayIndexLast = -1; // end index of whole array
-        internal int WholeArrayLength; // number of jobs in array
-        internal int WholeArrayStepSize; // step size for whole array
+        public int WholeArrayIndexFirst = -1; // start index of whole array
+        public int WholeArrayIndexLast = -1; // end index of whole array
+        public int WholeArrayLength; // number of jobs in array
+        public int WholeArrayStepSize; // step size for whole array
+
+        public ProgramArgs()
+        {
+
+        }
 
         public ProgramArgs(string[] args)
         {
             Logging.LogCall(ModuleName);
 
-            const string methodName = nameof(ProgramArgs);
+            const string MethodName = nameof(ProgramArgs);
 
             var argNames = new[]
             {
@@ -188,13 +194,13 @@ namespace SvmFsBatch
             var argsUnknown = argsGiven.Except(argNames, StringComparer.OrdinalIgnoreCase).ToArray();
             var argsCount = argsGiven.Distinct().Select(a => (key: a, count: Args.Count(b => string.Equals(a, b.key, StringComparison.OrdinalIgnoreCase)))).ToArray();
 
-            Logging.WriteLine($@"{nameof(argsGiven)} = {string.Join(", ", argsGiven)}", ModuleName, methodName);
-            Logging.WriteLine($@"{nameof(argsMissing)} = {string.Join(", ", argsMissing)}", ModuleName, methodName);
-            Logging.WriteLine($@"{nameof(argsKnown)} = {string.Join(", ", argsKnown)}", ModuleName, methodName);
-            Logging.WriteLine($@"{nameof(argsUnknown)} = {string.Join(", ", argsUnknown)}", ModuleName, methodName);
+            Logging.WriteLine($@"{nameof(argsGiven)} = {string.Join(", ", argsGiven)}", ModuleName, MethodName);
+            Logging.WriteLine($@"{nameof(argsMissing)} = {string.Join(", ", argsMissing)}", ModuleName, MethodName);
+            Logging.WriteLine($@"{nameof(argsKnown)} = {string.Join(", ", argsKnown)}", ModuleName, MethodName);
+            Logging.WriteLine($@"{nameof(argsUnknown)} = {string.Join(", ", argsUnknown)}", ModuleName, MethodName);
 
-            if (argsUnknown.Any()) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{methodName}: Invalid arguments: {string.Join(", ", argsUnknown)}");
-            if (argsCount.Any(a => a.count > 1)) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{methodName}: Arguments specified more than once: {string.Join(", ", argsCount.Where(a => a.count > 1).ToArray())}");
+            if (argsUnknown.Any()) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{MethodName}: Invalid arguments: {string.Join(", ", argsUnknown)}");
+            if (argsCount.Any(a => a.count > 1)) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{MethodName}: Arguments specified more than once: {string.Join(", ", argsCount.Where(a => a.count > 1).ToArray())}");
 
             IsWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
@@ -320,10 +326,10 @@ namespace SvmFsBatch
             //}
 
             var v = CsvValuesArray();
-            Logging.WriteLine(string.Join(" ", CsvHeaderValuesArray.Select((header, i) => $"{header}={v[i]}").ToArray()), ModuleName, methodName);
+            Logging.WriteLine(string.Join(" ", CsvHeaderValuesArray.Select((header, i) => $"{header}={v[i]}").ToArray()), ModuleName, MethodName);
         }
 
-        internal string[] CsvValuesArray()
+        public string[] CsvValuesArray()
         {
             Logging.LogCall(ModuleName);
 
@@ -364,11 +370,11 @@ namespace SvmFsBatch
                 $"{(CalcElevenPointThresholds ? 1 : 0)}",
 
                 $"{(Client ? 1 : 0)}",
-                $"{ClientGuid}",
+                $"{ClientGuid:N}",
                 $"{ClientConnectionPoolSize}",
                 $"{(Server ? 1 : 0)}",
                 $"{ServerBacklog}",
-                $"{ServerGuid}",
+                $"{ServerGuid:N}",
                 $"{ServerIp}",
                 $"{ServerPort}",
 
@@ -384,7 +390,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal bool ArgsKeyExists(string key)
+        public bool ArgsKeyExists(string key)
         {
             Logging.LogCall(ModuleName);
 
@@ -396,7 +402,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal (string key, string asStr, int? asInt, double? asDouble, bool? asBool) ArgsValue(string key)
+        public (string key, string asStr, int? asInt, double? asDouble, bool? asBool) ArgsValue(string key)
         {
             Logging.LogCall(ModuleName);
 
@@ -408,7 +414,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        internal static (string key, string asStr, int? asInt, double? asDouble, bool? asBool)[] GetParams(string[] args)
+        public static (string key, string asStr, int? asInt, double? asDouble, bool? asBool)[] GetParams(string[] args)
         {
             Logging.LogCall(ModuleName);
 

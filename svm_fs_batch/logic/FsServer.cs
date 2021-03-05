@@ -2,51 +2,65 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SvmFsBatch.logic;
 
 namespace SvmFsBatch
 {
-    internal class FsServer
+    public static class FsServer
     {
         public const string ModuleName = nameof(FsServer);
 
-        //internal static readonly string _server_id = program.program_args.server_id;//Guid.NewGuid().ToString();
-        internal static readonly string ServerFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_server", Program.ProgramArgs.ServerGuid.ToString());
+        //public static readonly string _server_id = program.program_args.server_id;//Guid.NewGuid().ToString();
+        public static readonly string ServerFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_server", $"{Program.ProgramArgs.ServerGuid:N}");
 
-        internal static async Task FeatureSelectionInitializationAsync(DataSet DataSet, int scoringClassId, string[] scoringMetrics, string ExperimentName, int instanceId, int totalInstances, int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales, (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, int limitIterationNotHigherThanAll = 14, int limitIterationNotHigherThanLast = 7, bool makeOuterCvConfusionMatrices = false, bool testFinalBestBias = false, ulong lvl = 0, CancellationToken ct = default)
+        public static async Task FeatureSelectionInitializationAsync(DataSet DataSet, int scoringClassId, string[] scoringMetrics, string ExperimentName, int instanceId, int totalInstances, int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales, (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, int limitIterationNotHigherThanAll = 14, int limitIterationNotHigherThanLast = 7, bool makeOuterCvConfusionMatrices = false, bool testFinalBestBias = false, ulong lvl = 0, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string methodName = nameof(FeatureSelectionInitializationAsync);
-            
+            const string MethodName = nameof(FeatureSelectionInitializationAsync);
+
             var findBestGroupFeaturesFirst = false;
             var checkIndividualLast = true;
 
 
-            var serverGuid = Program.ProgramArgs.ServerGuid; // Guid.NewGuid().ToByteArray();
+            //var serverGuid = Program.ProgramArgs.ServerGuid; // Guid.NewGuid().ToByteArray();
             //var server_guid_bytes = Program.program_args.server_guid.ToByteArray();// Guid.NewGuid().ToByteArray();
-            var cp = new ConnectionPool(callChain: null, lvl: lvl+1);
-            cp.Start(true,"Server", serverGuid, default, callChain: null, lvl: lvl + 1,ct: ct);
+            
+
+            // option 1: maintain 2 connections to every RPC server at all times
+            // option 2: keep trying to establish an extra connection to each RPC server
+
+            //var cp = new ConnectionPool(callChain: null, lvl: lvl + 1);
+            //var cpConnecTask = RpcService.RpcConnectTask(cp, ct);
+
+            //cp.Start(true, "Server", serverGuid, default, callChain: null, lvl: lvl + 1, ct: ct);
+            //cp.Start(false, "Controller", Guid.NewGuid(), default, ct, ModuleName);
+
+
+
 
 
             // Get the feature groups within the DataSet
-            var groups1 = DataSetGroupMethods.GetMainGroups(DataSet, true, true, true, true, true, true, true, false, false, ct:ct);
+            var groups1 = DataSetGroupMethods.GetMainGroups(DataSet, true, true, true, true, true, true, true, false, false, ct: ct);
 
             // Limit for testing
             // todo: remove this
-            groups1 = groups1.Take(50).ToArray();
+            //groups1 = groups1.Take(50).ToArray();
 
             // Feature select within each gkGroup first, to reduce number of columns
             if (findBestGroupFeaturesFirst)
             {
-                Logging.WriteLine($@"Finding best of {groups1.Sum(a => a.columns.Length)} individual columns within the {groups1.Length} groups", ModuleName, methodName);
+                Logging.WriteLine($@"Finding best of {groups1.Sum(a => a.columns.Length)} individual columns within the {groups1.Length} groups", ModuleName, MethodName);
 
                 // get best features in each gkGroup
-                var groups1ReduceInput = DataSetGroupMethods.GetSubGroups(groups1, true, true, true, true, true, true, true, true, true, ct:ct);
+                var groups1ReduceInput = DataSetGroupMethods.GetSubGroups(groups1, true, true, true, true, true, true, true, true, true, ct: ct);
 
                 // There is 1 performance test per instance (i.e. each nested cross validation performance test [1-repetition, 5-fold outer, 5-fold inner])
                 // This means that if number of groups is less than number of instances, some instances could be idle... problem, but rare enough to ignore.
@@ -54,10 +68,10 @@ namespace SvmFsBatch
                 var groups1ReduceOutputTasks = groups1ReduceInput
                     //.AsParallel()
                     //.AsOrdered()
-                    //.WithCancellation(ct)
+                    ///*.WithCancellation(ct)*/
                     .Select(async (gkGroup, groupIndex) => await FeatureSelectionWorker(scoringClassId,
                         scoringMetrics,
-                        cp,
+                        //cp,
                         DataSet,
                         gkGroup,
                         true,
@@ -90,21 +104,21 @@ namespace SvmFsBatch
                 var groups1ReduceOutput = await Task.WhenAll(groups1ReduceOutputTasks).ConfigureAwait(false);
 
                 // ungroup (gkMember & gkPerspective)
-                var groups1ReduceOutputUngrouped = DataSetGroupMethods.Ungroup(groups1ReduceOutput.Select(a => a.BestWinnerGroups).ToArray(), ct:ct);
+                var groups1ReduceOutputUngrouped = DataSetGroupMethods.Ungroup(groups1ReduceOutput.Select(a => a.BestWinnerGroups).ToArray(), ct: ct);
 
                 // regroup (without gkMember & gkPerspective)
-                var groups1ReduceOutputRegrouped = DataSetGroupMethods.GetMainGroups(groups1ReduceOutputUngrouped, true, true, true, true, true, true, true, false, false, ct:ct);
+                var groups1ReduceOutputRegrouped = DataSetGroupMethods.GetMainGroups(groups1ReduceOutputUngrouped, true, true, true, true, true, true, true, false, false, ct: ct);
 
                 groups1 = groups1ReduceOutputRegrouped;
             }
 
 
             // Feature select between the DataSet groups
-            Logging.WriteLine($@"Finding best of {groups1.Length} groups (made of {groups1.Sum(a => a.columns.Length)} columns)", ModuleName, methodName);
+            Logging.WriteLine($@"Finding best of {groups1.Length} groups (made of {groups1.Sum(a => a.columns.Length)} columns)", ModuleName, MethodName);
 
             var winner = await FeatureSelectionWorker(scoringClassId,
                 scoringMetrics,
-                cp,
+                //cp,
                 DataSet,
                 groups1,
                 false,
@@ -141,12 +155,12 @@ namespace SvmFsBatch
             {
                 // preselect all winner gkGroup columns, then test if feature selection goes backwards.
 
-                var bestWinnerColumns = DataSetGroupMethods.Ungroup(winner.BestWinnerGroups, ct:ct);
-                var bestWinnerColumnsInput = DataSetGroupMethods.GetMainGroups(bestWinnerColumns, true, true, true, true, true, true, true, true, true, ct:ct);
+                var bestWinnerColumns = DataSetGroupMethods.Ungroup(winner.BestWinnerGroups, ct: ct);
+                var bestWinnerColumnsInput = DataSetGroupMethods.GetMainGroups(bestWinnerColumns, true, true, true, true, true, true, true, true, true, ct: ct);
 
                 var bestWinnerColumnsOutputStartBackwards = await FeatureSelectionWorker(scoringClassId,
                     scoringMetrics,
-                    cp,
+                    //cp,
                     DataSet,
                     bestWinnerColumnsInput,
                     true,
@@ -178,7 +192,7 @@ namespace SvmFsBatch
 
                 var bestWinnerColumnsOutputStartForwards = await FeatureSelectionWorker(scoringClassId,
                     scoringMetrics,
-                    cp,
+                    //cp,
                     DataSet,
                     bestWinnerColumnsInput,
                     false,
@@ -222,12 +236,13 @@ namespace SvmFsBatch
                 // 3. test variance of class weight
             }
 
-            await cp.StopAsync(callChain: null, lvl: lvl + 1).ConfigureAwait(false);
+            //await cp.StopAsync(callChain: null, lvl: lvl + 1).ConfigureAwait(false);
 
             Logging.LogExit(ModuleName);
         }
 
-        internal static async Task<((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] BestWinnerGroups, (IndexData id, ConfusionMatrix cm, RankScore rs) BestWinnerData, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> winners)> FeatureSelectionWorker(int scoringClassId, string[] scoringMetrics, ConnectionPool cp, DataSet DataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, bool preselectAllGroups, // preselect all groups
+        public static async Task<((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] BestWinnerGroups, (IndexData id, ConfusionMatrix cm, RankScore rs) BestWinnerData, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> winners)> FeatureSelectionWorker(
+            int scoringClassId, string[] scoringMetrics, /*ConnectionPool cp,*/ DataSet DataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, bool preselectAllGroups, // preselect all groups
             int[] baseGroupIndexes, //always include these groups
             string ExperimentName,
             //int InstanceId,
@@ -239,9 +254,9 @@ namespace SvmFsBatch
             bool asParallel = true, ulong lvl = 0, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-            const string methodName = nameof(FeatureSelectionWorker);
+            const string MethodName = nameof(FeatureSelectionWorker);
             const bool overwriteCache = false;
 
             //while (io_proxy.ExistsFile(true, Path.Combine(_server_folder, $@"exit.csv"), _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
@@ -249,7 +264,7 @@ namespace SvmFsBatch
             //    io_proxy.DeleteFile(true, ct, Path.Combine(_server_folder, $@"exit.csv"), _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
             //}
 
-            
+
             baseGroupIndexes = baseGroupIndexes?.OrderBy(a => a).Distinct().ToArray();
 
             (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs = default;
@@ -269,7 +284,7 @@ namespace SvmFsBatch
 
             void Log(string msg)
             {
-                Logging.WriteLine($@"{ExperimentName}, iteration: {iterationIndex}, {msg}.", ModuleName, methodName);
+                Logging.WriteLine($@"{ExperimentName}, iteration: {iterationIndex}, {msg}.", ModuleName, MethodName);
             }
 
             // todo: add rank positions (for each iteration) to the winning features summary output... 
@@ -278,7 +293,7 @@ namespace SvmFsBatch
 
             while (!featureSelectionFinished)
             {
-                if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+                if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
                 //var last_iteration_id_cm_rs = all_iteration_id_cm_rs?.LastOrDefault();
                 var selectedGroups = lastWinnerIdCmRs.id?.IdGroupArrayIndexes?.ToArray() ?? Array.Empty<int>();
                 var selectionExcludedGroups2 = lastWinnerIdCmRs.id != null
@@ -312,16 +327,16 @@ namespace SvmFsBatch
                 Log($@"{nameof(jobGroupSeries)}.{nameof(jobGroupSeries.Length)} = {jobGroupSeries?.Length ?? 0}.");
                 if (jobGroupSeries == null || jobGroupSeries.Length == 0) break;
 
-                var indexDataContainer = CacheLoad.GetFeatureSelectionInstructions(DataSet, groups, jobGroupSeries, ExperimentName, iterationIndex, groups?.Length ?? 0, /*InstanceId, TotalInstances,*/ repetitions, outerCvFolds, outerCvFoldsToRun, innerFolds, svmTypes, kernels, scales, classWeightSets, calcElevenPointThresholds, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, ct: ct);
+                var indexesWhole = CacheLoad.GetFeatureSelectionInstructions(DataSet, groups, jobGroupSeries, ExperimentName, iterationIndex, groups?.Length ?? 0, /*InstanceId, TotalInstances,*/ repetitions, outerCvFolds, outerCvFoldsToRun, innerFolds, svmTypes, kernels, scales, classWeightSets, calcElevenPointThresholds, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, ct: ct);
 
-                allIndexData.AddRange(indexDataContainer.IndexesWhole);
+                allIndexData.AddRange(indexesWhole);
 
-                Log($@"{nameof(indexDataContainer)}.{nameof(indexDataContainer.IndexesWhole)}.{nameof(indexDataContainer.IndexesWhole.Length)} = {indexDataContainer?.IndexesWhole?.Length ?? 0}"); //, IndexDataContainer.indexes_partition.Length = {(IndexDataContainer?.indexes_partition?.Length ?? 0)}.");
-                if (indexDataContainer.IndexesWhole == null || indexDataContainer.IndexesWhole.Length == 0) break;
+                Log($@"{nameof(indexesWhole)}.{nameof(indexesWhole.Length)} = {indexesWhole?.Length ?? 0}"); 
+                if (indexesWhole == null || indexesWhole.Length == 0) break;
 
 
                 // iteration_all_cm is a list of all merged results (i.e. the individual outer-cross-validation partitions merged)
-                var iterationWholeResults = new List<(IndexData id, ConfusionMatrix cm)>();
+
 
                 // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
                 var iterationFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, ExperimentName, iterationIndex, ct: ct);
@@ -349,7 +364,7 @@ namespace SvmFsBatch
 
                 // check if this partition is loaded....
                 //while (IndexDataContainer.indexes_missing_partition.Any())
-                await ServeIpcJobsAsync(cp, indexDataContainer, iterationWholeResults, iterationIndex, lvl: lvl + 1, ct:ct).ConfigureAwait(false);
+                var iterationWholeResults= await DistributeWork.ServeIpcJobsAsync(iterationIndex, DataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, ct: ct).ConfigureAwait(false);
 
                 // save partition cache
                 //{
@@ -396,8 +411,8 @@ namespace SvmFsBatch
                 numAvailableGroups = NumGroupsAvailable(groups, baseGroupIndexes, calibrate, thisIterationWinnerIdCmRs, selectionExcludedGroups, ct);
 
 
-                featureSelectionFinished = CheckWhetherFinished(ExperimentName, minScoreIncrease, maxIterations, limitIterationNotHigherThanAll, limitIterationNotHigherThanLast, featureSelectionFinished, thisIterationWinnerIdCmRs, lastWinnerIdCmRs, numAvailableGroups, iterationIndex, ref bestWinnerIdCmRs, ref iterationsNotHigherThanLast, ref iterationsNotHigherThanBest,ct);
-                await SaveIterationSummaryAsync(ExperimentName, indexDataContainer, /*InstanceId, TotalInstances,*/ iterationFolder, iterationIndex, methodName, overwriteCache, iterationWholeResultsFixedWithRanks, allWinnersIdCmRs, ct).ConfigureAwait(false);
+                featureSelectionFinished = CheckWhetherFinished(ExperimentName, minScoreIncrease, maxIterations, limitIterationNotHigherThanAll, limitIterationNotHigherThanLast, featureSelectionFinished, thisIterationWinnerIdCmRs, lastWinnerIdCmRs, numAvailableGroups, iterationIndex, ref bestWinnerIdCmRs, ref iterationsNotHigherThanLast, ref iterationsNotHigherThanBest, ct);
+                await SaveIterationSummaryAsync(ExperimentName, indexesWhole, iterationFolder, iterationIndex, MethodName, overwriteCache, iterationWholeResultsFixedWithRanks, allWinnersIdCmRs, ct).ConfigureAwait(false);
 
                 lastWinnerIdCmRs = thisIterationWinnerIdCmRs;
                 allIterationIdCmRs.Add(iterationWholeResultsFixedWithRanks);
@@ -417,16 +432,16 @@ namespace SvmFsBatch
             Log($@"Finished: winning score = {bestWinnerIdCmRs.rs?.RsFsScore ?? 0}, total columns = {bestWinnerIdCmRs.id?.IdNumColumns ?? 0}.");
 
             var bestWinnerGroups = bestWinnerIdCmRs.id.IdGroupArrayIndexes.Select(groupIndex => groups[groupIndex]).ToArray();
-            await SaveResultsSummaryAsync(allIndexData.ToArray(), groups, ExperimentName, allWinnersIdCmRs, bestWinnerIdCmRs, bestWinnerGroups, methodName, allIterationIdCmRs, ct).ConfigureAwait(false);
+            await SaveResultsSummaryAsync(allIndexData.ToArray(), groups, ExperimentName, allWinnersIdCmRs, bestWinnerIdCmRs, bestWinnerGroups, MethodName, allIterationIdCmRs, ct).ConfigureAwait(false);
 
             //await io_proxy.WriteAllLines(true, ct, Path.Combine(_server_folder, @"exit.csv"), new[] { "exit" }, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false);
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(bestWinnerGroups, bestWinnerIdCmRs, allWinnersIdCmRs);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (bestWinnerGroups, bestWinnerIdCmRs, allWinnersIdCmRs);
         }
 
-        private static (IndexData id, ConfusionMatrix cm, RankScore rs)[] CalculateRanks(int scoringClassId, string[] scoringMetrics, List<(IndexData id, ConfusionMatrix cm)> iterationWholeResults, int iterationIndex, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) lastWinnerIdCmRs, CancellationToken ct)
+        public static (IndexData id, ConfusionMatrix cm, RankScore rs)[] CalculateRanks(int scoringClassId, string[] scoringMetrics, List<(IndexData id, ConfusionMatrix cm)> iterationWholeResults, int iterationIndex, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) lastWinnerIdCmRs, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             var iterationWholeResultsFixed = iterationWholeResults.Where(cmSd => cmSd.id != null && cmSd.cm != null && cmSd.cm.XClassId != null && // class id exists
                                                                                  cmSd.cm.XClassId.Value == scoringClassId && // ...and is the scoring class id
@@ -438,7 +453,7 @@ namespace SvmFsBatch
             {
                 var fsScore = a.cm.Metrics.GetValuesByNames(scoringMetrics).Average();
 
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(a.id, a.cm, fs_score: fsScore);
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (a.id, a.cm, fs_score: fsScore);
             }).ToList();
 
             var iterationWholeResultsFixedWithRanks = SetRanks(iterationWholeResultsFixed, allIterationIdCmRs, bestWinnerIdCmRs, lastWinnerIdCmRs, ct: ct);
@@ -446,15 +461,15 @@ namespace SvmFsBatch
             iterationWholeResults.Clear();
             iterationWholeResultsFixed.Clear();
 
-            Logging.LogExit(ModuleName); 
-            
+            Logging.LogExit(ModuleName);
+
             return ct.IsCancellationRequested ? default : iterationWholeResultsFixedWithRanks;
         }
 
-        private static int NumGroupsAvailable((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, int[] baseGroupIndexes, bool calibrate, (IndexData id, ConfusionMatrix cm, RankScore rs) thisIterationWinnerIdCmRs, List<int> selectionExcludedGroups, CancellationToken ct)
+        public static int NumGroupsAvailable((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, int[] baseGroupIndexes, bool calibrate, (IndexData id, ConfusionMatrix cm, RankScore rs) thisIterationWinnerIdCmRs, List<int> selectionExcludedGroups, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             var availableGroups = Enumerable.Range(0, groups.Length).ToArray();
             if (!calibrate)
@@ -465,10 +480,10 @@ namespace SvmFsBatch
             }
 
             var numAvailableGroups = availableGroups.Length;
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :numAvailableGroups;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : numAvailableGroups;
         }
 
-        private static void BanPoorPerformanceGroups(string ExperimentName, (IndexData id, ConfusionMatrix cm, RankScore rs)[] iterationWholeResultsFixedWithRanks, List<int> selectionExcludedGroups, int numAvailableGroups, int iterationIndex, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, CancellationToken ct)
+        public static void BanPoorPerformanceGroups(string ExperimentName, (IndexData id, ConfusionMatrix cm, RankScore rs)[] iterationWholeResultsFixedWithRanks, List<int> selectionExcludedGroups, int numAvailableGroups, int iterationIndex, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
@@ -510,10 +525,10 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        private static bool CheckWhetherFinished(string ExperimentName, double minScoreIncrease, int maxIterations, int limitIterationNotHigherThanAll, int limitIterationNotHigherThanLast, bool featureSelectionFinished, (IndexData id, ConfusionMatrix cm, RankScore rs) thisIterationWinnerIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) lastWinnerIdCmRs, int numAvailableGroups, int iterationIndex, ref (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs, ref int iterationsNotHigherThanLast, ref int iterationsNotHigherThanBest, CancellationToken ct)
+        public static bool CheckWhetherFinished(string ExperimentName, double minScoreIncrease, int maxIterations, int limitIterationNotHigherThanAll, int limitIterationNotHigherThanLast, bool featureSelectionFinished, (IndexData id, ConfusionMatrix cm, RankScore rs) thisIterationWinnerIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) lastWinnerIdCmRs, int numAvailableGroups, int iterationIndex, ref (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs, ref int iterationsNotHigherThanLast, ref int iterationsNotHigherThanBest, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             void Log(string msg)
             {
@@ -556,8 +571,8 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return featureSelectionFinished;
         }
 
-        private static async Task SaveIterationSummaryAsync(string ExperimentName, IndexDataContainer indexDataContainer, /*int InstanceId, int TotalInstances,*/
-            string iterationFolder, int iterationIndex, string methodName, bool overwriteCache, (IndexData id, ConfusionMatrix cm, RankScore rs)[] iterationWholeResultsFixedWithRanks, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> allWinnersIdCmRs, CancellationToken ct)
+        public static async Task SaveIterationSummaryAsync(string ExperimentName, IndexData[] indexesWhole, /*int InstanceId, int TotalInstances,*/
+            string iterationFolder, int iterationIndex, string MethodName, bool overwriteCache, (IndexData id, ConfusionMatrix cm, RankScore rs)[] iterationWholeResultsFixedWithRanks, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> allWinnersIdCmRs, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
@@ -567,14 +582,14 @@ namespace SvmFsBatch
                 Logging.WriteLine($"{ExperimentName}, iteration: {iterationIndex}, {msg}.");
             }
 
-            var fn = Program.GetIterationFilename(indexDataContainer.IndexesWhole, ct);
+            var fn = Program.GetIterationFilename(indexesWhole, ct);
 
 
             {
                 // Save the CM ranked for the current iteration (winner rank #0)
                 var iterationCmRanksFn1 = Path.Combine(iterationFolder, $@"iteration_ranks_cm_{fn}_full.csv");
                 //var iteration_cm_ranks_fn2 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{fn}_summary.csv");
-                if (await IoProxy.IsFileAvailableAsync(true, ct, iterationCmRanksFn1, false, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false)) // && await io_proxy.IsFileAvailable(true, ct, iteration_cm_ranks_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
+                if (await IoProxy.IsFileAvailableAsync(true, ct, iterationCmRanksFn1, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)) // && await io_proxy.IsFileAvailable(true, ct, iteration_cm_ranks_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
                 {
                     Log($@"Already saved for iteration {iterationIndex}. Files: {iterationCmRanksFn1}."); //, {iteration_cm_ranks_fn2}.");
                 }
@@ -590,7 +605,7 @@ namespace SvmFsBatch
                 // Save the CM of winners from all iterations
                 var winnersCmFn1 = Path.Combine(iterationFolder, $@"winners_cm_{fn}_full.csv");
                 //var winners_cm_fn2 = Path.Combine(iteration_folder, $@"winners_cm_{fn}_summary.csv");
-                if (await IoProxy.IsFileAvailableAsync(true, ct, winnersCmFn1, false, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false))
+                if (await IoProxy.IsFileAvailableAsync(true, ct, winnersCmFn1, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false))
                 // && await io_proxy.IsFileAvailable(true, ct, winners_cm_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
                 {
                     Log($@"Already saved for iteration {iterationIndex}. Files: {winnersCmFn1}"); //, {winners_cm_fn2}.");
@@ -606,7 +621,7 @@ namespace SvmFsBatch
             {
                 // Save the prediction list for misclassification analysis
                 var predictionListFilename = Path.Combine(iterationFolder, $@"iteration_prediction_list_{fn}.csv");
-                if (await IoProxy.IsFileAvailableAsync(true, ct, predictionListFilename, false, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false)) { Log($@"Already saved for iteration {iterationIndex}. File: {predictionListFilename}."); }
+                if (await IoProxy.IsFileAvailableAsync(true, ct, predictionListFilename, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)) { Log($@"Already saved for iteration {iterationIndex}. File: {predictionListFilename}."); }
                 else
                 {
                     Log($@"Unavailable for iteration {iterationIndex}. File: {predictionListFilename}.");
@@ -619,14 +634,14 @@ namespace SvmFsBatch
         }
 
 
-        private static async Task SaveResultsSummaryAsync(IndexData[] allIndexData, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, string ExperimentName, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> allWinnersIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] bestWinnerGroups, string methodName, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, CancellationToken ct)
+        public static async Task SaveResultsSummaryAsync(IndexData[] allIndexData, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, string ExperimentName, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> allWinnersIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) bestWinnerIdCmRs, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] bestWinnerGroups, string MethodName, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            var experimentFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, ExperimentName, ct:ct);
+            var experimentFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, ExperimentName, ct: ct);
 
-            var fn = Program.GetIterationFilename(allIndexData,ct);
+            var fn = Program.GetIterationFilename(allIndexData, ct);
 
 
             {
@@ -661,7 +676,7 @@ namespace SvmFsBatch
                 bestWinnerText.Add("");
                 bestWinnerText.Add("");
 
-                await IoProxy.WriteAllLinesAsync(true, ct, bestWinnerFn, bestWinnerText, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+                await IoProxy.WriteAllLinesAsync(true, ct, bestWinnerFn, bestWinnerText, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
                 bestWinnerText.Clear();
                 bestWinnerText = null;
@@ -673,16 +688,16 @@ namespace SvmFsBatch
                 var allDataText = new List<string>();
                 allDataText.Add($@"index,{string.Join(",", RankScore.CsvHeaderValuesArray)},{string.Join(",", IndexData.CsvHeaderValuesArray)},{string.Join(",", ConfusionMatrix.CsvHeaderValuesArray)}");
                 allDataText.AddRange(allData.Select((a, k1) => $@"{k1},{string.Join(",", a.rs?.CsvValuesArray() ?? RankScore.Empty.CsvValuesArray())},{string.Join(",", a.id?.CsvValuesArray() ?? IndexData.Empty.CsvValuesArray())},{string.Join(",", a.cm?.CsvValuesArray() ?? ConfusionMatrix.Empty.CsvValuesArray())}").ToArray());
-                await IoProxy.WriteAllLinesAsync(true, ct, allDataFn, allDataText, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+                await IoProxy.WriteAllLinesAsync(true, ct, allDataFn, allDataText, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
                 allDataText.Clear();
                 allDataText = null;
 
-                var allDataGrouped = allData.AsParallel().AsOrdered().WithCancellation(ct).GroupBy(a => (a.id.IdGroupArrayIndex, a.id.IdRepetitions, a.id.IdOuterCvFolds, a.id.IdOuterCvFoldsToRun, a.id.IdInnerCvFolds, a.id.IdExperimentName, a.id.IdTotalGroups, a.id.IdSvmType, a.id.IdSvmKernel, a.id.IdScaleFunction, a.id.IdCalcElevenPointThresholds, a.id.IdSelectionDirection, IdClassWeights: string.Join(";", a.id?.IdClassWeights?.Select(a => $"{a.ClassId}:{a.ClassWeight}").ToArray() ?? Array.Empty<string>()))).Select(a => (key: a.Key, list: a.ToList())).ToArray();
+                var allDataGrouped = allData.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.GroupBy(a => (a.id.IdGroupArrayIndex, a.id.IdRepetitions, a.id.IdOuterCvFolds, a.id.IdOuterCvFoldsToRun, a.id.IdInnerCvFolds, a.id.IdExperimentName, a.id.IdTotalGroups, a.id.IdSvmType, a.id.IdSvmKernel, a.id.IdScaleFunction, a.id.IdCalcElevenPointThresholds, a.id.IdSelectionDirection, IdClassWeights: string.Join(";", a.id?.IdClassWeights?.Select(a => $"{a.ClassId}:{a.ClassWeight}").ToArray() ?? Array.Empty<string>()))).Select(a => (key: a.Key, list: a.ToList())).ToArray();
                 var rankStatsFn = Path.Combine(experimentFolder, $@"rank_stats_{fn}.csv");
                 var rankStatsText = new List<string>();
 
 
-                
+
                 rankStatsText.Add($@"{string.Join(",", "ListIndex", "ListCount", string.Join(",", DataSetGroupKey.CsvHeaderValuesArray), nameof(IndexData.IdGroupArrayIndex), nameof(IndexData.IdRepetitions), nameof(IndexData.IdOuterCvFolds), nameof(IndexData.IdOuterCvFoldsToRun), nameof(IndexData.IdInnerCvFolds), nameof(IndexData.IdExperimentName), nameof(IndexData.IdTotalGroups), nameof(IndexData.IdSvmType), nameof(IndexData.IdSvmKernel), nameof(IndexData.IdScaleFunction), nameof(IndexData.IdCalcElevenPointThresholds), nameof(IndexData.IdSelectionDirection), nameof(IndexData.IdClassWeights))},{string.Join(",", Stats.CsvHeaderValuesArray.Select(a => $"FsScore{a}").ToArray())},{string.Join(",", Stats.CsvHeaderValuesArray.Select(a => $"FsScorePercentile{a}").ToArray())}");
                 rankStatsText.AddRange(allDataGrouped.Select((a, k1) =>
                 {
@@ -694,9 +709,9 @@ namespace SvmFsBatch
                         ? groups[a.key.IdGroupArrayIndex].GroupKey
                         : DataSetGroupKey.Empty;
 
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :$"{k1},{a.list.Count},{string.Join(",", gk.CsvValuesArray())},{a.key.IdGroupArrayIndex},{a.key.IdRepetitions},{a.key.IdOuterCvFolds},{a.key.IdOuterCvFoldsToRun},{a.key.IdInnerCvFolds},{a.key.IdExperimentName},{a.key.IdTotalGroups},{a.key.IdSvmType},{a.key.IdSvmKernel},{a.key.IdScaleFunction},{(a.key.IdCalcElevenPointThresholds ? 1 : 0)},{a.key.IdSelectionDirection},{a.key.IdClassWeights},{string.Join(",", fsScore.CsvValuesArray())},{string.Join(",", fsScorePercentile.CsvValuesArray())}";
+                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : $"{k1},{a.list.Count},{string.Join(",", gk.CsvValuesArray())},{a.key.IdGroupArrayIndex},{a.key.IdRepetitions},{a.key.IdOuterCvFolds},{a.key.IdOuterCvFoldsToRun},{a.key.IdInnerCvFolds},{a.key.IdExperimentName},{a.key.IdTotalGroups},{a.key.IdSvmType},{a.key.IdSvmKernel},{a.key.IdScaleFunction},{(a.key.IdCalcElevenPointThresholds ? 1 : 0)},{a.key.IdSelectionDirection},{a.key.IdClassWeights},{string.Join(",", fsScore.CsvValuesArray())},{string.Join(",", fsScorePercentile.CsvValuesArray())}";
                 }).ToArray());
-                await IoProxy.WriteAllLinesAsync(true, ct, rankStatsFn, rankStatsText, callerModuleName: ModuleName, callerMethodName: methodName).ConfigureAwait(false);
+                await IoProxy.WriteAllLinesAsync(true, ct, rankStatsFn, rankStatsText, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
                 allData = null;
                 allDataGrouped = null;
@@ -708,230 +723,382 @@ namespace SvmFsBatch
         }
 
 
-        private static async Task ServeIpcJobsAsync(ConnectionPool cp, IndexDataContainer indexDataContainer, List<(IndexData id, ConfusionMatrix cm)> iterationWholeResults, int iterationIndex, ulong lvl = 0, CancellationToken ct = default)
-        {
-            Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
-            
-            Logging.LogEvent($"Reached start of {nameof(FsServer)}.{nameof(ServeIpcJobsAsync)} for iteration {iterationIndex}.", ModuleName);
+    
+
+        //public static async Task<List<(IndexData id, ConfusionMatrix cm)>> ServeIpcJobsAsync(DataSet dataSet, ConnectionPool cp, IndexDataContainer indexDataContainer, int iterationIndex, ulong lvl = 0, CancellationToken ct = default)
+        //{
+
+        //    Logging.LogCall(ModuleName);
+        //    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+
+        //    Logging.LogEvent($"Reached start of {nameof(FsServer)}.{nameof(ServeIpcJobsAsync)} for iteration {iterationIndex}.", ModuleName);
+
+        //    // load cache
+        //    var serverCmFile = Path.Combine(ServerFolder, $@"_server_cache_{Program.GetIterationFilename(indexDataContainer.IndexesWhole, ct)}.csv");
+        //    var iterationWholeResults = new List<(IndexData id, ConfusionMatrix cm)>();
+        //    var iterationWholeResultsLines = new List<string>();
+        //    iterationWholeResultsLines.Add($"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
+
+        //    if (IoProxy.ExistsFile(true, serverCmFile, ModuleName, ct: ct) && IoProxy.FileLength(serverCmFile, ct) > 0)
+        //    {
+        //        var cache = await CacheLoad.LoadCacheFileAsync(serverCmFile, indexDataContainer, ct).ConfigureAwait(false);
+        //        if (cache != null && cache.Length > 0)
+        //        {
+        //            iterationWholeResults.AddRange(cache);
+        //            iterationWholeResultsLines.AddRange(cache.Select(a => $"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm?.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToArray());
+        //        }
+        //    }
+        //    else
+        //    {
+        //        // create cache file, if doesn't exist
+        //        var header = $"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}";
+        //        await IoProxy.WriteAllLinesAsync(true, ct, serverCmFile, new[] { header }).ConfigureAwait(false);
+        //    }
+
+        //    CacheLoad.UpdateMissing(iterationWholeResults, indexDataContainer, ct: ct);
+
+        //    // setup ETA task
+        //    var etaNumTotal = indexDataContainer.IndexesMissingWhole.Length;
+        //    var etaStartTime = DateTime.UtcNow;
+        //    var etaNumComplete = 0;
+        //    var etaNumCompleteLock = new object();
+
+        //    using var etaCts = new CancellationTokenSource();
+        //    var etaCt = etaCts.Token;
+
+        //    var etaTask = Task.Run(async () =>
+        //        {
+        //            while (!ct.IsCancellationRequested && !etaCt.IsCancellationRequested)
+        //                try
+        //                {
+        //                    await Task.Delay(TimeSpan.FromSeconds(30), etaCt).ConfigureAwait(false);
+        //                    lock (etaNumCompleteLock) { Routines.PrintETA(etaNumComplete, etaNumTotal, etaStartTime, ModuleName); }
+        //                }
+        //                catch (Exception e)
+        //                {
+        //                    Logging.LogException(e, "", ModuleName);
+        //                    break;
+        //                }
+        //        },
+        //        etaCt);
+
+        //    // 
 
 
-            var serverCmFile = Path.Combine(ServerFolder, $@"_server_cache_{Program.GetIterationFilename(indexDataContainer.IndexesWhole, ct)}.csv");
+        //    //var makeOuterCvInputs = indexDataContainer.IndexesMissingWhole.Select(id => {            }).ToArray();
+        //    var size = 0;
+        //    var size_lock = new object();
+        //    // save to file
+        //    Parallel.For(0, indexDataContainer.IndexesMissingWhole.Length, i =>
+        //    {
 
-            if (IoProxy.ExistsFile(true, serverCmFile, ModuleName, ct:ct) && IoProxy.FileLength(serverCmFile,ct) > 0)
-            {
-                var cache = await CacheLoad.LoadCacheFileAsync(serverCmFile, indexDataContainer, ct).ConfigureAwait(false);
-                iterationWholeResults.AddRange(cache);
-            }
+        //        var id = indexDataContainer.IndexesMissingWhole[i];
+        //        var mocvi = CrossValidate.MakeOuterCvInputs(dataSet, id, asParallel: true, ct: ct);
 
-            CacheLoad.UpdateMissing(iterationWholeResults, indexDataContainer, ct: ct);
+        //        var idJson = JsonSerializer.Serialize<IndexData>(id, new JsonSerializerOptions() { IncludeFields = true });
+        //        var mergedCvInputJson = JsonSerializer.Serialize<OuterCvInput>(mocvi.mergedCvInput, new JsonSerializerOptions() { IncludeFields = true });
+        //        var outerCvInputsJson = JsonSerializer.Serialize<OuterCvInput[]>(mocvi.outerCvInputs, new JsonSerializerOptions() { IncludeFields = true });
 
+        //        lock (size_lock) size += idJson.Length + mergedCvInputJson.Length + outerCvInputsJson.Length;
+        //        //var file
+        //    });
 
-            var startTotalMissing = indexDataContainer.IndexesMissingWhole.Length;
-            var startTime = DateTime.UtcNow;
-            var numComplete = 0;
-            var numCompleteLock = new object();
+        //    Console.WriteLine((size / 1024 / 1024) + " mb");
+        // write all inputs ready for use... no need to load dataset each time.
+        // if 4/7 instances run... what happens to the 3 that didn't?
+        //todo: remove all tcp code... useless doesn't work, don't know why... go back to using hpc array indexes.
+        // problem: how to solve issue of some array indexes not running... either because hpc doesn't run them, kills them, or not enough free cpus to run them... 
+        // exit others?
 
+        // on start, writing file giving stating which instances are running,
+        // owhen a new instance starts, it must tell the other instances .....
+        // other instances write file 
 
-            using var etaCts = new CancellationTokenSource();
-            var etaCt = etaCts.Token;
-            var etaTask = Task.Run(async () =>
-                {
-                    while (!ct.IsCancellationRequested && !etaCt.IsCancellationRequested)
-                        try
-                        {
-                            await Task.Delay(TimeSpan.FromSeconds(30), etaCt).ConfigureAwait(false);
-                            lock (numCompleteLock) { Routines.PrintETA(numComplete, startTotalMissing, startTime, ModuleName); }
-                        }
-                        catch (Exception e)
-                        {
-                            Logging.LogException(e, "", ModuleName);
-                            break;
-                        }
-                },
-                etaCt);
+        //    var listen = new TcpListener(IPAddress.Any, 4455);
+        //    listen.Start();
+        //    // serve message queue
+        //    while (!ct.IsCancellationRequested)
+        //    {
+        //        var q = new Queue<IndexData>(indexDataContainer.IndexesMissingWhole);
 
-            //try { await Task.Delay(TimeSpan.FromMilliseconds(1), externalCt).ConfigureAwait(false); } catch (Exception) { }
+        //        while (indexDataContainer.IndexesMissingWhole.Any())
+        //        {
+        //            var client = await listen.AcceptTcpClientAsync();
+        //            if (client == default) continue;
 
-            while (indexDataContainer.IndexesMissingWhole.Any())
-            {
-                if (ct.IsCancellationRequested)
-                {
-                    Logging.LogEvent($"Cancellation requested on {nameof(ct)}.", ModuleName);
-                    break;
-                }
+        //            var id = q.Dequeue();
+        //            //var mocvi = makeOuterCvInputs.First(a => a.id == id);
 
-                var workQueue = new Queue<IndexData>(indexDataContainer.IndexesMissingWhole);
+        //        }
 
-                var tasks = new List<(IndexData id, Task<(IndexData id, ConfusionMatrix[] CmList)> task)>();
-                var taskResults = new List<(IndexData id, ConfusionMatrix[] CmList)>();
+        //    }
+        //    listen.Stop();
 
-                while (workQueue.Any() || tasks.Any())
-                {
-                    // check if cancelled
-                    
+        //    return default;
+        //}
+        //    while (!ct.IsCancellationRequested && indexDataContainer.IndexesMissingWhole.Any())
+        //    {
+        //        var tasks = new List<Task<(IndexData id, ConfusionMatrix cm)[]>>();
 
-                    if (ct.IsCancellationRequested)
-                    {
-                        Logging.LogEvent($"Cancellation requested on {nameof(ct)}.", ModuleName);
-                        break;
-                    }
+        //        for (int i = 0; i < indexDataContainer.IndexesMissingWhole.Length; i++)
+        //        {
+        //            var k = i;
+        //            var mocvi = makeOuterCvInputs.First(a => a.id == indexDataContainer.IndexesMissingWhole[k]).mocvi;
+        //            var task = Task.Run(async () => await CrossValidate.CrossValidatePerformanceAsync(cp, CrossValidate.RpcPoint.CrossValidatePerformanceAsync, mocvi.outerCvInputs, mocvi.mergedCvInput, indexDataContainer.IndexesMissingWhole[k], ct: ct).ConfigureAwait(false), ct);
+        //            tasks.Add(task);
+        //        }
 
-                    // check if any work
-                    if (workQueue.Any())
-                    {
-                        var id = workQueue.Dequeue();
-                        if (id == null) continue;
+        //        var incompleteTasks = tasks.ToArray();// doing '.Where(a => !a.IsCompleted).ToArray();' here would add race condition.
+        //        do
+        //        {
+        //            try { await Task.WhenAny(incompleteTasks).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
-                        ConnectionPoolMember cpm = null;
+        //            var completeTasks = incompleteTasks.Where(a => a.IsCompleted).ToArray();
+        //            if (completeTasks.Length == 0) continue;
+        //            incompleteTasks = incompleteTasks.Except(completeTasks).ToArray();
 
-                        var lastCountActive = (0, 0, 0);
-                        do
-                        {
-                            cpm = cp.GetNextClient(callChain: null, lvl: lvl + 1);
+        //            var completeTaskResults = completeTasks.Where(a => a.IsCompletedSuccessfully && a.Result != default && a.Result.Length > 0).Select(a => a.Result).ToArray();
+        //            if (completeTaskResults.Length == 0) continue;
 
-                            if (cpm != default) break;
+        //            var completeTaskResultsMany = completeTaskResults.SelectMany(a => a).ToArray();
+        //            var completeTaskResultsManyLines = completeTaskResultsMany.Select(a => $"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm?.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToArray();
+        //            iterationWholeResultsLines.AddRange(completeTaskResultsManyLines);
+        //            iterationWholeResults.AddRange(completeTaskResultsMany);
 
-                            var countActive = cp.CountActive(callChain: null, lvl: lvl + 1);
+        //            await IoProxy.AppendAllLinesAsync(true, ct, serverCmFile, completeTaskResultsManyLines).ConfigureAwait(false);
 
-                            if (countActive != lastCountActive)
-                            {
-                                lastCountActive = countActive;
-                                //if (countActive.unreserved > 0) break;
-                                Logging.LogEvent($"Connection pool is empty. Waiting to run. Id: {id.IdGroupArrayIndex}. Pool reserved: {countActive.reserved}. Pool unreserved: {countActive.unreserved}. Pool total: {countActive.total}.", ModuleName);
-                            }
+        //            lock (etaNumCompleteLock)
+        //            {
+        //                etaNumComplete += completeTasks.Length;
+        //            }
 
-                            try { await Task.Delay(TimeSpan.FromSeconds(1), ct); }catch (Exception) { break; }
-                        } while (!ct.IsCancellationRequested && cpm == default);
+        //        } while (incompleteTasks.Length > 0);
 
-                        if (cpm != default)
-                        {
-                            var task = Task.Run(async () =>
-                                {
-                                    if (cpm == default || !cpm.IsActive(callChain: null, lvl: lvl + 1)) { return default; }
+        //        //try { await Task.WhenAll(tasks).ConfigureAwait(false); }catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+        //        CacheLoad.UpdateMissing(iterationWholeResults, indexDataContainer, ct: ct);
+        //        //var taskResults = tasks.Where(a => a.IsCompletedSuccessfully && a.Result != default && a.Result.Length > 0).Select(a => a.Result).ToArray();
+        //        //var taskResultsMany = taskResults.SelectMany(a => a).ToArray();
+        //        //iterationWholeResults.AddRange(taskResultsMany);
 
-                                    Logging.LogEvent($"Server: Starting Inner Task - IdGroupArrayIndex = {id.IdGroupArrayIndex}", ModuleName);
+        //        //var lines = iterationWholeResults.Select(a => $"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm?.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
+        //        //lines.Insert(0, IndexData.CsvHeaderString + "," + ConfusionMatrix.CsvHeaderString);
+        //        //await IoProxy.WriteAllLinesAsync(true, ct, serverCmFile, lines).ConfigureAwait(false);
 
-                                    if (ct.IsCancellationRequested)
-                                    {
-                                        Logging.LogEvent($"Server: Cancellation requested - IdGroupArrayIndex = {id.IdGroupArrayIndex}.", ModuleName);
+        //    }
 
-                                        Logging.LogExit(ModuleName);
-                                        return default;
-                                    }
+        //    try { etaCts.Cancel(); } catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+        //    Logging.LogEvent($"Reached end of {nameof(FsServer)}.{nameof(ServeIpcJobsAsync)} for iteration {iterationIndex}.", ModuleName);
+        //    Logging.LogExit(ModuleName);
+        //    return iterationWholeResults;
 
-
-                                    try
-                                    {
-                                        (IndexData id, ConfusionMatrix[] CmList) ret = default;
-
-                                        ret = await IpcMessaging.IpcAsync($"server_{cpm.LocalHost}:{cpm.LocalPort}", $"client_{cpm.RemoteHost}:{cpm.RemotePort}", cpm, null, true, id, lvl: lvl + 1, ct: ct).ConfigureAwait(false);
-
-                                        if (ret != default)
-                                        {
-                                            lock (numCompleteLock) { numComplete++; }
-                                        }
-                                        else { Logging.LogEvent($"{nameof(IpcMessaging.IpcAsync)} response was empty!"); }
-
-                                        Logging.LogExit(ModuleName);
-
-                                        return ct.IsCancellationRequested
-                                            ? default
-                                            : ret;
-                                    }
-                                    catch (Exception e)
-                                    {
-
-                                        Logging.LogException(e, $"Server: IdGroupArrayIndex = {id.IdGroupArrayIndex}", ModuleName);
-                                        Logging.LogExit(ModuleName);
-                                        return default;
-                                    }
-                                    finally
-                                    {
-                                        cpm?.Unreserve(callChain: null, lvl: lvl + 1);
-
-                                        Logging.LogEvent($"Server: Exiting Inner Task - IdGroupArrayIndex = {id.IdGroupArrayIndex}", ModuleName);
-                                    }
-                                },
-                                ct);
-
-                            tasks.Add((id, task));
-                        }
-                    }
-
-                    var requeueTasks = tasks.Where(a => a.task.IsCompleted && (!a.task.IsCompletedSuccessfully || a.task.Result == default || a.task.Result.CmList == null || a.task.Result.CmList.Length == 0)).ToArray();
-                    if (requeueTasks.Length > 0)
-                    {
-                        tasks = tasks.Except(requeueTasks).ToList();
-                        for (var i = 0; i < requeueTasks.Length; i++) { workQueue.Enqueue(requeueTasks[i].id); }
-                    }
-
-                    while (!workQueue.Any() && tasks.Any())
-                    {
-                        if (ct.IsCancellationRequested)
-                        {
-                            Logging.LogEvent($"Cancellation requested on {nameof(ct)}.", ModuleName);
-                            break;
-                        }
-
-                        try
-                        {
-                            var task = await Task.WhenAny(tasks.Select(a => a.task).ToArray());
-
-                            var item = tasks.First(a => a.task == task);
-                            tasks.Remove(item);
-
-                            var taskSuccess = task.IsCompletedSuccessfully && task.Result != default && task.Result.CmList != null && task.Result.CmList.Length > 0;
-
-                            if (taskSuccess)
-                            {
-                                taskResults.Add(item.task.Result);
-                            }
-                            else
-                            {
-                                workQueue.Enqueue(item.id);
-                            }
-
-                            continue;
-                        }
-                        catch (Exception e)
-                        {
-                            Logging.LogException(e, "", ModuleName);
-                        }
-
-                        if (tasks.Count > 0)
-                        {
-                            try { await Task.WhenAll(tasks.Select(a => a.task).ToArray()).ConfigureAwait(false); }
-                            catch (Exception e) { Logging.LogException(e, "", ModuleName); }
-                            var tasksOk = tasks.Where(a => a.task.IsCompletedSuccessfully && a.task.Result != default && a.task.Result.CmList != null && a.task.Result.CmList.Length > 0).ToArray();
-                            var tasksNotOk = tasks.Except(tasksOk).ToArray();
-                            taskResults.AddRange(tasksOk.Select(a=>a.task.Result).ToArray());
-                            for (var i = 0; i < tasksNotOk.Length; i++) { workQueue.Enqueue(tasksNotOk[i].id); }
-                            tasks.Clear();
-                        }
-                    }
-                }
-
-                if (taskResults.Count > 0)
-                {
-                    var cache2 = taskResults.SelectMany(a => a.CmList.Select(cm => (a.id, cm)).ToArray()).ToArray();
-                    iterationWholeResults.AddRange(cache2);
-                    
-                    var lines = iterationWholeResults.Select(a => $"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm?.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
-                    lines.Insert(0, IndexData.CsvHeaderString + "," + ConfusionMatrix.CsvHeaderString);
-                    await IoProxy.WriteAllLinesAsync(true, ct, serverCmFile, lines).ConfigureAwait(false);
-                    CacheLoad.UpdateMissing(iterationWholeResults, indexDataContainer, ct: ct);
-                }
-            }
+        //}
 
 
-            etaCts.Cancel();
+        //    var startTotalMissing = indexDataContainer.IndexesMissingWhole.Length;
+        //    var startTime = DateTime.UtcNow;
+        //    var numComplete = 0;
+        //    var numCompleteLock = new object();
 
 
-            Logging.LogEvent($"Reached end of {nameof(FsServer)}.{nameof(ServeIpcJobsAsync)} for iteration {iterationIndex}.", ModuleName);
+        //    using var etaCts = new CancellationTokenSource();
+        //    var etaCt = etaCts.Token;
+        //    var etaTask = Task.Run(async () =>
+        //        {
+        //            while (!ct.IsCancellationRequested && !etaCt.IsCancellationRequested)
+        //                try
+        //                {
+        //                    await Task.Delay(TimeSpan.FromSeconds(30), etaCt).ConfigureAwait(false);
+        //                    lock (numCompleteLock) { Routines.PrintETA(numComplete, startTotalMissing, startTime, ModuleName); }
+        //                }
+        //                catch (Exception e)
+        //                {
+        //                    Logging.LogException(e, "", ModuleName);
+        //                    break;
+        //                }
+        //        },
+        //        etaCt);
 
-            Logging.LogExit(ModuleName);
-        }
+        //    //try { await Task.Delay(TimeSpan.FromMilliseconds(1), externalCt).ConfigureAwait(false); } catch (Exception) { }
+
+        //    while (indexDataContainer.IndexesMissingWhole.Any())
+        //    {
+        //        if (ct.IsCancellationRequested)
+        //        {
+        //            Logging.LogEvent($"Cancellation requested on {nameof(ct)}.", ModuleName);
+        //            break;
+        //        }
+
+        //        var workQueue = new Queue<IndexData>(indexDataContainer.IndexesMissingWhole);
+
+        //        var tasks = new List<(IndexData id, Task<(IndexData id, ConfusionMatrix[] CmList)> task)>();
+        //        var taskResults = new List<(IndexData id, ConfusionMatrix[] CmList)>();
+
+        //        while (workQueue.Any() || tasks.Any())
+        //        {
+        //            // check if cancelled
+
+
+        //            if (ct.IsCancellationRequested)
+        //            {
+        //                Logging.LogEvent($"Cancellation requested on {nameof(ct)}.", ModuleName);
+        //                break;
+        //            }
+
+        //            // check if any work
+        //            if (workQueue.Any())
+        //            {
+        //                var id = workQueue.Dequeue();
+        //                if (id == null) continue;
+
+        //                ConnectionPoolMember cpm = null;
+
+        //                var lastCountActive = (0, 0, 0);
+        //                do
+        //                {
+        //                    cpm = cp.GetNextClient(callChain: null, lvl: lvl + 1);
+
+        //                    if (cpm != default) break;
+
+        //                    var countActive = cp.CountActive(callChain: null, lvl: lvl + 1);
+
+        //                    if (countActive != lastCountActive)
+        //                    {
+        //                        lastCountActive = countActive;
+        //                        //if (countActive.unreserved > 0) break;
+        //                        Logging.LogEvent($"Connection pool is empty. Waiting to run. Id: {id.IdGroupArrayIndex}. Pool reserved: {countActive.reserved}. Pool unreserved: {countActive.unreserved}. Pool total: {countActive.total}.", ModuleName);
+        //                    }
+
+        //                    try { await Task.Delay(TimeSpan.FromSeconds(1), ct); }catch (Exception) { break; }
+        //                } while (!ct.IsCancellationRequested && cpm == default);
+
+        //                if (cpm != default)
+        //                {
+        //                    var task = Task.Run(async () =>
+        //                        {
+        //                            if (cpm == default || !cpm.IsActive(callChain: null, lvl: lvl + 1)) { return default; }
+
+        //                            Logging.LogEvent($"Server: Starting Inner Task - IdGroupArrayIndex = {id.IdGroupArrayIndex}", ModuleName);
+
+        //                            if (ct.IsCancellationRequested)
+        //                            {
+        //                                Logging.LogEvent($"Server: Cancellation requested - IdGroupArrayIndex = {id.IdGroupArrayIndex}.", ModuleName);
+
+        //                                Logging.LogExit(ModuleName);
+        //                                return default;
+        //                            }
+
+
+        //                            try
+        //                            {
+        //                                (IndexData id, ConfusionMatrix[] CmList) ret = default;
+
+        //                                ret = await IpcMessaging.IpcAsync($"server_{cpm.LocalHost}:{cpm.LocalPort}", $"client_{cpm.RemoteHost}:{cpm.RemotePort}", cpm, null, true, id, lvl: lvl + 1, ct: ct).ConfigureAwait(false);
+
+        //                                if (ret != default)
+        //                                {
+        //                                    lock (numCompleteLock) { numComplete++; }
+        //                                }
+        //                                else { Logging.LogEvent($"{nameof(IpcMessaging.IpcAsync)} response was empty!"); }
+
+        //                                Logging.LogExit(ModuleName);
+
+        //                                return ct.IsCancellationRequested
+        //                                    ? default
+        //                                    : ret;
+        //                            }
+        //                            catch (Exception e)
+        //                            {
+
+        //                                Logging.LogException(e, $"Server: IdGroupArrayIndex = {id.IdGroupArrayIndex}", ModuleName);
+        //                                Logging.LogExit(ModuleName);
+        //                                return default;
+        //                            }
+        //                            finally
+        //                            {
+        //                                cpm?.Unreserve(callChain: null, lvl: lvl + 1);
+
+        //                                Logging.LogEvent($"Server: Exiting Inner Task - IdGroupArrayIndex = {id.IdGroupArrayIndex}", ModuleName);
+        //                            }
+        //                        },
+        //                        ct);
+
+        //                    tasks.Add((id, task));
+        //                }
+        //            }
+
+        //            var requeueTasks = tasks.Where(a => a.task.IsCompleted && (!a.task.IsCompletedSuccessfully || a.task.Result == default || a.task.Result.CmList == null || a.task.Result.CmList.Length == 0)).ToArray();
+        //            if (requeueTasks.Length > 0)
+        //            {
+        //                tasks = tasks.Except(requeueTasks).ToList();
+        //                for (var i = 0; i < requeueTasks.Length; i++) { workQueue.Enqueue(requeueTasks[i].id); }
+        //            }
+
+        //            while (!workQueue.Any() && tasks.Any())
+        //            {
+        //                if (ct.IsCancellationRequested)
+        //                {
+        //                    Logging.LogEvent($"Cancellation requested on {nameof(ct)}.", ModuleName);
+        //                    break;
+        //                }
+
+        //                try
+        //                {
+        //                    var task = await Task.WhenAny(tasks.Select(a => a.task).ToArray());
+
+        //                    var item = tasks.First(a => a.task == task);
+        //                    tasks.Remove(item);
+
+        //                    var taskSuccess = task.IsCompletedSuccessfully && task.Result != default && task.Result.CmList != null && task.Result.CmList.Length > 0;
+
+        //                    if (taskSuccess)
+        //                    {
+        //                        taskResults.Add(item.task.Result);
+        //                    }
+        //                    else
+        //                    {
+        //                        workQueue.Enqueue(item.id);
+        //                    }
+
+        //                    continue;
+        //                }
+        //                catch (Exception e)
+        //                {
+        //                    Logging.LogException(e, "", ModuleName);
+        //                }
+
+        //                if (tasks.Count > 0)
+        //                {
+        //                    try { await Task.WhenAll(tasks.Select(a => a.task).ToArray()).ConfigureAwait(false); }
+        //                    catch (Exception e) { Logging.LogException(e, "", ModuleName); }
+        //                    var tasksOk = tasks.Where(a => a.task.IsCompletedSuccessfully && a.task.Result != default && a.task.Result.CmList != null && a.task.Result.CmList.Length > 0).ToArray();
+        //                    var tasksNotOk = tasks.Except(tasksOk).ToArray();
+        //                    taskResults.AddRange(tasksOk.Select(a=>a.task.Result).ToArray());
+        //                    for (var i = 0; i < tasksNotOk.Length; i++) { workQueue.Enqueue(tasksNotOk[i].id); }
+        //                    tasks.Clear();
+        //                }
+        //            }
+        //        }
+
+        //        if (taskResults.Count > 0)
+        //        {
+        //            var cache2 = taskResults.SelectMany(a => a.CmList.Select(cm => (a.id, cm)).ToArray()).ToArray();
+        //            iterationWholeResults.AddRange(cache2);
+
+        //            var lines = iterationWholeResults.Select(a => $"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm?.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
+        //            lines.Insert(0, IndexData.CsvHeaderString + "," + ConfusionMatrix.CsvHeaderString);
+        //            await IoProxy.WriteAllLinesAsync(true, ct, serverCmFile, lines).ConfigureAwait(false);
+        //            CacheLoad.UpdateMissing(iterationWholeResults, indexDataContainer, ct: ct);
+        //        }
+        //    }
+
+
+        //    etaCts.Cancel();
+
+
+        //    Logging.LogEvent($"Reached end of {nameof(FsServer)}.{nameof(ServeIpcJobsAsync)} for iteration {iterationIndex}.", ModuleName);
+
+        //    Logging.LogExit(ModuleName);
+        //}
 
         /*
         while (!ct.IsCancellationRequested && IndexDataContainer.indexes_missing_whole.Any())
@@ -1029,20 +1196,20 @@ namespace SvmFsBatch
 
             // 6. pause delay until retry
             await  Logging.WaitAsync(ct, 5, 5, _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
-        
+
 
         }*/
 
 
-        internal static (IndexData id, ConfusionMatrix cm, RankScore rs)[] SetRanks(List<(IndexData id, ConfusionMatrix cm, double fs_score)> idCmScore, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) bestScore, (IndexData id, ConfusionMatrix cm, RankScore rs) lastScore, bool asParallel = true, CancellationToken ct = default)
+        public static (IndexData id, ConfusionMatrix cm, RankScore rs)[] SetRanks(List<(IndexData id, ConfusionMatrix cm, double fs_score)> idCmScore, List<(IndexData id, ConfusionMatrix cm, RankScore rs)[]> allIterationIdCmRs, (IndexData id, ConfusionMatrix cm, RankScore rs) bestScore, (IndexData id, ConfusionMatrix cm, RankScore rs) lastScore, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             var lastIterationIdCmRs = allIterationIdCmRs?.LastOrDefault();
 
             var allIterationIdCmRsFlat = allIterationIdCmRs != null && allIterationIdCmRs.Count > 0
-                ? asParallel ? allIterationIdCmRs.AsParallel().AsOrdered().WithCancellation(ct).SelectMany(a => a).ToArray() : allIterationIdCmRs.SelectMany(a => a).ToArray()
+                ? asParallel ? allIterationIdCmRs.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.SelectMany(a => a).ToArray() : allIterationIdCmRs.SelectMany(a => a).ToArray()
                 : null;
 
             var allIterationIdFlat = allIterationIdCmRsFlat?.Select(a => a.id) /*.OrderBy(a=>a.group_array_index)*/
@@ -1130,7 +1297,7 @@ namespace SvmFsBatch
                 ? idCmScore
                     //.AsParallel()
                     //.AsOrdered()
-                    //.WithCancellation(ct)
+                    ///*.WithCancellation(ct)*/
                     .Select((a, index) =>
                     {
                         var lastGroup = allIterationIdFlat != null
@@ -1156,7 +1323,7 @@ namespace SvmFsBatch
                                 : 0
                         };
 
-                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(a.id, a.cm, rs);
+                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (a.id, a.cm, rs);
                     }).ToArray()
                 : idCmScore.Select((a, index) =>
                 {
@@ -1183,14 +1350,14 @@ namespace SvmFsBatch
                             : 0
                     };
 
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(a.id, a.cm, rs);
+                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (a.id, a.cm, rs);
                 }).ToArray();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :idCmRs;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : idCmRs;
         }
 
 
-        /*internal static (string client_id, string work_id)[] wait_client(CancellationToken ct, TimeSpan timeout)
+        /*public static (string client_id, string work_id)[] wait_client(CancellationToken ct, TimeSpan timeout)
         {
             const string MethodName = nameof(wait_client);
             Logging.WriteLine($"{MethodName}()", ModuleName, MethodName);
@@ -1233,7 +1400,7 @@ namespace SvmFsBatch
         }*/
 
         /*
-        internal static (string client_id, string work_id, (index_data id, ConfusionMatrix cm)[] id_CmList)[] wait_results(CancellationToken ct, TimeSpan timeout, IndexDataContainer IndexDataContainer, bool as_parallel = true)
+        public static (string client_id, string work_id, (index_data id, ConfusionMatrix cm)[] id_CmList)[] wait_results(CancellationToken ct, TimeSpan timeout, IndexDataContainer IndexDataContainer, bool as_parallel = true)
         {
             const string MethodName = nameof(wait_results);
             Logging.WriteLine($"{MethodName}()", ModuleName, MethodName);
@@ -1255,7 +1422,7 @@ namespace SvmFsBatch
                 {
                     if (timeout == TimeSpan.Zero) { Logging.LogExit(ModuleName);  return null; }
                     var time_left = timeout - sw1.Elapsed;
-                    if (time_left > TimeSpan.Zero) await  Logging.WaitAsync(ct, 10 <= time_left.TotalSeconds ? 10 : (int)Math.Floor(time_left.TotalSeconds), 20 <= time_left.TotalSeconds ? 20 : (int)Math.Floor(time_left.TotalSeconds), ModuleName, MethodName);
+                    if (time_left > TimeSpan.Zero) await  Logging.WaitAsync(ct, 10 <= time_left.TotalSeconds ? 10 : (int)Math.Floor(time_left.TotalSeconds), 20 <= time_left.TotalSeconds ? 20 : (int)Math.Floor(time_left.TotalSeconds), ModuleName, MethodName).ConfigureAwait(false);
                 }
 
                 var client_requests = as_parallel
@@ -1280,7 +1447,7 @@ namespace SvmFsBatch
                         })
                         .ToArray();
 
-                for (var i = 0; i < client_request_files.Length; i++) { await io_proxy.delete_file(true, ct, client_request_files[i], _CallerModuleName: ModuleName, _CallerMethodName: MethodName); }
+                for (var i = 0; i < client_request_files.Length; i++) { await io_proxy.delete_file(true, ct, client_request_files[i], _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false); }
 
                 Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :client_requests;
             }

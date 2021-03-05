@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -8,21 +9,60 @@ using SvmFsBatch.logic;
 
 namespace SvmFsBatch
 {
-    internal static class Program
+    public static class Program
     {
         public const string ModuleName = nameof(Program);
 
 
-        internal static ProgramArgs ProgramArgs;
-        internal static Mpstat Mpstat;
+        public static ProgramArgs ProgramArgs;
+        public static Mpstat Mpstat;
 
-        internal static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            var x1 = await RpcProxyMethods.ProxyOuterCrossValidationAsync.RpcSendAsync(new[] { new OuterCvInput() }, new IndexData(), default, default, default, default, default);
-            var x2 = await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(default, default, default, default, default, default);
+            //var xyz3 = DataSet.ConvertCsvTextFileToBinary($@"E:\dataset7\merged_files\test\h_([1i.aaindex])_(-1)_(standard_coil).csv", $@"E:\dataset7\merged_files\test\h_([1i.aaindex])_(-1)_(standard_coil).csv.bin");
 
-            Console.WriteLine(x1);
-            Console.WriteLine(x2);
+            //var ts1 = Stopwatch.StartNew();
+            //for (var i = 0; i < 1000; i++)
+            //{
+            //    var xyz4 = DataSet.ReadCsv($@"E:\dataset7\merged_files\test\h_([1i.aaindex])_(-1)_(standard_coil).csv");
+            //}
+            //ts1.Stop();
+            //Console.WriteLine(ts1.Elapsed);
+
+            //var ts2 = Stopwatch.StartNew();
+            //for (var i = 0; i < 1000; i++)
+            //{
+            //    var xyz4 = DataSet.ReadBinaryCsv($@"E:\dataset7\merged_files\test\h_([1i.aaindex])_(-1)_(standard_coil).csv.bin");
+            //}
+            //ts2.Stop();
+            //Console.WriteLine(ts2.Elapsed);
+            //return;
+            
+            //var xyz1=DataSet.ConvertCsvValueFileToBinary($@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).csv", $@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).bin");
+            //var xyz2 = DataSet.ReadBinaryValueFile($@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).bin");
+
+            //for (var i = 0; i < xyz1.Count; i++)
+            //{
+            //    if (!xyz1[i].SequenceEqual(xyz2[i])) throw new Exception("!!!");
+            //}
+
+            //return;
+
+            //var test1 = (new RpcProxyMethods.ProxyOuterCrossValidationAsync.Params() { saveGroupCache = true }).ToJson();
+            //var test2 = new RpcProxyMethods.ProxyOuterCrossValidationAsync.Result() { }.ToJson();
+            //var test3 = (new RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.Params() { overwriteCache=true}).ToJson();
+            //var test4 = new RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.Result().ToJson();
+
+            //var test1a = RpcProxyMethods.ProxyOuterCrossValidationAsync.Params.FromJson(test1);
+            //var test2a = RpcProxyMethods.ProxyOuterCrossValidationAsync.Result.FromJson(test2);
+            //var test3a = RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.Params.FromJson(test3);
+            //var test4a = RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.Result.FromJson(test4);
+
+            //var x1 = await RpcProxyMethods.ProxyOuterCrossValidationAsync.RpcSendAsync(default, new[] { new OuterCvInput() }, new IndexData(), default, default, default, default, default).ConfigureAwait(false);
+            //var x2 = await RpcProxyMethods.ProxyOuterCrossValidationSingleAsync.RpcSendAsync(default, default, default, default, default, default, default).ConfigureAwait(false);
+
+            //Console.WriteLine(x1);
+            //Console.WriteLine(x2);
 
             ulong lvl = 0;
 
@@ -56,7 +96,7 @@ namespace SvmFsBatch
             //Console.WriteLine(string.Join("\r\n", rnd.CsvValuesArray().Select((a, i) => $"{metrics_box.CsvHeaderValuesArray[i]} = '{a}'").ToArray()));
             //Console.WriteLine();
 
-            //const string methodName = nameof(Main);
+            //const string MethodName = nameof(Main);
             //-ExperimentName _20201028084510741 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 1 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 1
             //-ExperimentName test_20201025014739579 -job_id _ -job_name _ -array_index _ -array_instances _ -array_start 0 -array_end 6929 -array_step 385
             //var x=ConfusionMatrix.load($@"C:\mmfs1\data\scratch\k1040015\SvmFsBatch\results\test\it_5\x_it-5_gr-5_sv-1_kr-3_sc-2_rn-1_oc-10_ic-10_ix-1-5.cm.csv");
@@ -138,17 +178,23 @@ namespace SvmFsBatch
 
             Logging.WriteLine($"Array job index: {instanceId} / {totalInstance}. Partition array Indexes: {ProgramArgs.PartitionArrayIndexFirst}..{ProgramArgs.PartitionArrayIndexLast}.  Whole array Indexes: {ProgramArgs.WholeArrayIndexFirst}..{ProgramArgs.WholeArrayIndexLast}:{ProgramArgs.WholeArrayStepSize} (length: {ProgramArgs.WholeArrayLength}).");
 
+
             // Load DataSet
+
+
+            //var ct = CancellationToken.None;
+            //var cp = new ConnectionPool(callChain: null, lvl: lvl + 1);
+            //var cpConnecTask = RpcService.RpcConnectTask(cp, ct);
+            //await cpConnecTask;
 
 
             if (Program.ProgramArgs.IsUnix)
             {
                 Mpstat = new Mpstat();
-                await Mpstat.Start(mainCt);
+                await Mpstat.Start(mainCt).ConfigureAwait(false);
             }
 
-            var DataSet = new DataSet();
-            DataSet.LoadDataSet(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt);
+            
             //await DataSet.LoadDataSetAsync(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt).ConfigureAwait(false);
 
             var tasks = new List<Task>();
@@ -156,6 +202,9 @@ namespace SvmFsBatch
 
             if ( /*InstanceId == 0 ||*/ ProgramArgs.Server)
             {
+                var DataSet = new DataSet();
+                DataSet.LoadDataSet(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt);
+
                 //var fss = Task.Run(async () => await fs_server.feature_selection_initialization(
                 var fsServerTask = Task.Run(async () => await FsServer.FeatureSelectionInitializationAsync(DataSet,
                         ProgramArgs.ScoringClassId,
@@ -183,29 +232,38 @@ namespace SvmFsBatch
                 //threads.Add(fss);
             }
 
+            //if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
+            //{
+            //    var DataSet = new DataSet();
+            //    DataSet.LoadDataSet(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt);
+            //
+            //    //var fsc = Task.Run(async () => await fs_client.x0_feature_selection_client_initialization
+            //    var fsClientTask = Task.Run(async () => await FsClient.FeatureSelectionClientInitializationAsync(DataSet, ProgramArgs.ExperimentName, instanceId, ProgramArgs.WholeArrayLength, lvl: lvl + 1, ct:mainCt).ConfigureAwait(false), mainCt);
+            //
+            //    tasks.Add(fsClientTask);
+            //    //threads.Add(fsc);
+            //}
+
             if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
             {
-                //var fsc = Task.Run(async () => await fs_client.x0_feature_selection_client_initialization
-                var fsClientTask = Task.Run(async () => await FsClient.FeatureSelectionClientInitializationAsync(DataSet, ProgramArgs.ExperimentName, instanceId, ProgramArgs.WholeArrayLength, lvl: lvl + 1, ct:mainCt).ConfigureAwait(false), mainCt);
-
-                tasks.Add(fsClientTask);
-                //threads.Add(fsc);
+                var task=Task.Run(async () => await RpcService.ListenForRPC(mainCt, Program.ProgramArgs.ServerPort).ConfigureAwait(false), mainCt);
+                tasks.Add(task);
             }
 
             if (tasks.Count > 0)
             {
                 try { await Task.WhenAny(tasks).ConfigureAwait(false); }
-                catch (Exception e) { Logging.LogException(e, ModuleName); }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
                 try
                 {
                     Logging.LogEvent($"Cancelling {nameof(mainCts)}", ModuleName);
                     mainCts.Cancel();
                 }
-                catch (Exception e) { Logging.LogException(e, ModuleName); }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
 
                 try { await Task.WhenAll(tasks).ConfigureAwait(false); }
-                catch (Exception e) { Logging.LogException(e, ModuleName); }
+                catch (Exception e) { Logging.LogException(e, "", ModuleName); }
             }
 
             //if (threads.Count > 0)
@@ -222,7 +280,7 @@ namespace SvmFsBatch
         }
 
 
-        internal static string GetIterationFolder(string resultsRootFolder, string ExperimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
+        public static string GetIterationFolder(string resultsRootFolder, string ExperimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -235,14 +293,14 @@ namespace SvmFsBatch
         }
 
 
-        internal static void UpdateMergedCm((Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
+        public static void UpdateMergedCm((Prediction[] prediction_list, ConfusionMatrix[] CmList) predictionFileData, IndexData unrolledIndexData, OuterCvInput mergedCvInput, (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)[] predictionDataList, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            const string methodName = nameof(UpdateMergedCm);
+            const string MethodName = nameof(UpdateMergedCm);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            if (predictionFileData.CmList == null) throw new ArgumentOutOfRangeException(nameof(predictionFileData), $@"{ModuleName}.{methodName}.{nameof(predictionFileData)}.{nameof(predictionFileData.CmList)}");
+            if (predictionFileData.CmList == null) throw new ArgumentOutOfRangeException(nameof(predictionFileData), $@"{ModuleName}.{MethodName}.{nameof(predictionFileData)}.{nameof(predictionFileData.CmList)}");
 
             if (asParallel)
                 Parallel.ForEach(predictionFileData.CmList,
@@ -263,7 +321,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        private static void UpdateMergedCmFromVector((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
+        public static void UpdateMergedCmFromVector((TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)[] predictionDataList, ConfusionMatrix cm, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
@@ -277,7 +335,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        internal static void UpdateMergedCmSingle(IndexData unrolledIndexData, OuterCvInput mergedCvInput, ConfusionMatrix cm, CancellationToken ct)
+        public static void UpdateMergedCmSingle(IndexData unrolledIndexData, OuterCvInput mergedCvInput, ConfusionMatrix cm, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
@@ -285,7 +343,8 @@ namespace SvmFsBatch
             
             cm.XClassName = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassName ?? default;
             cm.XClassSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).ClassSize ?? -1;
-            cm.XDownsampledClassSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).DownsampledClassSize ?? -1;
+            cm.XDownSampledClassSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).DownSampledClassSize ?? -1;
+            cm.XClassFeatureSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).ClassFeatures ?? -1;
 
             cm.XClassTestSize = mergedCvInput.TestSizes?.FirstOrDefault(b => b.ClassId == cm.XClassId).test_size ?? -1;
             cm.XClassTrainSize = mergedCvInput.TrainSizes?.FirstOrDefault(b => b.ClassId == cm.XClassId).train_size ?? -1;
@@ -300,13 +359,13 @@ namespace SvmFsBatch
         }
 
 
-        internal static string GetItemFilename(IndexData unrolledIndex, int repetitionIndex, int outerCvIndex, CancellationToken ct)
+        public static string GetItemFilename(IndexData unrolledIndex, int repetitionIndex, int outerCvIndex, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :$@"{GetIterationFilename(new[] {unrolledIndex},ct)}_ri[{repetitionIndex}]_oi[{outerCvIndex}]";
         }
 
-        //internal static string GetIterationFilename(program_args pa)
+        //public static string GetIterationFilename(program_args pa)
         //{
         //    var id = new index_data()
         //    {
@@ -320,7 +379,7 @@ namespace SvmFsBatch
         //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :GetIterationFilename(new[] {id});
         //}
 
-        internal static string GetIterationFilename(IndexData[] indexes, CancellationToken ct)
+        public static string GetIterationFilename(IndexData[] indexes, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -383,7 +442,7 @@ namespace SvmFsBatch
         }
 
 
-        internal enum Direction
+        public enum Direction
         {
             None, Forwards, Neutral,
             Backwards
