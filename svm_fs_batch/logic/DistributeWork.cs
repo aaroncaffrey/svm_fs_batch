@@ -672,7 +672,8 @@ namespace SvmFsBatch
                     var cache = await CacheLoad.LoadCacheFileListAsync(indexesWhole, cacheFiles, true, ct).ConfigureAwait(false);
                     if (cache != default && cache.IdCmSd != default && cache.IdCmSd.Length > 0)
                     {
-                        masterIterationCmLoaded.AddRange(cache.IdCmSd);
+                        masterIterationCmLoaded = cache.IdCmSd.ToList();
+                        //masterIterationCmLoaded.AddRange(cache.IdCmSd);
                     }
                 }
                 
@@ -703,6 +704,8 @@ namespace SvmFsBatch
                 }
             }
             */
+
+            //todo: why is iteration 0 being repeated?
 
             async Task SaveInstanceCache()
             {
@@ -831,23 +834,42 @@ namespace SvmFsBatch
             {
                 try
                 {
-                    if (indexData == default) return default;
+                    if (indexData == default)
+                    {
+                        Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: indexData was default...");
+
+                        return default;
+                    }
 
                     lock (workShareInstanceNumStartedLock) workShareInstanceNumStarted++;
 
                     if (ct.IsCancellationRequested || mainCt.IsCancellationRequested || loopCt.IsCancellationRequested)
                     {
-                        if (workShareInstanceSize - workShareInstanceNumComplete > 1) { return default; }
+                        if (workShareInstanceSize - workShareInstanceNumComplete > 1)
+                        {
+                            Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: Cancellation requested...");
+                            return default;
+                        }
                     }
 
                     var mocvi = CrossValidate.MakeOuterCvInputs(dataSet, indexData, ct: ct);
-                    if (mocvi == default || mocvi.outerCvInputs.Length == 0) return default;
+                    if (mocvi == default || mocvi.outerCvInputs.Length == 0)
+                    {
+                        Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: MakeOuterCvInputs returned default...");
+                        return default;
+                    }
 
                     var ret = await CrossValidate.CrossValidatePerformanceAsync(null, CrossValidate.RpcPoint.None, mocvi.outerCvInputs, mocvi.mergedCvInput, indexData, ct: ct).ConfigureAwait(false);
-                    if (ret == default || ret.Length == 0 || ret.Any(a => a.id == default || a.cm == default)) return default;
+                    if (ret == default || ret.Length == 0 || ret.Any(a => a.id == default || a.cm == default))
+                    {
+                        Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: CrossValidatePerformanceAsync returned default...");
 
+                        return default;
+                    }
 
-                    Console.WriteLine($"{DateTime.UtcNow} {instanceGuid:N}: Completed task: {workShareInstanceIndex} of {workShareInstanceSize} with job ID {indexData.IdGroupArrayIndex}");
+                    Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: CrossValidatePerformanceAsync returned default...");
+
+                    Console.WriteLine($@"{DateTime.UtcNow} {instanceGuid:N}: Job: Completed job {workShareInstanceIndex} of {workShareInstanceSize} (IdJobUid={indexData.IdJobUid}; IdGroupArrayIndex={indexData.IdGroupArrayIndex})");
 
                     lock (workShareInstanceNumCompleteLock) workShareInstanceNumComplete++;
 
@@ -855,7 +877,7 @@ namespace SvmFsBatch
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"{DateTime.UtcNow} {instanceGuid:N}: Exception: {e.Message}");
+                    Logging.LogException(e, $@"{instanceGuid:N}");
                     return default;
                 }
             }
@@ -1062,14 +1084,16 @@ namespace SvmFsBatch
                 mainCts.Dispose();
 
                 try { await Task.WhenAll(instanceGuidWriterTask).ConfigureAwait(false); } catch (Exception) { }
+
+                // delete instance id file
+                WriteInstance(instanceGuid, iterationIndex, true, true);
             }//while (indexesNotLoaded.Any())
 
             // no need to save master cache, individual is fine and will save time
             //await SaveMasterCache().ConfigureAwait(false);
 
 
-            // delete instance id file
-            WriteInstance(instanceGuid, iterationIndex, true, true);
+            
 
             return masterIterationCmLoaded;
         }
