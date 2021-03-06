@@ -13,3 +13,4 @@ C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\net5.0\SvmFsBat
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\net5.0\ref\SvmFsBatch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\net5.0\SvmFsBatch.pdb
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\net5.0\SvmFsBatch.genruntimeconfig.cache
+C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Release\net5.0\SvmFsBatch.csprojAssemblyReference.cache

@@ -37,9 +37,31 @@ namespace SvmFsBatch
             //ts2.Stop();
             //Console.WriteLine(ts2.Elapsed);
             //return;
-            
+
             //var xyz1=DataSet.ConvertCsvValueFileToBinary($@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).csv", $@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).bin");
-            //var xyz2 = DataSet.ReadBinaryValueFile($@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).bin");
+
+            //var sw1 = Stopwatch.StartNew();
+            //for (var i = 0; i < 1000; i++)
+            //{
+            //    var xyz2 = DataSet.ReadBinaryValueFile($@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).bin", true);
+            //    //var xyz2flat = xyz2.SelectMany(a => a).ToArray();
+            //}
+
+            //sw1.Stop();
+
+            //var sw2 = Stopwatch.StartNew();
+            //for (var i = 0; i < 1000; i++)
+            //{
+            //    var xyz3 = DataSet.ReadBinaryValueFile($@"E:\caddy\input\New folder\f_2i_(+1)_(dimorphic_coil).bin", false);
+            //    //var xyz3flat = xyz3.SelectMany(a => a).ToArray();
+            //}
+
+            //sw2.Stop();
+
+            //Console.WriteLine(sw1.Elapsed);
+            //Console.WriteLine(sw2.Elapsed);
+
+            //return;
 
             //for (var i = 0; i < xyz1.Count; i++)
             //{

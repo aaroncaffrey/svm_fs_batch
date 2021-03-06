@@ -637,16 +637,18 @@ namespace SvmFsBatch.logic
             if (ct.IsCancellationRequested) return default;
 
             // load cache
-
             //var cacheFiles = await IoProxy.GetFilesAsync(true, ct, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly);
-            var iterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
-            var instanceGuid = Guid.NewGuid();
+            //var outerResultIds = Array.Empty<int>();
+            //var outerResults = Array.Empty<(IndexData id, ConfusionMatrix cm)>();
 
-            var (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(iterationCmLoaded, indexesWhole, true, ct);
+            var instanceIterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
+            var masterIterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
+            var instanceGuid = Guid.NewGuid();
+            var (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, ct);
 
             async Task RefreshCache()
             {
-                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
+                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
                 var cacheFiles = await IoProxy.GetFilesAsync(true, ct, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
 
                 if (cacheFiles.Length > 0)
@@ -654,18 +656,35 @@ namespace SvmFsBatch.logic
                     var cache = await CacheLoad.LoadCacheFileListAsync(indexesWhole, cacheFiles, true, ct).ConfigureAwait(false);
                     if (cache != default && cache.IdCmSd != default && cache.IdCmSd.Length > 0)
                     {
-                        iterationCmLoaded.AddRange(cache.IdCmSd);
+                        masterIterationCmLoaded.AddRange(cache.IdCmSd);
                     }
                 }
-
-                (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(iterationCmLoaded, indexesWhole, true, ct);
+                
+                (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, ct);
             }
 
-            async Task SaveCache()
+            async Task SaveMasterCache()
             {
-                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
+                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
+                var cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}_master.csv");
+                var cacheSaveFn2 = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_master.csv");
+                var cacheSaveLines = masterIterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
+                cacheSaveLines.Insert(0, $@"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
+                await IoProxy.WriteAllLinesAsync(true, ct, cacheSaveFn, cacheSaveLines).ConfigureAwait(false);
+
+                while (!File.Exists(cacheSaveFn2))
+                {
+                    try { File.Move(cacheSaveFn, cacheSaveFn2); }
+                    catch (Exception e) { Logging.LogException(e); }
+                }
+            }
+
+
+            async Task SaveInstanceCache()
+            {
+                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
                 var cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}.csv");
-                var cacheSaveLines = iterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
+                var cacheSaveLines = instanceIterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
                 cacheSaveLines.Insert(0, $@"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
                 await IoProxy.WriteAllLinesAsync(true, ct, cacheSaveFn, cacheSaveLines).ConfigureAwait(false);
             }
@@ -817,11 +836,13 @@ namespace SvmFsBatch.logic
                 }
             }
 
+            var syncGuids = new[] { instanceGuid };
+
+
             await RefreshCache().ConfigureAwait(false);
-
-
-
-
+            
+            //var gsr1 = GetSyncRequest(instanceGuid, true, syncGuids);
+            //var gsr2 = GetSyncResponse(instanceGuid, gsr1, Array.Empty<int>());
 
 
             // todo: load any cache files
@@ -839,20 +860,17 @@ namespace SvmFsBatch.logic
                 Console.WriteLine($"{DateTime.UtcNow} Guid: {instanceGuid:N}");
                 WriteInstance(instanceGuid, true);
 
-                var instanceResultsFilename = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_ipc", $@"results_{instanceGuid:N}.csv");
+                //var instanceResultsFilename = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_ipc", $@"results_{instanceGuid:N}.csv");
 
                 var mainCts = new CancellationTokenSource();
                 var mainCt = mainCts.Token;
 
                 var instanceGuidWriterTask = InstanceGuidWriterTask(mainCt);
 
-                var syncGuids = new[] { instanceGuid };
 
 
                 // syncResults is the list of job item indexes completed within the cluster
                 var syncResultIds = Array.Empty<int>();
-                var outerResultIds = Array.Empty<int>();
-                var outerResults = Array.Empty<(IndexData id, ConfusionMatrix cm)>();
 
                 // todo: add another variable to store actual results and save them.
 
@@ -863,8 +881,12 @@ namespace SvmFsBatch.logic
                 (Guid instanceGuid, int[] instanceWork)[] workShareList = null;
                 int[] workShareInstance = null;
                 var loopDidRun = false;
+                var finalSync = false;
+
                 while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested)
                 {
+                    await SaveInstanceCache().ConfigureAwait(false);
+
                     w++;
                     var isFirstIteration = w == 0;
 
@@ -906,16 +928,18 @@ namespace SvmFsBatch.logic
                     // always request sync, since, it's either A) first time, B) instances changed, C) last sync failed, D) no work left, need to steal some (unless there was never any work to start with)
                     // except: if all work is already done?...  which would cause a sync-call loop
 
+                    // finalSync makes sure a sync is done after all work is complete, this ensures instance cache is saved before continuing... as that is done before sync code.
                     var isWorkShareSetAndEmpty = workShareInstance != null && workShareInstance.Length == 0; // if null, not set yet (null doesn't mean empty)
-                    var requestSync = isFirstIteration || !isSyncOk || loopDidRun;
+                    var requestSync = isFirstIteration || !isSyncOk || loopDidRun || (isAllWorkDone && !finalSync);
 
                     if (isFirstIteration) Console.WriteLine("First iteration, synchronization required...");
                     if (!isSyncOk) Console.WriteLine("Last synchronization failed, synchronization required...");
                     if (loopDidRun) Console.WriteLine("Work has been done, synchronization required...");
-
+                    if (isAllWorkDone && !finalSync) Console.WriteLine("All work is done, final synchronization required...");
                     // problem: if no work is allocated...?
                     // problem: if all allocated work is complete, so need to work steal?
 
+                    if (isAllWorkDone) finalSync = true;
                     syncRequest = GetSyncRequest(instanceGuid, requestSync, syncGuids);
 
                     if (syncRequest != default) continue;
@@ -965,21 +989,34 @@ namespace SvmFsBatch.logic
                         ? workShareInstanceItems.AsParallel().AsOrdered().Select(async (indexData, workShareInstanceIndex) => await ProcessJob(indexData, workShareInstanceIndex, workShareInstance?.Length ?? 0, mainCt, loopCt)).ToArray()
                         : workShareInstanceItems.Select(async (indexData, workShareInstanceIndex) => await ProcessJob(indexData, workShareInstanceIndex, workShareInstance?.Length ?? 0, mainCt, loopCt)).ToArray();
 
-
+                    //var innerResultsTasksIncomplete = innerResultsTasks.ToArray();
+                    //
+                    //while (innerResultsTasksIncomplete.Any(a=>!a.IsCompleted))
+                    //{
+                    //    try
+                    //    {
+                    //        var completedTask = await Task.WhenAny(innerResultsTasksIncomplete);
+                    //        innerResultsTasksIncomplete = innerResultsTasksIncomplete.Except(new[] { completedTask }).ToArray();
+                    //    }
+                    //    catch (Exception e)
+                    //    {
+                    //        Logging.LogException(e);
+                    //    }
+                    //}
 
                     try { await Task.WhenAll(innerResultsTasks).ConfigureAwait(false); }
                     catch (Exception) { }
 
-                    var innerResults = innerResultsTasks.Where(a => a.IsCompletedSuccessfully && a.Result != default).SelectMany(a => a.Result).ToArray();
-                    outerResults = outerResults.Union(innerResults).ToArray();
+                    var innerResults = innerResultsTasks.Where(a => a.IsCompletedSuccessfully && a.Result != default && a.Result.Length >0).SelectMany(a => a.Result).ToArray();
+                    instanceIterationCmLoaded.AddRange(innerResults);
 
                     var innerResultIds = innerResults.Select(a => a.id.IdJobUid).ToArray();
-                    outerResultIds = outerResultIds.Union(innerResultIds).ToArray();
-                    syncResultIds = syncResultIds.Union(outerResultIds).ToArray();
+                    
+                    syncResultIds = syncResultIds.Union(innerResultIds).ToArray();
 
                     Console.WriteLine($"{DateTime.UtcNow} {instanceGuid:N}: Tasks complete...");
                     Console.WriteLine($"{DateTime.UtcNow} {instanceGuid:N}: Inner results: {innerResultIds.Length} items. Ids: {string.Join(", ", innerResultIds.Select(a => $"{a}").ToArray())}");
-                    Console.WriteLine($"{DateTime.UtcNow} {instanceGuid:N}: Outer results: {outerResultIds.Length} items. Ids: {string.Join(", ", outerResultIds.Select(a => $"{a}").ToArray())}");
+                    
 
 
                     loopCts.Cancel();
@@ -987,28 +1024,30 @@ namespace SvmFsBatch.logic
                     loopDidRun = workShareInstance.Length > 0;
                     try { await Task.WhenAll(etaTask, syncTask).ConfigureAwait(false); }
                     catch (Exception) { }
-                }
+                }//while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested)
 
-                // save instance results
-                await SaveCache().ConfigureAwait(false);
+                // save instance results - already saved in loop above
+                //await SaveInstanceCache().ConfigureAwait(false);
 
-                // load results from other instances
+                // load results from other instances ... these will be already written as a final sync is done before they are saved.
                 await RefreshCache().ConfigureAwait(false);
-
+                //syncResultIds = Array.Empty<int>();
 
 
                 mainCts.Cancel();
                 mainCts.Dispose();
 
                 try { await Task.WhenAll(instanceGuidWriterTask).ConfigureAwait(false); } catch (Exception) { }
-            }
-            // todo: !!!!!!!!!!!!! LOAD CACHE - UPDATE MISSING - REPEAT LOOP IF ANY!!!!!!!!!!!!!!!
+            }//while (indexesNotLoaded.Any())
 
-            // todo: combine cache files.
+            // no need to save master cache, individual is fine and will save time
+            //await SaveMasterCache().ConfigureAwait(false);
 
+
+            // delete instance id file
             WriteInstance(instanceGuid, true, true);
 
-            return iterationCmLoaded;
+            return masterIterationCmLoaded;
         }
     }
 }

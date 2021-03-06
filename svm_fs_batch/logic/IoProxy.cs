@@ -211,6 +211,8 @@ namespace SvmFsBatch
                     if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return null; }
                     //if (IoProxy.ExistsDirectory(true, path, ModuleName))
                     //{
+                        try{if (!Directory.Exists(path)) Directory.CreateDirectory(path);} catch (Exception) { }
+
                         var files = Directory.GetFiles(path, searchPattern, searchOption);
                         Logging.LogExit(ModuleName);
                         return files;

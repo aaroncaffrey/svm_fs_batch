@@ -53,15 +53,15 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (!string.IsNullOrEmpty(gkFileTag)) Value.gkFileTag = gkFileTag;
-            if (!string.IsNullOrEmpty(gkAlphabet)) Value.gkAlphabet = gkAlphabet;
-            if (!string.IsNullOrEmpty(gkStats)) Value.gkStats = gkStats;
-            if (!string.IsNullOrEmpty(gkDimension)) Value.gkDimension = gkDimension;
-            if (!string.IsNullOrEmpty(gkCategory)) Value.gkCategory = gkCategory;
-            if (!string.IsNullOrEmpty(gkSource)) Value.gkSource = gkSource;
-            if (!string.IsNullOrEmpty(gkGroup)) Value.gkGroup = gkGroup;
-            if (!string.IsNullOrEmpty(gkMember)) Value.gkMember = gkMember;
-            if (!string.IsNullOrEmpty(gkPerspective)) Value.gkPerspective = gkPerspective;
+            /*if (!string.IsNullOrEmpty(gkFileTag))    */ Value.gkFileTag = gkFileTag;
+            /*if (!string.IsNullOrEmpty(gkAlphabet))   */ Value.gkAlphabet = gkAlphabet;
+            /*if (!string.IsNullOrEmpty(gkStats))      */ Value.gkStats = gkStats;
+            /*if (!string.IsNullOrEmpty(gkDimension))  */ Value.gkDimension = gkDimension;
+            /*if (!string.IsNullOrEmpty(gkCategory))   */ Value.gkCategory = gkCategory;
+            /*if (!string.IsNullOrEmpty(gkSource))     */ Value.gkSource = gkSource;
+            /*if (!string.IsNullOrEmpty(gkGroup))      */ Value.gkGroup = gkGroup;
+            /*if (!string.IsNullOrEmpty(gkMember))     */ Value.gkMember = gkMember;
+            /*if (!string.IsNullOrEmpty(gkPerspective))*/ Value.gkPerspective = gkPerspective;
             this.gkGroupIndex = gkGroupIndex;
             this.gkColumnIndex = gkColumnIndex;
 

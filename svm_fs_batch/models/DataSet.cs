@@ -63,7 +63,7 @@ namespace SvmFsBatch
 
         }
 
-        public static List<double[]> ReadBinaryValueFile(string inputFile, bool asStream)
+        public static List<double[]> ReadBinaryValueFile(string inputFile, bool asStream =true)
         {
             Logging.LogCall();
 
@@ -148,52 +148,100 @@ namespace SvmFsBatch
             return result.ToArray();
         }
 
-        public static string[][] ReadBinaryCsv(string inputFile)
+        public static string[][] ReadBinaryCsv(string inputFile, bool asStream=false)
         {
-            var outputFileSteam = File.Open(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read);
-            //Logging.LogEvent($@"Loading {inputFile}");
+            Logging.LogCall();
+            Logging.LogEvent($@"Loading {inputFile}");
 
-            var result = new List<string[]>();
-
-            while (outputFileSteam.CanRead)
+            if (asStream)
             {
-                var lineSizeBuffer = new byte[sizeof(int)];
-                var b1 = outputFileSteam.Read(lineSizeBuffer);
-                if (b1 == 0) break;
-                var lineSize = BitConverter.ToInt32(lineSizeBuffer);
+                using var inputFileSteam = File.Open(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+                //Logging.LogEvent($@"Loading {inputFile}");
 
-                var lineSplit = new string[lineSize];
-                if (lineSize > 0)
+                var result1 = new List<byte[][]>();
+                //var result2 = new List<string[]>();
+
+                while (inputFileSteam.CanRead)
                 {
-                    for (var i = 0; i < lineSize; i++)
-                    {
-                        var strlenBuffer = new byte[sizeof(int)];
-                        var b2 = outputFileSteam.Read(strlenBuffer);
-                        if (b2 == 0) break;
-                        var strlen = BitConverter.ToInt32(strlenBuffer);
-                        //if (strlen==0) break;
+                    var lineSizeBuffer = new byte[sizeof(int)];
+                    var b1 = inputFileSteam.Read(lineSizeBuffer);
+                    if (b1 == 0) break;
+                    var lineSize = BitConverter.ToInt32(lineSizeBuffer);
 
-                        if (strlen > 0)
+                    var lineSplit1 = new byte[lineSize][];
+                    //var lineSplit2 = new string[lineSize];
+
+                    if (lineSize > 0)
+                    {
+                        for (var i = 0; i < lineSize; i++)
                         {
-                            var buffer = new byte[strlen];
-                            var b3 = outputFileSteam.Read(buffer);
-                            if (b3 == 0) break;
-                            lineSplit[i] = Encoding.UTF8.GetString(buffer);
+                            var strlenBuffer = new byte[sizeof(int)];
+                            var b2 = inputFileSteam.Read(strlenBuffer);
+                            if (b2 == 0) break;
+                            var strlen = BitConverter.ToInt32(strlenBuffer);
+                            //if (strlen==0) break;
+
+                            if (strlen > 0)
+                            {
+                                var buffer = new byte[strlen];
+                                var b3 = inputFileSteam.Read(buffer);
+                                if (b3 == 0) break;
+                                lineSplit1[i] = buffer;
+                                //lineSplit2[i] = Encoding.UTF8.GetString(buffer);
+                            }
+                            else { lineSplit1[i] = Array.Empty<byte>(); }
                         }
+                    }
+
+                    result1.Add(lineSplit1);
+                    //result2.Add(lineSplit2);
+                }
+
+                //inputFileSteam.Close();
+                //inputFileSteam.Dispose();
+
+                //Logging.LogEvent($@"Loaded {inputFile}");
+                Logging.LogExit();
+
+                var result2 = result1.AsParallel().AsOrdered().Select(a => a /*.AsParallel().AsOrdered()*/.Select(b => Encoding.UTF8.GetString(b)).ToArray()).ToArray();
+
+                Logging.LogEvent($@"Loaded {inputFile}");
+                Logging.LogExit();
+                return result2; //result.ToArray();
+            }
+            else
+            {
+                var bytes = File.ReadAllBytes(inputFile);
+
+                //var lines = new List<string[]>();
+                var lines = new List<byte[][]>();
+                
+                var i = 0;
+                while (i < bytes.Length)
+                {
+                    var lineSize = BitConverter.ToInt32(bytes, i);
+                    i += sizeof(int);
+
+                    var line = new byte[lineSize][];
+                    lines.Add(line);
+
+                    for (var k = 0; k < lineSize; k++)
+                    {
+                        var bytesStrLen = BitConverter.ToInt32(bytes, i);
+                        i += sizeof(int);
+
+                        //line[k] = Encoding.UTF8.GetString(bytes, i, bytesStrLen);
+                        line[k] = bytes.Skip(i).Take(bytesStrLen).ToArray();//bytes[i..(i+bytesStrLen)];
+                        i += bytesStrLen;
                     }
                 }
 
-                result.Add(lineSplit);
+                var result2 = lines.AsParallel().AsOrdered().Select(a => a /*.AsParallel().AsOrdered()*/.Select(b => Encoding.UTF8.GetString(b)).ToArray()).ToArray();
+
+                Logging.LogEvent($@"Loaded {inputFile}");
+                Logging.LogExit();
+                return result2;
             }
-
-            outputFileSteam.Flush(true);
-            outputFileSteam.Close();
-            outputFileSteam.Dispose();
-
-            //Logging.LogEvent($@"Loaded {inputFile}");
-            Logging.LogExit();
-
-            return result.ToArray();
         }
 
         public static List<string[]> ConvertCsvTextFileToBinary(string inputFile, string outputFile)
@@ -201,7 +249,9 @@ namespace SvmFsBatch
             Logging.LogCall();
             Logging.LogEvent($@"Converting {inputFile} to {outputFile}");
 
-            var outputFileSteam = File.Open(outputFile, FileMode.Create, FileAccess.Write, FileShare.None);
+            var tempOutputFile = Path.Combine(Path.GetDirectoryName(outputFile), $"tmp_{Guid.NewGuid():N}.bin");
+
+            var outputFileSteam = File.Open(tempOutputFile, FileMode.Create, FileAccess.Write, FileShare.None);
 
             var result = new List<string[]>();
 
@@ -236,6 +286,19 @@ namespace SvmFsBatch
             outputFileSteam.Close();
             outputFileSteam.Dispose();
 
+
+            while (!File.Exists(outputFile))
+            {
+                try { File.Move(tempOutputFile, outputFile); }
+                catch (Exception e)
+                {
+                    Logging.LogException(e);
+
+                    try { File.Delete(tempOutputFile); }
+                    catch (Exception e2) { Logging.LogException(e2); }
+                }
+            }
+
             Logging.LogEvent($@"Converted {inputFile} to {outputFile}");
             Logging.LogExit();
             return result;
@@ -258,7 +321,7 @@ namespace SvmFsBatch
 
             var tempOutputFile = Path.Combine(Path.GetDirectoryName(outputFile), $"tmp_{Guid.NewGuid():N}.bin");
 
-            var outputFileSteam = File.Open(outputFile, FileMode.Create, FileAccess.Write, FileShare.None);
+            var outputFileSteam = File.Open(tempOutputFile, FileMode.Create, FileAccess.Write, FileShare.None);
 
             //void writeInts(int[] values)
             //{
@@ -297,13 +360,17 @@ namespace SvmFsBatch
             outputFileSteam.Close();
             outputFileSteam.Dispose();
 
-            try { File.Move(tempOutputFile, outputFile); }
-            catch (Exception)
+            while (!File.Exists(outputFile))
             {
-                try { File.Delete(tempOutputFile); }
-                catch (Exception) { }
-            }
+                try { File.Move(tempOutputFile, outputFile); }
+                catch (Exception e)
+                {
+                    Logging.LogException(e);
 
+                    try { File.Delete(tempOutputFile); }
+                    catch (Exception e2) { Logging.LogException(e2); }
+                }
+            }
 
             Logging.LogEvent($@"Converted {inputFile} to {outputFile}");
             Logging.LogExit();
@@ -658,48 +725,75 @@ namespace SvmFsBatch
 
             ColumnHeaderList = dataFilenames.First( /* headers are same for all classes, so only load first class headers */).headerCsvFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.SelectMany((fileInfo, fileIndex) =>
             {
-                return IoProxy.ReadAllLines(true, ct, fileInfo.filename, callerModuleName: ModuleName).Skip(fileIndex == 0
-                    ? 1
-                    : 2 /*skip header line, and if not first file, class id line too */).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((line, lineIndex) =>
-                    {
-                        var row = line.Split(',');
 
-                        if (row.Length == 9)
-                        {
-                            return new DataSetGroupKey(
-                                  //internal_column_index: -1, 
-                                  //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
-                                  fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
-                                      ? ""
-                                      : fileInfo.FileTag,
-                                  row[1],
-                                  row[2],
-                                  row[3],
-                                  row[4],
-                                  row[5],
-                                  row[6],
-                                  row[7],
-                                  row[8]);
-                        }
-                        if (row.Length == 8)
-                        {
-                            return new DataSetGroupKey(
-                                  //internal_column_index: -1, 
-                                  //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
-                                  fileIndex == 0 && lineIndex == 0 /* class id isn't associated with any particular file */
-                                      ? ""
-                                      : fileInfo.FileTag,
-                                  row[1],
-                                  "",
-                                  row[2],
-                                  row[3],
-                                  row[4],
-                                  row[5],
-                                  row[6],
-                                  row[7]);
-                        }
-                        throw new Exception();
-                    }).ToArray();
+                var fn = fileInfo.filename;
+
+                var binName = $"{fn}.bin";
+
+                var binExists = File.Exists(binName) && new FileInfo(binName).Length > 0;
+
+                string[][] x;
+
+                if (!binExists)
+                {
+                    //x = ConvertCsvTextFileToBinary(fn, binName).Skip(fileIndex == 0 ? 1 /* skip header line */ : 2 /* skip header line, and class id line too, when not first file*/).ToArray();
+                    x = ConvertCsvTextFileToBinary(fn, binName).ToArray();
+                }
+                else
+                {
+                    //x = ReadBinaryCsv(binName).Skip(fileIndex == 0 ? 1 /* skip header line */ : 2 /* skip header line, and class id line too, when not first file*/).ToArray();
+                    x = ReadBinaryCsv(binName);
+                }
+
+                //var x = IoProxy.ReadAllLines(true, ct, fn, callerModuleName: ModuleName).Skip(fileIndex == 0
+                //    ? 1 /* skip header line */
+                //    : 2 /* skip header line, and class id line too, when not first file*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((line, lineIndex) =>
+                //    {
+                //        var row = line.Split(',');
+                //        return row;
+                //    }).ToArray();
+
+                var rowLen = x[0].Length;
+
+                var y = x.Skip(fileIndex == 0 ? 1 /* skip header line */ : 2 /* skip header line, and class id line too, when not first file*/).AsParallel().AsOrdered().Select(row =>
+                {
+                    if (rowLen == 9)
+                    {
+                        return new DataSetGroupKey(
+                            //internal_column_index: -1, 
+                            //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
+                            fileInfo.FileTag,
+                            row[1],
+                            row[2],
+                            row[3],
+                            row[4],
+                            row[5],
+                            row[6],
+                            row[7],
+                            row[8]);
+                    }
+
+                    if (rowLen == 8)
+                    {
+                        return new DataSetGroupKey(
+                            //internal_column_index: -1, 
+                            //external_column_index: line_index /*int.Parse(row[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo)*/,
+                            fileInfo.FileTag,
+                            row[1],
+                            "",
+                            row[2],
+                            row[3],
+                            row[4],
+                            row[5],
+                            row[6],
+                            row[7]);
+                    }
+
+                    return default;
+                }).ToArray();
+
+                y[0].Value.gkFileTag = "";/* class id isn't associated with any particular file */
+                return y;
             }).ToArray();
 
             Parallel.For(0,
@@ -763,7 +857,24 @@ namespace SvmFsBatch
 
             var commentList2 = dataFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(cl =>
             {
-                var commentLines = (IoProxy.ReadAllLines(true, ct, cl.commentCsvFilenames.First().filename, callerModuleName: ModuleName, callerMethodName: MethodName)).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(line => line.Split(',')).ToArray();
+                var fn = cl.commentCsvFilenames.First().filename;
+
+                var binName = $"{fn}.bin";
+
+                var binExists = File.Exists(binName) && new FileInfo(binName).Length > 0;
+
+                string[][] commentLines;
+
+                if (!binExists)
+                {
+                    commentLines= ConvertCsvTextFileToBinary(fn, binName).ToArray();
+                }
+                else
+                {
+                    commentLines = ReadBinaryCsv(binName);
+                }
+
+                //var commentLines = (IoProxy.ReadAllLines(true, ct, fn, callerModuleName: ModuleName, callerMethodName: MethodName)).AsParallel().AsOrdered().Select(line => line.Split(',')).ToArray();
                 var commentHeader = commentLines.First();
                 var clCommentList = commentLines.Skip(1 /*skip header*/).AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((rowSplit, commentRowIndex) =>
                 {
@@ -829,24 +940,27 @@ namespace SvmFsBatch
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            const string MethodName = nameof(LoadDataSetValues);
+            double[][][][] LoadValues()
+            {
+                var swValues = Stopwatch.StartNew();
 
+                Logging.WriteLine(@"Start: reading values.", ModuleName);
 
-            var taskLoadValues = Task.Run(() => dataFilenames.AsParallel().AsOrdered().Select((cl, clIndex) =>
-            /*{
-                var valsTagBin =*/ cl.valuesCsvFilenames.AsParallel().AsOrdered().Select((fileInfo, fileInfoIndex) =>
-                {
-                    var binName = $"{fileInfo.filename}.bin";
-
-                    var binExists = File.Exists(binName) && new FileInfo(binName).Length > 0;
-
-                    if (!binExists)
+                var ret = dataFilenames.AsParallel().AsOrdered().Select((cl, clIndex) =>
+                    /*{
+                        var valsTagBin =*/ cl.valuesCsvFilenames.AsParallel().AsOrdered().Select((fileInfo, fileInfoIndex) =>
                     {
-                        ConvertCsvValueFileToBinary(fileInfo.filename, binName);
-                    }
+                        var binName = $"{fileInfo.filename}.bin";
 
-                    return ReadBinaryValueFile(binName, asStream: false).ToArray();
-                }).ToArray()/*;
+                        var binExists = File.Exists(binName) && new FileInfo(binName).Length > 0;
+
+                        if (!binExists)
+                        {
+                            return ConvertCsvValueFileToBinary(fileInfo.filename, binName).ToArray();
+                        }
+
+                        return ReadBinaryValueFile(binName).ToArray();
+                    }).ToArray() /*;
 
                 // code to load CSV instead of bin:
                 //// 3. experimental sample data
@@ -856,20 +970,24 @@ namespace SvmFsBatch
                 //        : 1 /*skip class id* /).AsParallel().AsOrdered().Select((col, colIndex) => double.Parse(col, NumberStyles.Float, NumberFormatInfo.InvariantInfo)).ToArray()).ToArray()).ToArray();
 
                 return valsTagBin;
-            }*/).ToArray(), ct);
+            }*/).ToArray();
+                
+                swValues.Stop();
+                Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName);
+
+                return ret;
+            }
+
+            
+            // 3. values
+            var taskLoadValues = Task.Run(() => LoadValues(), ct);
             var taskLoadHeaders = Task.Run(() => LoadDataSetHeaders(dataFilenames, ct), ct);
             var taskLoadComments = Task.Run(() => LoadDataSetComments(dataFilenames, ct), ct);
             Task.WaitAll(new[] { taskLoadValues, taskLoadHeaders, taskLoadComments }, ct);
-
             var values1 = taskLoadValues.Result;
 
             if (ColumnHeaderList == null || ColumnHeaderList.Length == 0) throw new Exception();
             if (CommentList == null || CommentList.Length == 0) throw new Exception();
-
-            // 3. values
-            Logging.WriteLine(@"Start: reading values.", ModuleName, MethodName);
-            var swValues = Stopwatch.StartNew();
-
 
 
             ValueList = dataFilenames.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select((cl, clIndex) =>
@@ -892,9 +1010,7 @@ namespace SvmFsBatch
                 return (cl.ClassId, cl.ClassName, ClassSize: valList.Length, /*comment_list[cl_index].cl_comment_list,*/ val_list: valList);
             }).ToArray();
 
-            swValues.Stop();
-            Logging.WriteLine($@"Finish: reading values ({swValues.Elapsed}).", ModuleName, MethodName);
-
+            
             // check same lengths...
             var lengths = new List<int>();
             lengths.Add(ColumnHeaderList.Length);
