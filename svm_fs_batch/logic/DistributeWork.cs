@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SvmFsBatch.logic
+namespace SvmFsBatch
 {
 
     public class DistributeWork
@@ -31,9 +31,7 @@ namespace SvmFsBatch.logic
         //public static async Task ReloadCache(IndexDataContainer indexDataContainer, CancellationToken ct)
         //{
         /*
-        // todo: fix server folder
-        var ServerFolder = "TODO";
-
+        
         var serverCmFile = Path.Combine(ServerFolder, $@"_server_cache_{Program.GetIterationFilename(indexDataContainer.IndexesWhole.Select(a => a.id).ToArray(), ct)}.csv");
         var iterationWholeResults = new List<(IndexData id, ConfusionMatrix cm)>();
         var iterationWholeResultsLines = new List<string>();
@@ -101,7 +99,7 @@ namespace SvmFsBatch.logic
         public static Guid[] ReadInstancesGuids = Array.Empty<Guid>();
         public static object syncingLock = new object();
 
-        static void WriteInstance(Guid instanceGuid, bool force = false, bool cleanOnly = false)
+        static void WriteInstance(Guid instanceGuid, int iterationIndex, bool force = false, bool cleanOnly = false)
         {
             var now = DateTime.UtcNow;
             var elapsed = now - LastWriteInstanceTime;
@@ -112,7 +110,8 @@ namespace SvmFsBatch.logic
                 // note: write first, then delete old file, otherwise instance would temporarily be missing...
                 try
                 {
-                    var fn = $@"c:\test\instance_{instanceGuid:N}_{now:yyyyMMddHHmmssfffffff}.txt";
+
+                    var fn = Path.Combine(GetIpcCommsFolder(iterationIndex), $@"instance_{instanceGuid:N}_{now:yyyyMMddHHmmssfffffff}.txt");
 
                     //if (!File.Exists(fn) || new FileInfo(fn).Length == 0)
                     if (!cleanOnly)
@@ -124,16 +123,16 @@ namespace SvmFsBatch.logic
 
                     if (!string.IsNullOrEmpty(LastWriteInstanceFile))
                         try { File.Delete(LastWriteInstanceFile); }
-                        catch (Exception e) { Console.WriteLine($"{DateTime.UtcNow} Exception: {e.Message}"); }
+                        catch (Exception e) { Logging.LogException(e); }
 
                     LastWriteInstanceFile = fn;
                 }
-                catch (Exception e) { Console.WriteLine($"{DateTime.UtcNow} Exception: {e.Message}"); }
+                catch (Exception e) { Logging.LogException(e); }
             }
         }
 
 
-        static Guid[] ReadInstances(Guid instanceGuid, Guid[] knownInstances, bool force = false)
+        static Guid[] ReadInstances(Guid instanceGuid, int iterationIndex, Guid[] knownInstances, bool force = false)
         {
             // filename format: [0] field name, [1] source instance guid, [-1] datetime
 
@@ -146,7 +145,10 @@ namespace SvmFsBatch.logic
             {
                 while (true)
                 {
-                    var instanceMarkerFiles = Directory.GetFiles($@"c:\test\", "?*_?*.txt");
+                    
+                    var instanceMarkerFiles = Directory.GetFiles(GetIpcCommsFolder(iterationIndex), "instance*_?*.txt");
+                    
+
                     var instanceMarkers = instanceMarkerFiles.Select(a =>
                     {
                         var b = Path.GetFileNameWithoutExtension(a).Split('_');
@@ -259,7 +261,7 @@ namespace SvmFsBatch.logic
         //private static DateTime RequestSyncTime = DateTime.MinValue;
         //private static DateTime ResponseSyncTime = DateTime.MinValue;
 
-        static (string file, string[] data, string syn, Guid sourceGuid, string requestCode, Guid responseGuid, DateTime requestTime, Guid[] syncActiveInstances) GetSyncRequest(Guid instanceGuid, bool requestSync, Guid[] knownInstances)
+        static (string file, string[] data, string syn, Guid sourceGuid, string requestCode, Guid responseGuid, DateTime requestTime, Guid[] syncActiveInstances) GetSyncRequest(Guid instanceGuid, int iterationIndex, bool requestSync, Guid[] knownInstances)
         {
             Console.WriteLine($"{DateTime.UtcNow} {instanceGuid:N}: Enter sync1()");
 
@@ -290,12 +292,12 @@ namespace SvmFsBatch.logic
                 // sync if, requestSync is true, another instance requested sync, or known guids have changed
                 while (true)
                 {
-                    WriteInstance(instanceGuid);
+                    WriteInstance(instanceGuid, iterationIndex);
 
                     if (syncRequest != default) { Task.Delay(GetSyncRequestIoDelay).Wait(); }
 
                     // check for sync requests from any instance
-                    var activeInstances = GetSyncRequestFiles(instanceGuid, knownInstances, GetSyncRequestTimeout, out var syncRequests, out var now, out syncRequest);
+                    var activeInstances = GetSyncRequestFiles(instanceGuid, iterationIndex, knownInstances, GetSyncRequestTimeout, out var syncRequests, out var now, out syncRequest);
 
                     if (activeInstances == default)
                     {
@@ -319,19 +321,24 @@ namespace SvmFsBatch.logic
                         {
 
 
-                            var syncRequestFile = $@"c:\test\syn_{instanceGuid:N}_{syncRequestCode}_{now:yyyyMMddHHmmssfffffff}.txt";
+                            var syncRequestFile = Path.Combine(GetIpcCommsFolder(iterationIndex), $@"syn_{instanceGuid:N}_{syncRequestCode}_{now:yyyyMMddHHmmssfffffff}.txt");
 
-                            if (!File.Exists(syncRequestFile) || new FileInfo(syncRequestFile).Length == 0)
+                            try
                             {
-                                Console.WriteLine($"{DateTime.UtcNow} Sending synchronization request...");
-                                try
+                                if (!File.Exists(syncRequestFile) || new FileInfo(syncRequestFile).Length == 0)
                                 {
-                                    File.WriteAllLines(syncRequestFile, new List<string>() { "1" });
+                                    Console.WriteLine($"{DateTime.UtcNow} Sending synchronization request...");
+                                    try { File.WriteAllLines(syncRequestFile, new List<string>() {"1"}); }
+                                    catch (Exception e) { Logging.LogException(e); }
                                 }
-                                catch (Exception e) { Console.WriteLine($"{DateTime.UtcNow} Exception: {e.Message}"); }
-                            }
 
-                            requestSync = false;
+                                requestSync = false;
+                            }
+                            catch (Exception e)
+                            {
+                                Logging.LogException(e);
+                            }
+                            
 
                             continue;
                         }
@@ -364,13 +371,14 @@ namespace SvmFsBatch.logic
             return syncRequestCode;
         }
 
-        public static Guid[] GetSyncRequestFiles(Guid instanceGuid, Guid[] knownInstances, TimeSpan syncRequestTimeout, out (string file, string[] data, string syn, Guid sourceGuid, string requestCode, Guid responseGuid, DateTime requestTime)[] syncRequests, out DateTime now, out (string file, string[] data, string syn, Guid sourceGuid, string requestCode, Guid responseGuid, DateTime requestTime) syncRequest)
+        public static Guid[] GetSyncRequestFiles(Guid instanceGuid, int iterationIndex, Guid[] knownInstances, TimeSpan syncRequestTimeout, out (string file, string[] data, string syn, Guid sourceGuid, string requestCode, Guid responseGuid, DateTime requestTime)[] syncRequests, out DateTime now, out (string file, string[] data, string syn, Guid sourceGuid, string requestCode, Guid responseGuid, DateTime requestTime) syncRequest)
         {
             try
             {
-                var syncRequestFiles = Directory.GetFiles($@"c:\test\", "syn_*.txt");
+                var syncFolder = GetIpcCommsFolder(iterationIndex);
+                var syncRequestFiles = Directory.GetFiles(syncFolder, "syn_*.txt");
 
-                var activeInstances = ReadInstances(instanceGuid, knownInstances);
+                var activeInstances = ReadInstances(instanceGuid, iterationIndex, knownInstances);
                 var syncRequestCode = SyncRequestCode(activeInstances);
 
                 syncRequests = syncRequestFiles.Select(a =>
@@ -430,7 +438,7 @@ namespace SvmFsBatch.logic
         }
 
         private static (bool didSync, int[] syncData) GetSyncResponse(
-            Guid instanceGuid,
+            Guid instanceGuid, int iterationIndex,
             (string file, string[] data, string syn, Guid sourceGuid, string requestCode, Guid responseGuid, DateTime requestTime, Guid[] syncActiveInstances) syncRequest
         , int[] responseSyncData)
         {
@@ -440,8 +448,9 @@ namespace SvmFsBatch.logic
             Console.WriteLine($"{DateTime.UtcNow} {instanceGuid:N}: Enter sync2()");
             lock (syncingLock)
             {
-                var expectedSyncFiles = syncRequest.syncActiveInstances.Select(syncGuid => { return (syncGuid, fn: $@"c:\test\syn_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{syncGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt"); }).ToArray();
-                var expectedAckFiles = syncRequest.syncActiveInstances.Select(syncGuid => { return (syncGuid, fn: $@"c:\test\ack_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{syncGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt"); }).ToArray();
+                var syncFolder = GetIpcCommsFolder(iterationIndex);
+                var expectedSyncFiles = syncRequest.syncActiveInstances.Select(syncGuid => (syncGuid, fn: Path.Combine(syncFolder, $@"syn_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{syncGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt"))).ToArray();
+                var expectedAckFiles = syncRequest.syncActiveInstances.Select(syncGuid => (syncGuid, fn: Path.Combine(syncFolder, $@"ack_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{syncGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt"))).ToArray();
 
                 void del()//string[] expectedSyncFiles, string[] expectedAckFiles)
                 {
@@ -461,8 +470,8 @@ namespace SvmFsBatch.logic
                     }
                 }
 
-                var syncResponseFile = $@"c:\test\syn_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{instanceGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt";
-                var ackResponseFile = $@"c:\test\ack_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{instanceGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt";
+                var syncResponseFile = Path.Combine(syncFolder,$@"syn_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{instanceGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt");
+                var ackResponseFile = Path.Combine(syncFolder, $@"ack_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{instanceGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt");
 
                 try
                 {
@@ -498,7 +507,7 @@ namespace SvmFsBatch.logic
                     }
 
                     w++;
-                    var activeInstances = GetSyncRequestFiles(instanceGuid, syncRequest.syncActiveInstances, GetSyncResponseTimeout, out var syncRequests, out var now1, out var syncRequest1);
+                    var activeInstances = GetSyncRequestFiles(instanceGuid, iterationIndex, syncRequest.syncActiveInstances, GetSyncResponseTimeout, out var syncRequests, out var now1, out var syncRequest1);
 
                     if (activeInstances == default)
                     {
@@ -632,6 +641,13 @@ namespace SvmFsBatch.logic
             }
         }
 
+        public static string GetIpcCommsFolder(int iterationIndex)
+        {
+            var folder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
+
+            return folder;
+        }
+
         public static async Task<List<(IndexData id, ConfusionMatrix cm)>> ServeIpcJobsAsync(int iterationIndex, DataSet dataSet, IndexData[] indexesWhole, ulong lvl = 0, bool asParallel = true, CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) return default;
@@ -648,7 +664,7 @@ namespace SvmFsBatch.logic
 
             async Task RefreshCache()
             {
-                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
+                var cacheFolder = GetIpcCommsFolder(iterationIndex);
                 var cacheFiles = await IoProxy.GetFilesAsync(true, ct, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
 
                 if (cacheFiles.Length > 0)
@@ -663,26 +679,34 @@ namespace SvmFsBatch.logic
                 (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, ct);
             }
 
+            /*
             async Task SaveMasterCache()
             {
-                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
+                var cacheFolder = GetIpcCommsFolder(iterationIndex);
                 var cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}_master.csv");
                 var cacheSaveFn2 = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_master.csv");
                 var cacheSaveLines = masterIterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
                 cacheSaveLines.Insert(0, $@"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
                 await IoProxy.WriteAllLinesAsync(true, ct, cacheSaveFn, cacheSaveLines).ConfigureAwait(false);
 
-                while (!File.Exists(cacheSaveFn2))
+                try
                 {
-                    try { File.Move(cacheSaveFn, cacheSaveFn2); }
-                    catch (Exception e) { Logging.LogException(e); }
+                    while (!File.Exists(cacheSaveFn2))
+                    {
+                        try { File.Move(cacheSaveFn, cacheSaveFn2); }
+                        catch (Exception e) { Logging.LogException(e); }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logging.LogException(e);
                 }
             }
-
+            */
 
             async Task SaveInstanceCache()
             {
-                var cacheFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{Program.ProgramArgs.ExperimentName}");
+                var cacheFolder = GetIpcCommsFolder(iterationIndex);
                 var cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}.csv");
                 var cacheSaveLines = instanceIterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
                 cacheSaveLines.Insert(0, $@"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
@@ -697,7 +721,7 @@ namespace SvmFsBatch.logic
                         {
                             try
                             {
-                                WriteInstance(instanceGuid);
+                                WriteInstance(instanceGuid, iterationIndex);
                                 try { await Task.Delay(TaskWriteInstanceLoopDelay, mainCt).ConfigureAwait(false); }
                                 catch (Exception) { }
                             }
@@ -724,7 +748,7 @@ namespace SvmFsBatch.logic
                                 try { await Task.Delay(TaskGetSyncRequestLoopDelay, loopCt).ConfigureAwait(false); }
                                 catch (Exception) { }
 
-                                syncRequest = GetSyncRequest(instanceGuid, false, syncGuids);
+                                syncRequest = GetSyncRequest(instanceGuid, iterationIndex,false, syncGuids);
 
                                 var cancel = false;
 
@@ -858,9 +882,9 @@ namespace SvmFsBatch.logic
 
                 //////////////
                 Console.WriteLine($"{DateTime.UtcNow} Guid: {instanceGuid:N}");
-                WriteInstance(instanceGuid, true);
+                WriteInstance(instanceGuid, iterationIndex, true);
 
-                //var instanceResultsFilename = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_ipc", $@"results_{instanceGuid:N}.csv");
+                
 
                 var mainCts = new CancellationTokenSource();
                 var mainCt = mainCts.Token;
@@ -898,7 +922,7 @@ namespace SvmFsBatch.logic
 
                     if (syncRequest != default)
                     {
-                        var syncResponse = GetSyncResponse(instanceGuid, syncRequest, syncResultIds /*outerResultIds*/);
+                        var syncResponse = GetSyncResponse(instanceGuid, iterationIndex, syncRequest, syncResultIds /*outerResultIds*/);
                         isSyncOk = syncResponse.didSync;
 
                         if (syncResponse.didSync)
@@ -940,7 +964,7 @@ namespace SvmFsBatch.logic
                     // problem: if all allocated work is complete, so need to work steal?
 
                     if (isAllWorkDone) finalSync = true;
-                    syncRequest = GetSyncRequest(instanceGuid, requestSync, syncGuids);
+                    syncRequest = GetSyncRequest(instanceGuid, iterationIndex, requestSync, syncGuids);
 
                     if (syncRequest != default) continue;
                     isSyncOk = true;
@@ -1045,7 +1069,7 @@ namespace SvmFsBatch.logic
 
 
             // delete instance id file
-            WriteInstance(instanceGuid, true, true);
+            WriteInstance(instanceGuid, iterationIndex, true, true);
 
             return masterIterationCmLoaded;
         }

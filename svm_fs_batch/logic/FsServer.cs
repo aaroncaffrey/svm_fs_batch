@@ -52,7 +52,7 @@ namespace SvmFsBatch
 
             // Limit for testing
             // todo: remove this
-            //groups1 = groups1.Take(50).ToArray();
+            groups1 = groups1.Take(10).ToArray();
 
             // Feature select within each gkGroup first, to reduce number of columns
             if (findBestGroupFeaturesFirst)

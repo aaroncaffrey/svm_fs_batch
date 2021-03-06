@@ -502,10 +502,16 @@ namespace SvmFsBatch
 
             var loadedData = await Task.WhenAll(loadedDataTasks).ConfigureAwait(false);
 
-            var loadedDataFlat = loadedData.SelectMany(a => a).ToArray();
+            var loadedDataFlat = loadedData?.Where(a => a != default && a.Length > 0).SelectMany(a => a).ToArray();
 
             // record filenames to list of files already loaded
             var filesLoaded = cacheFiles.Where((a, i) => loadedData[i] != null && loadedData[i].Length > 0).ToArray();
+            
+            var filesNotLoaded = cacheFiles.Except(filesLoaded).ToArray();
+            if (filesNotLoaded.Length > 0)
+            {
+                Logging.LogEvent("Couldn't load files: " + string.Join(", ", filesNotLoaded));
+            }
 
             //cache_files_already_loaded?.AddRange(FilesLoaded);
             //iteration_cm_sd_list?.AddRange(loaded_data_flat);
