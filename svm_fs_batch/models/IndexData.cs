@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Formats.Asn1;
 using System.Globalization;
 using System.Linq;
 
@@ -423,7 +420,12 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (data1 == null) { Logging.LogExit(ModuleName);  return null; }
+            if (data1 == default)
+            {
+                Logging.LogEvent("data1 was default");
+                Logging.LogExit(ModuleName);  
+                return null;
+            }
 
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
             var ret = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2, idso));
@@ -450,7 +452,12 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
 
             var comp = CompareReferenceData2(data1, data2, idso);
-            if (idso == null || idso.AllTrue()) {Logging.LogExit(ModuleName); return comp.AllTrue(); }
+            
+            if (idso == null || idso.AllTrue())
+            {
+                Logging.LogExit(ModuleName); 
+                return comp.AllTrue();
+            }
 
             var ret =
                 (!idso.IdCalcElevenPointThresholds || comp.IdCalcElevenPointThresholds) &&

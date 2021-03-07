@@ -256,6 +256,8 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
+            // todo: check whether loading/saving full cache in this method... duplicated work or missing work...
+
             const string MethodName = nameof(FeatureSelectionWorker);
             const bool overwriteCache = false;
 
@@ -364,7 +366,7 @@ namespace SvmFsBatch
 
                 // check if this partition is loaded....
                 //while (IndexDataContainer.indexes_missing_partition.Any())
-                var iterationWholeResults= await DistributeWork.ServeIpcJobsAsync(iterationIndex, DataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, ct: ct).ConfigureAwait(false);
+                var iterationWholeResults= await DistributeWork.ServeIpcJobsAsync(ExperimentName, iterationIndex, DataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, ct: ct).ConfigureAwait(false);
 
                 // save partition cache
                 //{

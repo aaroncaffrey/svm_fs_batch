@@ -14,8 +14,12 @@ namespace SvmFsBatch
         public static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText)> InnerCrossValidationAsync(IndexData unrolledIndex, OuterCvInput outerCvInput, bool libsvmTrainProbabilityEstimates = true, bool log = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
-
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogEvent("Cancellation requested");
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             const string MethodName = nameof(InnerCrossValidationAsync);
 
@@ -88,6 +92,13 @@ namespace SvmFsBatch
             swTrain.Stop();
             //var sw_trainDur = sw_train.ElapsedMilliseconds;
 
+            if (trainResult == default)
+            {
+                Logging.LogEvent("trainResult was default");
+                Logging.LogExit(ModuleName);
+                return default;
+            }
+
             if (log && !string.IsNullOrWhiteSpace(trainResult.CmdLine)) Logging.WriteLine(trainResult.CmdLine, ModuleName, MethodName);
             if (log && !string.IsNullOrWhiteSpace(trainResult.stdout)) trainResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stdout)}: {line}", ModuleName, MethodName));
             if (log && !string.IsNullOrWhiteSpace(trainResult.stderr)) trainResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stderr)}: {line}", ModuleName, MethodName));
@@ -109,6 +120,13 @@ namespace SvmFsBatch
                 ).ConfigureAwait(false);
 
             swPredict.Stop();
+
+            if (predictResult == default)
+            {
+                Logging.LogEvent("predictResult was default");
+                Logging.LogExit(ModuleName);
+                return default;
+            }
             //var sw_predictDur = sw_train.ElapsedMilliseconds;
 
             if (log && !string.IsNullOrWhiteSpace(predictResult.CmdLine)) Logging.WriteLine(predictResult.CmdLine, ModuleName, MethodName);
@@ -163,11 +181,20 @@ namespace SvmFsBatch
             :
                 await OuterCrossValidationRpcAsync(CP, rpcPoint, outerCvInputs, mergedCvInput, unrolledIndexData, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, asParallel, ct).ConfigureAwait(false);
 
-            if (ocvResult == default) { Logging.LogExit(ModuleName); return default; }
+            if (ocvResult == default)
+            {
+                Logging.LogEvent("ocvResult was default");
+                Logging.LogExit(ModuleName); return default;
+            }
 
             // 3. flatten result
             var groupCmSdList = ocvResult.McvCm.Select(cm => (unrolled_index_data: unrolledIndexData, cm)).ToArray();
-            if (groupCmSdList == default) { Logging.LogExit(ModuleName); return default; }
+            if (groupCmSdList == default)
+            {
+                Logging.LogEvent("groupCmSdList was default");
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
 
             // 4. return result
             Logging.LogExit(ModuleName);
@@ -180,7 +207,12 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             const string MethodName = nameof(OuterCrossValidationRpcAsync);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogEvent("Cancellation requested");
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
             if (unrolledIndexData == null) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
             if (unrolledIndexData.IdColumnArrayIndexes == null || unrolledIndexData.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndexData)}.{nameof(unrolledIndexData.IdColumnArrayIndexes)}");
             if (outerCvInputs == null || outerCvInputs.Length == 0) throw new ArgumentOutOfRangeException(nameof(outerCvInputs));
@@ -205,7 +237,19 @@ namespace SvmFsBatch
 
             var outerCvInputsResult = await Task.WhenAll(outerCvInputsResultTasks).ConfigureAwait(false);
 
-            if (outerCvInputsResult == null || outerCvInputsResult.Length == 0 || outerCvInputsResult.Any(a => a == default || a.OcvCm == default || a.OcvCm.Length == 0)) { Logging.LogExit(ModuleName); return default; }
+            if (outerCvInputsResult == null || outerCvInputsResult.Length == 0)// || )
+            {
+                Logging.LogEvent("outerCvInputsResult was default");
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
+
+            if (makeOuterCvConfusionMatrices && outerCvInputsResult.Any(a => a == default || a.OcvCm == default || a.OcvCm.Length == 0))
+            {
+                Logging.LogEvent("OcvCm was default");
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             // 1a. the ocvi index -1 is merged data
             //var mergedCvInput = outerCvInputs.First(a => a.OuterCvIndex == -1);
@@ -214,6 +258,14 @@ namespace SvmFsBatch
             var ocvCm = makeOuterCvConfusionMatrices
                 ? outerCvInputsResult.Where(a => a.OcvCm != null).SelectMany(a => a.OcvCm).ToArray()
                 : null;
+
+            //if (makeOuterCvConfusionMatrices && ocvCm == default)
+            //{
+            //    Logging.LogEvent("ocvCm was default");
+            //    Logging.LogExit(ModuleName);
+            //    return default;
+            //}
+
             //predictionDataList = outerCvInputsResult;//.Select(a => a.PredictionData).ToArray();
 
             // 3. make confusion matrix from the merged prediction results
@@ -225,7 +277,12 @@ namespace SvmFsBatch
             var predictionFileData = PerformanceMeasure.LoadPredictionFile(mergedCvInput.TestText, null, mergedPredictionText, unrolledIndexData.IdCalcElevenPointThresholds, mergedTestClassSampleIdList, ct);
             //for (var cm_index = 0; cm_index < prediction_file_data.CmList.Length; cm_index++) { prediction_file_data.CmList[cm_index].unrolled_index_data = unrolled_index_data; }
 
-            if (predictionFileData == default || predictionFileData.prediction_list == null || predictionFileData.prediction_list.Length == 0 || predictionFileData.CmList == null || predictionFileData.CmList.Length == 0) { Logging.LogExit(ModuleName); return default; }
+            if (predictionFileData == default || predictionFileData.prediction_list == null || predictionFileData.prediction_list.Length == 0 || predictionFileData.CmList == null || predictionFileData.CmList.Length == 0)
+            {
+                Logging.LogEvent("predictionFileData was default");
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
 
             var mcvCm = predictionFileData.CmList;
 
@@ -451,7 +508,12 @@ namespace SvmFsBatch
         public static async Task<(TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm)> OuterCrossValidationSingleRpcAsync(IndexData unrolledIndexData, OuterCvInput outerCvInput, bool makeOuterCvConfusionMatrices = false, bool overwriteCache = false, bool saveGroupCache = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogEvent("Cancellation requested");
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
 
             await Task.WhenAll(IoProxy.WriteAllLinesAsync(true, ct, outerCvInput.TrainFn, outerCvInput.TrainText, callerModuleName: ModuleName), IoProxy.WriteAllLinesAsync(true, ct, outerCvInput.TestFn, outerCvInput.TestText, callerModuleName: ModuleName)).ConfigureAwait(false);
 
@@ -459,6 +521,13 @@ namespace SvmFsBatch
 
             // call libsvm... Logging.LogExit(ModuleName); returns raw prediction file data from doing: parameter search -> train (with best parameters) -> predict
             var predictionData = await InnerCrossValidationAsync(unrolledIndexData, outerCvInput, ct: ct).ConfigureAwait(false);
+
+            if (predictionData == default)
+            {
+                Logging.LogEvent("predictionData was default");
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             // optional: make_outer_cv_confusion_matrices: this will output the individual outer-cross-validation confusion matrices (i.e. if outer-cv-folds = 5, then 5 respective confusion-matrices will be created, as well as the merged data confusion-matrix).
             if (makeOuterCvConfusionMatrices)

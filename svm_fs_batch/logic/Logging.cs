@@ -76,6 +76,7 @@ namespace SvmFsBatch
             WriteLine(text, callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
         }
 
+
         public static void LogException(Exception e = null, string msg = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0) //,
                                                                                                                                                                                                                                                             //string _CallerMethodType = "", (string type, string name, string value)[] _CallerMethodArgs = null)
         {
@@ -118,6 +119,11 @@ namespace SvmFsBatch
         public static void LogLockExit(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
         {
             LogEvent($"[LOCK:EXIT] {lockName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
+        }
+
+        public static void LogCancellation(string ctName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)
+        {
+            LogEvent($"[CANCELLATION] {ctName}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); //, _CallerMethodType, _CallerMethodArgs);
         }
     }
 }
