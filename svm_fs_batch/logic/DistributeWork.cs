@@ -342,7 +342,7 @@ namespace SvmFsBatch
                 {
                     await WriteInstance(instanceGuid, experimentName, iterationIndex, ct: ct);
 
-                    if (syncRequest != default) { await Logging.WaitAsync(GetSyncRequestIoDelay, "Sync request IO delay", ModuleName, ct: ct); }
+                    if (syncRequest != default) { await Logging.WaitAsync(GetSyncRequestIoDelay, $"[{instanceGuid:N}] Sync request IO delay", ModuleName, ct: ct); }
 
                     // check for sync requests from any instance
                     var activeInstances = GetSyncRequestFiles(instanceGuid, experimentName, iterationIndex, knownInstances, GetSyncRequestTimeout, out var syncRequests, out var now, out syncRequest);
@@ -361,7 +361,7 @@ namespace SvmFsBatch
                         if (activeInstances.Except(knownInstances).Any() || knownInstances.Except(activeInstances).Any())
                         {
                             requestSync = true;
-                            Logging.LogEvent($"{DateTime.UtcNow} Known instances have changed, synchronization required...");
+                            Logging.LogEvent($"[{instanceGuid:N}] Known instances have changed, synchronization required...");
                         }
                         var syncRequestCode = SyncRequestCode(activeInstances);
 
@@ -375,7 +375,7 @@ namespace SvmFsBatch
                             {
                                 if (!File.Exists(syncRequestFile) || new FileInfo(syncRequestFile).Length == 0)
                                 {
-                                    Logging.LogEvent($"{DateTime.UtcNow} Sending synchronization request...");
+                                    Logging.LogEvent($"[{instanceGuid:N}] Sending synchronization request...");
                                     try { await File.WriteAllBytesAsync(syncRequestFile, new byte[] { 0 }, ct); }
                                     catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                                 }
@@ -586,7 +586,7 @@ namespace SvmFsBatch
                         }
                     }
 
-                    if (w > 0) { try { await Logging.WaitAsync(GetSyncResponseIoDelay, "Sync response IO delay", ModuleName, ct: ct); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); } }
+                    if (w > 0) { try { await Logging.WaitAsync(GetSyncResponseIoDelay, $"[{instanceGuid:N}] Sync response IO delay", ModuleName, ct: ct); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); } }
 
                     if (activeInstances.Except(syncRequest.syncActiveInstances).Any() || syncRequest.syncActiveInstances.Except(activeInstances).Any())
                     {
@@ -1065,7 +1065,7 @@ namespace SvmFsBatch
 
                     if (isFirstIteration)
                     {
-                        try { await Logging.WaitAsync(MainLoopInitDelay, "Main loop init delay", ct: mainCt).ConfigureAwait(false); }
+                        try { await Logging.WaitAsync(MainLoopInitDelay, $"[{instanceGuid:N}] Main loop init delay", ct: mainCt).ConfigureAwait(false); }
                         catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     }
 
