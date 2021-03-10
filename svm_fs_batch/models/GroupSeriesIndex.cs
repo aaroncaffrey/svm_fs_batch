@@ -21,6 +21,8 @@
         public GroupSeriesIndex()
         {
             Logging.LogCall(ModuleName);
+
+            Logging.LogExit(ModuleName);
         }
     }
 }

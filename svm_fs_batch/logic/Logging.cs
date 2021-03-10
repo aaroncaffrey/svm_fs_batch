@@ -41,16 +41,21 @@ namespace SvmFsBatch
         //        }
         //}
 
-        public static async Task WaitAsync(int minSecs, int maxSecs, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
+        public static async Task WaitAsync(int minSecs, int maxSecs, string message = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
         {
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName); 
+                return;
+            }
 
             //const string MethodName = nameof(WaitAsync);
 
             var ts = TimeSpan.FromSeconds(minSecs != maxSecs
                 ? minSecs + Random.Next(0, Math.Abs(maxSecs + 1 - minSecs))
                 : minSecs);
-            WriteLine($"{callerModuleName}.{callerMethodName} -> Waiting for {ts.Seconds} seconds", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
+
+            LogEvent($"{callerModuleName}.{callerMethodName} -> Waiting for {ts.Seconds} seconds [{message}]", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
 
             try { await Task.Delay(ts, ct).ConfigureAwait(false); }
             catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); }
@@ -58,10 +63,22 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-
-        public static void Wait(int minSecs, int maxSecs, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
+        public static async Task WaitAsync(TimeSpan delay, string message = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
         {
-            WaitAsync(minSecs, maxSecs, callerModuleName, callerMethodName, callerLineNumber, ct).Wait(ct);
+            try { await WaitAsync((int) Math.Round(delay.TotalSeconds), (int) Math.Round(delay.TotalSeconds), message, callerModuleName, callerMethodName, callerLineNumber, ct: ct).ConfigureAwait(false); }
+            catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); }
+        }
+
+        public static void Wait(int minSecs, int maxSecs, string message = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
+        {
+            try{WaitAsync(minSecs, maxSecs, message, callerModuleName, callerMethodName, callerLineNumber, ct: ct).Wait(ct);}
+            catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); }
+        }
+
+        public static void Wait(TimeSpan delay, string message = "", string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, CancellationToken ct = default)
+        {
+            try{WaitAsync((int)Math.Round(delay.TotalSeconds), (int)Math.Round(delay.TotalSeconds), message, callerModuleName, callerMethodName, callerLineNumber, ct: ct).Wait(ct);}
+            catch (Exception e) { LogException(e, "", ModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber); }
         }
 
 
@@ -103,6 +120,11 @@ namespace SvmFsBatch
             var callChainStr = string.Join(" -> ", callChain?.Select(a => $"{a.callerModuleName}.{a.callerMethodName}:{a.callerLineNumer}()").ToArray() ?? Array.Empty<string>());
             //LogEvent($"[EXIT] {lvl} {callChainStr}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //,_CallerMethodType, _CallerMethodArgs);
+        }
+
+        public static void LogGap(int count)
+        {
+            for (var i=0; i < count; i++) Console.WriteLine();
         }
 
         public static void LogLockKnock(string lockName, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0)

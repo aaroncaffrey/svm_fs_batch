@@ -492,7 +492,8 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            var ret = new IndexDataSearchOptions();
+            var ret = new IndexDataSearchOptions(false);
+            
 
             // primitives
             ret.IdJobUid = x1a.IdJobUid == x2a.IdJobUid;
@@ -515,11 +516,14 @@ namespace SvmFsBatch
             ret.IdTotalGroups = x1a.IdTotalGroups == x2a.IdTotalGroups;
 
             // special cases
-            ret.IdGroupKey = x1a.IdGroupKey == x2a.IdGroupKey;
+            if (idso == null || idso.IdGroupKey) ret.IdGroupKey = x1a.IdGroupKey == x2a.IdGroupKey;
+            if (idso == null || idso.IdClassWeights) ret.IdClassWeights = (x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) ^ (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0) ? false : x1a.IdClassWeights == x2a.IdClassWeights  || ((x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) && (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0)) || x1a.IdClassWeights.SequenceEqual(x2a.IdClassWeights);
+            //if (idso == null || idso.IdGroupArrayIndexes) ret.IdGroupArrayIndexes = (x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0) ? false : x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes);
+            //if (idso == null || idso.IdColumnArrayIndexes) ret.IdColumnArrayIndexes = (x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0) ? false : x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes);
 
-            ret.IdClassWeights = (x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) ^ (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0) ? false : x1a.IdClassWeights == x2a.IdClassWeights  || ((x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) && (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0)) || x1a.IdClassWeights.SequenceEqual(x2a.IdClassWeights);
-            ret.IdGroupArrayIndexes = (x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0) ? false : x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes);
-            ret.IdColumnArrayIndexes = (x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0) ? false : x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes);
+            if (idso == null || idso.IdGroupArrayIndexes) ret.IdGroupArrayIndexes = !((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) && (x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes));
+            if (idso == null || idso.IdColumnArrayIndexes) ret.IdColumnArrayIndexes = !((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) && (x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes));
+
 
 
             if (idso == null || idso.IdClassFolds)
@@ -558,7 +562,6 @@ namespace SvmFsBatch
 
                 }
             }
-
 
             if (idso == null || idso.IdDownSampledTrainClassFolds)
             {
@@ -624,8 +627,45 @@ namespace SvmFsBatch
             public bool IdSvmKernel = true;
             public bool IdSvmType = true;
             public bool IdTotalGroups = true;
-            public bool IdClassFolds = true;
-            public bool IdDownSampledTrainClassFolds = true;
+            public bool IdClassFolds = false;
+            public bool IdDownSampledTrainClassFolds = false;
+
+            public IndexDataSearchOptions()
+            {
+                
+            }
+
+            public IndexDataSearchOptions(bool value)
+            {
+                Set(value);
+            }
+
+            public void Set(bool value)
+            {
+                IdJobUid = value;
+                IdCalcElevenPointThresholds = value;
+                IdClassWeights = value;
+                IdColumnArrayIndexes = value;
+                IdExperimentName = value;
+                IdGroupArrayIndex = value;
+                IdGroupArrayIndexes = value;
+                IdGroupFolder = value;
+                IdGroupKey = value;
+                IdInnerCvFolds = value;
+                IdIterationIndex = value;
+                IdNumColumns = value;
+                IdNumGroups = value;
+                IdOuterCvFolds = value;
+                IdOuterCvFoldsToRun = value;
+                IdRepetitions = value;
+                IdScaleFunction = value;
+                IdSelectionDirection = value;
+                IdSvmKernel = value;
+                IdSvmType = value;
+                IdTotalGroups = value;
+                IdClassFolds = value;
+                IdDownSampledTrainClassFolds = value;
+            }
 
             public bool AnyTrue()
             {

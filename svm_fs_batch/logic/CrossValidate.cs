@@ -439,10 +439,10 @@ namespace SvmFsBatch
             
             var trainSizes = trainFoldIndexes.Select(a => (a.ClassId, train_size: a.TrainIndexes?.Length ?? 0)).ToArray();
             var trainRowValues = dataSet.GetRowFeatures(trainFoldIndexes, unrolledIndex.IdColumnArrayIndexes, ct: ct);
-            var trainScaling = DataSet.GetScalingParams(trainRowValues, unrolledIndex.IdColumnArrayIndexes);
+            var trainScaling = DataSet.GetScalingParams(trainRowValues, unrolledIndex.IdColumnArrayIndexes, ct: ct);
             var trainRowScaledValues = DataSet.GetScaledRows(trainRowValues, /*column_indexes,*/
                 trainScaling,
-                unrolledIndex.IdScaleFunction);
+                unrolledIndex.IdScaleFunction, ct: ct);
             //var trainText = asParallel
             //    ? trainRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
             //    : trainRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
@@ -466,7 +466,7 @@ namespace SvmFsBatch
             var testScaling = trainScaling; /* scale test data with training data */
             var testRowScaledValues = DataSet.GetScaledRows(testRowValues, /*column_indexes,*/
                 testScaling,
-                unrolledIndex.IdScaleFunction);
+                unrolledIndex.IdScaleFunction, ct: ct);
             //var testText = asParallel
             //    ? testRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
             //    : testRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();

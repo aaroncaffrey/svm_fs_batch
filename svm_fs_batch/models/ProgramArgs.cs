@@ -147,12 +147,23 @@ namespace SvmFsBatch
 
             var argNames = new[]
             {
-                nameof(Folds), nameof(Repetitions), nameof(OuterCvFolds), nameof(OuterCvFoldsToRun),
-                nameof(InnerFolds), nameof(Setup), /*nameof(run_local),*/ nameof(ExperimentName), nameof(JobId),
+                nameof(Folds), 
+                nameof(Repetitions), 
+                nameof(OuterCvFolds), 
+                nameof(OuterCvFoldsToRun),
+                nameof(InnerFolds), 
+                nameof(Setup), 
+                /*nameof(run_local),*/ 
+                nameof(ExperimentName), 
+                nameof(JobId),
                 nameof(JobName),
-                nameof(PartitionArrayIndexFirst), nameof(PartitionArrayIndexLast), nameof(WholeArrayLength),
+                nameof(PartitionArrayIndexFirst), 
+                nameof(PartitionArrayIndexLast), 
+                nameof(WholeArrayLength),
                 nameof(WholeArrayStepSize),
-                nameof(WholeArrayIndexFirst), nameof(WholeArrayIndexLast), nameof(SetupTotalVcpus),
+                nameof(WholeArrayIndexFirst), 
+                nameof(WholeArrayIndexLast),
+                nameof(SetupTotalVcpus),
                 nameof(SetupInstanceVcpus),
 
 
@@ -406,7 +417,8 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (Args == null || Args.Length == 0) { Logging.LogExit(ModuleName);  return default; }
+            if (Args == null || Args.Length == 0) { Logging.LogExit(ModuleName); 
+                return default; }
 
             var ret = Args.FirstOrDefault(a => string.Equals(a.key, key, StringComparison.OrdinalIgnoreCase));
             
@@ -420,7 +432,11 @@ namespace SvmFsBatch
 
             var x = new List<(string key, string value)>();
 
-            if (args == null || args.Length == 0) { Logging.LogExit(ModuleName);  return null; }
+            if (args == null || args.Length == 0)
+            {
+                Logging.LogExit(ModuleName);  
+                return Array.Empty<(string key, string asStr, int? asInt, double? asDouble, bool? asBool)>();
+            }
 
             args = args.SelectMany(a => a.Split(new[] {'='}, StringSplitOptions.RemoveEmptyEntries)).Where(a => !string.IsNullOrWhiteSpace(a)).ToArray();
 

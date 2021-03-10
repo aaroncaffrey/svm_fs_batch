@@ -414,7 +414,7 @@ namespace SvmFsBatch
             {
                 if (!IoProxy.ExistsDirectory(false, iterationFolder, ModuleName, MethodName, ct))
                 {
-                    if (waitForCache && indexesNotLoaded.Any()) await Logging.WaitAsync(10, 20, ModuleName, MethodName, ct: ct).ConfigureAwait(false);
+                    if (waitForCache && indexesNotLoaded.Any()) await Logging.WaitAsync(10, 20, "Results still missing; cache not yet available",ModuleName, MethodName, ct: ct).ConfigureAwait(false);
                     continue;
                 }
 
@@ -453,7 +453,7 @@ namespace SvmFsBatch
                     (indexesLoaded, indexesNotLoaded) = await LoadCacheFileListWithUpdateAsync(cacheFilesAlreadyLoaded, iterationCmSdList, indexesWhole, asParallel, cacheFiles1, ct).ConfigureAwait(false);
                 }
 
-                if (waitForCache && indexesNotLoaded.Any()) await Logging.WaitAsync(10, 20, ModuleName, MethodName, ct: ct).ConfigureAwait(false);
+                if (waitForCache && indexesNotLoaded.Any()) await Logging.WaitAsync(10, 20, "Results still missing; cache not yet available", ModuleName, MethodName, ct: ct).ConfigureAwait(false);
             } while (waitForCache && indexesNotLoaded.Any());
 
             Logging.LogExit(ModuleName);
@@ -543,12 +543,23 @@ namespace SvmFsBatch
                     //        cmList[cmIndex].UnrolledIndexData = id ?? throw new Exception();
                     //    }
 
+                    var idso = new IndexData.IndexDataSearchOptions();//false)
+                    //{ 
+                    //    IdIterationIndex = true,
+                    //    IdJobUid = true,
+                    //    IdGroupArrayIndex = true,
+                    //    IdNumGroups = true,
+                    //    IdGroupArrayIndexes = true,
+                    //    IdNumColumns = true,
+                    //    IdColumnArrayIndexes = true,
+                    //};
+
                     Parallel.For(0, cmList.Length,
                         cmIndex =>
                         {
                             if (cmList[cmIndex].UnrolledIndexData != null)
                             {
-                                var a = IndexData.FindFirstReference(indexesWhole, cmList[cmIndex].UnrolledIndexData);
+                                var a = IndexData.FindFirstReference(indexesWhole, cmList[cmIndex].UnrolledIndexData, idso);
                                 cmList[cmIndex].UnrolledIndexData = a ?? throw new Exception();
                             }
                         });

@@ -164,6 +164,9 @@ namespace SvmFsBatch
             };
 
             var fakeArgs = string.Join(" ", fakeArgsList.Select(a => $"-{a.name}={a.value}").ToArray());
+            //Console.WriteLine(); Console.WriteLine();
+            //Console.WriteLine(string.Join("\r\n", fakeArgsList));
+            //Console.WriteLine(); Console.WriteLine();
             args = fakeArgs.Split();
 
             ProgramArgs = new ProgramArgs(args);
