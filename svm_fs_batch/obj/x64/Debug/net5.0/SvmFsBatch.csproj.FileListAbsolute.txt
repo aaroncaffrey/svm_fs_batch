@@ -5,7 +5,6 @@ C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\SvmFsBatch
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\SvmFsBatch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\ref\SvmFsBatch.dll
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\bin\x64\Debug\net5.0\SvmFsBatch.pdb
-C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\SvmFsBatch.csprojAssemblyReference.cache
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\SvmFsBatch.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\SvmFsBatch.AssemblyInfoInputs.cache
 C:\Users\Aaron\Desktop\svm_fs_batch\svm_fs_batch\obj\x64\Debug\net5.0\SvmFsBatch.AssemblyInfo.cs
