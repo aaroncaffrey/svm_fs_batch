@@ -498,10 +498,7 @@ namespace SvmFsBatch
             // primitives
             ret.IdJobUid = x1a.IdJobUid == x2a.IdJobUid;
             ret.IdCalcElevenPointThresholds = x1a.IdCalcElevenPointThresholds == x2a.IdCalcElevenPointThresholds;
-            ret.IdExperimentName = x1a.IdExperimentName == x2a.IdExperimentName || (string.IsNullOrEmpty(x1a.IdExperimentName) && string.IsNullOrEmpty(x2a.IdExperimentName));
             ret.IdGroupArrayIndex = x1a.IdGroupArrayIndex == x2a.IdGroupArrayIndex;
-            ret.IdGroupFolder = x1a.IdGroupFolder == x2a.IdGroupFolder || (string.IsNullOrEmpty(x1a.IdGroupFolder) && string.IsNullOrEmpty(x2a.IdGroupFolder));
-
             ret.IdInnerCvFolds = x1a.IdInnerCvFolds == x2a.IdInnerCvFolds;
             ret.IdIterationIndex = x1a.IdIterationIndex == x2a.IdIterationIndex;
             ret.IdNumColumns = x1a.IdNumColumns == x2a.IdNumColumns;
@@ -514,6 +511,10 @@ namespace SvmFsBatch
             ret.IdSvmKernel = x1a.IdSvmKernel == x2a.IdSvmKernel;
             ret.IdSvmType = x1a.IdSvmType == x2a.IdSvmType;
             ret.IdTotalGroups = x1a.IdTotalGroups == x2a.IdTotalGroups;
+
+            // strings
+            if ((idso == null || idso.IdExperimentName)) ret.IdExperimentName = (string.IsNullOrEmpty(x1a.IdExperimentName) && string.IsNullOrEmpty(x2a.IdExperimentName)) || string.Equals(x1a.IdExperimentName, x2a.IdExperimentName, StringComparison.OrdinalIgnoreCase);
+            if ((idso == null || idso.IdGroupFolder))    ret.IdGroupFolder =    (string.IsNullOrEmpty(x1a.IdGroupFolder) && string.IsNullOrEmpty(x2a.IdGroupFolder))       || string.Equals(x1a.IdGroupFolder, x2a.IdGroupFolder, StringComparison.OrdinalIgnoreCase);
 
             // special cases
             if (idso == null || idso.IdGroupKey) ret.IdGroupKey = x1a.IdGroupKey == x2a.IdGroupKey;

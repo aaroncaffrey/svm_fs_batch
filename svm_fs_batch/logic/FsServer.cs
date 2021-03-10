@@ -300,11 +300,9 @@ namespace SvmFsBatch
 
             // todo: add rank positions (for each iteration) to the winning features summary output... 
 
-            Console.WriteLine();
-            Console.WriteLine();
+            Logging.LogGap(2);
             Log($@"Start of iteration.");
-            Console.WriteLine();
-            Console.WriteLine();
+            Logging.LogGap(2);
 
             Log($@"Total groups: {groups?.Length ?? 0}.");
 
@@ -452,22 +450,22 @@ namespace SvmFsBatch
                     iterationWholeResultsFixedWithRank.id.ClearSupplemental();
                 }
 
+                Logging.LogGap(2);
+                Log($@"Finished iteration: winning score = {bestWinnerIdCmRs.rs?.RsFsScore ?? 0}, total columns = {bestWinnerIdCmRs.id?.IdNumColumns ?? 0}.");
+                Logging.LogGap(2);
+
                 iterationIndex++;
                 calibrate = false;
                 preselectAllGroups = false;
                 previousGroupTests.AddRange(jobGroupSeries.Select(a => a.GroupIndexes).ToArray());
 
 
-                Console.WriteLine();
-                Console.WriteLine();
-                Log($@"End of iteration.");
-                Console.WriteLine();
-                Console.WriteLine();
+              
 
             }
 
-            Log($@"Finished: all iterations of feature selection for {groups?.Length ?? 0} groups.");
-            Log($@"Finished: winning score = {bestWinnerIdCmRs.rs?.RsFsScore ?? 0}, total columns = {bestWinnerIdCmRs.id?.IdNumColumns ?? 0}.");
+            Log($@"Finished all: all iterations - feature selection complete from {groups?.Length ?? 0} groups.");
+            Log($@"Finished all: final winning score = {bestWinnerIdCmRs.rs?.RsFsScore ?? 0}, total columns = {bestWinnerIdCmRs.id?.IdNumColumns ?? 0}.");
 
             var bestWinnerGroups = bestWinnerIdCmRs.id.IdGroupArrayIndexes.Select(groupIndex => groups[groupIndex]).ToArray();
             await SaveResultsSummaryAsync(allIndexData.ToArray(), groups, experimentName, allWinnersIdCmRs, bestWinnerIdCmRs, bestWinnerGroups, MethodName, allIterationIdCmRs, ct).ConfigureAwait(false);

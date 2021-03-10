@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
@@ -531,8 +532,12 @@ namespace SvmFsBatch
 
             const string MethodName = nameof(LoadCacheFileAsync);
 
-            if (await IoProxy.IsFileAvailableAsync(true, ct, cmFn, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false))
+            var avail = await IoProxy.IsFileAvailableAsync(true, ct, cmFn, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
+
+            if (avail)
             {
+                var sw1 = Stopwatch.StartNew();
+
                 var cmList = await ConfusionMatrix.LoadFileAsync(cmFn, ct: ct).ConfigureAwait(false);
                 if (cmList != null && cmList.Length > 0)
                 {
@@ -557,20 +562,27 @@ namespace SvmFsBatch
                     Parallel.For(0, cmList.Length,
                         cmIndex =>
                         {
-                            if (cmList[cmIndex].UnrolledIndexData != null)
+                            if (cmList[cmIndex].id != null)
                             {
-                                var a = IndexData.FindFirstReference(indexesWhole, cmList[cmIndex].UnrolledIndexData, idso);
-                                cmList[cmIndex].UnrolledIndexData = a ?? throw new Exception();
+                                var a = IndexData.FindFirstReference(indexesWhole, cmList[cmIndex].id, idso);
+                                cmList[cmIndex].id = a ?? throw new Exception();
                             }
                         });
 
-                    var idCmList = cmList.AsParallel().AsOrdered().Select(cm => (id: cm?.UnrolledIndexData, cm)).Where(a => a.id != null && a.cm != null).ToArray();
+                    var idCmList = cmList.AsParallel().AsOrdered().Select(cm => (id: cm?.id, cm)).Where(a => a.id != null && a.cm != null).ToArray();
 
+                    sw1.Stop();
+                    
+                    Logging.LogEvent($"Loaded cache file: {cmFn} ({sw1.Elapsed:dd\\:hh\\:mm\\:ss})");
                     Logging.LogExit(ModuleName);
                     return ct.IsCancellationRequested
                         ? default
                         : idCmList;
                 }
+            }
+            else
+            {
+                Logging.LogEvent($"Cache file not available: {cmFn}");
             }
 
             Logging.LogExit(ModuleName);

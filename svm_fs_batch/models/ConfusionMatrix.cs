@@ -11,7 +11,7 @@ namespace SvmFsBatch
     {
         public const string ModuleName = nameof(ConfusionMatrix);
 
-        public static readonly ConfusionMatrix Empty = new ConfusionMatrix {UnrolledIndexData = IndexData.Empty, GridPoint = GridPoint.Empty, Metrics = MetricsBox.Empty};
+        public static readonly ConfusionMatrix Empty = new ConfusionMatrix {id = IndexData.Empty, GridPoint = GridPoint.Empty, Metrics = MetricsBox.Empty};
 
 
         public static readonly string[] CsvHeaderValuesArray =
@@ -59,7 +59,7 @@ namespace SvmFsBatch
         public (double x, double y)[] RocXyStrElevenPoint;
         public double[] Thresholds;
 
-        public IndexData UnrolledIndexData;
+        public IndexData id;
         public int? XClassId;
         public string XClassName;
         public double XClassSize;
@@ -82,7 +82,7 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            UnrolledIndexData = null;
+            id = null;
             GridPoint = null;
             XTimeGrid = null;
             XTimeTrain = null;
@@ -326,7 +326,7 @@ namespace SvmFsBatch
 
             var cm = new ConfusionMatrix();
 
-            cm.UnrolledIndexData = new IndexData(lineHeader, xType);
+            cm.id = new IndexData(lineHeader, xType);
 
             var hiGpCost = Hi(nameof(SvmFsBatch.GridPoint.GpCost));
             var hiGpGamma = Hi(nameof(SvmFsBatch.GridPoint.GpGamma));

@@ -143,20 +143,20 @@ namespace SvmFsBatch
 
                         }
                     }
-                    catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                     try
                     {
                         if (!string.IsNullOrEmpty(LastWriteInstanceFile))
                             try { File.Delete(LastWriteInstanceFile); }
-                            catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                            catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                         LastWriteInstanceFile = fn;
                     }
-                    catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                 }
-                catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
             }
         }
 
@@ -223,7 +223,7 @@ namespace SvmFsBatch
 
                     if (instancesChanged)
                     {
-                        Logging.LogEvent($"{instanceGuid:N}: Instances changed - checking again after {ReadInstancesChangedRetry}");
+                        Logging.LogEvent($"[{instanceGuid:N}] Instances changed - checking again after {ReadInstancesChangedRetry}");
 
                         Logging.Wait(ReadInstancesChangedRetry, "Read instances - instances changed - retry delay", ModuleName);
                         continue;
@@ -377,14 +377,14 @@ namespace SvmFsBatch
                                 {
                                     Logging.LogEvent($"{DateTime.UtcNow} Sending synchronization request...");
                                     try { await File.WriteAllBytesAsync(syncRequestFile, new byte[] { 0 }, ct); }
-                                    catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                                 }
 
                                 requestSync = false;
                             }
                             catch (Exception e)
                             {
-                                Logging.LogException(e, $"{instanceGuid:N}");
+                                Logging.LogException(e, $"[{instanceGuid:N}]");
                             }
 
 
@@ -401,16 +401,16 @@ namespace SvmFsBatch
                         if (syncRequests[i].sourceGuid != syncRequest.sourceGuid || syncRequests[i].requestCode != syncRequest.requestCode || syncRequests[i].requestTime != syncRequest.requestTime)
                             // delete all sync requests older than the latest known.
                             try { File.Delete(syncRequests[i].file); }
-                            catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                            catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     }
 
-                    //Logging.LogEvent($"{instanceGuid:N}: Exit sync1() {(syncRequest != default ? syncRequest.ToString() : "")}");
+                    //Logging.LogEvent($"[{instanceGuid:N}] Exit sync1() {(syncRequest != default ? syncRequest.ToString() : "")}");
 
                     Logging.LogExit();
                     return (syncRequest.file, syncRequest.data, syncRequest.syn, syncRequest.sourceGuid, syncRequest.requestCode, syncRequest.responseGuid, syncRequest.requestTime, activeInstances);
                 }
 
-                //Logging.LogEvent($"{instanceGuid:N}: Exit sync1() {(syncRequest != default ? syncRequest.ToString() : "")}");
+                //Logging.LogEvent($"[{instanceGuid:N}] Exit sync1() {(syncRequest != default ? syncRequest.ToString() : "")}");
                 Logging.LogExit();
                 return default;
             }
@@ -464,7 +464,7 @@ namespace SvmFsBatch
             }
             catch (Exception e)
             {
-                Logging.LogException(e, $"{instanceGuid:N}");
+                Logging.LogException(e, $"[{instanceGuid:N}]");
                 now = DateTime.UtcNow;
                 syncRequests = default;
                 syncRequest = default;
@@ -497,7 +497,7 @@ namespace SvmFsBatch
 
             var syncStart = DateTime.UtcNow;
 
-            //Logging.LogEvent($"{instanceGuid:N}: Enter sync2()");
+            //Logging.LogEvent($"[{instanceGuid:N}] Enter sync2()");
             //lock (SyncingLock)
             {
                 var syncFolder = GetIpcCommsFolder(experimentName, iterationIndex);
@@ -507,18 +507,18 @@ namespace SvmFsBatch
                 void del()//string[] expectedSyncFiles, string[] expectedAckFiles)
                 {
                     try { File.Delete(syncRequest.file); }
-                    catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                     for (var i = 0; i < expectedSyncFiles.Length; i++)
                     {
                         try { File.Delete(expectedSyncFiles[i].fn); }
-                        catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     }
 
                     for (var i = 0; i < expectedAckFiles.Length; i++)
                     {
                         try { File.Delete(expectedAckFiles[i].fn); }
-                        catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     }
                 }
 
@@ -535,7 +535,8 @@ namespace SvmFsBatch
                 }
                 catch (Exception e)
                 {
-                    Logging.LogException(e, $"{instanceGuid:N}");
+                    Logging.LogException(e, $"[{instanceGuid:N}]");
+                    Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - couldn't write sync response file.");
                     Logging.LogExit();
 
                     return default;
@@ -556,7 +557,7 @@ namespace SvmFsBatch
                     if (elapsed1 >= GetSyncResponseSyncTimeout1 || elapsed2 >= GetSyncResponseSyncTimeout2)
                     {
                         del();
-                        Logging.LogEvent($"{instanceGuid:N}: Exit sync2() - sync timeout");
+                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync timeout");
                         Logging.LogExit();
 
                         return default;
@@ -567,6 +568,7 @@ namespace SvmFsBatch
 
                     if (activeInstances == default)
                     {
+                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - active instances couldn't be read");
                         Logging.LogExit();
 
                         return default;
@@ -577,19 +579,19 @@ namespace SvmFsBatch
                         if (syncRequest1.requestTime > syncRequest.requestTime || syncRequest1.requestCode != syncRequest.requestCode)
                         {
                             del();
-                            Logging.LogEvent($"{instanceGuid:N}: Exit sync2() - newer sync request found");
+                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - newer sync request found");
                             Logging.LogExit();
 
                             return default;
                         }
                     }
 
-                    if (w > 0) { try { await Logging.WaitAsync(GetSyncResponseIoDelay, "Sync response IO delay", ModuleName, ct: ct); } catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); } }
+                    if (w > 0) { try { await Logging.WaitAsync(GetSyncResponseIoDelay, "Sync response IO delay", ModuleName, ct: ct); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); } }
 
                     if (activeInstances.Except(syncRequest.syncActiveInstances).Any() || syncRequest.syncActiveInstances.Except(activeInstances).Any())
                     {
                         del();
-                        Logging.LogEvent($"{instanceGuid:N}: Exit sync2() - instances changed");
+                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - instances changed");
                         Logging.LogExit();
 
                         return default;
@@ -602,6 +604,7 @@ namespace SvmFsBatch
                             if (!File.Exists(syncRequest.file))
                             {
                                 // sync request was deleted... probably because a newer request exists?
+                                Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync file missing");
                                 Logging.LogExit();
 
                                 return default;
@@ -609,7 +612,8 @@ namespace SvmFsBatch
                         }
                         catch (Exception e)
                         {
-                            Logging.LogException(e, $"{instanceGuid:N}");
+                            Logging.LogException(e, $"[{instanceGuid:N}]");
+                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync file couldn't be accessed");
                             Logging.LogExit();
 
                             return default;
@@ -624,12 +628,12 @@ namespace SvmFsBatch
                             try
                             {
                                 var exists = File.Exists(a.fn);
-                                Logging.LogEvent($"{instanceGuid:N}: {a.fn} exists: {exists}");
+                                Logging.LogEvent($"[{instanceGuid:N}] {a.fn} exists: {exists}");
                                 return exists;
                             }
                             catch (Exception e)
                             {
-                                Logging.LogException(e, $"{instanceGuid:N}");
+                                Logging.LogException(e, $"[{instanceGuid:N}]");
                                 return false;
                             }
                         }))
@@ -646,7 +650,7 @@ namespace SvmFsBatch
                                 }
                                 catch (Exception e)
                                 {
-                                    Logging.LogException(e, $"{instanceGuid:N}");
+                                    Logging.LogException(e, $"[{instanceGuid:N}]");
                                     return (a.syncGuid, null);
                                 }
                             }).ToArray();
@@ -665,13 +669,18 @@ namespace SvmFsBatch
                             try { await File.WriteAllBytesAsync(ackResponseFile, new byte[] { 0 }, ct); }
                             catch (Exception e)
                             {
-                                Logging.LogException(e, $"{instanceGuid:N}");
+                                Logging.LogException(e, $"[{instanceGuid:N}]");
                                 continue;
                             }
                             //}
                             //catch (Exception e) { Logging.LogEvent(DateTime.UtcNow + " " + "Exception: " + e.Message); }
 
-                            Logging.LogEvent($"{instanceGuid:N}: Sync successful with instance {syncRequest.sourceGuid:N}");
+                            //syncRequest.syncActiveInstances
+
+                            var isSourceSelf = instanceGuid == syncRequest.sourceGuid;
+
+                            Logging.LogEvent($"[{instanceGuid:N}] Sync successful with instance [{syncRequest.sourceGuid:N}] ({(isSourceSelf ? "self" : "remote")}). Synchronized instances [{syncRequest.syncActiveInstances.Length}]: " +
+                                             string.Join(", ", syncRequest.syncActiveInstances.Select(a=>$@"[{a}]").ToArray()));
 
                             // todo: find out why execution is stuck here. .. e.g.Sync successful with instance 9efd2b26-1c6d-4898-848a-f8db69173e8f .... then nothing else
 
@@ -692,7 +701,7 @@ namespace SvmFsBatch
                             try { return File.Exists(a.fn) && new FileInfo(a.fn).Length > 0; }
                             catch (Exception e)
                             {
-                                Logging.LogException(e, $"{instanceGuid:N}");
+                                Logging.LogException(e, $"[{instanceGuid:N}]");
                                 return false;
                             }
                         }))
@@ -710,7 +719,7 @@ namespace SvmFsBatch
                     try { syncFileExists = File.Exists(syncRequest.file) && new FileInfo(syncRequest.file).Length > 0; }
                     catch (Exception e)
                     {
-                        Logging.LogException(e, $"{instanceGuid:N}");
+                        Logging.LogException(e, $"[{instanceGuid:N}]");
                         continue;
                     }
 
@@ -719,7 +728,7 @@ namespace SvmFsBatch
                         continue;
                     }
 
-                    Logging.LogEvent($"{instanceGuid:N}: Exit sync2() - sync ok");
+                    Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync ok");
                     Logging.LogExit();
                     return (true, syncData);
                 }
@@ -737,14 +746,14 @@ namespace SvmFsBatch
         {
             if (ct.IsCancellationRequested)
             {
-                Logging.LogEvent("Cancellation requested");
+                Logging.LogEvent($"[{instanceGuid:N}] Cancellation requested");
                 Logging.LogExit();
                 return default;
             }
 
             Console.WriteLine();
             Console.WriteLine();
-            Logging.LogEvent($@"Start of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].");
+            Logging.LogEvent($@"[{instanceGuid:N}] Start of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].");
             Console.WriteLine();
             Console.WriteLine();
 
@@ -815,7 +824,7 @@ namespace SvmFsBatch
             Task InstanceGuidWriterTask(CancellationToken mainCt)
             {
                 try { WriteInstance(instanceGuid, experimentName, iterationIndex, true, ct: mainCt).Wait(mainCt); }
-                catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                 var instanceGuidWriterTask = Task.Run(async () =>
                     {
@@ -825,9 +834,9 @@ namespace SvmFsBatch
                             {
                                 await WriteInstance(instanceGuid, experimentName, iterationIndex, ct: mainCt);
                                 try { await Task.Delay(TaskWriteInstanceLoopDelay, mainCt).ConfigureAwait(false); }
-                                catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                                catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                             }
-                            catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                            catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                         }
                     },
                     mainCt);
@@ -848,7 +857,7 @@ namespace SvmFsBatch
                             try
                             {
                                 try { await Task.Delay(TaskGetSyncRequestLoopDelay, loopCt).ConfigureAwait(false); }
-                                catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                                catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                                 syncRequest = await GetSyncRequest(instanceGuid, experimentName, iterationIndex, false, syncGuids, loopCt);
 
@@ -866,15 +875,15 @@ namespace SvmFsBatch
 
                                     try
                                     {
-                                        Logging.LogEvent($"{instanceGuid:N}: Cancelling...");
+                                        Logging.LogEvent($"[{instanceGuid:N}] Cancelling...");
                                         loopCts?.Cancel();
                                     }
-                                    catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                                     break;
                                 }
                             }
-                            catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                            catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                         }
                     },
                     loopCt);
@@ -915,12 +924,12 @@ namespace SvmFsBatch
                                     : timeElapsed);
                             var timeRemaining = timeEach * itemsRemaining;
 
-                            Logging.LogEvent($"{instanceGuid:N}: ETA. Jobs: (Total: {total}, Started: {started}, Complete: {completed}, Remaining: {itemsRemaining}.) Time Elapsed: {timeElapsed:dd\\:hh\\:mm\\:ss}. Average Time Per Job: {timeEach:dd\\:hh\\:mm\\:ss}. Estimated Time Remaining: {timeRemaining:dd\\:hh\\:mm\\:ss}.");
+                            Logging.LogEvent($"[{instanceGuid:N}] ETA. Jobs: (Total: [{total}], Started: [{started}], Complete: [{completed}], Remaining: [{itemsRemaining}]) Time Elapsed: [{timeElapsed:dd\\:hh\\:mm\\:ss}]. Average Time Per Job: [{timeEach:dd\\:hh\\:mm\\:ss}]. Estimated Time Remaining: [{timeRemaining:dd\\:hh\\:mm\\:ss}].");
 
                             try { await Task.Delay(TaskEtaLoopDelay, loopCt).ConfigureAwait(false); }
-                            catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                            catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                         }
-                        catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     }
 
                 },
@@ -935,7 +944,7 @@ namespace SvmFsBatch
                 {
                     if (indexData == default)
                     {
-                        Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: indexData was default...");
+                        Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: indexData was default...");
 
                         return default;
                     }
@@ -946,7 +955,7 @@ namespace SvmFsBatch
                     {
                         if (workShareInstanceSize - workShareInstanceNumComplete > 1)
                         {
-                            Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: Cancellation requested...");
+                            Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: Cancellation requested...");
                             return default;
                         }
                     }
@@ -954,21 +963,21 @@ namespace SvmFsBatch
                     var mocvi = CrossValidate.MakeOuterCvInputs(dataSet, indexData, ct: ct);
                     if (mocvi == default || mocvi.outerCvInputs.Length == 0)
                     {
-                        Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: MakeOuterCvInputs returned default...");
+                        Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: MakeOuterCvInputs returned default...");
                         return default;
                     }
 
                     var ret = await CrossValidate.CrossValidatePerformanceAsync(null, CrossValidate.RpcPoint.None, mocvi.outerCvInputs, mocvi.mergedCvInput, indexData, ct: ct).ConfigureAwait(false);
                     if (ret == default || ret.Length == 0 || ret.Any(a => a.id == default || a.cm == default))
                     {
-                        Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: CrossValidatePerformanceAsync returned default...");
+                        Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: CrossValidatePerformanceAsync returned default...");
 
                         return default;
                     }
 
-                    Logging.LogEvent($@"{instanceGuid:N} Job: Exiting: CrossValidatePerformanceAsync returned default...");
+                    Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: CrossValidatePerformanceAsync returned default...");
 
-                    Logging.LogEvent($@"{DateTime.UtcNow} {instanceGuid:N}: Job: Completed job {workShareInstanceIndex} of {workShareInstanceSize} (IdJobUid={indexData.IdJobUid}; IdGroupArrayIndex={indexData.IdGroupArrayIndex})");
+                    Logging.LogEvent($@"[{instanceGuid:N}] Job: Completed job {workShareInstanceIndex} of {workShareInstanceSize} (IdJobUid=[{indexData.IdJobUid}]; IdGroupArrayIndex=[{indexData.IdGroupArrayIndex}])");
 
                     lock (workShareInstanceNumCompleteLock) workShareInstanceNumComplete++;
 
@@ -976,7 +985,7 @@ namespace SvmFsBatch
                 }
                 catch (Exception e)
                 {
-                    Logging.LogException(e, $@"{instanceGuid:N}");
+                    Logging.LogException(e, $@"[{instanceGuid:N}]");
                     return default;
                 }
             }
@@ -1057,7 +1066,7 @@ namespace SvmFsBatch
                     if (isFirstIteration)
                     {
                         try { await Logging.WaitAsync(MainLoopInitDelay, "Main loop init delay", ct: mainCt).ConfigureAwait(false); }
-                        catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     }
 
                     if (syncRequest != default)
@@ -1073,12 +1082,12 @@ namespace SvmFsBatch
                             {
                                 var syncWorkCompleteIds = syncResponse.syncData;
 
-                                Logging.LogEvent($"{instanceGuid:N}: Sync returned Ids: {string.Join(", ", syncResultIds.Select(a => $"{a}").ToArray())}");
+                                Logging.LogEvent($"[{instanceGuid:N}] Sync returned Ids: {string.Join(", ", syncResultIds.Select(a => $"{a}").ToArray())}");
 
                                 syncResultIds = syncResultIds.Union(syncWorkCompleteIds).ToArray();
                             }
 
-                            Logging.LogEvent($"{instanceGuid:N}: Sync merged Ids: {string.Join(", ", syncResultIds.Select(a => $"{a}").ToArray())}");
+                            Logging.LogEvent($"[{instanceGuid:N}] Sync merged Ids: {string.Join(", ", syncResultIds.Select(a => $"{a}").ToArray())}");
 
                         }
 
@@ -1113,7 +1122,7 @@ namespace SvmFsBatch
                     if (isWorkShareSetAndEmpty && !isAllWorkDone)
                     {
                         try { await Logging.WaitAsync(MainLoopNoWorkDelay, $"{instanceGuid:N} No work to do for this instance... waiting for retry.", ct: mainCt).ConfigureAwait(false); }
-                        catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     }
 
                     if (isAllWorkDone)
@@ -1122,11 +1131,11 @@ namespace SvmFsBatch
 
                         // todo: or just save to an overall merged cache file?
 
-                        Logging.LogEvent($"{instanceGuid:N}: Jobs complete...");
+                        Logging.LogEvent($"[{instanceGuid:N}] Jobs complete...");
                         break;
                     }
 
-                    Logging.LogEvent($"{instanceGuid:N}: Main loop continuing...");
+                    Logging.LogEvent($"[{instanceGuid:N}] Main loop continuing...");
 
                     var workCompleteIds = indexesLoaded.Select(a => a.IdJobUid).ToArray();
                     var workIncompleteIds = indexesNotLoaded.Select(a => a.IdJobUid).ToArray();
@@ -1140,8 +1149,8 @@ namespace SvmFsBatch
                     var syncTask = KeepSynchronizedTask(syncGuids, mainCt, loopCts);
                     var etaTask = EtaTask(workShareInstance.Length, mainCt, loopCt);
 
-                    Logging.LogEvent($"{instanceGuid:N}: Tasks starting...");
-                    Logging.LogEvent($"{instanceGuid:N}: Work share Ids ({workShareInstance.Length}): {string.Join(", ", workShareInstance.Select(a => $"{a}").ToArray())}");
+                    Logging.LogEvent($"[{instanceGuid:N}] Tasks starting...");
+                    Logging.LogEvent($"[{instanceGuid:N}] Work share Ids ({workShareInstance.Length}): {string.Join(", ", workShareInstance.Select(a => $"{a}").ToArray())}");
 
 
 
@@ -1166,7 +1175,7 @@ namespace SvmFsBatch
                     //}
 
                     try { await Task.WhenAll(innerResultsTasks).ConfigureAwait(false); }
-                    catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                     var innerResults = innerResultsTasks.Where(a => a.IsCompletedSuccessfully && a.Result != default && a.Result.Length > 0).SelectMany(a => a.Result).ToArray();
                     innerResults = innerResults.Where(a => a.cm != default && a.id != default).ToArray();
@@ -1177,8 +1186,8 @@ namespace SvmFsBatch
 
                     syncResultIds = syncResultIds.Union(innerResultIds).ToArray();
 
-                    Logging.LogEvent($"{instanceGuid:N}: Tasks complete...");
-                    Logging.LogEvent($"{instanceGuid:N}: Inner results: {innerResultIds.Length} items. Ids: {string.Join(", ", innerResultIds.Select(a => $"{a}").ToArray())}");
+                    Logging.LogEvent($"[{instanceGuid:N}] Tasks complete...");
+                    Logging.LogEvent($"[{instanceGuid:N}] Inner results: {innerResultIds.Length} items. Ids: {string.Join(", ", innerResultIds.Select(a => $"{a}").ToArray())}");
 
 
 
@@ -1186,7 +1195,7 @@ namespace SvmFsBatch
                     loopCts.Dispose();
                     loopDidRun = workShareInstance.Length > 0;
                     try { await Task.WhenAll(etaTask, syncTask).ConfigureAwait(false); }
-                    catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                 }//while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested)
 
                 // save instance results - already saved in loop above
@@ -1200,7 +1209,7 @@ namespace SvmFsBatch
                 mainCts.Cancel();
                 mainCts.Dispose();
 
-                try { await Task.WhenAll(instanceGuidWriterTask).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+                try { await Task.WhenAll(instanceGuidWriterTask).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                 // delete instance id file
 
@@ -1210,7 +1219,7 @@ namespace SvmFsBatch
             //await SaveMasterCache().ConfigureAwait(false);
 
             try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, true, ct); }
-            catch (Exception e) { Logging.LogException(e, $"{instanceGuid:N}"); }
+            catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
             Logging.LogGap(2);
             Logging.LogEvent($@"End of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].");
