@@ -72,16 +72,33 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
-                ? Array.FindIndex(lineHeader, a => a.EndsWith(h))
-                : columnOffset + i)).ToArray();
+            //var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
+            //    ? Array.FindIndex(lineHeader, a => a.EndsWith(h))
+            //    : columnOffset + i)).ToArray();
+
+            var hasHeader = lineHeader != null && lineHeader.Length > 0;
+
+            var headerIndexes = CsvHeaderValuesArray.Select((h, i) =>
+            {
+                var index = columnOffset + i;
+                if (hasHeader)
+                {
+                    var indexFirst = Array.FindIndex(lineHeader, columnOffset, a => a.EndsWith(h));
+                    var indexLast = Array.FindLastIndex(lineHeader, a => a.EndsWith(h));
+
+                    if (indexFirst != indexLast) throw new Exception();
+
+                    index = indexFirst;
+                }
+                return (header: h, index: index);
+            }).ToArray();
 
             int Hi(string name)
             {
-                var a = headerIndexes.FirstOrDefault(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase));
-                Logging.LogExit(ModuleName); return a == default
-                    ? -1
-                    : a.index;
+                var matches = headerIndexes.Where(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (matches.Length == 1) return matches[0].index;
+                //if (matches.Length == 0) return -1;
+                throw new Exception();
             }
 
             var hiGkFileTag = Hi(nameof(Value.gkFileTag));

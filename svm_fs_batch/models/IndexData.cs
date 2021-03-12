@@ -197,13 +197,32 @@ namespace SvmFsBatch
 
             var k = columnOffset;
 
-            var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
-                ? Array.FindIndex(lineHeader, a => a.EndsWith(h))
-                : columnOffset + i)).ToArray();
+            //var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
+            //    ? Array.FindIndex(lineHeader, a => a.EndsWith(h))
+            //    : columnOffset + i)).ToArray();
+
+            var hasHeader = lineHeader != null && lineHeader.Length > 0;
+
+            var headerIndexes = CsvHeaderValuesArray.Select((h, i) =>
+            {
+                var index = columnOffset + i;
+                if (hasHeader)
+                {
+                    var indexFirst = Array.FindIndex(lineHeader, columnOffset, a => a.EndsWith(h));
+                    var indexLast = Array.FindLastIndex(lineHeader, a => a.EndsWith(h));
+
+                    if (indexFirst != indexLast) throw new Exception();
+
+                    index = indexFirst;
+                }
+                return (header: h, index: index);
+            }).ToArray();
 
             int Hi(string name)
             {
-                Logging.LogExit(ModuleName); return headerIndexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+                var matches = headerIndexes.Where(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (matches.Length == 1) return matches[0].index;
+                throw new Exception();
             }
 
             // todo: lookup actual gkGroup key instance - not necessary, since the parent index_data will be looked up

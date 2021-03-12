@@ -485,8 +485,17 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             //const string MethodName = nameof(load_cache_file_list);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
-            if (cacheFiles == null || cacheFiles.Length == 0) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
+
+            if (cacheFiles == null || cacheFiles.Length == 0)
+            {
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
 
             // load and parse cm files
             var loadedDataTasks = asParallel
@@ -520,22 +529,27 @@ namespace SvmFsBatch
             var ret = ct.IsCancellationRequested
                 ? default
                 : (filesLoaded, loadedDataFlat);
+
             Logging.LogExit(ModuleName);
             return ret;
-
         }
 
         public static async Task<(IndexData id, ConfusionMatrix cm)[]> LoadCacheFileAsync(string cmFn, IndexData[] indexesWhole, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogEvent("Cancellation requseted.");
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             const string MethodName = nameof(LoadCacheFileAsync);
 
-            var avail = await IoProxy.IsFileAvailableAsync(true, ct, cmFn, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
+            //var avail = await IoProxy.IsFileAvailableAsync(true, ct, cmFn, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 
-            if (avail)
-            {
+            //if (avail)
+            //{
                 var sw1 = Stopwatch.StartNew();
 
                 var cmList = await ConfusionMatrix.LoadFileAsync(cmFn, ct: ct).ConfigureAwait(false);
@@ -572,18 +586,20 @@ namespace SvmFsBatch
                     var idCmList = cmList.AsParallel().AsOrdered().Select(cm => (id: cm?.id, cm)).Where(a => a.id != null && a.cm != null).ToArray();
 
                     sw1.Stop();
-                    
-                    Logging.LogEvent($"Loaded cache file: {cmFn} ({sw1.Elapsed:dd\\:hh\\:mm\\:ss})");
+
+                    var tsPerItem = idCmList.Length > 0 ? sw1.Elapsed / idCmList.Length : TimeSpan.Zero;
+
+                    Logging.LogEvent($"Loaded cache file [{idCmList.Length} items]: {cmFn} (per item: {tsPerItem:dd\\:hh\\:mm\\:ss}; total: {sw1.Elapsed:dd\\:hh\\:mm\\:ss})");
                     Logging.LogExit(ModuleName);
                     return ct.IsCancellationRequested
                         ? default
                         : idCmList;
                 }
-            }
-            else
-            {
-                Logging.LogEvent($"Cache file not available: {cmFn}");
-            }
+            //}
+            //else
+            //{
+            //    Logging.LogEvent($"Cache file not available: {cmFn}");
+            //}
 
             Logging.LogExit(ModuleName);
             return null;

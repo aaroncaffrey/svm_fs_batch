@@ -260,20 +260,30 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);  
+                return default;
+            }
 
             const string MethodName = nameof(LoadFileAsync);
             
-            var lines = await IoProxy.ReadAllLinesAsync(true, ct, filename, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
+            var lines = await IoProxy.ReadAllLinesAsync(true, ct, filename, /*maxTries:10,*/ callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
             var ret = LoadLines(lines, columnOffset, asParallel, ct);
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :ret;
+            
+            Logging.LogExit(ModuleName); 
+            return ct.IsCancellationRequested ? default :ret;
         }
 
         public static ConfusionMatrix[] LoadLines(string[] lines, int columnOffset = -1, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
 
             var lineHeader = lines[0].Split(',');
             var hasHeaderLine = false;
@@ -315,13 +325,28 @@ namespace SvmFsBatch
             var columnCount = sAll.Length - columnOffset;
             if (columnCount < CsvHeaderValuesArray.Length) { Logging.LogExit(ModuleName);  return null; }
             var xType = XTypes.GetXTypes(sAll, asParallel, ct);
-            var headerIndexes = CsvHeaderValuesArray.Select((h, i) => (header: h, index: lineHeader.Length > 0
-                ? Array.FindIndex(lineHeader, a => a.EndsWith(h))
-                : columnOffset + i)).ToArray();
+            var hasHeader = lineHeader != null && lineHeader.Length > 0;
+
+            var headerIndexes = CsvHeaderValuesArray.Select((h, i) =>
+            {
+                var index = columnOffset+i;
+                if (hasHeader)
+                {
+                    var indexFirst = Array.FindIndex(lineHeader, columnOffset,  a => a.EndsWith(h));
+                    var indexLast = Array.FindLastIndex(lineHeader, a => a.EndsWith(h));
+
+                    if (indexFirst != indexLast) throw new Exception();
+
+                    index = indexFirst;
+                }
+                return (header: h, index: index);
+            }).ToArray();
 
             int Hi(string name)
             {
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :headerIndexes.First(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).index;
+                var matches = headerIndexes.Where(a => a.header.EndsWith(name, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (matches.Length == 1) return matches[0].index;
+                throw new Exception();
             }
 
             var cm = new ConfusionMatrix();
@@ -578,18 +603,24 @@ namespace SvmFsBatch
                         Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: xy[0], y: xy[1]);
                     }).ToArray()
                     : null;
+
+
+            //0.95413000000000003;0.938994;0.92660399999999998;0.92492200000000002;0.91564900000000005;0.91413299999999997;0.91390300000000002;0.90650699999999995;0.89549100000000004;0.89463700000000002;0.89429899999999996;0.89424000000000003;0.89242699999999997;0.89165899999999998;0.88938799999999996;0.88850600000000002;0.88764299999999996;0.88658599999999999;0.88435299999999994;0.88117299999999998;0.87661299999999998;0.87652200000000002;0.87360700000000002;0.87104199999999998;0.86799099999999996;0.86558199999999996;0.85980800000000002;0.85624400000000001;0.85370000000000001;0.84924299999999997;0.83999400000000002;0.83525499999999997;0.83088300000000004;0.82850400000000002;0.82657400000000003;0.82481800000000005;0.82461600000000002;0.81370799999999999;0.81336399999999998;0.81206699999999998;0.80810800000000005;0.80626100000000001;0.80213800000000002;0.80171300000000001;0.801647;0.79861800000000005;0.79793800000000004;0.79730599999999996;0.79621500000000001;0.79515100000000005;0.79397600000000002;0.79268799999999995;0.79146700000000003;0.79145399999999999;0.78934400000000005;0.784972;0.78008299999999997;0.77555499999999999;0.77205699999999999;0.77124199999999998;0.77041000000000004;0.77009499999999997;0.76784200000000002;0.76775000000000004;0.76614800000000005;0.76182799999999995;0.75605800000000001;0.75411099999999998;0.75347299999999995;0.74949100000000002;0.74907900000000005;0.74751299999999998;0.74731700000000001;0.74574799999999997;0.74304400000000004;0.73855400000000004;0.73721499999999995;0.73329299999999997;0.73005500000000001;0.72579800000000005;0.72530399999999995;0.72340899999999997;0.711256;0.69885900000000001;0.68352199999999996;0.68183199999999999;0.68054899999999996;0.66318100000000002;0.66262200000000004;0.66248399999999996;0.65893000000000002;0.65683100000000005;0.64831700000000003;0.64458400000000005;0.64326799999999995;0.62631000000000003;0.61568599999999996;0.59554799999999997;0.58663600000000005;0.57965;0.56664499999999995;0.565774;0.56078099999999997;0.55865600000000004;0.552504;0.54163799999999995;0.53596900000000003;0.53197899999999998;0.50458199999999997;0.492232;0.48181099999999999;0.47982200000000003;0.47244799999999998;0.470503;0.469416;0.45728799999999997;0.452212;0.44118200000000002;0.44058599999999998;0.37138599999999999;0.35862100000000002;0.35231000000000001;0.351188;0.34609800000000002;0.34542099999999998;0.34438800000000003;0.34321800000000002;0.32675900000000002;0.306809;0.30361399999999999;0.29852600000000001;0.28317500000000001;0.27454400000000001;0.27129399999999998;0.26075799999999999;0.235877;0.22689200000000001;0.211979;0.208453;0.20171700000000001;0.18231;0.17997299999999999;0.17175000000000001;0.16480900000000001;0.15815399999999999;0.13957900000000001;0.110263;0.085439799999999996;0.076641000000000001;0.071457400000000004;0.053707499999999998;0.053128700000000001;0.033174299999999997
             if (hiThresholds > -1)
                 cm.Thresholds = !string.IsNullOrWhiteSpace(xType[hiThresholds].AsStr)
                     ? xType[hiThresholds].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => double.TryParse(a, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var thOut)
                         ? thOut
                         : -1).ToArray()
                     : null;
+
             if (hiPredictions > -1)
                 cm.Predictions = !string.IsNullOrWhiteSpace(xType[hiPredictions].AsStr)
                     ? xType[hiPredictions].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => new Prediction(a.Split('|'))).ToArray()
                     : null;
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cm;
+            Logging.LogExit(ModuleName); 
+            
+            return ct.IsCancellationRequested ? default :cm;
         }
 
         public ConfusionMatrix()

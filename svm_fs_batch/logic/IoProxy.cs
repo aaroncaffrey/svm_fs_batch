@@ -374,7 +374,9 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-            var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid()}_{Path.GetFileName(filename)}.tmp");
+            //var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}_{Path.GetFileName(filename)}.tmp");
+            var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}.tmp");
+            var tempWritten = false;
 
             const string MethodName = nameof(WriteAllLinesAsync);
             var tries = 0;
@@ -384,8 +386,14 @@ namespace SvmFsBatch
                 {
                     tries++;
                     if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return false; }
-                    await CreateDirectoryAsync(log, ct, tempFilename, 1, false, callerModuleName, callerMethodName).ConfigureAwait(false);
-                    await File.WriteAllLinesAsync(tempFilename, lines ?? new List<string>(), Ec, ct).ConfigureAwait(false);
+
+                    if (!tempWritten)
+                    {
+                        await CreateDirectoryAsync(log, ct, tempFilename, 1, false, callerModuleName, callerMethodName).ConfigureAwait(false);
+                        await File.WriteAllLinesAsync(tempFilename, lines ?? new List<string>(), Ec, ct).ConfigureAwait(false);
+                        tempWritten = true;
+                    }
+
                     try { File.Delete(filename); } catch (Exception) { }
                     File.Move(tempFilename, filename);
                     Logging.LogExit(ModuleName);
@@ -440,7 +448,11 @@ namespace SvmFsBatch
         public static async Task<bool> AppendAllTextAsync(bool log, CancellationToken ct, string filename, string text, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "")
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             const string MethodName = nameof(AppendAllTextAsync);
             var tries = 0;
@@ -480,7 +492,9 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-            var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid()}_{Path.GetFileName(filename)}.tmp");
+            //var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}_{Path.GetFileName(filename)}.tmp");
+            var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}.tmp");
+            var tempWritten = false;
 
             const string MethodName = nameof(WriteAllTextAsync);
             var tries = 0;
@@ -489,9 +503,19 @@ namespace SvmFsBatch
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return false; }
-                    await CreateDirectoryAsync(log, ct, tempFilename, 1, false, callerModuleName, callerMethodName).ConfigureAwait(false);
-                    await File.WriteAllTextAsync(tempFilename, text, Ec, ct).ConfigureAwait(false);
+                    if (ct.IsCancellationRequested)
+                    {
+                        Logging.LogExit(ModuleName); 
+                        return false;
+                    }
+
+                    if (!tempWritten)
+                    {
+                        await CreateDirectoryAsync(log, ct, tempFilename, 1, false, callerModuleName, callerMethodName).ConfigureAwait(false);
+                        await File.WriteAllTextAsync(tempFilename, text, Ec, ct).ConfigureAwait(false);
+                        tempWritten = true;
+                    }
+
                     try { File.Delete(filename); } catch (Exception) { }
                     File.Move(tempFilename, filename);
                     Logging.LogExit(ModuleName);

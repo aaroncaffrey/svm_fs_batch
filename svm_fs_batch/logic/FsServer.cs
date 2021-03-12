@@ -48,7 +48,7 @@ namespace SvmFsBatch
 
             // Limit for testing
             // todo: remove this
-            groups1 = groups1.Take(5).ToArray();
+            //groups1 = groups1.Take(100).ToArray();
             var esn = 0;
             // Feature select within each gkGroup first, to reduce number of columns
             if (findBestGroupFeaturesFirst)
@@ -265,7 +265,8 @@ namespace SvmFsBatch
 
             // todo: check whether loading/saving full cache in this method... duplicated work or missing work...
 
-            experimentName = $"{experimentName}_E{experimentSequenceNumber}_S{experimentSubequenceNumber}";
+            experimentName = $"{experimentName}_E{experimentSequenceNumber}_S{experimentSubequenceNumber}_G{groups.Length}";
+            
 
             const string MethodName = nameof(FeatureSelectionWorker);
             const bool overwriteCache = false;

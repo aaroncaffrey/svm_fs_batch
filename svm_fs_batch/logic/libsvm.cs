@@ -110,7 +110,12 @@ namespace SvmFsBatch
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+                    if (ct.IsCancellationRequested)
+                    {
+                        Logging.LogExit(ModuleName);  
+                        return default;
+                    }
+
                     using var process = Process.Start(start);
                     if (process == null)
                     {
@@ -123,7 +128,9 @@ namespace SvmFsBatch
                     //var exited = process.WaitForExit((int) Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
 
                     using var delayCts = new CancellationTokenSource();
-                    await Task.WhenAny(process.WaitForExitAsync(ct), Task.Delay(TimeSpan.FromMinutes(45), delayCts.Token)).ConfigureAwait(false);
+                    var delayCt = delayCts.Token;
+                    try{await Task.WhenAny(process.WaitForExitAsync(ct), Task.Delay(TimeSpan.FromMinutes(45), delayCt)).ConfigureAwait(false);}
+                    catch (Exception e) { Logging.LogException(e);}
                     delayCts.Cancel();
                     var exited = process.HasExited;
                     if (!exited)
@@ -229,7 +236,11 @@ namespace SvmFsBatch
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+                    if (ct.IsCancellationRequested)
+                    {
+                        Logging.LogExit(ModuleName);  
+                        return default;
+                    }
                     using var process = Process.Start(start);
                     if (process == null)
                     {
@@ -241,7 +252,9 @@ namespace SvmFsBatch
                     if (log) Logging.WriteLine($"Spawned process {Path.GetFileName(start.FileName)}: {process.Id}", ModuleName, MethodName);
                     //var exited = process.WaitForExit((int) Math.Ceiling(new TimeSpan(0, 45, 0).TotalMilliseconds));
                     using var delayCts = new CancellationTokenSource();
-                    await Task.WhenAny(process.WaitForExitAsync(ct), Task.Delay(TimeSpan.FromMinutes(45), delayCts.Token)).ConfigureAwait(false);
+                    var delayCt = delayCts.Token;
+                    try{await Task.WhenAny(process.WaitForExitAsync(ct), Task.Delay(TimeSpan.FromMinutes(45), delayCt)).ConfigureAwait(false);}
+                    catch (Exception e) { Logging.LogException(e);}
                     delayCts.Cancel();
 
                     var exited = process.HasExited;

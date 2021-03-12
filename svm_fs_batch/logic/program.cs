@@ -91,7 +91,7 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName, lvl: lvl + 1);
 
 
-            
+
 
 
             //var id1 = new IndexData();
@@ -219,7 +219,7 @@ namespace SvmFsBatch
                 await Mpstat.Start(mainCt).ConfigureAwait(false);
             }
 
-            
+
             //await DataSet.LoadDataSetAsync(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt).ConfigureAwait(false);
 
             var tasks = new List<Task>();
@@ -271,7 +271,7 @@ namespace SvmFsBatch
 
             if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
             {
-                var task=Task.Run(async () => await RpcService.ListenForRPC(mainCt, Program.ProgramArgs.ServerPort).ConfigureAwait(false), mainCt);
+                var task = Task.Run(async () => await RpcService.ListenForRPC(mainCt, Program.ProgramArgs.ServerPort).ConfigureAwait(false), mainCt);
                 tasks.Add(task);
             }
 
@@ -308,13 +308,13 @@ namespace SvmFsBatch
         public static string GetIterationFolder(string resultsRootFolder, string ExperimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             const bool hr = false;
 
-            if (iterationIndex == null) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName); }
-            if (groupIndex == null) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}"); }
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
+            if (iterationIndex == null) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, ExperimentName); }
+            if (groupIndex == null) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}"); }
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
         }
 
 
@@ -365,7 +365,7 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
 
-            
+
             cm.XClassName = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => cm.XClassId == b.ClassId).ClassName ?? default;
             cm.XClassSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).ClassSize ?? -1;
             cm.XDownSampledClassSize = unrolledIndexData.IdClassFolds?.FirstOrDefault(b => b.ClassId == cm.XClassId).DownSampledClassSize ?? -1;
@@ -384,11 +384,7 @@ namespace SvmFsBatch
         }
 
 
-        public static string GetItemFilename(IndexData unrolledIndex, int repetitionIndex, int outerCvIndex, CancellationToken ct)
-        {
-            Logging.LogCall(ModuleName);
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :$@"{GetIterationFilename(new[] {unrolledIndex},ct)}_ri[{repetitionIndex}]_oi[{outerCvIndex}]";
-        }
+
 
         //public static string GetIterationFilename(program_args pa)
         //{
@@ -404,25 +400,55 @@ namespace SvmFsBatch
         //    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :GetIterationFilename(new[] {id});
         //}
 
+        public static string GetInitials(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return "_";
+
+            var initialIndexes = new List<int>();
+
+            if (char.IsLetter(name[0])) initialIndexes.Add(0);
+
+            for (var i = 1; i < name.Length; i++)
+            {
+                if (char.IsLetter(name[i]) && (char.IsUpper(name[i]) || (!char.IsLetter(name[i - 1])))) initialIndexes.Add(i);
+            }
+
+            var initials = string.Join("", initialIndexes.Select(a => name[a]).ToArray());
+            //var initials = string.Join("", name.Replace("_", " ", StringComparison.Ordinal).Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
+            Logging.LogExit(ModuleName);
+
+            return initials.Length > 2
+                ? /* initials.Substring(0, 2) */ $@"{initials.First()}{initials.Last()}"
+                : initials;
+        }
+
+        public static string Reduce(string text, int max = 30)
+        {
+            Logging.LogExit(ModuleName); return text != null && text.Length > max
+                ? $"{text.Substring(0, max / 3)}_{text.Substring(text.Length / 2 - (max / 3 - 2) / 2, max / 3 - 2)}_{text.Substring(text.Length - max / 3, max / 3)}"
+                : text;
+        }
+
+        public static string GetItemFilename(IndexData unrolledIndex, int repetitionIndex, int outerCvIndex, CancellationToken ct)
+        {
+            Logging.LogCall(ModuleName);
+            Logging.LogExit(ModuleName);
+
+            return ct.IsCancellationRequested ? default :
+                $@"{GetIterationFilename(new[] { unrolledIndex }, ct)}_{GetInitials(nameof(repetitionIndex))}[{repetitionIndex}]_oi[{outerCvIndex}]";
+        }
+
         public static string GetIterationFilename(IndexData[] indexes, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            static string GetInitials(string name)
+            if (ct.IsCancellationRequested)
             {
-                var initials = string.Join("", name.Replace("_", " ", StringComparison.Ordinal).Split().Where(a => a.Length > 0).Select(a => a.First()).ToList());
-                Logging.LogExit(ModuleName); return initials.Length > 2
-                    ? /* initials.Substring(0, 2) */ $@"{initials.First()}{initials.Last()}"
-                    : initials;
+                Logging.LogExit(ModuleName);
+                return default;
             }
 
-            static string Reduce(string text, int max = 30)
-            {
-                Logging.LogExit(ModuleName); return text != null && text.Length > max
-                    ? $"{text.Substring(0, max / 3)}_{text.Substring(text.Length / 2 - (max / 3 - 2) / 2, max / 3 - 2)}_{text.Substring(text.Length - max / 3, max / 3)}"
-                    : text;
-            }
+            
 
             var experimentGroupName = Reduce(string.Join(@"_", indexes.Select(a => a.IdExperimentName).Distinct().ToArray()));
             var iterationIndex = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdIterationIndex).ToList()));
@@ -434,10 +460,10 @@ namespace SvmFsBatch
             var repetitions = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdRepetitions).ToList()));
             var outerCvFolds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFolds).ToList()));
             var outerCvFoldsToRun = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFoldsToRun).ToList()));
-            var classWeights = string.Join("_", indexes.Where(a => a.IdClassWeights != null).SelectMany(a => a.IdClassWeights).GroupBy(a => a.ClassId).Select(a => $@"{a.Key}_{Reduce(Routines.FindRangesStr(a.Select(b => (int) (b.ClassWeight * 100)).ToList()))}").ToList());
-            var svmType = Reduce(Routines.FindRangesStr(indexes.Select(a => (int) a.IdSvmType).ToList()));
-            var svmKernel = Reduce(Routines.FindRangesStr(indexes.Select(a => (int) a.IdSvmKernel).ToList()));
-            var scaleFunction = Reduce(Routines.FindRangesStr(indexes.Select(a => (int) a.IdScaleFunction).ToList()));
+            var classWeights = string.Join("_", indexes.Where(a => a.IdClassWeights != null).SelectMany(a => a.IdClassWeights).GroupBy(a => a.ClassId).Select(a => $@"{a.Key}_{Reduce(Routines.FindRangesStr(a.Select(b => (int)(b.ClassWeight * 100)).ToList()))}").ToList());
+            var svmType = Reduce(Routines.FindRangesStr(indexes.Select(a => (int)a.IdSvmType).ToList()));
+            var svmKernel = Reduce(Routines.FindRangesStr(indexes.Select(a => (int)a.IdSvmKernel).ToList()));
+            var scaleFunction = Reduce(Routines.FindRangesStr(indexes.Select(a => (int)a.IdScaleFunction).ToList()));
             var innerCvFolds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdInnerCvFolds).ToList()));
 
             var p = new List<(string name, string value)>
@@ -457,13 +483,15 @@ namespace SvmFsBatch
                 (GetInitials(nameof(innerCvFolds)), innerCvFolds) //ic
             };
 
-            var iterFn = string.Join(@"_", p.Select(a => $@"{a.name}[{a.value ?? ""}]").ToList());
+            var iterFn = string.Join(@"", p.Select(a => $@"{a.name ?? "_"}[{a.value ?? "_"}]").ToArray());
 
             const string fnChars = @"0123456789[]{}()_+-.;qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
 
             if (!iterFn.All(a => fnChars.Contains(a))) throw new Exception();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :iterFn;
+            Logging.LogExit(ModuleName);
+
+            return ct.IsCancellationRequested ? default : iterFn;
         }
 
 

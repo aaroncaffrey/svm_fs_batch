@@ -166,7 +166,6 @@ namespace SvmFsBatch
             // filename format: [0] field name, [1] source instance guid, [-1] datetime
 
 
-
             var now = DateTime.UtcNow;
             var elapsed = now - ReadInstancesTime;
 
@@ -174,6 +173,7 @@ namespace SvmFsBatch
             {
                 while (true)
                 {
+                    var readInstancesEnter = ReadInstancesGuids?.ToArray();
 
                     var instanceMarkerFiles = Directory.GetFiles(GetIpcCommsFolder(experimentName, iterationIndex), "instance*_?*.txt");
 
@@ -197,7 +197,7 @@ namespace SvmFsBatch
 
                     if (instanceMarkersTimedOut.Length > 0)
                     {
-                        Logging.LogEvent("Instances timed out: " + string.Join(", ", instanceMarkersTimedOut.Select(a => $"{a.sourceGuid} (timed out: {((now - a.requestTime) - ReadInstancesInstanceTimeout):dd\\:hh\\:mm\\:ss})").ToArray()));
+                        Logging.LogEvent("Instances timed out: " + string.Join(", ", instanceMarkersTimedOut.Select(a => $"{a.sourceGuid:N} (timed out: {((now - a.requestTime) - ReadInstancesInstanceTimeout):dd\\:hh\\:mm\\:ss})").ToArray()));
                     }
 
                     var missingInstances = instanceMarkers.Select(a => a.sourceGuid).Except(knownInstances ?? Array.Empty<Guid>()).ToArray();
@@ -220,6 +220,11 @@ namespace SvmFsBatch
                     if (!instancesChanged && ReadInstancesGuids != null && ReadInstancesGuids.Length > 0) instancesChanged = !(ReadInstancesGuids ?? Array.Empty<Guid>()).SequenceEqual(instanceGuids ?? Array.Empty<Guid>());
 
                     ReadInstancesGuids = instanceGuids;
+
+                    if (instancesChanged && (readInstancesEnter?? Array.Empty<Guid>()).SequenceEqual(ReadInstancesGuids?? Array.Empty<Guid>()))
+                    {
+                        instancesChanged = false;
+                    }
 
                     if (instancesChanged)
                     {
@@ -1182,7 +1187,7 @@ namespace SvmFsBatch
 
                     instanceIterationCmLoaded.AddRange(innerResults);
 
-                    var innerResultIds = innerResults.Select(a => a.id.IdJobUid).ToArray();
+                    var innerResultIds = innerResults.Select(a => a.id.IdJobUid).Distinct().ToArray();
 
                     syncResultIds = syncResultIds.Union(innerResultIds).ToArray();
 
@@ -1192,10 +1197,10 @@ namespace SvmFsBatch
 
 
                     loopCts.Cancel();
-                    loopCts.Dispose();
                     loopDidRun = workShareInstance.Length > 0;
                     try { await Task.WhenAll(etaTask, syncTask).ConfigureAwait(false); }
                     catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
+                    loopCts.Dispose();
                 }//while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested)
 
                 // save instance results - already saved in loop above
@@ -1207,9 +1212,10 @@ namespace SvmFsBatch
 
 
                 mainCts.Cancel();
+                try { await Task.WhenAll(instanceGuidWriterTask).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                 mainCts.Dispose();
 
-                try { await Task.WhenAll(instanceGuidWriterTask).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
+                
 
                 // delete instance id file
 
@@ -1221,8 +1227,10 @@ namespace SvmFsBatch
             try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, true, ct); }
             catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
+            var instanceJobIdsCompleted = instanceIterationCmLoaded.Select(a => a.id.IdJobUid).OrderBy(a => a).Distinct().ToArray();
+
             Logging.LogGap(2);
-            Logging.LogEvent($@"End of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].");
+            Logging.LogEvent($@"End of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].  Jobs completed by this instance [{instanceJobIdsCompleted.Length}]: {string.Join(", ", instanceJobIdsCompleted)}.");
             Logging.LogGap(2);
 
 
