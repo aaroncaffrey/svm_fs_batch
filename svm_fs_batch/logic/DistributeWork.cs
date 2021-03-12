@@ -747,14 +747,20 @@ namespace SvmFsBatch
             return folder;
         }
 
-        public async Task<List<(IndexData id, ConfusionMatrix cm)>> ServeIpcJobsAsync(Guid instanceGuid, string experimentName, int iterationIndex, DataSet dataSet, IndexData[] indexesWhole, ulong lvl = 0, bool asParallel = true, CancellationToken ct = default)
+        public async Task<List<(IndexData id, ConfusionMatrix cm)>> ServeIpcJobsAsync(Guid instanceGuid, string experimentName, int iterationIndex, DataSet dataSet, IndexData[] indexesWhole, ulong lvl = 0, bool asParallel = true, CancellationToken callerCt = default)
         {
-            if (ct.IsCancellationRequested)
+            if (callerCt.IsCancellationRequested)
             {
                 Logging.LogEvent($"[{instanceGuid:N}] Cancellation requested");
                 Logging.LogExit();
                 return default;
             }
+
+            //using var methodCts = new CancellationTokenSource();
+            //var methodCt = methodCts.Token;
+            //using var methodLinkedCts = CancellationTokenSource.CreateLinkedTokenSource(callerCt, methodCt);
+            //var methodLinkedCt = methodLinkedCts.Token;
+
 
             Console.WriteLine();
             Console.WriteLine();
@@ -770,16 +776,16 @@ namespace SvmFsBatch
 
             var instanceIterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
             var masterIterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
-            var (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, ct);
+            var (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, callerCt);
 
             async Task RefreshCache()
             {
                 var cacheFolder = GetIpcCommsFolder(experimentName, iterationIndex);
-                var cacheFiles = await IoProxy.GetFilesAsync(true, ct, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
+                var cacheFiles = await IoProxy.GetFilesAsync(true, callerCt, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
 
                 if (cacheFiles.Length > 0)
                 {
-                    var cache = await CacheLoad.LoadCacheFileListAsync(indexesWhole, cacheFiles, true, ct).ConfigureAwait(false);
+                    var cache = await CacheLoad.LoadCacheFileListAsync(indexesWhole, cacheFiles, true, callerCt).ConfigureAwait(false);
                     if (cache != default && cache.IdCmSd != default && cache.IdCmSd.Length > 0)
                     {
                         masterIterationCmLoaded = cache.IdCmSd.ToList();
@@ -787,7 +793,7 @@ namespace SvmFsBatch
                     }
                 }
 
-                (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, ct);
+                (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, callerCt);
             }
 
             /*
@@ -823,7 +829,7 @@ namespace SvmFsBatch
                 var cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}.csv");
                 var cacheSaveLines = instanceIterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
                 cacheSaveLines.Insert(0, $@"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
-                await IoProxy.WriteAllLinesAsync(true, ct, cacheSaveFn, cacheSaveLines).ConfigureAwait(false);
+                await IoProxy.WriteAllLinesAsync(true, callerCt, cacheSaveFn, cacheSaveLines).ConfigureAwait(false);
             }
 
             Task InstanceGuidWriterTask(CancellationToken mainCt)
@@ -833,7 +839,7 @@ namespace SvmFsBatch
 
                 var instanceGuidWriterTask = Task.Run(async () =>
                     {
-                        while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested)
+                        while (!callerCt.IsCancellationRequested && !mainCt.IsCancellationRequested)
                         {
                             try
                             {
@@ -857,7 +863,7 @@ namespace SvmFsBatch
 
                 var syncTask = Task.Run(async () =>
                     {
-                        while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested && !loopCt.IsCancellationRequested)
+                        while (!callerCt.IsCancellationRequested && !mainCt.IsCancellationRequested && !loopCt.IsCancellationRequested)
                         {
                             try
                             {
@@ -878,18 +884,26 @@ namespace SvmFsBatch
                                 if (syncRequest != default || cancel)
                                 {
 
-                                    try
-                                    {
-                                        Logging.LogEvent($"[{instanceGuid:N}] Cancelling...");
-                                        loopCts?.Cancel();
-                                    }
-                                    catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
+                                    //try
+                                    //{
+                                    //    Logging.LogEvent($"[{instanceGuid:N}] Cancelling...");
+                                    //    loopCts?.Cancel();
+                                    //}
+                                    //catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                                     break;
                                 }
                             }
                             catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                         }
+
+                        try
+                        {
+                            Logging.LogEvent($"[{instanceGuid:N}] Cancelling...");
+                            loopCts?.Cancel();
+                        }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
+
                     },
                     loopCt);
 
@@ -913,7 +927,7 @@ namespace SvmFsBatch
                     var started = 0;
                     var completed = 0;
 
-                    while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested && !loopCt.IsCancellationRequested)
+                    while (!callerCt.IsCancellationRequested && !mainCt.IsCancellationRequested && !loopCt.IsCancellationRequested)
                     {
                         try
                         {
@@ -956,7 +970,7 @@ namespace SvmFsBatch
 
                     lock (workShareInstanceNumStartedLock) workShareInstanceNumStarted++;
 
-                    if (ct.IsCancellationRequested || mainCt.IsCancellationRequested || loopCt.IsCancellationRequested)
+                    if (callerCt.IsCancellationRequested || mainCt.IsCancellationRequested || loopCt.IsCancellationRequested)
                     {
                         if (workShareInstanceSize - workShareInstanceNumComplete > 1)
                         {
@@ -965,14 +979,14 @@ namespace SvmFsBatch
                         }
                     }
 
-                    var mocvi = CrossValidate.MakeOuterCvInputs(dataSet, indexData, ct: ct);
+                    var mocvi = CrossValidate.MakeOuterCvInputs(dataSet, indexData, ct: loopCt);
                     if (mocvi == default || mocvi.outerCvInputs.Length == 0)
                     {
                         Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: MakeOuterCvInputs returned default...");
                         return default;
                     }
 
-                    var ret = await CrossValidate.CrossValidatePerformanceAsync(null, CrossValidate.RpcPoint.None, mocvi.outerCvInputs, mocvi.mergedCvInput, indexData, ct: ct).ConfigureAwait(false);
+                    var ret = await CrossValidate.CrossValidatePerformanceAsync(null, CrossValidate.RpcPoint.None, mocvi.outerCvInputs, mocvi.mergedCvInput, indexData, ct: loopCt).ConfigureAwait(false);
                     if (ret == default || ret.Length == 0 || ret.Any(a => a.id == default || a.cm == default))
                     {
                         Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: CrossValidatePerformanceAsync returned default...");
@@ -1021,7 +1035,7 @@ namespace SvmFsBatch
 
                 countOuter++;
 
-                if (ct.IsCancellationRequested) return default;
+                if (callerCt.IsCancellationRequested) return default;
 
                 var workIds = indexesWhole.Select(a => a.IdJobUid).ToArray();
                 //var workCompleteIds = indexesLoaded.Select(a => a.IdJobUid).ToArray();
@@ -1054,7 +1068,7 @@ namespace SvmFsBatch
                 var loopDidRun = false;
                 var finalSync = false;
                 var countInner = 0;
-                while (!ct.IsCancellationRequested && !mainCt.IsCancellationRequested)
+                while (!callerCt.IsCancellationRequested && !mainCt.IsCancellationRequested)
                 {
                     Console.WriteLine();
                     Console.WriteLine();
@@ -1224,7 +1238,7 @@ namespace SvmFsBatch
             // no need to save master cache, individual is fine and will save time
             //await SaveMasterCache().ConfigureAwait(false);
 
-            try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, true, ct); }
+            try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, true, callerCt); }
             catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
             var instanceJobIdsCompleted = instanceIterationCmLoaded.Select(a => a.id.IdJobUid).OrderBy(a => a).Distinct().ToArray();

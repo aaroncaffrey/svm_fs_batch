@@ -18,7 +18,16 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
+            //using var methodCts = new CancellationTokenSource();
+            //var methodCt = methodCts.Token;
+            //using var methodLinkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, methodCt);
+            //var methodLinkedCt = methodLinkedCts.Token;
+
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return;
+            }
 
             const string MethodName = nameof(FeatureSelectionInitializationAsync);
 
