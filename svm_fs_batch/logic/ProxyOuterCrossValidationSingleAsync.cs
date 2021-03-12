@@ -69,12 +69,12 @@ namespace SvmFsBatch
 
             public class Result
             {
-                TimeSpan? gridDur;
-                TimeSpan? trainDur;
-                TimeSpan? predictDur;
-                GridPoint GridPoint;
-                string[] PredictText;
-                ConfusionMatrix[] OcvCm;
+                public TimeSpan? gridDur;
+                public TimeSpan? trainDur;
+                public TimeSpan? predictDur;
+                public GridPoint GridPoint;
+                public string[] PredictText;
+                public ConfusionMatrix[] OcvCm;
 
                 public (TimeSpan? gridDur, TimeSpan? trainDur, TimeSpan? predictDur, GridPoint GridPoint, string[] PredictText, ConfusionMatrix[] OcvCm) ToTuple()
                 {

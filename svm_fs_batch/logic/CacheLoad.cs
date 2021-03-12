@@ -544,7 +544,7 @@ namespace SvmFsBatch
                 return default;
             }
 
-            const string MethodName = nameof(LoadCacheFileAsync);
+            //const string MethodName = nameof(LoadCacheFileAsync);
 
             //var avail = await IoProxy.IsFileAvailableAsync(true, ct, cmFn, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
 

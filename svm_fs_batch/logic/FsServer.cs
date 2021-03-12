@@ -402,7 +402,7 @@ namespace SvmFsBatch
                 //while (IndexDataContainer.indexes_missing_partition.Any())
                 var dw = new DistributeWork();
 
-                var iterationWholeResults= await dw.ServeIpcJobsAsync(instanceGuid, experimentName, iterationIndex, DataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, ct: ct).ConfigureAwait(false);
+                var iterationWholeResults= await dw.ServeIpcJobsAsync(instanceGuid, experimentName, iterationIndex, DataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, callerCt: ct).ConfigureAwait(false);
 
                 // save partition cache
                 //{
