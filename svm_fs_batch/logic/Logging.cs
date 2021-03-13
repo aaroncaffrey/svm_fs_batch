@@ -106,20 +106,25 @@ namespace SvmFsBatch
 
         public static void LogCall(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
+#if DEBUG
+
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
 
             var callChainStr = string.Join(" -> ", callChain?.Select(a => $"{a.callerModuleName}.{a.callerMethodName}:{a.callerLineNumer}()").ToArray() ?? Array.Empty<string>());
             //LogEvent($"[CALL] {lvl} {callChainStr}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //,_CallerMethodType, _CallerMethodArgs);
+#endif
         }
 
         public static void LogExit(string callerModuleName = "", [CallerMemberName] string callerMethodName = "", /*[CallerFilePath] string callerFilePath = "",*/ [CallerLineNumber] int callerLineNumber = 0, (string callerModuleName, string callerMethodName, int callerLineNumer)[] callChain = null, ulong lvl = 0)
         {
+#if DEBUG
             callChain = (callChain ?? Array.Empty<(string, string, int)>()).Concat(new[] { (callerModuleName, callerMethodName, callerLineNumber) }).ToArray();
 
             var callChainStr = string.Join(" -> ", callChain?.Select(a => $"{a.callerModuleName}.{a.callerMethodName}:{a.callerLineNumer}()").ToArray() ?? Array.Empty<string>());
             //LogEvent($"[EXIT] {lvl} {callChainStr}", callerModuleName, callerMethodName, /*callerFilePath,*/ callerLineNumber);
             //,_CallerMethodType, _CallerMethodArgs);
+#endif
         }
 
         public static void LogGap(int count)

@@ -582,8 +582,17 @@ namespace SvmFsBatch
         public static (double x, double y)[] CalculateRocPlot(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
-            if (thresholdConfusionMatrixList == null || thresholdConfusionMatrixList.Length == 0) { Logging.LogExit(ModuleName);  return null; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
+
+            if (thresholdConfusionMatrixList == null || thresholdConfusionMatrixList.Length == 0)
+            {
+                Logging.LogExit(ModuleName);  
+                return null;
+            }
             var xy1 = thresholdConfusionMatrixList.Select(a => (x: a.Metrics.PFpr, y: a.Metrics.PTpr)).Distinct().ToArray();
 
             var needStart = !xy1.Any(a => a.x == 0.0 && a.y == 0.0);
@@ -609,7 +618,8 @@ namespace SvmFsBatch
 
             //todo: check whether 'roc_auc_approx' should be calculated before or after 'OrderBy' y,x statement, or if doesn't matter.
             xy1 = xy1.OrderBy(a => a.y).ThenBy(a => a.x).ToArray();
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xy1;
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default :xy1;
         }
 
         //public static (double x, double y)[] calc_pri_plot(ConfusionMatrix[] threshold_confusion_matrix_list)

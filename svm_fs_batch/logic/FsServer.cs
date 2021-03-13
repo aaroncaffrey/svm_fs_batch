@@ -462,7 +462,7 @@ namespace SvmFsBatch
 
 
                 featureSelectionFinished = CheckWhetherFinished(experimentName, minScoreIncrease, maxIterations, limitIterationNotHigherThanAll, limitIterationNotHigherThanLast, featureSelectionFinished, thisIterationWinnerIdCmRs, lastWinnerIdCmRs, numAvailableGroups, iterationIndex, ref bestWinnerIdCmRs, ref iterationsNotHigherThanLast, ref iterationsNotHigherThanBest, ct);
-                await SaveIterationSummaryAsync(experimentName, indexesWhole, iterationFolder, iterationIndex, MethodName, overwriteCache, iterationWholeResultsFixedWithRanks, allWinnersIdCmRs, ct).ConfigureAwait(false);
+                await SaveIterationSummaryAsync(experimentName, indexesWhole, iterationFolder, iterationIndex, overwriteCache, iterationWholeResultsFixedWithRanks, allWinnersIdCmRs, ct).ConfigureAwait(false);
 
                 lastWinnerIdCmRs = thisIterationWinnerIdCmRs;
                 allIterationIdCmRs.Add(iterationWholeResultsFixedWithRanks);
@@ -646,8 +646,7 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName); return featureSelectionFinished;
         }
 
-        public static async Task SaveIterationSummaryAsync(string ExperimentName, IndexData[] indexesWhole, /*int InstanceId, int TotalInstances,*/
-            string iterationFolder, int iterationIndex, string MethodName, bool overwriteCache, (IndexData id, ConfusionMatrix cm, RankScore rs)[] iterationWholeResultsFixedWithRanks, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> allWinnersIdCmRs, CancellationToken ct)
+        public static async Task SaveIterationSummaryAsync(string experimentName, IndexData[] indexesWhole, string iterationFolder, int iterationIndex, bool overwriteCache, (IndexData id, ConfusionMatrix cm, RankScore rs)[] iterationWholeResultsFixedWithRanks, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> allWinnersIdCmRs, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
@@ -659,7 +658,7 @@ namespace SvmFsBatch
 
             void Log(string msg)
             {
-                Logging.WriteLine($"{ExperimentName}, iteration: {iterationIndex}, {msg}.");
+                Logging.WriteLine($"{experimentName}, iteration: {iterationIndex}, {msg}.");
             }
 
             var fn = Program.GetIterationFilename(indexesWhole, ct);
@@ -672,7 +671,7 @@ namespace SvmFsBatch
                     // Save the CM ranked for the current iteration (winner rank #0)
                     var iterationCmRanksFn1 = Path.Combine(iterationFolder, $@"iteration_ranks_cm_{fn}_full.csv");
                     //var iteration_cm_ranks_fn2 = Path.Combine(iteration_folder, $@"iteration_ranks_cm_{fn}_summary.csv");
-                    if (await IoProxy.IsFileAvailableAsync(true, ct, iterationCmRanksFn1, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false)) // && await io_proxy.IsFileAvailable(true, ct, iteration_cm_ranks_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
+                    if (await IoProxy.IsFileAvailableAsync(true, ct, iterationCmRanksFn1, false, callerModuleName: ModuleName).ConfigureAwait(false)) // && await io_proxy.IsFileAvailable(true, ct, iteration_cm_ranks_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
                     {
                         Log($@"Already saved for iteration {iterationIndex}. Files: {iterationCmRanksFn1}."); //, {iteration_cm_ranks_fn2}.");
                     }
@@ -692,7 +691,7 @@ namespace SvmFsBatch
                     // Save the CM of winners from all iterations
                     var winnersCmFn1 = Path.Combine(iterationFolder, $@"winners_cm_{fn}_full.csv");
                     //var winners_cm_fn2 = Path.Combine(iteration_folder, $@"winners_cm_{fn}_summary.csv");
-                    if (await IoProxy.IsFileAvailableAsync(true, ct, winnersCmFn1, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false))
+                    if (await IoProxy.IsFileAvailableAsync(true, ct, winnersCmFn1, false, callerModuleName: ModuleName).ConfigureAwait(false))
                         // && await io_proxy.IsFileAvailable(true, ct, winners_cm_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
                     {
                         Log($@"Already saved for iteration {iterationIndex}. Files: {winnersCmFn1}"); //, {winners_cm_fn2}.");
@@ -712,7 +711,7 @@ namespace SvmFsBatch
 
                     // Save the prediction list for misclassification analysis
                     var predictionListFilename = Path.Combine(iterationFolder, $@"iteration_prediction_list_{fn}.csv");
-                    if (await IoProxy.IsFileAvailableAsync(true, ct, predictionListFilename, false, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false))
+                    if (await IoProxy.IsFileAvailableAsync(true, ct, predictionListFilename, false, callerModuleName: ModuleName).ConfigureAwait(false))
                     {
                         Log($@"Already saved for iteration {iterationIndex}. File: {predictionListFilename}.");
                     }
@@ -839,7 +838,7 @@ namespace SvmFsBatch
                     for (var index = 0; index < iters.Length; index++)
                     {
                         var y = iterScore.Item2.FirstOrDefault(a => a.id.IdIterationIndex == iters[index]);
-                        if (y != default) { x[index] = (double?)y.rs.RsFsScore; }
+                        if (y != default && y.rs != default) { x[index] = (double?)y.rs.RsFsScore; }
                     }
 
                     iterLines.Add($"{iterScore.Item2.First().id.IdGroupKey?.CsvValuesString() ?? DataSetGroupKey.Empty.CsvValuesString()},g{iterScore.IdGroupArrayIndex},0,{string.Join(",", x)}");
