@@ -157,9 +157,9 @@ namespace SvmFsBatch
 
                 (nameof(ProgramArgs.DataSetNames), "[1i.aaindex]"),
 
-                (nameof(ProgramArgs.InnerFolds), "0"),
-                (nameof(ProgramArgs.OuterCvFolds), "10"),
-                (nameof(ProgramArgs.OuterCvFoldsToRun), "1"),
+                (nameof(ProgramArgs.InnerFolds), "5"),
+                (nameof(ProgramArgs.OuterCvFolds), "5"),
+                (nameof(ProgramArgs.OuterCvFoldsToRun), "5"),
                 (nameof(ProgramArgs.Repetitions), "1")
             };
 
