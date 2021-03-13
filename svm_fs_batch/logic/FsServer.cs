@@ -831,7 +831,7 @@ namespace SvmFsBatch
                 var iterScores = allData.GroupBy(a => a.id.IdGroupArrayIndex).Select(a => (IdGroupArrayIndex: a.Key, a.ToArray())).ToArray();
                 var iterLines = new List<string>();
                 var iters = allIndexData.Select(a => a.IdIterationIndex).Distinct().OrderBy(a => a).ToArray();
-                iterLines.Add($"{DataSetGroupKey.CsvHeaderString},{string.Join(",", iters.Select(a => $"score_iteration_{a}").ToArray())}");
+                iterLines.Add($"{DataSetGroupKey.CsvHeaderString},g,i{iters[0]-1},{string.Join(",", iters.Select(a => $"i{a}").ToArray())}");
                 foreach (var iterScore in iterScores)
                 {
                     var x = new double?[iters.Length];
@@ -842,7 +842,7 @@ namespace SvmFsBatch
                         if (y != default) { x[index] = (double?)y.rs.RsFsScore; }
                     }
 
-                    iterLines.Add($"{iterScore.Item2.First().id.IdGroupKey?.CsvValuesString() ?? DataSetGroupKey.Empty.CsvValuesString()},{string.Join(",", x)}");
+                    iterLines.Add($"{iterScore.Item2.First().id.IdGroupKey?.CsvValuesString() ?? DataSetGroupKey.Empty.CsvValuesString()},g{iterScore.IdGroupArrayIndex},0,{string.Join(",", x)}");
                 }
 
                 await IoProxy.WriteAllLinesAsync(true, ct, rankStatsFn2, iterLines, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
