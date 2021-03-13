@@ -199,8 +199,8 @@ namespace SvmFsBatch
             {
                 "perf_" + nameof(IndexData.IdIterationIndex),
                 "perf_" + nameof(IndexData.IdGroupArrayIndex),
-                "perf_" + nameof(ConfusionMatrix.XClassId),
-                "perf_" + nameof(ConfusionMatrix.XClassName),
+                //"perf_" + nameof(ConfusionMatrix.XClassId),
+                //"perf_" + nameof(ConfusionMatrix.XClassName),
 
                 nameof(PredictionIndex),
                 nameof(ClassSampleId),
@@ -227,8 +227,8 @@ namespace SvmFsBatch
 
                             values[k++] = $@"{cmList[cmListIndex].id.IdIterationIndex}";
                             values[k++] = $@"{cmList[cmListIndex].id.IdGroupArrayIndex}";
-                            values[k++] = $@"{cmList[cmListIndex].cm.XClassId}";
-                            values[k++] = $@"{cmList[cmListIndex].cm.XClassName}";
+                            //values[k++] = $@"{cmList[cmListIndex].cm.XClassId}";
+                            //values[k++] = $@"{cmList[cmListIndex].cm.XClassName}";
 
                             values[k++] = $@"{cmList[cmListIndex].cm.Predictions[cmPredIndex].PredictionIndex}";
                             values[k++] = $@"{cmList[cmListIndex].cm.Predictions[cmPredIndex].ClassSampleId}";
