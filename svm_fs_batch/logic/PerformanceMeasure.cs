@@ -91,6 +91,8 @@ namespace SvmFsBatch
         public static double AreaUnderCurveTrapz((double x, double y)[] coordinateList) //, bool interpolation = true)
         {
             Logging.LogCall(ModuleName);
+
+            if (coordinateList == default) return default;
             //var param_list = new List<(string key, string value)>()
             //{
             //    (nameof(coordinate_list),coordinate_list.ToString()),
@@ -411,6 +413,8 @@ namespace SvmFsBatch
 
             // make confusion matrix performance scores with default decision boundary threshold
             var defaultConfusionMatrixList = CountPredictionError(predictionList, ct: ct);
+            if (defaultConfusionMatrixList == default) return default;
+
             confusionMatrixList.AddRange(defaultConfusionMatrixList);
 
 
@@ -431,7 +435,7 @@ namespace SvmFsBatch
                             : negativeId
                     }).ToArray())).ToArray();
 
-                    var thresholdConfusionMatrixList = thresholdPredictionList.SelectMany(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).ToArray();
+                    var thresholdConfusionMatrixList = thresholdPredictionList.Select(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).Where(a=>a!=default).SelectMany(a=>a).ToArray();
 
 
                     for (var i = 0; i < thresholdConfusionMatrixList.Length; i++)
@@ -480,9 +484,18 @@ namespace SvmFsBatch
         public static (double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, (double x, double y)[] roc_xy, (double x, double y)[] pr_xy, (double x, double y)[] pri_xy) CalculateRocAucPrecisionRecallAuc(Prediction[] predictionList, int positiveId, ThresholdType thresholdType = ThresholdType.AllThresholds, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            if (predictionList.Any(a => a.ProbabilityEstimates == null || a.ProbabilityEstimates.Length == 0)) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) 
+            {
+                Logging.LogExit(ModuleName);  
+                return default;
+            }
+
+            if (predictionList == default || predictionList.Any(a => a.ProbabilityEstimates == null || a.ProbabilityEstimates.Length == 0)) 
+            {
+                Logging.LogExit(ModuleName); 
+                return default; 
+            }
 
             // Assume binary classifier - get negative class id
             var classIds = predictionList.Select(a => a.RealClassId).Union(predictionList.Select(c => c.PredictedClassId)).Distinct().OrderBy(a => a).ToArray();
@@ -498,7 +511,7 @@ namespace SvmFsBatch
             predictionList = predictionList.OrderByDescending(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == positiveId).ProbabilityEstimate).ToArray();
 
             var thresholdConfusionMatrixList = GetThesholdConfusionMatrices(predictionList, positiveId, thresholdType, negativeId, ct);
-
+            if (thresholdConfusionMatrixList == default) return default;
 
             // Average Precision (Not Approximated)
             var ap = CalculateAveragePrecision(thresholdConfusionMatrixList, ct);
@@ -528,9 +541,11 @@ namespace SvmFsBatch
             var rocAucApprox = AreaUnderCurveTrapz(rocPlotCoords);
 
             // ROC (Not Approximated, and Not reduced to Eleven Points - Incompatible with 11 points)
-            var rocAucActual = CalculateRocAuc(predictionList, positiveId, p, n, ct);
+            var rocAucActual = CalculateRocAuc(predictionList, positiveId, p, n);//, ct);
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(rocAucApprox, rocAucActual, prAucApprox, priAucApprox, ap, api, roc_xy: rocPlotCoords, pr_xy: prPlotCoords, pri_xy: priPlotCoords);
+            Logging.LogExit(ModuleName); 
+            
+            return ct.IsCancellationRequested ? default :(rocAucApprox, rocAucActual, prAucApprox, priAucApprox, ap, api, roc_xy: rocPlotCoords, pr_xy: prPlotCoords, pri_xy: priPlotCoords);
         }
 
         public static ConfusionMatrix[] GetThesholdConfusionMatrices(Prediction[] predictionList, int positiveId, ThresholdType thresholdType, int negativeId, CancellationToken ct)
@@ -554,29 +569,34 @@ namespace SvmFsBatch
             }).ToArray())).ToArray();
 
             // Calc confusion matrices at each threshold
-            var thresholdConfusionMatrixList = thresholdPredictionList.SelectMany(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).Where(a => a.XClassId == positiveId).ToArray();
+            var thresholdConfusionMatrixList = thresholdPredictionList.Select(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).Where(a=>a!=default).SelectMany(a=>a).Where(a => a.XClassId == positiveId).ToArray();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :thresholdConfusionMatrixList;
+            Logging.LogExit(ModuleName); 
+            return ct.IsCancellationRequested ? default :thresholdConfusionMatrixList;
         }
 
-        public static double CalculateRocAuc(Prediction[] predictionList, int positiveId, double p, double n, CancellationToken ct)
+        public static double CalculateRocAuc(Prediction[] predictionList, int positiveId, double p, double n)//, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            //if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
             var totalNegForThreshold = predictionList.Select((a, i) => (actual_class: a.RealClassId, total_neg_at_point: predictionList.Where((b, j) => j <= i && b.RealClassId != positiveId).Count())).ToList();
 
             var rocAucActual = 1 / (p * n) * predictionList.Select((a, i) =>
             {
-                if (a.RealClassId != positiveId) {Logging.LogExit(ModuleName); return 0; }
+                if (a.RealClassId != positiveId) { return 0; }
+
                 var totalNAtCurrentThreshold = totalNegForThreshold[i].total_neg_at_point;
 
                 //var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class == negative_id && b.total_neg_at_point > total_n_at_current_threshold);
                 var nMoreThanCurrentN = totalNegForThreshold.Count(b => b.actual_class != positiveId && b.total_neg_at_point > totalNAtCurrentThreshold);
 
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :nMoreThanCurrentN;
+                Logging.LogExit(ModuleName); 
+                return nMoreThanCurrentN;
             }).Sum();
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :rocAucActual;
+
+            Logging.LogExit(ModuleName); 
+            return /*ct.IsCancellationRequested ? default :*/rocAucActual;
         }
 
         public static (double x, double y)[] CalculateRocPlot(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)

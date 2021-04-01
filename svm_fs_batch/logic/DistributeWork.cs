@@ -80,35 +80,35 @@ namespace SvmFsBatch
         public TimeSpan WriteInstanceCacheTimeout = TimeSpan.FromSeconds(10);
 
         // how long to wait before re-checking when instances have changed
-        public TimeSpan ReadInstancesChangedRetry = TimeSpan.FromSeconds(11);
+        public TimeSpan ReadInstancesChangedRetry = TimeSpan.FromSeconds(15);
 
         // how long do instances survive from their time stamp
-        public TimeSpan ReadInstancesInstanceTimeout = TimeSpan.FromSeconds(21);
+        public TimeSpan ReadInstancesInstanceTimeout = TimeSpan.FromSeconds(60);
 
         // how long to cache instance guids for before re-reading them
-        public TimeSpan ReadInstancesCacheTimeout = TimeSpan.FromSeconds(10);
+        public TimeSpan ReadInstancesCacheTimeout = TimeSpan.FromSeconds(15);
 
         // how long to wait before timing out a sync request
         public TimeSpan GetSyncRequestTimeout = TimeSpan.FromSeconds(60);
 
         // how long to wait for remote instance sync request file i/o
-        public TimeSpan GetSyncRequestIoDelay = TimeSpan.FromSeconds(8);
+        public TimeSpan GetSyncRequestIoDelay = TimeSpan.FromSeconds(10);
 
         // how long to wait for sync response before timing out
         public TimeSpan GetSyncResponseTimeout = TimeSpan.FromSeconds(60);
 
         // how long to wait for remote instance sync response file i/o
-        public TimeSpan GetSyncResponseIoDelay = TimeSpan.FromSeconds(8);
+        public TimeSpan GetSyncResponseIoDelay = TimeSpan.FromSeconds(10);
 
 
         public TimeSpan GetSyncResponseSyncTimeout1 = TimeSpan.FromSeconds(60);
         public TimeSpan GetSyncResponseSyncTimeout2 = TimeSpan.FromSeconds(60);
 
         // loop delays
-        public TimeSpan TaskWriteInstanceLoopDelay = TimeSpan.FromSeconds(6);
-        public TimeSpan MainLoopInitDelay = TimeSpan.FromSeconds(6);
-        public TimeSpan MainLoopNoWorkDelay = TimeSpan.FromSeconds(6);
-        public TimeSpan TaskGetSyncRequestLoopDelay = TimeSpan.FromSeconds(6);
+        public TimeSpan TaskWriteInstanceLoopDelay = TimeSpan.FromSeconds(15);
+        public TimeSpan MainLoopInitDelay = TimeSpan.FromSeconds(10);
+        public TimeSpan MainLoopNoWorkDelay = TimeSpan.FromSeconds(10);
+        public TimeSpan TaskGetSyncRequestLoopDelay = TimeSpan.FromSeconds(5);
         public TimeSpan TaskEtaLoopDelay = TimeSpan.FromSeconds(15);
 
         public string LastWriteInstanceFile;
@@ -131,14 +131,14 @@ namespace SvmFsBatch
                 try
                 {
 
-                    var fn = Path.Combine(GetIpcCommsFolder(experimentName, iterationIndex), $@"instance_{instanceGuid:N}_{now:yyyyMMddHHmmssfffffff}.txt");
+                    var fn = Path.Combine(folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/, $@"instance_{instanceGuid:N}_{now:yyyyMMddHHmmssfffffff}.txt");
 
                     try
                     {
                         //if (!File.Exists(fn) || new FileInfo(fn).Length == 0)
                         if (!cleanOnly)
                         {
-                            await File.WriteAllBytesAsync(fn, new byte[] { 0 }, ct);
+                            await File.WriteAllBytesAsync(fn, new byte[] { 0 }, ct).ConfigureAwait(false);
                             LastWriteInstanceTime = now;
 
                         }
@@ -173,9 +173,11 @@ namespace SvmFsBatch
             {
                 while (true)
                 {
+                    ReadInstancesTime = now;
+
                     var readInstancesEnter = ReadInstancesGuids?.ToArray();
 
-                    var instanceMarkerFiles = Directory.GetFiles(GetIpcCommsFolder(experimentName, iterationIndex), "instance*_?*.txt");
+                    var instanceMarkerFiles = Directory.GetFiles(folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/, "instance*_?*.txt");
 
 
                     var instanceMarkers = instanceMarkerFiles.Select(a =>
@@ -185,7 +187,7 @@ namespace SvmFsBatch
                         if (b[1].Length != 32) return default;
                         if (b[^1].Length != "yyyyMMddHHmmssfffffff".Length) return default;
 
-                        var inst = b[0];
+                        //var inst = b[0];
                         var sourceGuid = new Guid(b[1]);
                         var requestTime = DateTime.ParseExact(b[^1], "yyyyMMddHHmmssfffffff", DateTimeFormatInfo.InvariantInfo);
 
@@ -193,18 +195,19 @@ namespace SvmFsBatch
                     }).Where(a => a != default).ToArray();
 
 
-                    var instanceMarkersTimedOut = instanceMarkers.Where(a => now - a.requestTime < ReadInstancesInstanceTimeout).ToArray();
+                    var instanceMarkersTimedOut = instanceMarkers.Where(a => (now - a.requestTime) >= ReadInstancesInstanceTimeout).ToArray();
 
                     if (instanceMarkersTimedOut.Length > 0)
                     {
-                        Logging.LogEvent("Instances timed out: " + string.Join(", ", instanceMarkersTimedOut.Select(a => $"{a.sourceGuid:N} (timed out: {((now - a.requestTime) - ReadInstancesInstanceTimeout):dd\\:hh\\:mm\\:ss})").ToArray()));
+                        Logging.LogEvent($"Instances timed out: {string.Join(", ", instanceMarkersTimedOut.Select(a => $"{a.sourceGuid:N} (timed out: {((now - a.requestTime) - ReadInstancesInstanceTimeout):dd\\:hh\\:mm\\:ss})").ToArray())}");
                     }
 
-                    var missingInstances = instanceMarkers.Select(a => a.sourceGuid).Except(knownInstances ?? Array.Empty<Guid>()).ToArray();
+                    //var missingInstances = instanceMarkers.Select(a => a.sourceGuid).Except(knownInstances ?? Array.Empty<Guid>()).ToArray();
+                    var missingInstances = (knownInstances ?? Array.Empty<Guid>()).Except(instanceMarkers?.Select(a => a.sourceGuid).ToArray() ?? Array.Empty<Guid>()).ToArray();
 
                     if (missingInstances.Length > 0)
                     {
-                        Logging.LogEvent("Instances missing: " + string.Join(", ", missingInstances.Select(a => $"{a}").ToArray()));
+                        Logging.LogEvent($"Instances missing: {string.Join(", ", missingInstances.Select(a => $"{a}").ToArray())}");
                     }
 
                     instanceMarkers = instanceMarkers.Except(instanceMarkersTimedOut).ToArray();
@@ -213,7 +216,7 @@ namespace SvmFsBatch
 
                     var instanceGuids = instanceMarkerGuids.Distinct().OrderBy(a => a).ToArray();
 
-                    ReadInstancesTime = now;
+                    
 
                     var instancesChanged = false;
                     //if (!instancesChanged && knownInstances != null && knownInstances.Length > 0) instancesChanged = !(knownInstances ?? Array.Empty<Guid>()).SequenceEqual(instanceGuids ?? Array.Empty<Guid>());
@@ -228,7 +231,7 @@ namespace SvmFsBatch
 
                     if (instancesChanged)
                     {
-                        Logging.LogEvent($"[{instanceGuid:N}] Instances changed - checking again after {ReadInstancesChangedRetry}");
+                        Logging.LogEvent($"[{instanceGuid:N}] Instances changed - checking again after {ReadInstancesChangedRetry:dd\\:hh\\:mm\\:ss}");
 
                         Logging.Wait(ReadInstancesChangedRetry, "Read instances - instances changed - retry delay", ModuleName);
                         continue;
@@ -345,9 +348,9 @@ namespace SvmFsBatch
                 // sync if, requestSync is true, another instance requested sync, or known guids have changed
                 while (true)
                 {
-                    await WriteInstance(instanceGuid, experimentName, iterationIndex, ct: ct);
+                    await WriteInstance(instanceGuid, experimentName, iterationIndex, ct: ct).ConfigureAwait(false);
 
-                    if (syncRequest != default) { await Logging.WaitAsync(GetSyncRequestIoDelay, $"[{instanceGuid:N}] Sync request IO delay", ModuleName, ct: ct); }
+                    if (syncRequest != default) { await Logging.WaitAsync(GetSyncRequestIoDelay, $"[{instanceGuid:N}] Sync request IO delay", ModuleName, ct: ct).ConfigureAwait(false); }
 
                     // check for sync requests from any instance
                     var activeInstances = GetSyncRequestFiles(instanceGuid, experimentName, iterationIndex, knownInstances, GetSyncRequestTimeout, out var syncRequests, out var now, out syncRequest);
@@ -374,14 +377,14 @@ namespace SvmFsBatch
                         {
 
 
-                            var syncRequestFile = Path.Combine(GetIpcCommsFolder(experimentName, iterationIndex), $@"syn_{instanceGuid:N}_{syncRequestCode}_{now:yyyyMMddHHmmssfffffff}.txt");
+                            var syncRequestFile = Path.Combine(folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/, $@"syn_{instanceGuid:N}_{syncRequestCode}_{now:yyyyMMddHHmmssfffffff}.txt");
 
                             try
                             {
                                 if (!File.Exists(syncRequestFile) || new FileInfo(syncRequestFile).Length == 0)
                                 {
                                     Logging.LogEvent($"[{instanceGuid:N}] Sending synchronization request...");
-                                    try { await File.WriteAllBytesAsync(syncRequestFile, new byte[] { 0 }, ct); }
+                                    try { await File.WriteAllBytesAsync(syncRequestFile, new byte[] { 0 }, ct).ConfigureAwait(false); }
                                     catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                                 }
 
@@ -431,7 +434,7 @@ namespace SvmFsBatch
         {
             try
             {
-                var syncFolder = GetIpcCommsFolder(experimentName, iterationIndex);
+                var syncFolder = folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/;
                 var syncRequestFiles = Directory.GetFiles(syncFolder, "syn_*.txt");
 
                 var activeInstances = ReadInstances(instanceGuid, experimentName, iterationIndex, knownInstances);
@@ -505,7 +508,7 @@ namespace SvmFsBatch
             //Logging.LogEvent($"[{instanceGuid:N}] Enter sync2()");
             //lock (SyncingLock)
             {
-                var syncFolder = GetIpcCommsFolder(experimentName, iterationIndex);
+                var syncFolder = folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/;
                 var expectedSyncFiles = syncRequest.syncActiveInstances.Select(syncGuid => (syncGuid, fn: Path.Combine(syncFolder, $@"syn_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{syncGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt"))).ToArray();
                 var expectedAckFiles = syncRequest.syncActiveInstances.Select(syncGuid => (syncGuid, fn: Path.Combine(syncFolder, $@"ack_{syncRequest.sourceGuid:N}_{syncRequest.requestCode}_{syncGuid:N}_{syncRequest.requestTime:yyyyMMddHHmmssfffffff}.txt"))).ToArray();
 
@@ -536,7 +539,7 @@ namespace SvmFsBatch
                     //File.WriteAllLines(syncResponseFile, responseSyncData);
 
                     var responseSyncDataBytes = IntsToByteBlock(responseSyncData);
-                    await File.WriteAllBytesAsync(syncResponseFile, responseSyncDataBytes, ct);
+                    await File.WriteAllBytesAsync(syncResponseFile, responseSyncDataBytes, ct).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -581,17 +584,20 @@ namespace SvmFsBatch
 
                     if (syncRequest1 != default)
                     {
-                        if (syncRequest1.requestTime > syncRequest.requestTime || syncRequest1.requestCode != syncRequest.requestCode)
+                        var syncTimeNewer = syncRequest1.requestTime > syncRequest.requestTime;
+                        var syncCodeMismatch = syncRequest1.requestCode != syncRequest.requestCode;
+
+                        if (syncTimeNewer || syncCodeMismatch)
                         {
                             del();
-                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - newer sync request found");
+                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(){(syncTimeNewer ? " - newer sync request found" : "")}{(syncCodeMismatch ? " - sync code mismatch" : "")}");
                             Logging.LogExit();
 
                             return default;
                         }
                     }
 
-                    if (w > 0) { try { await Logging.WaitAsync(GetSyncResponseIoDelay, $"[{instanceGuid:N}] Sync response IO delay", ModuleName, ct: ct); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); } }
+                    if (w > 0) { try { await Logging.WaitAsync(GetSyncResponseIoDelay, $"[{instanceGuid:N}] Sync response IO delay", ModuleName, ct: ct).ConfigureAwait(false); } catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); } }
 
                     if (activeInstances.Except(syncRequest.syncActiveInstances).Any() || syncRequest.syncActiveInstances.Except(activeInstances).Any())
                     {
@@ -671,7 +677,7 @@ namespace SvmFsBatch
                             //try
                             //{
                             //if (File.Exists(syncResponseFile) && new FileInfo(syncResponseFile).Length > 0)
-                            try { await File.WriteAllBytesAsync(ackResponseFile, new byte[] { 0 }, ct); }
+                            try { await File.WriteAllBytesAsync(ackResponseFile, new byte[] { 0 }, ct).ConfigureAwait(false); }
                             catch (Exception e)
                             {
                                 Logging.LogException(e, $"[{instanceGuid:N}]");
@@ -740,14 +746,15 @@ namespace SvmFsBatch
             }
         }
 
-        public static string GetIpcCommsFolder(string experimentName, int iterationIndex)
-        {
-            var folder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{experimentName}");
+        //public static string GetIpcCommsFolder(string experimentName, int iterationIndex)
+        //{
+        //    var folder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $@"_{iterationIndex}_{experimentName}");
+        //    return folder;
+        //}
 
-            return folder;
-        }
+        public string folder;
 
-        public async Task<List<(IndexData id, ConfusionMatrix cm)>> ServeIpcJobsAsync(Guid instanceGuid, string experimentName, int iterationIndex, DataSet dataSet, IndexData[] indexesWhole, ulong lvl = 0, bool asParallel = true, CancellationToken callerCt = default)
+        public async Task<List<(IndexData id, ConfusionMatrix cm)>> ServeIpcJobsAsync(Guid instanceGuid, string experimentName, int iterationIndex, DataSet baseLineDataSet, int[] baseLineColumnIndexes, DataSet dataSet, IndexData[] indexesWhole, ulong lvl = 0, bool asParallel = true, CancellationToken callerCt = default)
         {
             if (callerCt.IsCancellationRequested)
             {
@@ -755,7 +762,11 @@ namespace SvmFsBatch
                 Logging.LogExit();
                 return default;
             }
+            
+            //var iterFn = Program.GetIterationFilename(indexesWhole, callerCt);
+            //folder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, $@"_ipc_{Program.ProgramArgs.ServerGuid:N}", $"_{iterFn}");//$@"_{iterationIndex}_{experimentName}");
 
+            folder = Path.Combine(Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, experimentName, iterationIndex,ct:callerCt), "_ipc");
             //using var methodCts = new CancellationTokenSource();
             //var methodCt = methodCts.Token;
             //using var methodLinkedCts = CancellationTokenSource.CreateLinkedTokenSource(callerCt, methodCt);
@@ -770,7 +781,7 @@ namespace SvmFsBatch
 
 
             // load cache
-            //var cacheFiles = await IoProxy.GetFilesAsync(true, ct, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly);
+            //var cacheFiles = await IoProxy.GetFilesAsync(true, ct, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
             //var outerResultIds = Array.Empty<int>();
             //var outerResults = Array.Empty<(IndexData id, ConfusionMatrix cm)>();
 
@@ -780,15 +791,15 @@ namespace SvmFsBatch
 
             async Task RefreshCache()
             {
-                var cacheFolder = GetIpcCommsFolder(experimentName, iterationIndex);
+                var cacheFolder = folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/;
                 var cacheFiles = await IoProxy.GetFilesAsync(true, callerCt, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
 
-                if (cacheFiles.Length > 0)
+                if ((cacheFiles?.Length??0) > 0)
                 {
                     var cache = await CacheLoad.LoadCacheFileListAsync(indexesWhole, cacheFiles, true, callerCt).ConfigureAwait(false);
                     if (cache != default && cache.IdCmSd != default && cache.IdCmSd.Length > 0)
                     {
-                        masterIterationCmLoaded = cache.IdCmSd.ToList();
+                        masterIterationCmLoaded = cache.IdCmSd.Where(a => a.cm != default && a.id != default).ToList();
                         //masterIterationCmLoaded.AddRange(cache.IdCmSd);
                     }
                 }
@@ -825,16 +836,16 @@ namespace SvmFsBatch
 
             async Task SaveInstanceCache()
             {
-                var cacheFolder = GetIpcCommsFolder(experimentName, iterationIndex);
+                var cacheFolder = folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/;
                 var cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}.csv");
                 var cacheSaveLines = instanceIterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
                 cacheSaveLines.Insert(0, $@"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
                 await IoProxy.WriteAllLinesAsync(true, callerCt, cacheSaveFn, cacheSaveLines).ConfigureAwait(false);
             }
 
-            Task InstanceGuidWriterTask(CancellationToken mainCt)
+            async Task<Task> InstanceGuidWriterTask(CancellationToken mainCt)
             {
-                try { WriteInstance(instanceGuid, experimentName, iterationIndex, true, ct: mainCt).Wait(mainCt); }
+                try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, ct: mainCt).ConfigureAwait(false); }
                 catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                 var instanceGuidWriterTask = Task.Run(async () =>
@@ -843,8 +854,9 @@ namespace SvmFsBatch
                         {
                             try
                             {
-                                await WriteInstance(instanceGuid, experimentName, iterationIndex, ct: mainCt);
+                                await WriteInstance(instanceGuid, experimentName, iterationIndex, ct: mainCt).ConfigureAwait(false);
                                 try { await Task.Delay(TaskWriteInstanceLoopDelay, mainCt).ConfigureAwait(false); }
+                                catch (OperationCanceledException) { }
                                 catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                             }
                             catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
@@ -868,9 +880,10 @@ namespace SvmFsBatch
                             try
                             {
                                 try { await Task.Delay(TaskGetSyncRequestLoopDelay, loopCt).ConfigureAwait(false); }
-                                catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
+                                catch (OperationCanceledException e) { continue; }
+                                catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); continue; }
 
-                                syncRequest = await GetSyncRequest(instanceGuid, experimentName, iterationIndex, false, syncGuids, loopCt);
+                                syncRequest = await GetSyncRequest(instanceGuid, experimentName, iterationIndex, false, syncGuids, loopCt).ConfigureAwait(false);
 
                                 var cancel = false;
 
@@ -899,7 +912,7 @@ namespace SvmFsBatch
 
                         try
                         {
-                            Logging.LogEvent($"[{instanceGuid:N}] Cancelling...");
+                            Logging.LogEvent($"[{instanceGuid:N}] [{nameof(KeepSynchronizedTask)}] Cancellation requested from: {(callerCt.IsCancellationRequested ? $" {nameof(callerCt)}" : "")}{(mainCt.IsCancellationRequested ? $" {nameof(mainCt)}" : "")}{(loopCt.IsCancellationRequested ? $" {nameof(loopCt)}" : "")}");
                             loopCts?.Cancel();
                         }
                         catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
@@ -946,6 +959,7 @@ namespace SvmFsBatch
                             Logging.LogEvent($"[{instanceGuid:N}] ETA. Jobs: (Total: [{total}], Started: [{started}], Complete: [{completed}], Remaining: [{itemsRemaining}]) Time Elapsed: [{timeElapsed:dd\\:hh\\:mm\\:ss}]. Average Time Per Job: [{timeEach:dd\\:hh\\:mm\\:ss}]. Estimated Time Remaining: [{timeRemaining:dd\\:hh\\:mm\\:ss}].");
 
                             try { await Task.Delay(TaskEtaLoopDelay, loopCt).ConfigureAwait(false); }
+                            catch (OperationCanceledException) { }
                             catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                         }
                         catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
@@ -979,7 +993,7 @@ namespace SvmFsBatch
                         }
                     }
 
-                    var mocvi = CrossValidate.MakeOuterCvInputs(dataSet, indexData, ct: loopCt);
+                    var mocvi = CrossValidate.MakeOuterCvInputs(baseLineDataSet, baseLineColumnIndexes, dataSet, indexData, ct: loopCt);
                     if (mocvi == default || mocvi.outerCvInputs.Length == 0)
                     {
                         Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: MakeOuterCvInputs returned default...");
@@ -993,8 +1007,6 @@ namespace SvmFsBatch
 
                         return default;
                     }
-
-                    Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: CrossValidatePerformanceAsync returned default...");
 
                     Logging.LogEvent($@"[{instanceGuid:N}] Job: Completed job {workShareInstanceIndex} of {workShareInstanceSize} (IdJobUid=[{indexData.IdJobUid}]; IdGroupArrayIndex=[{indexData.IdGroupArrayIndex}])");
 
@@ -1050,7 +1062,7 @@ namespace SvmFsBatch
                 var mainCts = new CancellationTokenSource();
                 var mainCt = mainCts.Token;
 
-                var instanceGuidWriterTask = InstanceGuidWriterTask(mainCt);
+                var instanceGuidWriterTask = await InstanceGuidWriterTask(mainCt).ConfigureAwait(false);
 
 
 
@@ -1061,6 +1073,7 @@ namespace SvmFsBatch
 
 
 
+                var isWorkOutOfSync = false;
                 var isSyncOk = false;
                 var w = -1;
                 (Guid instanceGuid, int[] instanceWork)[] workShareList = null;
@@ -1090,7 +1103,7 @@ namespace SvmFsBatch
 
                     if (syncRequest != default)
                     {
-                        var syncResponse = await GetSyncResponse(instanceGuid, experimentName, iterationIndex, syncRequest, syncResultIds, mainCt);
+                        var syncResponse = await GetSyncResponse(instanceGuid, experimentName, iterationIndex, syncRequest, syncResultIds, mainCt).ConfigureAwait(false);
                         isSyncOk = syncResponse.didSync;
 
                         if (syncResponse.didSync)
@@ -1122,8 +1135,9 @@ namespace SvmFsBatch
 
                     // finalSync makes sure a sync is done after all work is complete, this ensures instance cache is saved before continuing... as that is done before sync code.
                     var isWorkShareSetAndEmpty = workShareInstance != null && workShareInstance.Length == 0; // if null, not set yet (null doesn't mean empty)
-                    var requestSync = isFirstIteration || !isSyncOk || loopDidRun || (isAllWorkDone && !finalSync);
+                    var requestSync = isFirstIteration || isWorkOutOfSync || !isSyncOk || loopDidRun || (isAllWorkDone && !finalSync);
 
+                    if (isWorkOutOfSync) Logging.LogEvent("Work out of sync, synchronization required...");
                     if (isFirstIteration) Logging.LogEvent("First iteration, synchronization required...");
                     if (!isSyncOk) Logging.LogEvent("Last synchronization failed, synchronization required...");
                     if (loopDidRun) Logging.LogEvent("Work has been done, synchronization required...");
@@ -1132,11 +1146,12 @@ namespace SvmFsBatch
                     // problem: if all allocated work is complete, so need to work steal?
 
                     if (isAllWorkDone) finalSync = true;
-                    syncRequest = await GetSyncRequest(instanceGuid, experimentName, iterationIndex, requestSync, syncGuids, mainCt);
+                    syncRequest = await GetSyncRequest(instanceGuid, experimentName, iterationIndex, requestSync, syncGuids, mainCt).ConfigureAwait(false);
 
                     if (syncRequest != default) continue;
                     isSyncOk = true;
                     loopDidRun = false;
+                    isWorkOutOfSync = false;
 
                     if (isWorkShareSetAndEmpty && !isAllWorkDone)
                     {
@@ -1163,6 +1178,15 @@ namespace SvmFsBatch
                     if (workShareInstance.Length == 0) { continue; }
                     var workShareInstanceItems = indexesWhole.AsParallel().AsOrdered().Where(a => workShareInstance.AsParallel().AsOrdered().Any(b => a.IdJobUid == b)).ToArray();
 
+                    // if there are items in the todo list which are already done, need re-sync?
+                    var workNotSynced = instanceIterationCmLoaded.Select(a => a.id).Intersect(workShareInstanceItems).ToArray();
+                    if (workNotSynced.Length > 0)
+                    {
+                        isWorkOutOfSync = true;
+                        Logging.LogEvent("Work is out of sync");
+                        continue;
+                    }
+
                     var loopCts = new CancellationTokenSource();
                     var loopCt = loopCts.Token;
                     var syncTask = KeepSynchronizedTask(syncGuids, mainCt, loopCts);
@@ -1175,8 +1199,8 @@ namespace SvmFsBatch
 
 
                     var innerResultsTasks = asParallel
-                        ? workShareInstanceItems.AsParallel().AsOrdered().Select(async (indexData, workShareInstanceIndex) => await ProcessJob(indexData, workShareInstanceIndex, workShareInstance?.Length ?? 0, mainCt, loopCt)).ToArray()
-                        : workShareInstanceItems.Select(async (indexData, workShareInstanceIndex) => await ProcessJob(indexData, workShareInstanceIndex, workShareInstance?.Length ?? 0, mainCt, loopCt)).ToArray();
+                        ? workShareInstanceItems.AsParallel().AsOrdered().Select(async (indexData, workShareInstanceIndex) => await ProcessJob(indexData, workShareInstanceIndex, workShareInstance?.Length ?? 0, mainCt, loopCt).ConfigureAwait(false)).ToArray()
+                        : workShareInstanceItems.Select(async (indexData, workShareInstanceIndex) => await ProcessJob(indexData, workShareInstanceIndex, workShareInstance?.Length ?? 0, mainCt, loopCt).ConfigureAwait(false)).ToArray();
 
                     //var innerResultsTasksIncomplete = innerResultsTasks.ToArray();
                     //
@@ -1184,7 +1208,7 @@ namespace SvmFsBatch
                     //{
                     //    try
                     //    {
-                    //        var completedTask = await Task.WhenAny(innerResultsTasksIncomplete);
+                    //        var completedTask = await Task.WhenAny(innerResultsTasksIncomplete).ConfigureAwait(false);
                     //        innerResultsTasksIncomplete = innerResultsTasksIncomplete.Except(new[] { completedTask }).ToArray();
                     //    }
                     //    catch (Exception e)
@@ -1238,7 +1262,7 @@ namespace SvmFsBatch
             // no need to save master cache, individual is fine and will save time
             //await SaveMasterCache().ConfigureAwait(false);
 
-            try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, true, callerCt); }
+            try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, true, callerCt).ConfigureAwait(false); }
             catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
             var instanceJobIdsCompleted = instanceIterationCmLoaded.Select(a => a.id.IdJobUid).OrderBy(a => a).Distinct().ToArray();

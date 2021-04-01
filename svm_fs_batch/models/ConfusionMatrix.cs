@@ -285,6 +285,11 @@ namespace SvmFsBatch
                 return default;
             }
 
+            if (lines == default)
+            {
+                return default;
+            }
+
             var lineHeader = lines[0].Split(',');
             var hasHeaderLine = false;
             if (columnOffset == -1)

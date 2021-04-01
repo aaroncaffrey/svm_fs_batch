@@ -42,24 +42,29 @@ namespace SvmFsBatch
                     var trainGridStdoutFile = "";
                     var trainGridStderrFile = "";
 
-                    trainGridSearchResult = await Grid.GridParameterSearchAsync(
-                        asParallel: true,
-                        libsvmTrainExe: Program.ProgramArgs.LibsvmTrainRuntime, 
-                        cacheTrainGridCsv: outerCvInput.GridFn, 
-                        trainFile: outerCvInput.TrainFn,
-                        trainStdoutFile: trainGridStdoutFile, 
-                        trainStderrFile: trainGridStderrFile, 
-                        classWeights: unrolledIndex.IdClassWeights, 
-                        svmType: unrolledIndex.IdSvmType, 
-                        svmKernel: unrolledIndex.IdSvmKernel, 
-                        repetitions: unrolledIndex.IdRepetitions, 
-                        repetitionsIndex: outerCvInput.RepetitionsIndex, 
-                        outerCvFolds: unrolledIndex.IdOuterCvFolds, 
-                        outerCvIndex: outerCvInput.OuterCvIndex, 
-                        innerCvFolds: unrolledIndex.IdInnerCvFolds,
-                        probabilityEstimates: libsvmTrainProbabilityEstimates,
-                        ct: ct
-                        ).ConfigureAwait(false);
+                    while (!ct.IsCancellationRequested)
+                    {
+                        trainGridSearchResult = await Grid.GridParameterSearchAsync(
+                            asParallel: true,
+                            libsvmTrainExe: Program.ProgramArgs.LibsvmTrainRuntime,
+                            cacheTrainGridCsv: outerCvInput.GridFn,
+                            trainFile: outerCvInput.TrainFn,
+                            trainStdoutFile: trainGridStdoutFile,
+                            trainStderrFile: trainGridStderrFile,
+                            classWeights: unrolledIndex.IdClassWeights,
+                            svmType: unrolledIndex.IdSvmType,
+                            svmKernel: unrolledIndex.IdSvmKernel,
+                            repetitions: unrolledIndex.IdRepetitions,
+                            repetitionsIndex: outerCvInput.RepetitionsIndex,
+                            outerCvFolds: unrolledIndex.IdOuterCvFolds,
+                            outerCvIndex: outerCvInput.OuterCvIndex,
+                            innerCvFolds: unrolledIndex.IdInnerCvFolds,
+                            probabilityEstimates: libsvmTrainProbabilityEstimates,
+                            ct: ct
+                            ).ConfigureAwait(false);
+
+                        if (trainGridSearchResult != default) break;
+                    }
                 }
 
                 swGrid.Stop();
@@ -70,25 +75,29 @@ namespace SvmFsBatch
 
             // train
             var swTrain = Stopwatch.StartNew();
-            var trainResult = await Libsvm.TrainAsync(
-                libsvmTrainExeFile: Program.ProgramArgs.LibsvmTrainRuntime, 
-                trainFile: outerCvInput.TrainFn,
-                modelOutFile: outerCvInput.ModelFn,
-                stdoutFile: trainStdoutFilename,
-                stderrFile: trainStderrFilename,
-                cost: trainGridSearchResult.GpCost, 
-                gamma: trainGridSearchResult.GpGamma, 
-                epsilon: trainGridSearchResult.GpEpsilon, 
-                coef0: trainGridSearchResult.GpCoef0, 
-                degree: trainGridSearchResult.GpDegree,
-                //classWeights: null,
-                classWeights: unrolledIndex.IdClassWeights,
-                svmType: unrolledIndex.IdSvmType, 
-                svmKernel: unrolledIndex.IdSvmKernel,
-                innerCvFolds: null, 
-                probabilityEstimates: libsvmTrainProbabilityEstimates, 
-                ct: ct
-                ).ConfigureAwait(false);
+            (string CmdLine, string stdout, string stderr) trainResult = default;
+
+            while (!ct.IsCancellationRequested && trainResult == default)
+            {
+                trainResult = await Libsvm.TrainAsync(libsvmTrainExeFile: Program.ProgramArgs.LibsvmTrainRuntime,
+                    trainFile: outerCvInput.TrainFn,
+                    modelOutFile: outerCvInput.ModelFn,
+                    stdoutFile: trainStdoutFilename,
+                    stderrFile: trainStderrFilename,
+                    cost: trainGridSearchResult.GpCost,
+                    gamma: trainGridSearchResult.GpGamma,
+                    epsilon: trainGridSearchResult.GpEpsilon,
+                    coef0: trainGridSearchResult.GpCoef0,
+                    degree: trainGridSearchResult.GpDegree,
+                    //classWeights: null,
+                    classWeights: unrolledIndex.IdClassWeights,
+                    svmType: unrolledIndex.IdSvmType,
+                    svmKernel: unrolledIndex.IdSvmKernel,
+                    innerCvFolds: null,
+                    probabilityEstimates: libsvmTrainProbabilityEstimates,
+                    ct: ct).ConfigureAwait(false);
+            }
+
             swTrain.Stop();
             //var sw_trainDur = sw_train.ElapsedMilliseconds;
 
@@ -106,19 +115,23 @@ namespace SvmFsBatch
 
             // predict
             var swPredict = Stopwatch.StartNew();
-            var predictResult = await Libsvm.PredictAsync(
+            (string CmdLine, string stdout, string stderr) predictResult = default;
 
-                libsvmPredictExeFile: Program.ProgramArgs.LibsvmPredictRuntime,
-                testFile: outerCvInput.TestFn,
-                modelFile: outerCvInput.ModelFn,
-                predictionsOutFile: outerCvInput.PredictFn, 
-                probabilityEstimates: libsvmTrainProbabilityEstimates,
-                stdoutFile: predictStdoutFilename, 
-                stderrFile: predictStderrFilename,
-                ct: ct
-                
+            while (!ct.IsCancellationRequested && predictResult == default)
+            {
+                predictResult = await Libsvm.PredictAsync(
+
+                    libsvmPredictExeFile: Program.ProgramArgs.LibsvmPredictRuntime,
+                    testFile: outerCvInput.TestFn,
+                    modelFile: outerCvInput.ModelFn,
+                    predictionsOutFile: outerCvInput.PredictFn,
+                    probabilityEstimates: libsvmTrainProbabilityEstimates,
+                    stdoutFile: predictStdoutFilename,
+                    stderrFile: predictStderrFilename,
+                    ct: ct
+
                 ).ConfigureAwait(false);
-
+            }
             swPredict.Stop();
 
             if (predictResult == default)
@@ -172,7 +185,7 @@ namespace SvmFsBatch
             //() makeOuterCvInputsRet = MakeOuterCvInputs(DataSet, unrolledIndexData, asParallel, ct: ct);
             //if (makeOuterCvInputsRet == default) { Logging.LogExit(ModuleName); return default; }
 
-                // 2. call rpc method
+            // 2. call rpc method
             var ocvResult =
             rpcPoint.HasFlag(RpcPoint.CrossValidatePerformanceAsync) ?
 
@@ -192,7 +205,7 @@ namespace SvmFsBatch
             if (groupCmSdList == default)
             {
                 Logging.LogEvent("groupCmSdList was default");
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return default;
             }
 
@@ -210,7 +223,7 @@ namespace SvmFsBatch
             if (ct.IsCancellationRequested)
             {
                 Logging.LogEvent("Cancellation requested");
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return default;
             }
             if (unrolledIndexData == null) throw new ArgumentOutOfRangeException(nameof(unrolledIndexData));
@@ -231,16 +244,16 @@ namespace SvmFsBatch
             (
             // run libsvm on each outer cv partition segment
             asParallel
-                ? outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async outerCvInput => await OuterCrossValidationSingleRpcAsync( unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
-                : outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/Select(async outerCvInput => await OuterCrossValidationSingleRpcAsync( unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                ? outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async outerCvInput => await OuterCrossValidationSingleRpcAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
+                : outerCvInputs./*Where(a => a.OuterCvIndex != -1 && a.RepetitionsIndex != -1).*/Select(async outerCvInput => await OuterCrossValidationSingleRpcAsync(unrolledIndexData, outerCvInput, makeOuterCvConfusionMatrices, overwriteCache, saveGroupCache, ct).ConfigureAwait(false)).ToArray()
             );
 
             var outerCvInputsResult = await Task.WhenAll(outerCvInputsResultTasks).ConfigureAwait(false);
 
-            if (outerCvInputsResult == null || outerCvInputsResult.Length == 0)// || )
+            if (outerCvInputsResult == null || outerCvInputsResult.Length == 0 || outerCvInputsResult.All(a => a == default))// || )
             {
                 Logging.LogEvent("outerCvInputsResult was default");
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return default;
             }
 
@@ -256,7 +269,7 @@ namespace SvmFsBatch
 
 
             var ocvCm = makeOuterCvConfusionMatrices
-                ? outerCvInputsResult.Where(a => a.OcvCm != null).SelectMany(a => a.OcvCm).ToArray()
+                ? outerCvInputsResult.Where(a => a != default && a.OcvCm != null).SelectMany(a => a.OcvCm).ToArray()
                 : null;
 
             //if (makeOuterCvConfusionMatrices && ocvCm == default)
@@ -270,17 +283,17 @@ namespace SvmFsBatch
 
             // 3. make confusion matrix from the merged prediction results
             // note: repeated 'labels' lines will be ignored
-            var mergedPredictionText = outerCvInputsResult.SelectMany(a => a.PredictText).ToArray();
+            var mergedPredictionText = outerCvInputsResult.Where(a => a != default).SelectMany(a => a.PredictText).ToArray();
 
-            var mergedTestClassSampleIdList = mergedCvInput.TestFoldIndexes.SelectMany(a => a.TestIndexes).ToArray();
+            var mergedTestClassSampleIdList = mergedCvInput.TestFoldIndexes.Where(a => a != default).SelectMany(a => a.TestIndexes).ToArray();
 
             var predictionFileData = PerformanceMeasure.LoadPredictionFile(mergedCvInput.TestText, null, mergedPredictionText, unrolledIndexData.IdCalcElevenPointThresholds, mergedTestClassSampleIdList, ct);
             //for (var cm_index = 0; cm_index < prediction_file_data.CmList.Length; cm_index++) { prediction_file_data.CmList[cm_index].unrolled_index_data = unrolled_index_data; }
 
-            if (predictionFileData == default || predictionFileData.prediction_list == null || predictionFileData.prediction_list.Length == 0 || predictionFileData.CmList == null || predictionFileData.CmList.Length == 0)
+            if (predictionFileData == default || (predictionFileData.prediction_list?.Length??0) == 0 || (predictionFileData.CmList?.Length??0) == 0 || predictionFileData.prediction_list.All(a=>a==default) || predictionFileData.CmList.All(a=>a==default))
             {
                 Logging.LogEvent("predictionFileData was default");
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return default;
             }
 
@@ -299,7 +312,10 @@ namespace SvmFsBatch
             {
                 Logging.WriteLine($@"{unrolledIndexData.IdExperimentName}: Group MCV cache: Save disabled: {unrolledIndexData?.IdIndexStr()} {unrolledIndexData?.IdFoldStr()} {unrolledIndexData?.IdMlStr()}. Files: {mergedCvInput.CmFn1}, {mergedCvInput.CmFn2}.");
 
-                if (!saveGroupCache && !string.IsNullOrWhiteSpace(unrolledIndexData.IdGroupFolder)) await IoProxy.DeleteDirectoryAsync(true, ct, unrolledIndexData.IdGroupFolder, true).ConfigureAwait(false);
+                if (!saveGroupCache && !string.IsNullOrWhiteSpace(unrolledIndexData.IdGroupFolder))
+                {
+                    await IoProxy.DeleteDirectoryAsync(true, ct, unrolledIndexData.IdGroupFolder, true).ConfigureAwait(false);
+                }
             }
 
 
@@ -309,21 +325,26 @@ namespace SvmFsBatch
         }
 
 
-        public static /*async Task<*/(OuterCvInput[] outerCvInputs, OuterCvInput mergedCvInput)/*>*/ MakeOuterCvInputs(DataSet dataSet, IndexData unrolledIndex, bool preserveFid = false, bool asParallel = true, CancellationToken ct = default)
+        public static /*async Task<*/(OuterCvInput[] outerCvInputs, OuterCvInput mergedCvInput)/*>*/ MakeOuterCvInputs(DataSet baseLineDataSet, int[] baseLineColumnIndexes, DataSet dataSet, IndexData unrolledIndex, /*bool preserveFid = false,*/ bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            const string MethodName = nameof(MakeOuterCvInputs);
+            const string methodName = nameof(MakeOuterCvInputs);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
+
             if (dataSet == default) return default;
             if (unrolledIndex == default) return default;
 
             //const bool preserveFid = false; // whether to keep the original FID in the libsvm training/testing files (note: if not, bear in mind that features with zero values are removed, so this must not distort the ordering...).
 
-            if (unrolledIndex.IdColumnArrayIndexes == null || unrolledIndex.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdColumnArrayIndexes)}");
-            if (unrolledIndex.IdRepetitions <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdRepetitions)}");
-            if (unrolledIndex.IdOuterCvFolds <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFolds)}");
-            if (unrolledIndex.IdOuterCvFoldsToRun < 0 || unrolledIndex.IdOuterCvFoldsToRun > unrolledIndex.IdOuterCvFolds) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{MethodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFoldsToRun)}");
+            if (unrolledIndex.IdColumnArrayIndexes == null || unrolledIndex.IdColumnArrayIndexes.Length == 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdColumnArrayIndexes)}");
+            if (unrolledIndex.IdRepetitions <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdRepetitions)}");
+            if (unrolledIndex.IdOuterCvFolds <= 0) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFolds)}");
+            if (unrolledIndex.IdOuterCvFoldsToRun < 0 || unrolledIndex.IdOuterCvFoldsToRun > unrolledIndex.IdOuterCvFolds) throw new ArgumentOutOfRangeException(nameof(unrolledIndex), $@"{ModuleName}.{methodName}.{nameof(unrolledIndex)}.{nameof(unrolledIndex.IdOuterCvFoldsToRun)}");
 
 
             // ensure columns in correct order, and has class id
@@ -348,10 +369,10 @@ namespace SvmFsBatch
             if (pairIndexesIndex < pairIndexes.Length) throw new Exception();
 
             var ocvData = asParallel
-                ? pairIndexes.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(pairIndex => MakeOuterCvInputsSingle(dataSet, unrolledIndex, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, preserveFid, asParallel, ct)).ToArray()
-                : pairIndexes.Select(pairIndex => MakeOuterCvInputsSingle(dataSet, unrolledIndex, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, preserveFid, asParallel, ct)).ToArray();
+                ? pairIndexes.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(pairIndex => MakeOuterCvInputsSingle(baseLineDataSet, baseLineColumnIndexes, dataSet, unrolledIndex, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, /*preserveFid,*/ asParallel: asParallel, ct: ct)).ToArray()
+                : pairIndexes.Select(pairIndex => MakeOuterCvInputsSingle(baseLineDataSet, baseLineColumnIndexes, dataSet, unrolledIndex, pairIndex.RepetitionsIndex, pairIndex.OuterCvIndex, /*preserveFid,*/ asParallel: asParallel, ct: ct)).ToArray();
 
-            if (ocvData.Any(a=> a == default)) return default;
+            if (ocvData.Any(a => a == default)) return default;
 
             var mergedFilenamePrefix = Path.Combine(unrolledIndex.IdGroupFolder, $@"m_{Program.GetIterationFilename(new[] { unrolledIndex }, ct)}");
 
@@ -415,10 +436,15 @@ namespace SvmFsBatch
 
         }
 
-        public static OuterCvInput MakeOuterCvInputsSingle(DataSet dataSet, IndexData unrolledIndex, int repetitionsIndex, int outerCvIndex, bool preserveFid, bool asParallel = true, CancellationToken ct = default)
+        public static OuterCvInput MakeOuterCvInputsSingle(DataSet baseLineDataSet, int[] baseLineColumnIndexes, DataSet dataSet, IndexData unrolledIndex, int repetitionsIndex, int outerCvIndex, /*bool preserveFid,*/ bool asParallel = true, CancellationToken ct = default)
         {
+            const bool preserveFid = false;
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+
+            if (baseLineColumnIndexes != null && baseLineColumnIndexes.Length > 0 && baseLineColumnIndexes[0] == 0) baseLineColumnIndexes = baseLineColumnIndexes[1..];
+
+            var hasBaseLine = baseLineDataSet != null && (baseLineColumnIndexes?.Length ?? 0) > 0;
 
             var filename = Path.Combine(unrolledIndex.IdGroupFolder, $@"o_{Program.GetItemFilename(unrolledIndex, repetitionsIndex, outerCvIndex, ct)}");
 
@@ -436,13 +462,48 @@ namespace SvmFsBatch
                 : unrolledIndex.IdDownSampledTrainClassFolds /* down sample for training */
                     .Select(a => (a.ClassId, TrainIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex != outerCvIndex /* do not select test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray();
 
-            
+
             var trainSizes = trainFoldIndexes.Select(a => (a.ClassId, train_size: a.TrainIndexes?.Length ?? 0)).ToArray();
+
+
+
+            // todo: make sure class id isn't included twice, is at the start (feature #0), and ...???  something lse, what was it?
+
+
+
             var trainRowValues = dataSet.GetRowFeatures(trainFoldIndexes, unrolledIndex.IdColumnArrayIndexes, ct: ct);
+            if (trainRowValues == default) return default;
+
             var trainScaling = DataSet.GetScalingParams(trainRowValues, unrolledIndex.IdColumnArrayIndexes, ct: ct);
-            var trainRowScaledValues = DataSet.GetScaledRows(trainRowValues, /*column_indexes,*/
-                trainScaling,
-                unrolledIndex.IdScaleFunction, ct: ct);
+            if (trainScaling == default) return default;
+
+            var trainRowScaledValues = DataSet.GetScaledRows(trainRowValues, /*column_indexes,*/ trainScaling, unrolledIndex.IdScaleFunction, ct: ct);
+            if (trainRowScaledValues == default) return default;
+
+            Scaling[] baseLineTrainScaling = null;
+
+            if (hasBaseLine)
+            {
+                var baseLineTrainRowValues =  baseLineDataSet.GetRowFeatures(trainFoldIndexes, baseLineColumnIndexes, ct: ct);
+                if (baseLineTrainRowValues == default) return default;
+
+                baseLineTrainScaling =  DataSet.GetScalingParams(baseLineTrainRowValues, baseLineColumnIndexes, ct: ct);
+                if (baseLineTrainScaling == default) return default;
+
+                var baseLineTrainRowScaledValues =  DataSet.GetScaledRows(baseLineTrainRowValues, /*column_indexes,*/ baseLineTrainScaling, unrolledIndex.IdScaleFunction, ct: ct);
+                if (baseLineTrainRowScaledValues == default) return default;
+
+#if DEBUG
+                if ((trainRowScaledValues?.Length ?? 0) != (baseLineTrainRowScaledValues?.Length ?? 0)) throw new Exception();
+#endif
+
+                for (var i = 0; i < trainRowScaledValues.Length; i++)
+                {
+                    trainRowScaledValues[i] = trainRowScaledValues[i].Concat(baseLineTrainRowScaledValues[i]).ToArray();
+                }
+            }
+
+
             //var trainText = asParallel
             //    ? trainRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
             //    : trainRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
@@ -452,6 +513,7 @@ namespace SvmFsBatch
             ? trainRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
             : trainRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
 
+            if (trainText == default) return default;
             //var v = train_fold_indexes.Select(a => a.indexes.Select(ix => DataSet.value_list.First(b => b.ClassId == a.ClassId).val_list[ix].RowComment).ToArray()).ToArray();
 
 
@@ -462,20 +524,50 @@ namespace SvmFsBatch
                     .Select(a => (a.ClassId, TestIndexes: a.folds.Where(b => b.RepetitionsIndex == repetitionsIndex && b.OuterCvIndex == outerCvIndex /* select only test fold */).SelectMany(b => b.ClassSampleIndexes).OrderBy(b => b).ToArray())).ToArray();
 
             var testSizes = testFoldIndexes.Select(a => (a.ClassId, test_size: a.TestIndexes?.Length ?? 0)).ToArray();
+
+
             var testRowValues = dataSet.GetRowFeatures(testFoldIndexes, unrolledIndex.IdColumnArrayIndexes, ct: ct);
+            if (testRowValues == default) return default;
+
             var testScaling = trainScaling; /* scale test data with training data */
-            var testRowScaledValues = DataSet.GetScaledRows(testRowValues, /*column_indexes,*/
-                testScaling,
-                unrolledIndex.IdScaleFunction, ct: ct);
+            if (testScaling == default) return default;
+
+            var testRowScaledValues = DataSet.GetScaledRows(testRowValues, /*column_indexes,*/ testScaling, unrolledIndex.IdScaleFunction, ct: ct);
+            if (testRowScaledValues == default) return default;
+
             //var testText = asParallel
             //    ? testRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
             //    : testRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:G17}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+
+            
+
+            if (hasBaseLine)
+            {
+                var baseLineTestRowValues = baseLineDataSet.GetRowFeatures(testFoldIndexes, baseLineColumnIndexes, ct: ct);
+                if (baseLineTestRowValues == default) return default;
+                
+                var baseLineTestScaling = baseLineTrainScaling; /* scale test data with baseline training data */
+                if (baseLineTestScaling == default) return default;
+
+                var baseLineTestRowScaledValues = DataSet.GetScaledRows(baseLineTestRowValues, /*column_indexes,*/ baseLineTestScaling, unrolledIndex.IdScaleFunction, ct: ct);
+                if (baseLineTestRowScaledValues == default) return default;
+
+#if DEBUG
+                if ((testRowScaledValues?.Length ?? 0) != (baseLineTestRowScaledValues?.Length ?? 0)) throw new Exception();
+#endif
+
+                for (var i = 0; i < testRowScaledValues.Length; i++)
+                {
+                    testRowScaledValues[i] = testRowScaledValues[i].Concat(baseLineTestRowScaledValues[i]).ToArray();
+                }
+            }
 
 
             var testText = asParallel
                 ? testRowScaledValues.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray()
                 : testRowScaledValues.Select(row => $@"{(int)row[0]} {string.Join(" ", row.Skip(1 /* skip class id column */).Select((colVal, xIndex) => colVal != 0 ? $@"{(preserveFid ? unrolledIndex.IdColumnArrayIndexes[xIndex] : xIndex + 1)}:{colVal:0.000000}" : @"").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())}").Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
 
+            if (testText == default) return default;
             Logging.LogExit(ModuleName);
 
             var ret = new OuterCvInput
@@ -511,7 +603,7 @@ namespace SvmFsBatch
             if (ct.IsCancellationRequested)
             {
                 Logging.LogEvent("Cancellation requested");
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return default;
             }
 

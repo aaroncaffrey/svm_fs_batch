@@ -107,7 +107,7 @@ namespace SvmFsBatch
 
             TimeSpan? pbsWalltime = TimeSpan.FromHours(240);
 
-            var pbsExecutionDirectory = string.Join(Path.DirectorySeparatorChar, Program.ProgramArgs.SvmFsBatchHome, "pbs", programArgs.ExperimentName);
+            var pbsExecutionDirectory = string.Join(Path.DirectorySeparatorChar, Program.ProgramArgs.ResultsRootFolder, "pbs", programArgs.ExperimentName);
 
             var pbsJobname = $@"{programArgs.ExperimentName}_{nameof(SvmFsBatch)}";
             var pbsMailAddr = "";

@@ -12,9 +12,9 @@ namespace SvmFsBatch
         public const string ModuleName = nameof(FsServer);
 
         //public static readonly string _server_id = program.program_args.server_id;//Guid.NewGuid().ToString();
-        public static readonly string ServerFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_server", $"{Program.ProgramArgs.ServerGuid:N}");
+        //public static readonly string ServerFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_server", $"{Program.ProgramArgs.ServerGuid:N}");
 
-        public static async Task FeatureSelectionInitializationAsync(DataSet DataSet, int scoringClassId, string[] scoringMetrics, string experimentName, int instanceId, int totalInstances, int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales, (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, int limitIterationNotHigherThanAll = 14, int limitIterationNotHigherThanLast = 7, bool makeOuterCvConfusionMatrices = false, bool testFinalBestBias = false, ulong lvl = 0, CancellationToken ct = default)
+        public static async Task FeatureSelectionInitializationAsync(DataSet baseLineDataSet, int[] baseLineColumnIndexes, DataSet dataSet, int scoringClassId, string[] scoringMetrics, string experimentName, int instanceId, int totalInstances, int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales, (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, int limitIterationNotHigherThanAll = 14, int limitIterationNotHigherThanLast = 7, bool makeOuterCvConfusionMatrices = false, bool testFinalBestBias = false, ulong lvl = 0, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
@@ -29,11 +29,19 @@ namespace SvmFsBatch
                 return;
             }
 
-            const string MethodName = nameof(FeatureSelectionInitializationAsync);
+            //const string MethodName = nameof(FeatureSelectionInitializationAsync);
 
-            var findBestGroupFeaturesFirst = false;
-            var checkIndividualLast = true;
+            var startTime = DateTime.UtcNow;
 
+            // -fs0 0/1/2 -fs2 0/1 -fs4 0/1
+            var option0_findBestGroupFeaturesFirst = Program.ProgramArgs.Option0 == 1 || Program.ProgramArgs.Option0 == 2;
+            var option0_findBestGroupFeaturesFirstWithPreselect = Program.ProgramArgs.Option0 == 1;
+
+            //var option1 = true;
+
+            var option2_checkIndividualLast = Program.ProgramArgs.Option2 == 1;
+            var option3_checkIndividualLast = Program.ProgramArgs.Option3 == 1;
+            var option4_testFinalBestBias = Program.ProgramArgs.Option4 == 1;
 
             //var serverGuid = Program.ProgramArgs.ServerGuid; // Guid.NewGuid().ToByteArray();
             //var server_guid_bytes = Program.program_args.server_guid.ToByteArray();// Guid.NewGuid().ToByteArray();
@@ -53,18 +61,22 @@ namespace SvmFsBatch
 
 
             // Get the feature groups within the DataSet
-            var groups1 = DataSetGroupMethods.GetMainGroups(DataSet, true, true, true, true, true, true, true, false, false, ct: ct);
+            var groups1 = DataSetGroupMethods.GetMainGroups(dataSet, true, true, true, true, true, true, true, false, false, ct: ct);
 
             // Limit for testing
             // todo: remove this
             //groups1 = groups1.Take(100).ToArray();
+
+            var experimentDurations = new List<TimeSpan>();
+            
             //var esn = 0;
             // Feature select within each group first, to reduce number of columns
-            if (findBestGroupFeaturesFirst)
+            if (option0_findBestGroupFeaturesFirst)
             {
-                Logging.WriteLine($@"Finding best of {groups1.Sum(a => a.columns.Length)} individual columns within the {groups1.Length} groups", ModuleName, MethodName);
+                var startTime0 = DateTime.UtcNow;
 
-                var experimentDescription0 = $@"Backwards feature selection on each feature-groups (features made of several columns) to reduce their sizes by removing surplus columns (dimensionality reduction).";
+                Logging.WriteLine($@"Finding best of {groups1.Sum(a => a.columns.Length)} individual columns within the {groups1.Length} groups", ModuleName);//, MethodName);
+
 
 
                 // get best features in each gkGroup
@@ -74,44 +86,63 @@ namespace SvmFsBatch
                 // This means that if number of groups is less than number of instances, some instances could be idle... problem, but rare enough to ignore.
 
 
+                // note: it doesn't make sense to go both backwards (i.e. preselect) and forwards (i.e. no preselect), as the results are unlikely to ever agree... and it would be an arbitrary choice.
+
+
+                
+
+
+                
+
                 var groups1ReduceOutputTasks = groups1ReduceInput
                     //.AsParallel()
                     //.AsOrdered()
                     ///*.WithCancellation(ct)*/
-                    .Select(async (gkGroup, groupIndex) => await FeatureSelectionWorker(scoringClassId,
-                        scoringMetrics,
-                        //cp,
-                        DataSet,
-                        gkGroup,
-                        true,
-                        //save_status: true,
-                        null,
-                        experimentDescription0,
-                        experimentName,
-                        experimentSequenceNumber: 0,
-                        experimentSubequenceNumber: groupIndex,
-                        //InstanceId: InstanceId,
-                        //TotalInstances: TotalInstances,
-                        //array_index_start: array_index_start,
-                        //array_step: array_step,
-                        //array_index_last: array_index_last,
-                        repetitions,
-                        outerCvFolds,
-                        outerCvFoldsToRun,
-                        innerFolds,
-                        svmTypes,
-                        kernels,
-                        scales,
-                        classWeightSets,
-                        calcElevenPointThresholds,
-                        0.005,
-                        100,
-                        limitIterationNotHigherThanAll,
-                        limitIterationNotHigherThanLast,
-                        lvl: lvl + 1,
-                        ct: ct
-                    //make_outer_cv_confusion_matrices: false
-                    ).ConfigureAwait(false)).ToArray();
+                    .Select(async (groups0, groupIndex) =>
+                    {
+                        var experimentDescription0 = $@"Backwards feature selection on each feature-groups (features made of several columns) to reduce their sizes by removing surplus columns (dimensionality reduction).";
+                        var experimentSequenceNumber0 = 0;
+                        var experimentSubequenceNumber0 = groupIndex;
+                        var experimentGroups0 = groups0;
+                        var experimentName0 = $"{experimentName}_E{experimentSequenceNumber0}_S{experimentSubequenceNumber0}_G{experimentGroups0.Length}";
+
+                        return await FeatureSelectionWorker(scoringClassId,
+                            scoringMetrics,
+                            //cp,
+                            baseLineDataSet,
+                            baseLineColumnIndexes,
+                            dataSet,
+                            experimentGroups0,
+                            option0_findBestGroupFeaturesFirstWithPreselect,
+                            //save_status: true,
+                            null,
+                            experimentDescription0,
+                            experimentName0,
+                            //experimentSequenceNumber: 0,
+                            //experimentSubequenceNumber: groupIndex,
+                            //InstanceId: InstanceId,
+                            //TotalInstances: TotalInstances,
+                            //array_index_start: array_index_start,
+                            //array_step: array_step,
+                            //array_index_last: array_index_last,
+                            repetitions,
+                            outerCvFolds,
+                            outerCvFoldsToRun,
+                            innerFolds,
+                            svmTypes,
+                            kernels,
+                            scales,
+                            classWeightSets,
+                            calcElevenPointThresholds,
+                            0.005,
+                            100,
+                            limitIterationNotHigherThanAll,
+                            limitIterationNotHigherThanLast,
+                            lvl: lvl + 1,
+                            ct: ct
+                            //make_outer_cv_confusion_matrices: false
+                        ).ConfigureAwait(false);
+                    }).ToArray();
 
                 var groups1ReduceOutput = await Task.WhenAll(groups1ReduceOutputTasks).ConfigureAwait(false);
 
@@ -122,27 +153,38 @@ namespace SvmFsBatch
                 var groups1ReduceOutputRegrouped = DataSetGroupMethods.GetMainGroups(groups1ReduceOutputUngrouped, true, true, true, true, true, true, true, false, false, ct: ct);
 
                 groups1 = groups1ReduceOutputRegrouped;
+
+                
+
+                experimentDurations.Add(DateTime.UtcNow - startTime0);
             }
 
 
             // Feature select between the DataSet groups
 
+            var startTime1 = DateTime.UtcNow;
             var experimentDescription1 = $@"Forward feature selection with feature-groups (features made of several columns).";
+            var experimentSequenceNumber1 = 1;
+            var experimentSubequenceNumber1 = 0;
+            var experimentGroups1 = groups1;
+            var experimentName1 = $"{experimentName}_E{experimentSequenceNumber1}_S{experimentSubequenceNumber1}_G{experimentGroups1.Length}";
 
-            Logging.WriteLine($@"Finding best of {groups1.Length} groups (made of {groups1.Sum(a => a.columns.Length)} columns)", ModuleName, MethodName);
+            Logging.WriteLine($@"Finding best of {groups1.Length} groups (made of {groups1.Sum(a => a.columns.Length)} columns)", ModuleName);//, MethodName);
 
             var winner = await FeatureSelectionWorker(scoringClassId,
                 scoringMetrics,
                 //cp,
-                DataSet,
-                groups1,
+                baseLineDataSet,
+                baseLineColumnIndexes,
+                dataSet,
+                experimentGroups1,
                 false,
                 //save_status: true,
                 null,
                 experimentDescription1,
-                experimentName,
-                experimentSequenceNumber: 1,
-                experimentSubequenceNumber: 0,
+                experimentName1,
+                //experimentSequenceNumber: 1,
+                //experimentSubequenceNumber: 0,
                 //InstanceId: InstanceId,
                 //TotalInstances: TotalInstances,
                 //array_index_start: array_index_start,
@@ -167,90 +209,119 @@ namespace SvmFsBatch
                 ct: ct
             //make_outer_cv_confusion_matrices: make_outer_cv_confusion_matrices
             ).ConfigureAwait(false);
+            experimentDurations.Add(DateTime.UtcNow - startTime1);
 
             // Column based feature select from the winners
-            if (checkIndividualLast)
+            if (option2_checkIndividualLast || option3_checkIndividualLast)
             {
-                var experimentDescription2 = $@"Preselect all group-selection-winner group columns, then test if feature selection goes backwards on a per column (not per group) basis (dimensionality reduction).";
+                
 
                 var bestWinnerColumns = DataSetGroupMethods.Ungroup(winner.BestWinnerGroups, ct: ct);
                 var bestWinnerColumnsInput = DataSetGroupMethods.GetMainGroups(bestWinnerColumns, true, true, true, true, true, true, true, true, true, ct: ct);
 
-                var bestWinnerColumnsOutputStartBackwards = await FeatureSelectionWorker(scoringClassId,
-                    scoringMetrics,
-                    //cp,
-                    DataSet,
-                    bestWinnerColumnsInput,
-                    true,
-                    //save_status: true,
-                    null,
-                    experimentDescription2,
-                    experimentName,
-                    experimentSequenceNumber: 2,
-                    experimentSubequenceNumber: 0,
-                    //InstanceId: InstanceId,
-                    //TotalInstances: TotalInstances,
-                    //array_index_start: array_index_start,
-                    //array_step: array_step,
-                    //array_index_last: array_index_last,
-                    repetitions,
-                    outerCvFolds,
-                    outerCvFoldsToRun,
-                    innerFolds,
-                    svmTypes,
-                    kernels,
-                    scales,
-                    classWeightSets,
-                    calcElevenPointThresholds,
-                    0.005,
-                    100,
-                    limitIterationNotHigherThanAll,
-                    limitIterationNotHigherThanLast,
-                    lvl: lvl + 1,
-                    ct: ct
-                //make_outer_cv_confusion_matrices: false
-                ).ConfigureAwait(false);
+                if (option2_checkIndividualLast) 
+                {
+                    var startTime2 = DateTime.UtcNow;
 
-                var experimentDescription3 = $@"Run forward feature selection on all group-selection-winner group columns, on a per column (not per group) basis to remove surplus columns (dimensionality reduction).";
+                    var experimentDescription2 = $@"Preselect all group-selection-winner group columns, then test if feature selection goes backwards on a per column (not per group) basis (dimensionality reduction).";
+                    var experimentSequenceNumber2 = 2;
+                    var experimentSubequenceNumber2 = 0;
+                    var experimentGroups2 = bestWinnerColumnsInput;
+                    var experimentName2 = $"{experimentName}_E{experimentSequenceNumber2}_S{experimentSubequenceNumber2}_G{experimentGroups2.Length}";
 
-                var bestWinnerColumnsOutputStartForwards = await FeatureSelectionWorker(scoringClassId,
-                    scoringMetrics,
-                    //cp,
-                    DataSet,
-                    bestWinnerColumnsInput,
-                    false,
-                    //save_status: true,
-                    null,
-                    experimentDescription3,
-                    experimentName,
-                    experimentSequenceNumber: 3,
-                    experimentSubequenceNumber: 0,
-                    //InstanceId: InstanceId,
-                    //TotalInstances: TotalInstances,
-                    //array_index_start: array_index_start,
-                    //array_step: array_step,
-                    //array_index_last: array_index_last,
-                    repetitions,
-                    outerCvFolds,
-                    outerCvFoldsToRun,
-                    innerFolds,
-                    svmTypes,
-                    kernels,
-                    scales,
-                    classWeightSets,
-                    calcElevenPointThresholds,
-                    0.005,
-                    100,
-                    limitIterationNotHigherThanAll,
-                    limitIterationNotHigherThanLast,
-                    lvl: lvl + 1,
-                    ct: ct
-                //make_outer_cv_confusion_matrices: false
-                ).ConfigureAwait(false);
+                    var bestWinnerColumnsOutputStartBackwards = await FeatureSelectionWorker(scoringClassId,
+                        scoringMetrics,
+                        //cp,
+                        baseLineDataSet,
+                        baseLineColumnIndexes,
+                        dataSet,
+                        experimentGroups2,
+                        true,
+                        //save_status: true,
+                        null,
+                        experimentDescription2,
+                        experimentName2,
+                        //experimentSequenceNumber: 2,
+                        //experimentSubequenceNumber: 0,
+                        //InstanceId: InstanceId,
+                        //TotalInstances: TotalInstances,
+                        //array_index_start: array_index_start,
+                        //array_step: array_step,
+                        //array_index_last: array_index_last,
+                        repetitions,
+                        outerCvFolds,
+                        outerCvFoldsToRun,
+                        innerFolds,
+                        svmTypes,
+                        kernels,
+                        scales,
+                        classWeightSets,
+                        calcElevenPointThresholds,
+                        0.005,
+                        100,
+                        limitIterationNotHigherThanAll,
+                        limitIterationNotHigherThanLast,
+                        lvl: lvl + 1,
+                        ct: ct
+                        //make_outer_cv_confusion_matrices: false
+                    ).ConfigureAwait(false);
+
+                    experimentDurations.Add(DateTime.UtcNow - startTime2);
+                }
+
+                if (option3_checkIndividualLast) 
+                {
+                    var startTime3 = DateTime.UtcNow;
+
+                    var experimentDescription3 = $@"Run forward feature selection on all group-selection-winner group columns, on a per column (not per group) basis to remove surplus columns (dimensionality reduction).";
+                    var experimentSequenceNumber3 = 3;
+                    var experimentSubequenceNumber3 = 0;
+                    var experimentGroups3 = bestWinnerColumnsInput;
+                    var experimentName3 = $"{experimentName}_E{experimentSequenceNumber3}_S{experimentSubequenceNumber3}_G{experimentGroups3.Length}";
+
+
+                    var bestWinnerColumnsOutputStartForwards = await FeatureSelectionWorker(scoringClassId,
+                        scoringMetrics,
+                        //cp,
+                        baseLineDataSet,
+                        baseLineColumnIndexes,
+                        dataSet,
+                        experimentGroups3,
+                        false,
+                        //save_status: true,
+                        null,
+                        experimentDescription3,
+                        experimentName3,
+                        //experimentSequenceNumber: 3,
+                        //experimentSubequenceNumber: 0,
+                        //InstanceId: InstanceId,
+                        //TotalInstances: TotalInstances,
+                        //array_index_start: array_index_start,
+                        //array_step: array_step,
+                        //array_index_last: array_index_last,
+                        repetitions,
+                        outerCvFolds,
+                        outerCvFoldsToRun,
+                        innerFolds,
+                        svmTypes,
+                        kernels,
+                        scales,
+                        classWeightSets,
+                        calcElevenPointThresholds,
+                        0.005,
+                        100,
+                        limitIterationNotHigherThanAll,
+                        limitIterationNotHigherThanLast,
+                        lvl: lvl + 1,
+                        ct: ct
+                        //make_outer_cv_confusion_matrices: false
+                    ).ConfigureAwait(false);
+                    experimentDurations.Add(DateTime.UtcNow - startTime3);
+                }
             }
 
             // Check if result is approximately the same with other parameters values (i.e. variance number of repetitions, outer folds, inner folds, etc.)
-            if (testFinalBestBias)
+            if (option4_testFinalBestBias)
             {
                 // stage5 ...
 
@@ -264,13 +335,16 @@ namespace SvmFsBatch
 
             //await cp.StopAsync(callChain: null, lvl: lvl + 1).ConfigureAwait(false);
 
+            Logging.LogEvent($"Experiment durations: {string.Join(", ", experimentDurations.Select(a => $"[{a:dd\\:hh\\:mm\\:ss}]").ToArray())}.");
+            Logging.LogEvent($"Total duration: [{(DateTime.UtcNow - startTime):dd\\:hh\\:mm\\:ss}].");
+
             Logging.LogExit(ModuleName);
         }
 
         public static async Task<((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] BestWinnerGroups, (IndexData id, ConfusionMatrix cm, RankScore rs) BestWinnerData, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> winners)> FeatureSelectionWorker(
-            int scoringClassId, string[] scoringMetrics, /*ConnectionPool cp,*/ DataSet DataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, bool preselectAllGroups, // preselect all groups
+            int scoringClassId, string[] scoringMetrics, /*ConnectionPool cp,*/ DataSet baseLineDataSet, int[] baseLineColumnIndexes, DataSet dataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, bool preselectAllGroups, // preselect all groups
             int[] baseGroupIndexes, //always include these groups
-            string experimentDescription, string experimentName, int experimentSequenceNumber, int experimentSubequenceNumber,
+            string experimentDescription, string experimentName, /*int experimentSequenceNumber, int experimentSubequenceNumber,*/
             //int InstanceId,
             //int TotalInstances,
             int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales,
@@ -286,10 +360,10 @@ namespace SvmFsBatch
 
             // todo: check whether loading/saving full cache in this method... duplicated work or missing work...
 
-            experimentName = $"{experimentName}_E{experimentSequenceNumber}_S{experimentSubequenceNumber}_G{groups.Length}";
+            //experimentName = $"{experimentName}_E{experimentSequenceNumber}_S{experimentSubequenceNumber}_G{groups.Length}";
 
 
-            const string MethodName = nameof(FeatureSelectionWorker);
+            const string methodName = nameof(FeatureSelectionWorker);
             const bool overwriteCache = false;
 
             //while (io_proxy.ExistsFile(true, Path.Combine(_server_folder, $@"exit.csv"), _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
@@ -317,7 +391,7 @@ namespace SvmFsBatch
 
             void Log(string msg)
             {
-                Logging.LogEvent($@"[{experimentName}; iteration: {iterationIndex}] [{msg}]", ModuleName, MethodName);
+                Logging.LogEvent($@"[{experimentName}; iteration: {iterationIndex}] [{msg}]", ModuleName, methodName);
             }
 
             // todo: add rank positions (for each iteration) to the winning features summary output... 
@@ -365,12 +439,12 @@ namespace SvmFsBatch
                 if (groupIndexesToTest == null || groupIndexesToTest.Length == 0) break;
 
                 var previousWinnerGroupIndex = lastWinnerIdCmRs.id?.IdGroupArrayIndex;
-                var jobGroupSeries = CacheLoad.JobGroupSeries(DataSet, groups, experimentName, iterationIndex, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, asParallel, ct);
+                var jobGroupSeries = CacheLoad.JobGroupSeries(dataSet, groups, experimentName, iterationIndex, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, asParallel, ct);
                 Log($@"{nameof(jobGroupSeries)}.{nameof(jobGroupSeries.Length)} = {jobGroupSeries?.Length ?? 0}.");
                 if (jobGroupSeries == null || jobGroupSeries.Length == 0) break;
 
 
-                var indexesWhole = CacheLoad.GetFeatureSelectionInstructions(DataSet, groups, jobGroupSeries, experimentName, iterationIndex, groups?.Length ?? 0, /*InstanceId, TotalInstances,*/ repetitions, outerCvFolds, outerCvFoldsToRun, innerFolds, svmTypes, kernels, scales, classWeightSets, calcElevenPointThresholds, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, ct: ct);
+                var indexesWhole = CacheLoad.GetFeatureSelectionInstructions(baseLineDataSet, baseLineColumnIndexes, dataSet, groups, jobGroupSeries, experimentName, iterationIndex, groups?.Length ?? 0, /*InstanceId, TotalInstances,*/ repetitions, outerCvFolds, outerCvFoldsToRun, innerFolds, svmTypes, kernels, scales, classWeightSets, calcElevenPointThresholds, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, ct: ct);
 
                 //var indexesWholeLines = indexesWhole.Select(a => a.CsvValuesString()).ToList();
                 //indexesWholeLines.Insert(0, IndexData.CsvHeaderString);
@@ -414,7 +488,7 @@ namespace SvmFsBatch
                 //while (IndexDataContainer.indexes_missing_partition.Any())
                 var dw = new DistributeWork();
 
-                var iterationWholeResults = await dw.ServeIpcJobsAsync(instanceGuid, experimentName, iterationIndex, DataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, callerCt: ct).ConfigureAwait(false);
+                var iterationWholeResults = await dw.ServeIpcJobsAsync(instanceGuid, experimentName, iterationIndex, baseLineDataSet, baseLineColumnIndexes, dataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, callerCt: ct).ConfigureAwait(false);
 
                 // save partition cache
                 //{
@@ -499,10 +573,12 @@ namespace SvmFsBatch
                 allWinnersIdCmRs: allWinnersIdCmRs,
                 bestWinnerIdCmRs: bestWinnerIdCmRs,
                 bestWinnerGroups: bestWinnerGroups,
-                MethodName: MethodName,
+                MethodName: methodName,
                 allIterationIdCmRs: allIterationIdCmRs,
                 ct: ct
                 ).ConfigureAwait(false);
+
+            // save selected columns as dataset (
 
             //await io_proxy.WriteAllLines(true, ct, Path.Combine(_server_folder, @"exit.csv"), new[] { "exit" }, _CallerModuleName: ModuleName, _CallerMethodName: MethodName).ConfigureAwait(false);
             Logging.LogExit(ModuleName);
@@ -743,6 +819,7 @@ namespace SvmFsBatch
 
             var task1 = Task.Run(async () =>
             {
+                if (ct.IsCancellationRequested) return;
                 var bestWinnerFn = Path.Combine(experimentFolder, $@"best_winner_{fn}.csv");
                 var bestWinnerText = new List<string>();
 
@@ -790,6 +867,7 @@ namespace SvmFsBatch
 
             var task2 = Task.Run(async () =>
                 {
+                    if (ct.IsCancellationRequested) return;
                     var allDataFn = Path.Combine(experimentFolder, $@"all_data_{fn}.csv");
 
                     var allDataText = new List<string>();
@@ -801,6 +879,7 @@ namespace SvmFsBatch
 
             var task3 = Task.Run(async () =>
             {
+                if (ct.IsCancellationRequested) return;
                 // group all data by values unique to each group and specific test of that group (i.e. svm kernel, scaling function, number of repetitions, folds, etc.).
                 var allDataGrouped = allData.AsParallel().AsOrdered() /*.WithCancellation(ct)*/.GroupBy(a => (a.id.IdGroupArrayIndex, a.id.IdRepetitions, a.id.IdOuterCvFolds, a.id.IdOuterCvFoldsToRun, a.id.IdInnerCvFolds, a.id.IdExperimentName, a.id.IdTotalGroups, a.id.IdSvmType, a.id.IdSvmKernel, a.id.IdScaleFunction, a.id.IdCalcElevenPointThresholds, a.id.IdSelectionDirection, IdClassWeights: string.Join(";", a.id?.IdClassWeights?.Select(a => $"{a.ClassId}:{a.ClassWeight}").ToArray() ?? Array.Empty<string>()))).Select(a => (key: a.Key, list: a.ToList())).ToArray();
                 var rankStatsFn = Path.Combine(experimentFolder, $@"rank_stats_{fn}.csv");
@@ -822,10 +901,11 @@ namespace SvmFsBatch
                         : $"{k1},{a.list.Count},{string.Join(",", gk.CsvValuesArray())},{a.key.IdGroupArrayIndex},{a.key.IdRepetitions},{a.key.IdOuterCvFolds},{a.key.IdOuterCvFoldsToRun},{a.key.IdInnerCvFolds},{a.key.IdExperimentName},{a.key.IdTotalGroups},{a.key.IdSvmType},{a.key.IdSvmKernel},{a.key.IdScaleFunction},{(a.key.IdCalcElevenPointThresholds ? 1 : 0)},{a.key.IdSelectionDirection},{a.key.IdClassWeights},{string.Join(",", fsScore.CsvValuesArray())},{string.Join(",", fsScorePercentile.CsvValuesArray())}";
                 }).ToArray());
                 await IoProxy.WriteAllLinesAsync(true, ct, rankStatsFn, rankStatsText, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
-            });
+            },ct);
 
             var task4 = Task.Run(async () =>
             {
+                if (ct.IsCancellationRequested) return;
                 var rankStatsFn2 = Path.Combine(experimentFolder, $@"rank_scores_{fn}.csv");
                 var iterScores = allData.GroupBy(a => a.id.IdGroupArrayIndex).Select(a => (IdGroupArrayIndex: a.Key, a.ToArray())).ToArray();
                 var iterLines = new List<string>();

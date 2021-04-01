@@ -12,8 +12,15 @@ namespace SvmFsBatch
         public static readonly string[] CsvHeaderValuesArray = DataSetGroupKey.CsvHeaderValuesArray.Select(a => /*"id_" +*/ a).ToArray().Concat(new[]
         {
             nameof(IdJobUid),
+
             nameof(IdIterationIndex),
             nameof(IdGroupArrayIndex),
+
+              nameof(IdBaseLineDatasetFileTags ),
+              nameof( IdBaseLineColumnArrayIndexes),
+              nameof( IdDatasetFileTags ),
+
+
             nameof(IdTotalGroups),
             nameof(IdSelectionDirection),
             nameof(IdExperimentName),
@@ -45,6 +52,10 @@ namespace SvmFsBatch
         public int[] IdColumnArrayIndexes;
 
         public (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures, (int RepetitionsIndex, int OuterCvIndex, int[] ClassSampleIndexes)[] folds)[] IdDownSampledTrainClassFolds;
+
+        public string[] IdDatasetFileTags;
+        public string[] IdBaseLineDatasetFileTags;
+        public int[] IdBaseLineColumnArrayIndexes;
 
         public int IdJobUid;
 
@@ -107,7 +118,7 @@ namespace SvmFsBatch
         public IndexData(string[] lineHeader, string[] csvLine, int columnOffset = 0)
         {
             Logging.LogCall(ModuleName);
-            
+
             //set_values(routines.x_types(null, csv_line.Skip(column_offset).ToArray(), false), 0);
             SetValues(lineHeader, XTypes.GetXTypes(csvLine.Skip(columnOffset).ToArray()));
 
@@ -153,6 +164,12 @@ namespace SvmFsBatch
                 $@"{IdJobUid}",
                 $@"{IdIterationIndex}",
                 $@"{IdGroupArrayIndex}",
+
+                $@"{string.Join(";", IdBaseLineDatasetFileTags ?? Array.Empty<string>())}",
+                $@"{string.Join(";", IdBaseLineColumnArrayIndexes ?? Array.Empty<int>())}",
+                $@"{string.Join(";", IdDatasetFileTags ?? Array.Empty<string>())}",
+
+
                 $@"{IdTotalGroups}",
                 $@"{IdSelectionDirection}",
                 $@"{IdExperimentName}",
@@ -178,16 +195,16 @@ namespace SvmFsBatch
                 ? ""
                 : a.Replace(',', ';')).ToArray();
 
-//#if DEBUG
-//            var str = string.Join(",", x3);
-//            var id2 = new  IndexData(str);
-//            var re = CompareReferenceData2(this, id2);
-//            if (!re.AllTrue())
-//            {
-//                Logging.LogEvent("!!! INDEXDATA NOT EQUAL !!!");
-//            }
-//#endif
-            Logging.LogExit(ModuleName); 
+            //#if DEBUG
+            //            var str = string.Join(",", x3);
+            //            var id2 = new  IndexData(str);
+            //            var re = CompareReferenceData2(this, id2);
+            //            if (!re.AllTrue())
+            //            {
+            //                Logging.LogEvent("!!! INDEXDATA NOT EQUAL !!!");
+            //            }
+            //#endif
+            Logging.LogExit(ModuleName);
             return ret;
         }
 
@@ -235,6 +252,11 @@ namespace SvmFsBatch
             var hiIdJobUid = Hi(nameof(IdJobUid));
             var hiIdIterationIndex = Hi(nameof(IdIterationIndex));
             var hiIdGroupArrayIndex = Hi(nameof(IdGroupArrayIndex));
+
+            var hiIdBaseLineDatasetFileTags = Hi(nameof(IdBaseLineDatasetFileTags));
+            var hiIdBaseLineColumnArrayIndexes = Hi(nameof(IdBaseLineColumnArrayIndexes));
+            var hiIdDatasetFileTags = Hi(nameof(IdDatasetFileTags));
+
             var hiIdTotalGroups = Hi(nameof(IdTotalGroups));
             var hiIdSelectionDirection = Hi(nameof(IdSelectionDirection));
             var hiIdExperimentName = Hi(nameof(IdExperimentName));
@@ -258,6 +280,11 @@ namespace SvmFsBatch
             if (hiIdJobUid > -1) IdJobUid = xType[hiIdJobUid].AsInt ?? -1;
             if (hiIdIterationIndex > -1) IdIterationIndex = xType[hiIdIterationIndex].AsInt ?? -1;
             if (hiIdGroupArrayIndex > -1) IdGroupArrayIndex = xType[hiIdGroupArrayIndex].AsInt ?? -1;
+
+            if (hiIdBaseLineDatasetFileTags > -1) IdBaseLineDatasetFileTags = xType[hiIdBaseLineDatasetFileTags].AsStr?.Split(new char[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+            if (hiIdBaseLineColumnArrayIndexes > -1) IdBaseLineColumnArrayIndexes = xType[hiIdBaseLineColumnArrayIndexes].AsStr.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
+            if (hiIdDatasetFileTags > -1) IdDatasetFileTags = xType[hiIdDatasetFileTags].AsStr?.Split(new char[] { ',', ';' },StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+
             if (hiIdTotalGroups > -1) IdTotalGroups = xType[hiIdTotalGroups].AsInt ?? -1;
             if (hiIdSelectionDirection > -1) IdSelectionDirection = Enum.Parse<Program.Direction>(xType[hiIdSelectionDirection].AsStr, true);
             if (hiIdExperimentName > -1) IdExperimentName = xType[hiIdExperimentName].AsStr;
@@ -442,14 +469,14 @@ namespace SvmFsBatch
             if (data1 == default)
             {
                 Logging.LogEvent("data1 was default");
-                Logging.LogExit(ModuleName);  
+                Logging.LogExit(ModuleName);
                 return null;
             }
 
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
             var ret = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2, idso));
 
-            Logging.LogExit(ModuleName); 
+            Logging.LogExit(ModuleName);
             return ret;
         }
 
@@ -457,12 +484,12 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (data1 == null) { Logging.LogExit(ModuleName);  return null; }
+            if (data1 == null) { Logging.LogExit(ModuleName); return null; }
 
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
             var ret = list.LastOrDefault(data2 => CompareReferenceData(data1, data2, idso));
 
-            Logging.LogExit(ModuleName); 
+            Logging.LogExit(ModuleName);
             return ret;
         }
 
@@ -471,10 +498,10 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
 
             var comp = CompareReferenceData2(data1, data2, idso);
-            
+
             if (idso == null || idso.AllTrue())
             {
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return comp.AllTrue();
             }
 
@@ -482,6 +509,12 @@ namespace SvmFsBatch
                 (!idso.IdCalcElevenPointThresholds || comp.IdCalcElevenPointThresholds) &&
                 (!idso.IdClassWeights || comp.IdClassWeights) &&
                 (!idso.IdColumnArrayIndexes || comp.IdColumnArrayIndexes) &&
+
+                (!idso.IdBaseLineDatasetFileTags || comp.IdBaseLineDatasetFileTags) &&
+                (!idso.IdBaseLineColumnArrayIndexes || comp.IdBaseLineColumnArrayIndexes) &&
+                (!idso.IdDatasetFileTags || comp.IdDatasetFileTags) &&
+
+
                 (!idso.IdExperimentName || comp.IdExperimentName) &&
                 (!idso.IdGroupArrayIndex || comp.IdGroupArrayIndex) &&
                 (!idso.IdGroupArrayIndexes || comp.IdGroupArrayIndexes) &&
@@ -512,10 +545,13 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
 
             var ret = new IndexDataSearchOptions(false);
-            
+
 
             // primitives
             ret.IdJobUid = x1a.IdJobUid == x2a.IdJobUid;
+
+            
+
             ret.IdCalcElevenPointThresholds = x1a.IdCalcElevenPointThresholds == x2a.IdCalcElevenPointThresholds;
             ret.IdGroupArrayIndex = x1a.IdGroupArrayIndex == x2a.IdGroupArrayIndex;
             ret.IdInnerCvFolds = x1a.IdInnerCvFolds == x2a.IdInnerCvFolds;
@@ -533,17 +569,24 @@ namespace SvmFsBatch
 
             // strings
             if ((idso == null || idso.IdExperimentName)) ret.IdExperimentName = (string.IsNullOrEmpty(x1a.IdExperimentName) && string.IsNullOrEmpty(x2a.IdExperimentName)) || string.Equals(x1a.IdExperimentName, x2a.IdExperimentName, StringComparison.OrdinalIgnoreCase);
-            if ((idso == null || idso.IdGroupFolder))    ret.IdGroupFolder =    (string.IsNullOrEmpty(x1a.IdGroupFolder) && string.IsNullOrEmpty(x2a.IdGroupFolder))       || string.Equals(x1a.IdGroupFolder, x2a.IdGroupFolder, StringComparison.OrdinalIgnoreCase);
+            if ((idso == null || idso.IdGroupFolder)) ret.IdGroupFolder = (string.IsNullOrEmpty(x1a.IdGroupFolder) && string.IsNullOrEmpty(x2a.IdGroupFolder)) || string.Equals(x1a.IdGroupFolder, x2a.IdGroupFolder, StringComparison.OrdinalIgnoreCase);
+
+            if (idso == null || idso.IdBaseLineDatasetFileTags) ret.IdBaseLineDatasetFileTags = /*(x1a.IdBaseLineDatasetFileTags?.Length??0) == (x2a.IdBaseLineDatasetFileTags?.Length??0) &&*/ (x1a.IdBaseLineDatasetFileTags == x2a.IdBaseLineDatasetFileTags) || (x1a.IdBaseLineDatasetFileTags ?? Array.Empty<string>()).SequenceEqual(x2a.IdBaseLineDatasetFileTags ?? Array.Empty<string>());
+            if (idso == null || idso.IdBaseLineColumnArrayIndexes) ret.IdBaseLineColumnArrayIndexes = (x1a.IdBaseLineColumnArrayIndexes == x2a.IdBaseLineColumnArrayIndexes) || ((x1a.IdBaseLineColumnArrayIndexes ?? Array.Empty<int>()).SequenceEqual(x2a.IdBaseLineColumnArrayIndexes ?? Array.Empty<int>()));
+            if (idso == null || idso.IdDatasetFileTags) ret.IdDatasetFileTags = /*(x1a.IdDatasetFileTags?.Length??0) == (x2a.IdDatasetFileTags?.Length??0) &&*/ (x1a.IdDatasetFileTags == x2a.IdDatasetFileTags) || (x1a.IdDatasetFileTags ?? Array.Empty<string>()).SequenceEqual(x2a.IdDatasetFileTags ?? Array.Empty<string>());
 
             // special cases
             if (idso == null || idso.IdGroupKey) ret.IdGroupKey = x1a.IdGroupKey == x2a.IdGroupKey;
-            if (idso == null || idso.IdClassWeights) ret.IdClassWeights = (x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) ^ (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0) ? false : x1a.IdClassWeights == x2a.IdClassWeights  || ((x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) && (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0)) || x1a.IdClassWeights.SequenceEqual(x2a.IdClassWeights);
+            //if (idso == null || idso.IdClassWeights) ret.IdClassWeights = (x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) ^ (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0) ? false : x1a.IdClassWeights == x2a.IdClassWeights || ((x1a.IdClassWeights == null || x1a.IdClassWeights.Length == 0) && (x2a.IdClassWeights == null || x2a.IdClassWeights.Length == 0)) || x1a.IdClassWeights.SequenceEqual(x2a.IdClassWeights);
+            if (idso == null || idso.IdClassWeights) ret.IdClassWeights = (x1a.IdClassWeights == x2a.IdClassWeights) || (x1a.IdClassWeights ?? Array.Empty<(int ClassId, double ClassWeight)>()).SequenceEqual(x2a.IdClassWeights ?? Array.Empty<(int ClassId, double ClassWeight)>());
             //if (idso == null || idso.IdGroupArrayIndexes) ret.IdGroupArrayIndexes = (x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0) ? false : x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes);
             //if (idso == null || idso.IdColumnArrayIndexes) ret.IdColumnArrayIndexes = (x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0) ? false : x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes);
 
-            if (idso == null || idso.IdGroupArrayIndexes) ret.IdGroupArrayIndexes = !((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) && (x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes));
-            if (idso == null || idso.IdColumnArrayIndexes) ret.IdColumnArrayIndexes = !((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) && (x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes));
+            //if (idso == null || idso.IdGroupArrayIndexes) ret.IdGroupArrayIndexes = !((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) ^ (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) && (x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes || ((x1a.IdGroupArrayIndexes == null || x1a.IdGroupArrayIndexes.Length == 0) && (x2a.IdGroupArrayIndexes == null || x2a.IdGroupArrayIndexes.Length == 0)) || x1a.IdGroupArrayIndexes.SequenceEqual(x2a.IdGroupArrayIndexes));
+            //if (idso == null || idso.IdColumnArrayIndexes) ret.IdColumnArrayIndexes = !((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) ^ (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) && (x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes || ((x1a.IdColumnArrayIndexes == null || x1a.IdColumnArrayIndexes.Length == 0) && (x2a.IdColumnArrayIndexes == null || x2a.IdColumnArrayIndexes.Length == 0)) || x1a.IdColumnArrayIndexes.SequenceEqual(x2a.IdColumnArrayIndexes));
 
+            if (idso == null || idso.IdGroupArrayIndexes) ret.IdGroupArrayIndexes =   (x1a.IdGroupArrayIndexes == x2a.IdGroupArrayIndexes) || (x1a.IdGroupArrayIndexes ?? Array.Empty<int>()).SequenceEqual(x2a.IdGroupArrayIndexes ?? Array.Empty<int>());
+            if (idso == null || idso.IdColumnArrayIndexes) ret.IdColumnArrayIndexes = (x1a.IdColumnArrayIndexes == x2a.IdColumnArrayIndexes) || (x1a.IdColumnArrayIndexes ?? Array.Empty<int>()).SequenceEqual(x2a.IdColumnArrayIndexes ?? Array.Empty<int>());
 
 
             if (idso == null || idso.IdClassFolds)
@@ -627,6 +670,12 @@ namespace SvmFsBatch
         public class IndexDataSearchOptions
         {
             public bool IdJobUid = true;
+
+            public bool IdBaseLineDatasetFileTags = true;
+            public bool IdBaseLineColumnArrayIndexes = true;
+            public bool IdDatasetFileTags = true;
+
+
             public bool IdCalcElevenPointThresholds = true;
             public bool IdClassWeights = true;
             public bool IdColumnArrayIndexes = true;
@@ -652,7 +701,7 @@ namespace SvmFsBatch
 
             public IndexDataSearchOptions()
             {
-                
+
             }
 
             public IndexDataSearchOptions(bool value)
@@ -663,6 +712,9 @@ namespace SvmFsBatch
             public void Set(bool value)
             {
                 IdJobUid = value;
+                IdBaseLineDatasetFileTags = value;
+                IdBaseLineColumnArrayIndexes = value;
+                IdDatasetFileTags = value;
                 IdCalcElevenPointThresholds = value;
                 IdClassWeights = value;
                 IdColumnArrayIndexes = value;
@@ -693,7 +745,12 @@ namespace SvmFsBatch
 
                 var ret =
                     IdJobUid ||
-                    IdCalcElevenPointThresholds ||
+
+                     IdBaseLineDatasetFileTags ||
+                IdBaseLineColumnArrayIndexes ||
+                IdDatasetFileTags ||
+
+                IdCalcElevenPointThresholds ||
                     IdClassWeights ||
                     IdColumnArrayIndexes ||
                     IdExperimentName ||
@@ -727,6 +784,12 @@ namespace SvmFsBatch
 
                 var ret =
                     IdJobUid &&
+
+                      IdBaseLineDatasetFileTags &&
+                IdBaseLineColumnArrayIndexes &&
+                IdDatasetFileTags &&
+
+
                     IdCalcElevenPointThresholds &&
                     IdClassWeights &&
                     IdColumnArrayIndexes &&
@@ -762,6 +825,11 @@ namespace SvmFsBatch
                 var ret = new[]
                 {
                     IdJobUid,
+
+                      IdBaseLineDatasetFileTags ,
+                IdBaseLineColumnArrayIndexes ,
+                IdDatasetFileTags ,
+
                     IdCalcElevenPointThresholds,
                     IdClassWeights,
                     IdColumnArrayIndexes,

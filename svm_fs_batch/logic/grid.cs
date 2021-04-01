@@ -14,13 +14,13 @@ namespace SvmFsBatch
         public static GridPoint GetBestRate(List<GridPoint> gridSearchResults, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             //const string MethodName = nameof(Getbest_rate);
 
             // libsvm grid.py: if ((rate > best_rate) || (rate == best_rate && g == best_g && c < best_c))
 
-            var gridPointBest = new GridPoint {GpCvRate = -1};
+            var gridPointBest = new GridPoint { GpCvRate = -1 };
 
             foreach (var result in gridSearchResults)
             {
@@ -70,7 +70,7 @@ namespace SvmFsBatch
                 if (isRateBetter || isRateSame) gridPointBest = new GridPoint(result);
             }
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :gridPointBest;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : gridPointBest;
         }
 
 
@@ -82,7 +82,7 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             //const string MethodName = nameof(grid_parameter_search);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
 
             var cacheList = await GridCacheData.ReadCacheFileAsync(cacheTrainGridCsv, ct).ConfigureAwait(false);
@@ -172,11 +172,11 @@ namespace SvmFsBatch
                 }
 
 
-            if (costExpList == null || costExpList.Count == 0) costExpList = new List<double?> {null};
-            if (gammaExpList == null || gammaExpList.Count == 0) gammaExpList = new List<double?> {null};
-            if (epsilonExpList == null || epsilonExpList.Count == 0) epsilonExpList = new List<double?> {null};
-            if (coef0ExpList == null || coef0ExpList.Count == 0) coef0ExpList = new List<double?> {null};
-            if (degreeExpList == null || degreeExpList.Count == 0) degreeExpList = new List<double?> {null};
+            if (costExpList == null || costExpList.Count == 0) costExpList = new List<double?> { null };
+            if (gammaExpList == null || gammaExpList.Count == 0) gammaExpList = new List<double?> { null };
+            if (epsilonExpList == null || epsilonExpList.Count == 0) epsilonExpList = new List<double?> { null };
+            if (coef0ExpList == null || coef0ExpList.Count == 0) coef0ExpList = new List<double?> { null };
+            if (degreeExpList == null || degreeExpList.Count == 0) degreeExpList = new List<double?> { null };
 
             var costExpListLen = costExpList.Count;
             var gammaExpListLen = gammaExpList.Count;
@@ -189,12 +189,12 @@ namespace SvmFsBatch
             var k = -1;
 
             for (var costIndex = 0; costIndex < costExpListLen; costIndex++)
-            for (var gammaIndex = 0; gammaIndex < gammaExpListLen; gammaIndex++)
-            for (var epsilonIndex = 0; epsilonIndex < epsilonExpListLen; epsilonIndex++)
-            for (var coef0Index = 0; coef0Index < coef0ExpListLen; coef0Index++)
-            for (var degreeIndex = 0; degreeIndex < degreeExpListLen; degreeIndex++)
-                //search_GridPoints.Add((cost_exp_list[cost_index], gamma_exp_list[gamma_index], epsilon_exp_list[epsilon_index], coef0_exp_list[coef0_index], degree_exp_list[degree_index]));
-                searchGridPoints[++k] = (costExpList[costIndex], gammaExpList[gammaIndex], epsilonExpList[epsilonIndex], coef0ExpList[coef0Index], degreeExpList[degreeIndex]);
+                for (var gammaIndex = 0; gammaIndex < gammaExpListLen; gammaIndex++)
+                    for (var epsilonIndex = 0; epsilonIndex < epsilonExpListLen; epsilonIndex++)
+                        for (var coef0Index = 0; coef0Index < coef0ExpListLen; coef0Index++)
+                            for (var degreeIndex = 0; degreeIndex < degreeExpListLen; degreeIndex++)
+                                //search_GridPoints.Add((cost_exp_list[cost_index], gamma_exp_list[gamma_index], epsilon_exp_list[epsilon_index], coef0_exp_list[coef0_index], degree_exp_list[degree_index]));
+                                searchGridPoints[++k] = (costExpList[costIndex], gammaExpList[gammaIndex], epsilonExpList[epsilonIndex], coef0ExpList[coef0Index], degreeExpList[degreeIndex]);
 
             searchGridPoints = searchGridPoints.Distinct().OrderByDescending(a => a.cost).ThenByDescending(a => a.gamma).ThenByDescending(a => a.epsilon).ThenByDescending(a => a.coef0).ThenByDescending(a => a.degree).ToArray();
 
@@ -217,42 +217,73 @@ namespace SvmFsBatch
             var resultsTasks = asParallel
                 ? searchGridPoints.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async (point, modelIndex) =>
                 {
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-                    var modelFilename = $@"{trainFile}_{modelIndex + 1}.model";
+                    var cvRate = (double?)null;
 
-                    var trainResult = await Libsvm.TrainAsync(libsvmTrainExe, trainFile, modelFilename, trainStdoutFile, trainStderrFile, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, classWeights, svmType, svmKernel, innerCvFolds, probabilityEstimates, shrinkingHeuristics, pointMaxTime, quietMode, memoryLimitMb, ct: ct).ConfigureAwait(false);
+                    while (!ct.IsCancellationRequested)
+                    {
+                        var modelFilename = $@"{trainFile}_{modelIndex + 1}.model";
 
-                    var trainResultLines = trainResult.stdout?.Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries).ToArray();
+                        var trainResult = await Libsvm.TrainAsync(libsvmTrainExe, trainFile, modelFilename, trainStdoutFile, trainStderrFile, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, classWeights, svmType, svmKernel, innerCvFolds, probabilityEstimates, shrinkingHeuristics, pointMaxTime, quietMode, memoryLimitMb, ct: ct).ConfigureAwait(false);
 
-                    var cvRate = LibsvmCvPerf(trainResultLines, ct);
+                        if (trainResult == default)
+                        {
+                            return default;
+                        }
 
+                        var trainResultLines = trainResult.stdout?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToArray();
+
+                        cvRate = LibsvmCvPerf(trainResultLines, ct);
+
+                        if (cvRate != null)
+                        {
+                            break;
+                        }
+                    }
                     var gridPoint = new GridPoint(point.cost, point.gamma, point.epsilon, point.coef0, point.degree, cvRate);
 
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :gridPoint;
+                    Logging.LogExit(ModuleName);
+                    return ct.IsCancellationRequested ? default : gridPoint;
                 }).ToList()
                 : searchGridPoints.Select(async (point, modelIndex) =>
                 {
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-                    var modelFilename = $@"{trainFile}_{modelIndex + 1}.model";
+                    var cvRate = (double?)null;
 
-                    var trainResult = await Libsvm.TrainAsync(libsvmTrainExe, trainFile, modelFilename, trainStdoutFile, trainStderrFile, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, classWeights, svmType, svmKernel, innerCvFolds, probabilityEstimates, shrinkingHeuristics, pointMaxTime, quietMode, memoryLimitMb, ct: ct).ConfigureAwait(false);
+                    while (!ct.IsCancellationRequested)
+                    {
+                        var modelFilename = $@"{trainFile}_{modelIndex + 1}.model";
 
-                    var trainResultLines = trainResult.stdout?.Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries).ToArray();
+                        var trainResult = await Libsvm.TrainAsync(libsvmTrainExe, trainFile, modelFilename, trainStdoutFile, trainStderrFile, point.cost, point.gamma, point.epsilon, point.coef0, point.degree, classWeights, svmType, svmKernel, innerCvFolds, probabilityEstimates, shrinkingHeuristics, pointMaxTime, quietMode, memoryLimitMb, ct: ct).ConfigureAwait(false);
 
-                    var cvRate = LibsvmCvPerf(trainResultLines, ct);
+                        if (trainResult == default)
+                        {
+                            return default;
+                        }
+
+                        var trainResultLines = trainResult.stdout?.Split(new[] {'\r', '\n'}, StringSplitOptions.RemoveEmptyEntries).ToArray();
+
+                        cvRate = LibsvmCvPerf(trainResultLines, ct);
+
+                        if (cvRate != null)
+                        {
+                            break;
+                        }
+                    }
 
                     var gridPoint = new GridPoint(point.cost, point.gamma, point.epsilon, point.coef0, point.degree, cvRate);
-
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :gridPoint;
+                    
+                    Logging.LogExit(ModuleName);
+                    return ct.IsCancellationRequested ? default : gridPoint;
                 }).ToList();
 
             var results = (await Task.WhenAll(resultsTasks).ConfigureAwait(false)).ToList();
 
             results = results.Where(a => a != null).ToList();
 
-            if (results == null || results.Count == 0) { Logging.LogExit(ModuleName);  return default; }
+            if (results == null || results.Count == 0) { Logging.LogExit(ModuleName); return default; }
 
             results.AddRange(cacheList.Select(cacheItem => cacheItem.GridPoint).ToArray());
 
@@ -280,14 +311,14 @@ namespace SvmFsBatch
                 //svm_type, svm_kernel, repetitions, RepetitionsIndex, outer_cv_folds, OuterCvIndex, inner_cv_folds, ProbabilityEstimates, shrinking_heuristics, results);
             }
 
-            var bestGridPoint = GetBestRate(results,ct);
+            var bestGridPoint = GetBestRate(results, ct);
 
             //Logging.WriteLine("Grid search complete.", nameof(grid), nameof(grid_parameter_search));
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :bestGridPoint;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : bestGridPoint;
         }
 
 
-        public static double LibsvmCvPerf(string[] libsvmResultLines, CancellationToken ct)
+        public static double? LibsvmCvPerf(string[] libsvmResultLines, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             //const string MethodName = nameof(libsvm_cv_perf);
@@ -295,19 +326,33 @@ namespace SvmFsBatch
             //var v_libsvm_default_cross_validation_index = libsvm_result_lines.FindIndex(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.Ordinal));
             //var v_libsvm_default_cross_validation_str = v_libsvm_default_cross_validation_index < 0 ? "" : libsvm_result_lines[v_libsvm_default_cross_validation_index].Split()[4];
 
-            if (libsvmResultLines == null || libsvmResultLines.Length == 0) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :-1; }
+            if (libsvmResultLines == null || libsvmResultLines.Length == 0)
+            {
+                Logging.LogExit(ModuleName);
+                return null;
+            }
 
             var cvAccuracyLine = libsvmResultLines.FirstOrDefault(a => a.StartsWith("Cross Validation Accuracy = ", StringComparison.OrdinalIgnoreCase));
 
-            if (string.IsNullOrWhiteSpace(cvAccuracyLine)) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :-1; }
+            if (string.IsNullOrWhiteSpace(cvAccuracyLine))
+            {
+                Logging.LogExit(ModuleName);
+                return null;
+            }
 
             var cvAccuracyLineSplit = cvAccuracyLine.Split();
 
             var cvAccuracyStr = cvAccuracyLineSplit[4];
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :cvAccuracyStr.Last() == '%'
+            var ret= cvAccuracyStr.Last() == '%'
                 ? double.Parse(cvAccuracyStr[..^1], NumberStyles.Float, NumberFormatInfo.InvariantInfo) / 100
                 : double.Parse(cvAccuracyStr, NumberStyles.Float, NumberFormatInfo.InvariantInfo);
+
+            Logging.LogExit(ModuleName);
+
+            return ct.IsCancellationRequested
+                ? null
+                : ret;
         }
     }
 }

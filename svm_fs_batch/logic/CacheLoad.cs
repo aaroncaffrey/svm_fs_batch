@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
 
 namespace SvmFsBatch
 {
@@ -14,7 +12,7 @@ namespace SvmFsBatch
     {
         public const string ModuleName = nameof(CacheLoad);
 
-        public static IndexData[] GetFeatureSelectionInstructions(DataSet DataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, GroupSeriesIndex[] jobGroupSeries, string ExperimentName, int iterationIndex, int totalGroups,
+        public static IndexData[] GetFeatureSelectionInstructions(DataSet baseLineDataSet, int[] baseLineDataSetColumnIndexes, DataSet dataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, GroupSeriesIndex[] jobGroupSeries, string experimentName, int iterationIndex, int totalGroups,
             //int InstanceId,
             //int TotalInstances,
             int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales,
@@ -58,7 +56,7 @@ namespace SvmFsBatch
                 //group_series_end = TotalGroups < 0 ? TotalGroups : (TotalGroups > 0 ? TotalGroups - 1 : 0)
             };
 
-            var unrolledIndexes = GetUnrolledIndexes(DataSet, ExperimentName, iterationIndex, totalGroups, /*InstanceId, TotalInstances,*/ uip, outerCvFoldsToRun, ct);
+            var unrolledIndexes = GetUnrolledIndexes(baseLineDataSet, baseLineDataSetColumnIndexes, dataSet, experimentName, iterationIndex, totalGroups, /*InstanceId, TotalInstances,*/ uip, outerCvFoldsToRun, ct);
 
             var ret = ct.IsCancellationRequested
                 ? default
@@ -77,7 +75,7 @@ namespace SvmFsBatch
                 ? groupIndexesToTest.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(groupArrayIndex => JobGroupSeriesIndexSingle(DataSet, groups, ExperimentName, iterationIndex, baseGroupIndexes, selectedGroupIndexes, previousWinnerGroupIndex, selectionExcludedGroupIndexes, previousGroupTests, groupArrayIndex, ct)).ToArray()
                 : groupIndexesToTest.Select(groupArrayIndex => JobGroupSeriesIndexSingle(DataSet, groups, ExperimentName, iterationIndex, baseGroupIndexes, selectedGroupIndexes, previousWinnerGroupIndex, selectionExcludedGroupIndexes, previousGroupTests, groupArrayIndex, ct)).ToArray();
 
-            jobGroupSeries = jobGroupSeries.Where(a => a.SelectionDirection != Program.Direction.None).ToArray();
+            jobGroupSeries = jobGroupSeries.Where(a => a != default && a.SelectionDirection != Program.Direction.None).ToArray();
 
             var ret = ct.IsCancellationRequested
                 ? default
@@ -87,7 +85,7 @@ namespace SvmFsBatch
             return ret;
         }
 
-        public static GroupSeriesIndex JobGroupSeriesIndexSingle(DataSet DataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, string ExperimentName, int iterationIndex, int[] baseGroupIndexes, int[] selectedGroupIndexes, int? previousWinnerGroupIndex, int[] selectionExcludedGroupIndexes, List<int[]> previousGroupTests, int groupArrayIndex, CancellationToken ct)
+        public static GroupSeriesIndex JobGroupSeriesIndexSingle(DataSet dataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, string experimentName, int iterationIndex, int[] baseGroupIndexes, int[] selectedGroupIndexes, int? previousWinnerGroupIndex, int[] selectionExcludedGroupIndexes, List<int[]> previousGroupTests, int groupArrayIndex, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -100,7 +98,7 @@ namespace SvmFsBatch
             gsi.GroupKey = gsi.GroupArrayIndex > -1 && groups != null && groups.Length - 1 >= gsi.GroupArrayIndex
                 ? groups[gsi.GroupArrayIndex].GroupKey
                 : default;
-            gsi.GroupFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, ExperimentName, iterationIndex, gsi.GroupArrayIndex, ct);
+            gsi.GroupFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, experimentName, iterationIndex, gsi.GroupArrayIndex, ct);
 
             gsi.IsGroupIndexValid = gsi.GroupArrayIndex > -1 && Routines.IsInRange(0, (groups?.Length ?? 0) - 1, gsi.GroupArrayIndex);
             gsi.IsGroupSelected = selectedGroupIndexes.Contains(gsi.GroupArrayIndex);
@@ -159,9 +157,17 @@ namespace SvmFsBatch
             }
 
             gsi.ColumnIndexes = gsi.GroupIndexes?.SelectMany(groupIndex => groups[groupIndex].columns).Union(new[] {0}).OrderBy(colIndex => colIndex).Distinct().ToArray();
-            gsi.ColumnIndexes = DataSet.RemoveDuplicateColumns(DataSet, gsi.ColumnIndexes, ct: ct);
+            gsi.ColumnIndexes = DataSet.RemoveDuplicateColumns(dataSet, gsi.ColumnIndexes, ct: ct);
 
-            if (gsi.GroupIndexes != null && gsi.GroupIndexes.Length > 0 && (gsi.ColumnIndexes == null || gsi.ColumnIndexes.Length <= 1)) throw new Exception();
+            if ((gsi.ColumnIndexes?.Length ?? 0) <= 1)
+            {
+                return default;
+            }
+
+            //if ((gsi.GroupIndexes?.Length??0) > 0 && (gsi.ColumnIndexes?.Length??0) <= 1)
+            //{
+            //    throw new Exception();
+            //}
 
             
             var ret = ct.IsCancellationRequested
@@ -173,7 +179,7 @@ namespace SvmFsBatch
         }
 
 
-        public static IndexData[] GetUnrolledIndexes(DataSet dataSet, string experimentName, int iterationIndex, int totalGroups, UnrolledIndexesParameters uip, int outerCvFoldsToRun = 0, CancellationToken ct = default)
+        public static IndexData[] GetUnrolledIndexes(DataSet baseLineDataSet, int[] baseLineDataSetColumnIndexes, DataSet dataSet, string experimentName, int iterationIndex, int totalGroups, UnrolledIndexesParameters uip, int outerCvFoldsToRun = 0, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
@@ -242,6 +248,10 @@ namespace SvmFsBatch
                             IdJobUid = unrolledWholeIndex,//IdJobUid++,
                             //unrolled_partition_index = unrolled_partition_indexes[unrolled_InstanceId],
                             //unrolled_InstanceId = unrolled_InstanceId,
+
+                            IdBaseLineColumnArrayIndexes = baseLineDataSetColumnIndexes,
+                            IdBaseLineDatasetFileTags= baseLineDataSet.DataSetFileTags,
+                            IdDatasetFileTags=dataSet.DataSetFileTags,
 
                             IdGroupArrayIndex = uip.GroupSeries[zGroupSeriesIndex].GroupArrayIndex,
                             IdSelectionDirection = uip.GroupSeries[zGroupSeriesIndex].SelectionDirection,

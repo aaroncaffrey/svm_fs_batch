@@ -284,8 +284,10 @@ namespace SvmFsBatch
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return null; }
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : await File.ReadAllLinesAsync(filename, Ec, ct).ConfigureAwait(false);
+                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+                    
+                    Logging.LogExit(ModuleName); 
+                    return ct.IsCancellationRequested ? default : await File.ReadAllLinesAsync(filename, Ec, ct).ConfigureAwait(false);
                 }
                 catch (Exception e1)
                 {
@@ -378,14 +380,22 @@ namespace SvmFsBatch
             var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}.tmp");
             var tempWritten = false;
 
-            const string MethodName = nameof(WriteAllLinesAsync);
+            //const string MethodName = nameof(WriteAllLinesAsync);
             var tries = 0;
-            if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Count ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+            if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Count ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
             while (true)
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return false; }
+                    if (ct.IsCancellationRequested)
+                    {
+                        if (tempWritten)
+                        {
+                            try { File.Delete(tempFilename); } catch (Exception) { }
+                        }
+                        Logging.LogExit(ModuleName); 
+                        return false;
+                    }
 
                     if (!tempWritten)
                     {
@@ -401,9 +411,13 @@ namespace SvmFsBatch
                 }
                 catch (Exception e1)
                 {
-                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Count ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Count ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                     if (tries >= maxTries)
                     {
+                        if (tempWritten)
+                        {
+                            try { File.Delete(tempFilename); } catch (Exception) { }
+                        }
                         if (rethrow) throw;
                         Logging.LogExit(ModuleName);
                         return false;
@@ -419,9 +433,9 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-            const string MethodName = nameof(AppendAllLinesAsync);
+            //const string MethodName = nameof(AppendAllLinesAsync);
             var tries = 0;
-            if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+            if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
             while (true)
                 try
                 {
@@ -433,7 +447,7 @@ namespace SvmFsBatch
                 }
                 catch (Exception e1)
                 {
-                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                     if (tries >= maxTries)
                     {
                         if (rethrow) throw;
@@ -496,15 +510,20 @@ namespace SvmFsBatch
             var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}.tmp");
             var tempWritten = false;
 
-            const string MethodName = nameof(WriteAllTextAsync);
+            //const string MethodName = nameof(WriteAllTextAsync);
             var tries = 0;
-            if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {text?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+            if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {text?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
             while (true)
                 try
                 {
                     tries++;
                     if (ct.IsCancellationRequested)
                     {
+                        if (tempWritten)
+                        {
+                            try { File.Delete(tempFilename); } catch (Exception) { }
+                        }
+
                         Logging.LogExit(ModuleName); 
                         return false;
                     }
@@ -523,9 +542,14 @@ namespace SvmFsBatch
                 }
                 catch (Exception e1)
                 {
-                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {text?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+                    Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {text?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                     if (tries >= maxTries)
                     {
+                        if (tempWritten)
+                        {
+                            try { File.Delete(tempFilename); } catch (Exception) { }
+                        }
+
                         if (rethrow) throw;
                         Logging.LogExit(ModuleName);
                         return false;

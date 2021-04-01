@@ -58,7 +58,7 @@ namespace SvmFsBatch.logic
 
                     // otherwise, try to connect every second to new host in the queue... up until max connections per host.
 
-                    for (var k = 0; k < hostsQueue.Count(); k++)
+                    for (var k = 0; k < hostsQueue.Count; k++)
                     {
                         var h = hostsQueue.Dequeue();
                         hostsQueue.Enqueue(h);
@@ -82,7 +82,7 @@ namespace SvmFsBatch.logic
                 }
 
                 Logging.LogEvent("Exiting task cpConnectTask in RpcConnectTask.");
-            });
+            },ct);
 
             return cpConnectTask;
         }
@@ -119,7 +119,7 @@ namespace SvmFsBatch.logic
                         var host = a.Substring(0, splitIndex);
                         if (host == default || string.IsNullOrWhiteSpace(host)) return default;
 
-                        var port = int.TryParse(a.Substring(splitIndex + 1), NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_port) ? out_port : default;
+                        var port = int.TryParse(a[(splitIndex + 1)..], NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var out_port) ? out_port : default;
                         if (port == default || port < 1 || port > 65535) return default;
 
                         return (host, port);
@@ -140,14 +140,14 @@ namespace SvmFsBatch.logic
         }
 
         public static string[] AdvertiseServiceFileContents = null;
-        public static DateTime timeLastAdvert = DateTime.MinValue;
+        public static DateTime TimeLastAdvert = DateTime.MinValue;
 
         public static async Task AdvertiseService(int port, CancellationToken ct = default)
         {
             var now = DateTime.UtcNow;
-            var elapsed = now - timeLastAdvert;
+            var elapsed = now - TimeLastAdvert;
             if (elapsed <= TimeSpan.FromSeconds(10)) return;
-            timeLastAdvert = now; ;
+            TimeLastAdvert = now; ;
 
             // write ip address, port and guid to file
             var hostname = Dns.GetHostName();
@@ -159,7 +159,7 @@ namespace SvmFsBatch.logic
             if (
                 ((hostEntries?.Length ?? 0) != (AdvertiseServiceFileContents?.Length ?? 0)) ||
                 !hostEntries.SequenceEqual(AdvertiseServiceFileContents) ||
-                !IoProxy.ExistsFile(false, fullFn)
+                !IoProxy.ExistsFile(false, fullFn,ct:ct)
                 )
             {
 
@@ -264,7 +264,7 @@ namespace SvmFsBatch.logic
             try { tcpListener?.Stop(); } catch (Exception e) { Logging.LogException(e, "", ModuleName); }
         }
 
-        public static async Task ListenForRPC(CancellationToken ct, int port)
+        public static async Task ListenForRPC(int port, Mpstat mpstat = null, CancellationToken ct= default)
         {
             Logging.LogCall(ModuleName);
 
@@ -285,7 +285,7 @@ namespace SvmFsBatch.logic
             while (!ct.IsCancellationRequested)
             {
 
-                while (!ct.IsCancellationRequested && (!Program.ProgramArgs.IsUnix || (Program.Mpstat.GetAverageIdle() >= 20 && Program.Mpstat.GetIdle() >= 20)))
+                while (!ct.IsCancellationRequested && (!Program.ProgramArgs.IsUnix || mpstat == null || (mpstat.GetAverageIdle() >= 20 && mpstat.GetIdle() >= 20)))
                 {
                     if (!(tcpListener?.Server?.IsBound ?? false))
                     {

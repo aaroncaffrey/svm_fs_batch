@@ -46,22 +46,65 @@ namespace SvmFsBatch
         //    )[] val_list
         //)[] value_list;
 
-        public (int ClassId, string ClassName, int ClassSize, int DownSampledClassSize, int ClassFeatures)[] ClassSizes;
+        public string[] DataSetFileTags;
+
+        public  (
+                    int ClassId,
+                    string ClassName,
+                    int ClassSize,
+                    int DownSampledClassSize,
+                    int ClassFeatures
+                )[] ClassSizes;
 
         //public (int internal_column_index, int external_column_index, string FileTag, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)[] column_header_list;
+        
+        // column labels (feature names)
         public DataSetGroupKey[] ColumnHeaderList;
 
-        public (int ClassId, string ClassName, (int CommentRowIndex, int CommentColumnIndex, string CommentKey, string CommentValue)[][] ClassCommentList)[] CommentList;
+        // row labels (class ids) // feature 0
+        
+        // current problem definition to sovle: need to specify the columns or only load those specific columns, for the baseline dataset
+
+        public  (
+                    int ClassId,
+                    string ClassName, 
+                    (int CommentRowIndex, int CommentColumnIndex, string CommentKey, string CommentValue)[][] ClassCommentList
+                )[] CommentList;
 
         // feature values, grouped by class id (with meta data class name and class size)
         // public List<(int ClassId, string ClassName, int ClassSize, List<((int internal_column_index, int external_column_index, string FileTag, string gkAlphabet, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective) column_header, double fv)[]> val_list)> value_list;
 
-        public (int ClassId, string ClassName, int ClassSize, ((int CommentRowIndex, int CommentColumnIndex, string CommentKey, string CommentValue)[] RowComment, (int RowIndex, int ColumnIndex, DataSetGroupKey ColumnHeader, double RowColumnValue)[] RowColumns)[] ClassValueList)[] ValueList;
+        public  (
+                    int ClassId, 
+                    string ClassName, 
+                    int ClassSize, 
+                    (
+                        (int CommentRowIndex, int CommentColumnIndex, string CommentKey, string CommentValue)[] RowComment, 
+                        (int RowIndex, int ColumnIndex, DataSetGroupKey ColumnHeader, double RowColumnValue)[] RowColumns
+                    )[] ClassValueList
+                )[] ValueList;
 
         public DataSet()
         {
 
         }
+
+        public void Filter(int[] columnIndexes)
+        {
+            ColumnHeaderList = ColumnHeaderList.Where(a => columnIndexes.Contains(a.gkColumnIndex)).ToArray();
+        }
+
+        //public DataSet(DataSet dataSet, int[] columnIndexes)
+        //{
+        //    if (dataSet == null) throw new ArgumentNullException(nameof(dataSet));
+        //    if (columnIndexes == null) throw new ArgumentNullException(nameof(columnIndexes));
+        //    var copy = new DataSet();
+        //    copy.ClassSizes = this.ClassSizes.ToArray();
+        //    copy.ColumnHeaderList = this.ColumnHeaderList.ToArray();
+        //    copy.CommentList = this.CommentList.ToArray();
+        //    copy.ValueList.ToArray();
+        //    throw new NotImplementedException();
+        //}
 
         public static List<double[]> ReadBinaryValueFile(string inputFile, bool asStream =true)
         {
@@ -378,7 +421,9 @@ namespace SvmFsBatch
 
         }
 
-        public static int[] RemoveDuplicateColumns(DataSet DataSet, int[] queryCols, bool asParallel = false, CancellationToken ct = default)
+       
+
+        public static int[] RemoveDuplicateColumns(DataSet dataSet, int[] queryCols, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
@@ -388,25 +433,34 @@ namespace SvmFsBatch
             // remove duplicate columns (may exist in separate groups)
             //var query_col_dupe_check = idr.DataSet_instance_list_grouped.SelectMany(a => a.examples).SelectMany(a => query_cols.Select(b => (query_col: b, fv: a.feature_data[b].fv)).ToList()).GroupBy(b => b.query_col).Select(b => (query_col: b.Key, values: b.Select(c => c.fv).ToList())).ToList();
 
-            if (queryCols == null || queryCols.Length <= 1) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : queryCols; } //throw new ArgumentOutOfRangeException(nameof(query_cols));
+            if (queryCols == null || queryCols.Length <= 1) 
+            { 
+                Logging.LogExit(ModuleName); 
+                return /*ct.IsCancellationRequested ? default :*/ queryCols; 
+            } //throw new ArgumentOutOfRangeException(nameof(query_cols));
+
             //if (query_cols.Length <= 1) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :query_cols;}
 
             var queryColDupeCheck = asParallel
-                ? queryCols.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(colIndex => DataSet.ValueList.SelectMany(classValues => classValues.ClassValueList.Select((row, rowIndex) =>
+                ? queryCols.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(colIndex => dataSet.ValueList.SelectMany(classValues => classValues.ClassValueList.Select((row, rowIndex) =>
                 {
                     var rc = row.RowColumns[colIndex];
 
+#if DEBUG
                     if (rc.ColumnIndex != colIndex || rc.RowIndex != rowIndex) throw new Exception();
+#endif
 
-                    return ct.IsCancellationRequested ? default : rc.RowColumnValue;
+                    return rc.RowColumnValue;
                 }).ToArray()).ToArray()).ToArray()
-                : queryCols.Select(colIndex => DataSet.ValueList.SelectMany(classValues => classValues.ClassValueList.Select((row, rowIndex) =>
+                : queryCols.Select(colIndex => dataSet.ValueList.SelectMany(classValues => classValues.ClassValueList.Select((row, rowIndex) =>
                 {
                     var rc = row.RowColumns[colIndex];
 
+#if DEBUG
                     if (rc.ColumnIndex != colIndex || rc.RowIndex != rowIndex) throw new Exception();
+#endif
 
-                    return ct.IsCancellationRequested ? default : rc.RowColumnValue;
+                    return rc.RowColumnValue;
                 }).ToArray()).ToArray()).ToArray();
 
 
@@ -453,6 +507,51 @@ namespace SvmFsBatch
                 ? dupeClusters.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray()
                 : dupeClusters.Where(dc => dc != null && dc.Count > 1).SelectMany(dc => dc.Skip(1).ToArray()).ToArray();
 
+            var expectedSize = dataSet.ValueList.Sum(a => a.ClassValueList.Length);
+
+            // check data not empty...
+            var noVarianceColumnIndexes = new List<int>();
+            for (var colIndex = startIndex; colIndex < queryColDupeCheck.Length; colIndex++)
+            {
+#if DEBUG
+                if (queryColDupeCheck.Any(a => a.Length != expectedSize)) throw new Exception();
+                if (queryCols.Length != queryColDupeCheck.Length) throw new Exception();
+#endif
+
+                if (indexesToRemove.Contains(queryCols[colIndex])) continue;
+
+                var allColumnRows = queryColDupeCheck[colIndex];
+                if (allColumnRows.Distinct().Count() == 1)
+                {
+                    noVarianceColumnIndexes.Add(queryCols[colIndex]);
+                    continue;
+                }
+
+                const bool removeWhenEmptyForSingleClass = false;
+
+                if (removeWhenEmptyForSingleClass)
+                {
+                    var rowsIndex = 0;
+                    for (var classIndex = 0; classIndex < dataSet.ValueList.Length; classIndex++)
+                    {
+                        var classNumRows = dataSet.ValueList[classIndex].ClassValueList.Length;
+
+                        if (queryColDupeCheck[colIndex].Skip(rowsIndex).Take(classNumRows).Distinct().Count() == 1)
+                        {
+
+                            noVarianceColumnIndexes.Add(queryCols[colIndex]);
+                            break;
+                        }
+
+                        rowsIndex += classNumRows;
+                    }
+                }
+            }
+
+            if (noVarianceColumnIndexes.Count>0)
+            {
+                indexesToRemove = indexesToRemove.Concat(noVarianceColumnIndexes).ToArray();
+            }
 
             if (indexesToRemove.Length > 0)
             {
@@ -462,13 +561,15 @@ namespace SvmFsBatch
                 //                Logging.WriteLine($"Duplicate columns: [{string.Join(", ", dupe_clusters.Select(a => $"[{string.Join(", ", a)}]").ToArray())}].", program.ModuleName, MethodName);
                 //                Logging.WriteLine($"Preserved columns: [{string.Join(", ", ret)}].", program.ModuleName, MethodName);
                 //#endif
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : ret;
+                Logging.LogExit(ModuleName); 
+                return /*ct.IsCancellationRequested ? default :*/ ret;
             }
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : queryCols;
+            Logging.LogExit(ModuleName); 
+            return /*ct.IsCancellationRequested ? default :*/ queryCols;
         }
 
-        public double[][] GetRowFeatures((int ClassId, int[] row_indexes)[] classRowIndexes, int[] columnIndexes, bool asParallel = false, CancellationToken ct = default)
+        public double[/* row */][/* column */] GetRowFeatures((int ClassId, int[] row_indexes)[] classRowIndexes, int[] columnIndexes, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
@@ -478,7 +579,7 @@ namespace SvmFsBatch
                 return default;
             }
 
-            if (columnIndexes.First() != 0) throw new ArgumentOutOfRangeException(nameof(columnIndexes)); // class id missing
+            //if (columnIndexes.First() != 0) throw new ArgumentOutOfRangeException(nameof(columnIndexes)); // class id missing
 
             var classRows = asParallel
                 ? classRowIndexes.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(classRowIndex => GetClassRowFeatures(classRowIndex.ClassId, classRowIndex.row_indexes, columnIndexes)).ToList()
@@ -547,12 +648,23 @@ namespace SvmFsBatch
                 return default;
             }
 
+            var hasClassId = columnIndexes != null && columnIndexes.Length > 0 && columnIndexes[0] == 0;
+
+            if (columnIndexes != null && (rows.FirstOrDefault()?.Length??0) != columnIndexes.Length) throw new Exception();
+
+            if (columnIndexes == null) columnIndexes = Enumerable.Range(0, rows.Length).ToArray();
+
             var cols = columnIndexes.Select((columnIndex, xIndex) => rows.Select(row => row[xIndex /* column_index -> x_index*/]).ToArray()).ToArray();
-            var sp = cols.Select((col, xIndex) => xIndex == 0 /* do not scale class id */
+            //var cols = Enumerable.Range(0,columnIndexes.Length).Select(xIndex => rows.Select(row => row[xIndex /* column_index -> x_index*/]).ToArray()).ToArray();
+
+            
+
+            var sp = cols.Select((col, xIndex) => xIndex == 0 && hasClassId /* do not scale class id */
                 ? null
                 : new Scaling(col)).ToArray();
 
-            Logging.LogExit(ModuleName); return sp;
+            Logging.LogExit(ModuleName); 
+            return sp;
         }
 
         public static double[][] GetScaledRows(double[][] rows, /*List<int> column_indexes,*/ Scaling[] sp, Scaling.ScaleFunction sf, CancellationToken ct = default)
@@ -586,7 +698,13 @@ namespace SvmFsBatch
                 return default;
             }
 
-            if (columnIndexes.First() != 0) throw new Exception(); // class id missing
+            //if (columnIndexes == null)
+            //{
+            //    // select all columns...
+            //    columnIndexes = ValueList.SelectMany(a => a.ClassValueList.SelectMany(b => b.RowColumns.Select(c => c.ColumnIndex).ToArray()).ToArray()).Distinct().OrderBy(a => a).Skip(1/* skip class id */).ToArray();
+            //}
+
+            //if (columnIndexes.First() != 0) throw new Exception(); // class id missing
 
             var asRows = new double[rowIndexes.Length][];
             var asCols = new double[columnIndexes.Length][];
@@ -603,6 +721,9 @@ namespace SvmFsBatch
                     var colIndex = columnIndexes[xIndex];
                     //AsRows[row_index][col_index] = v[row_index].RowColumns[col_index].row_column_val;
                     asRows[yIndex][xIndex] = v[rowIndex].RowColumns[colIndex].RowColumnValue;
+#if DEBUG
+                    if (v[rowIndex].RowColumns[colIndex].ColumnIndex != colIndex) throw new Exception();
+#endif
                 }
             }
 
@@ -617,6 +738,10 @@ namespace SvmFsBatch
                     var rowIndex = rowIndexes[yIndex];
                     //AsColumns[col_index][row_index] = v[row_index].RowColumns[col_index].row_column_val;
                     asCols[xIndex][yIndex] = v[rowIndex].RowColumns[colIndex].RowColumnValue;
+
+#if DEBUG
+                    if (v[rowIndex].RowColumns[colIndex].RowIndex != rowIndex) throw new Exception();
+#endif
                 }
             }
 
@@ -755,7 +880,12 @@ namespace SvmFsBatch
 
                 var rowLen = x[0].Length;
 
-                var y = x.Skip(fileIndex == 0 ? 1 /* skip header line */ : 2 /* skip header line, and class id line too, when not first file*/).AsParallel().AsOrdered().Select(row =>
+                var y = x.Skip(
+                    fileIndex == 0 ? 
+                    1 /* skip header line */ 
+                    :
+                    2 /* skip header line, and class id line too, when not first file*/
+                    ).AsParallel().AsOrdered().Select(row =>
                 {
                     if (rowLen == 9)
                     {
@@ -1029,9 +1159,9 @@ namespace SvmFsBatch
             var dataFilenames = classNames.Select(cl =>
             {
                 // (string FileTag, int ClassId, string ClassName, string filename)
-                var valuesCsvFilenames = fileTags.Select(gkFileTag => (FileTag: gkFileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"f_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
-                var headerCsvFilenames = fileTags.Select(gkFileTag => (FileTag: gkFileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"h_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
-                var commentCsvFilenames = fileTags.Select(gkFileTag => (FileTag: gkFileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"c_({gkFileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var valuesCsvFilenames = fileTags.Select(fileTag => (FileTag: fileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"f_({fileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var headerCsvFilenames = fileTags.Select(fileTag => (FileTag: fileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"h_({fileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
+                var commentCsvFilenames = fileTags.Select(fileTag => (FileTag: fileTag, cl.ClassId, cl.ClassName, Filename: Path.Combine(DataSetFolder, $@"c_({fileTag})_({cl.ClassId:+#;-#;+0})_({cl.ClassName}).csv"))).ToList();
 
                 return (cl.ClassId, cl.ClassName, valuesCsvFilenames: valuesCsvFilenames, headerCsvFilenames: headerCsvFilenames, commentCsvFilenames: commentCsvFilenames);
             }).ToList();
@@ -1100,35 +1230,42 @@ namespace SvmFsBatch
         //    ClassSizes = ValueList.Select(a => (a.ClassId, a.ClassSize)).ToArray();
         //}
 
-        public void LoadDataSet(string DataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames //,
-                                                                                                                                             //bool perform_integrity_checks = false,
-                                                                                                                                             //bool required_default = true,
-                                                                                                                                             //IList<(bool required, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)> required_matches = null
-            , CancellationToken ct)
+        public void LoadDataSet(string dataSetFolder, string[] fileTags /*DataSet_names*/, IList<(int ClassId, string ClassName)> classNames 
+                                //,
+                                //bool perform_integrity_checks = false,
+                                //bool required_default = true,
+                                //IList<(bool required, string gkAlphabet, string gkStats, string gkDimension, string gkCategory, string gkSource, string @gkGroup, string gkMember, string gkPerspective)> required_matches = null
+                                , CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return; }
+            if (ct.IsCancellationRequested) 
+            {
+                Logging.LogExit(ModuleName); 
+                return; 
+            }
 
-            const string MethodName = nameof(LoadDataSet);
+            DataSetFileTags = fileTags;
+
+            const string methodName = nameof(LoadDataSet);
 
 
             if (fileTags == null || fileTags.Length == 0 || fileTags.Any(string.IsNullOrWhiteSpace)) throw new ArgumentOutOfRangeException(nameof(fileTags));
 
 
             classNames = classNames.OrderBy(a => a.ClassId).ToList();
-            foreach (var cl in classNames) Logging.WriteLine($@"{cl.ClassId:+#;-#;+0} = {cl.ClassName}", ModuleName, MethodName);
+            foreach (var cl in classNames) Logging.WriteLine($@"{cl.ClassId:+#;-#;+0} = {cl.ClassName}", ModuleName, methodName);
 
             fileTags = fileTags.OrderBy(a => a).ToArray();
-            foreach (var gkFileTag in fileTags) Logging.WriteLine($@"{gkFileTag}: {gkFileTag}", ModuleName, MethodName);
+            foreach (var fileTag in fileTags) Logging.WriteLine($@"{fileTag}: {fileTag}", ModuleName, methodName);
 
-            var dataFilenames = GetDataFilenames(DataSetFolder, fileTags, classNames);
+            var dataFilenames = GetDataFilenames(dataSetFolder, fileTags, classNames);
             CheckDataFiles(dataFilenames);
 
             LoadDataSetValues(dataFilenames, ct);
 
 
-            var numfeatures = ColumnHeaderList.Length;
+            //var numfeatures = ColumnHeaderList.Length;
 
             ClassSizes = ValueList.Select(a => (a.ClassId, a.ClassName, a.ClassSize, DownSampledClassSize: ValueList.Where(a => a.ClassSize > 0).Min(a => a.ClassSize), ClassFeatures: a.ClassValueList.First().RowColumns.Length)).ToArray();
 

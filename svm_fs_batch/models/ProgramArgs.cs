@@ -12,69 +12,103 @@ namespace SvmFsBatch
 
         public static string[] CsvHeaderValuesArray =
         {
-            nameof(Folds),
-            nameof(Repetitions),
-            nameof(OuterCvFolds),
-            nameof(OuterCvFoldsToRun),
-            nameof(InnerFolds),
-            nameof(ExperimentName),
-            nameof(JobId),
-            nameof(JobName),
-            nameof(WholeArrayIndexFirst),
-            nameof(WholeArrayIndexLast),
-            nameof(WholeArrayStepSize),
-            nameof(WholeArrayLength),
-            nameof(PartitionArrayIndexFirst),
-            nameof(PartitionArrayIndexLast),
-            nameof(Setup),
-            nameof(SetupTotalVcpus),
-            nameof(SetupInstanceVcpus),
-            nameof(ScoringClassId),
-            nameof(ScoringMetrics),
-            nameof(IsWin),
-            nameof(UserHome),
-            nameof(SvmFsBatchHome),
-            nameof(ResultsRootFolder),
-            nameof(LibsvmPredictRuntime),
-            nameof(LibsvmTrainRuntime),
+                nameof(Option0),
+                nameof(Option1),
+                nameof(Option2),
+                nameof(Option3),
+                nameof(Option4),
 
-            nameof(ClassNames),
-            nameof(ClassWeights),
-            nameof(SvmTypes),
-            nameof(Kernels),
-            nameof(Scales),
-            nameof(CalcElevenPointThresholds),
-
-            nameof(Client),
-            nameof(ClientGuid),
-            nameof(ClientConnectionPoolSize),
-            nameof(Server),
-            nameof(ServerBacklog),
-            nameof(ServerGuid),
-            nameof(DataSetDir),
-            nameof(DataSetNames),
-            nameof(NegativeClassId),
-            nameof(PositiveClassId),
-            nameof(NegativeClassName),
-            nameof(PositiveClassName)
+                nameof(Folds),
+                nameof(Repetitions),
+                nameof(OuterCvFolds),
+                nameof(OuterCvFoldsToRun),
+                nameof(InnerFolds),
+                nameof(ExperimentName),
+                nameof(JobId),
+                nameof(JobName),
+                nameof(WholeArrayIndexFirst),
+                nameof(WholeArrayIndexLast),
+                nameof(WholeArrayStepSize),
+                nameof(WholeArrayLength),
+                nameof(PartitionArrayIndexFirst),
+                nameof(PartitionArrayIndexLast),
+                nameof(Setup),
+                nameof(SetupTotalVcpus),
+                nameof(SetupInstanceVcpus),
+                nameof(ScoringClassId),
+                nameof(ScoringMetrics),
+                nameof(IsWin),
+                //nameof(UserHome),
+                //nameof(SvmFsBatchHome),
+                nameof(ResultsRootFolder),
+                nameof(LibsvmPredictRuntime),
+                nameof(LibsvmTrainRuntime),
+                nameof(ClassNames),
+                nameof(ClassWeights),
+                nameof(SvmTypes),
+                nameof(Kernels),
+                nameof(Scales),
+                nameof(CalcElevenPointThresholds),
+                nameof(ClientGuid),
+                nameof(ClientConnectionPoolSize),
+                nameof(Server),
+                nameof(ServerIp),
+                nameof(ServerPort),
+                nameof(ServerBacklog),
+                nameof(ServerGuid),
+                nameof(DataSetDir),
+                nameof(BaseLineDataSetDir),
+                nameof(DataSetNames),
+                nameof(BaseLineDataSetNames),
+                nameof(BaseLineDataSetColumnIndexes),
+                nameof(NegativeClassId),
+                nameof(PositiveClassId),
+                nameof(NegativeClassName),
+                nameof(PositiveClassName),
+                nameof(Folds),
+                nameof(Repetitions),
+                nameof(OuterCvFolds),
+                nameof(OuterCvFoldsToRun),
+                nameof(InnerFolds),
+                nameof(Setup),
+                nameof(ExperimentName),
+                nameof(JobId),
+                nameof(JobName),
+                nameof(PartitionArrayIndexFirst),
+                nameof(PartitionArrayIndexLast),
+                nameof(WholeArrayLength),
+                nameof(WholeArrayStepSize),
+                nameof(WholeArrayIndexFirst),
+                nameof(WholeArrayIndexLast),
+                nameof(SetupTotalVcpus),
+                nameof(SetupInstanceVcpus),
         };
 
 
         public (string key, string asStr, int? asInt, double? asDouble, bool? asBool)[] Args;
 
+        public int Option0 = 0;
+        public int Option1 = 1;
+        public int Option2 = 1;
+        public int Option3 = 1;
+        public int Option4 = 1;
+
         public bool CalcElevenPointThresholds;
 
-        public string ProtocolKey = "232e91fb-2804-4ef4-83a6-5ff45a6b0f95";
+        public string ProtocolKey = "232e91fb28044ef483a65ff45a6b0f95";
 
         public (int ClassId, string ClassName)[] ClassNames;
         public (int ClassId, double ClassWeight)[][] ClassWeights;
 
-        public bool Client;
+        //public bool Client;
         public int ClientConnectionPoolSize = 10;
         public Guid ClientGuid = Guid.NewGuid();
 
-        public string DataSetDir;
+        public string DataSetDir = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"E:\DataSet7\merged_files\" : $@"/home/k1040015/DataSet/";
+        public string BaseLineDataSetDir = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"E:\DataSet7\merged_files\" : $@"/home/k1040015/DataSet/";
         public string[] DataSetNames;
+        public string[] BaseLineDataSetNames;
+        public int[] BaseLineDataSetColumnIndexes;
 
         //public bool run_local = false;
         public string ExperimentName = "";
@@ -82,20 +116,20 @@ namespace SvmFsBatch
         // note: use 'folds' to set repetitions, outer_cv_folds and inner_folds to the same value
         public int? Folds;
         public int InnerFolds = 5;
-        public bool IsUnix = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        public bool IsUnix = !RuntimeInformation.IsOSPlatform(OSPlatform.Windows); //RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
         public bool IsWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         public string JobId = "";
         public string JobName = "";
-        public Routines.LibsvmKernelType[] Kernels = {Routines.LibsvmKernelType.Rbf};
-        public string LibsvmPredictRuntime;
-        public string LibsvmTrainRuntime;
+        public Routines.LibsvmKernelType[] Kernels = { Routines.LibsvmKernelType.Rbf };
+        public string LibsvmPredictRuntime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\libsvm\windows\svm-predict.exe" : $@"/home/k1040015/libsvm/svm-predict";
+        public string LibsvmTrainRuntime= RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\libsvm\windows\svm-train.exe" : $@"/home/k1040015/libsvm/svm-train";
 
         public int NegativeClassId = -1;
         public string NegativeClassName = @"standard_coil";
         public int OuterCvFolds = 5;
-        public int OuterCvFoldsToRun;
+        public int OuterCvFoldsToRun = 5;
 
         // partition array parameters (pbs only provides partition_array_index_first, whole_array_step_size is given by the script, and partition_array_index_last is calculated from it, if not provided)
         public int PartitionArrayIndexFirst = -1; // start index for current instance
@@ -104,14 +138,14 @@ namespace SvmFsBatch
         public string PositiveClassName = @"dimorphic_coil";
 
         public int Repetitions = 1;
-        public string ResultsRootFolder;
-        public Scaling.ScaleFunction[] Scales = {Scaling.ScaleFunction.Rescale};
+        public string ResultsRootFolder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"C:\mmfs1\data\scratch\k1040015\{nameof(SvmFsBatch)}":$@"/mmfs1/data/scratch/k1040015/{nameof(SvmFsBatch)}";
+        public Scaling.ScaleFunction[] Scales = { Scaling.ScaleFunction.Rescale };
 
         public int ScoringClassId = +1;
 
-        public string[] ScoringMetrics = {nameof(MetricsBox.PF1S) /*nameof(metrics_box.p_MCC),*/ /*nameof(metrics_box.p_API_All)*/};
+        public string[] ScoringMetrics = { nameof(MetricsBox.PF1S) /*nameof(metrics_box.p_MCC),*/ /*nameof(metrics_box.p_API_All)*/};
 
-        public bool Server;
+        public bool Server = true;
         public int ServerBacklog = 1000;
         public Guid ServerGuid = new Guid("d2d95e16-d086-4b58-ba29-8b9b84e41be5");
 
@@ -122,10 +156,10 @@ namespace SvmFsBatch
         public bool Setup;
         public int SetupInstanceVcpus = -1;
         public int SetupTotalVcpus = -1;
-        public string SvmFsBatchHome;
+        //public string SvmFsBatchHome=RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\mmfs1\data\scratch\k1040015\{nameof(SvmFsBatch)}" : @"/mmfs1/data/scratch/k1040015/{nameof(SvmFsBatch)}";
 
-        public Routines.LibsvmSvmType[] SvmTypes = {Routines.LibsvmSvmType.CSvc};
-        public string UserHome;
+        public Routines.LibsvmSvmType[] SvmTypes = { Routines.LibsvmSvmType.CSvc };
+        //public string UserHome = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\home\k1040015" : @"/home/k1040015";
 
 
         // whole array parameters
@@ -143,60 +177,76 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            const string MethodName = nameof(ProgramArgs);
-
-            var argNames = new[]
-            {
-                nameof(Folds), 
-                nameof(Repetitions), 
-                nameof(OuterCvFolds), 
-                nameof(OuterCvFoldsToRun),
-                nameof(InnerFolds), 
-                nameof(Setup), 
-                /*nameof(run_local),*/ 
-                nameof(ExperimentName), 
-                nameof(JobId),
-                nameof(JobName),
-                nameof(PartitionArrayIndexFirst), 
-                nameof(PartitionArrayIndexLast), 
-                nameof(WholeArrayLength),
-                nameof(WholeArrayStepSize),
-                nameof(WholeArrayIndexFirst), 
-                nameof(WholeArrayIndexLast),
-                nameof(SetupTotalVcpus),
-                nameof(SetupInstanceVcpus),
+            const string methodName = nameof(ProgramArgs);
 
 
-                nameof(IsWin),
-                nameof(UserHome),
-                nameof(SvmFsBatchHome),
-                nameof(ResultsRootFolder),
-                nameof(LibsvmPredictRuntime),
-                nameof(LibsvmTrainRuntime),
-                nameof(Client),
-                nameof(ClientGuid),
-                nameof(ClientConnectionPoolSize),
-                nameof(Server),
-                nameof(ServerBacklog),
-                nameof(ServerGuid),
-                nameof(ServerIp),
-                nameof(ServerPort),
-                nameof(DataSetDir),
-                nameof(DataSetNames),
-                nameof(NegativeClassId),
-                nameof(PositiveClassId),
-                nameof(NegativeClassName),
-                nameof(PositiveClassName),
-                nameof(ScoringClassId),
-                nameof(ScoringMetrics),
 
-                nameof(ClassNames),
-                nameof(ClassWeights),
-                nameof(SvmTypes),
-                nameof(Kernels),
-                nameof(Scales),
-                nameof(CalcElevenPointThresholds)
-            };
+            //var argNames = new[]
+            //{
+            //    nameof(Folds),
+            //    nameof(Repetitions),
+            //    nameof(OuterCvFolds),
+            //    nameof(OuterCvFoldsToRun),
+            //    nameof(InnerFolds),
+            //    nameof(ExperimentName),
+            //    nameof(JobId),
+            //    nameof(JobName),
+            //    nameof(WholeArrayIndexFirst),
+            //    nameof(WholeArrayIndexLast),
+            //    nameof(WholeArrayStepSize),
+            //    nameof(WholeArrayLength),
+            //    nameof(PartitionArrayIndexFirst),
+            //    nameof(PartitionArrayIndexLast),
+            //    nameof(Setup),
+            //    nameof(SetupTotalVcpus),
+            //    nameof(SetupInstanceVcpus),
+            //    nameof(ScoringClassId),
+            //    nameof(ScoringMetrics),
+            //    nameof(IsWin),
+            //    nameof(UserHome),
+            //    nameof(SvmFsBatchHome),
+            //    nameof(ResultsRootFolder),
+            //    nameof(LibsvmPredictRuntime),
+            //    nameof(LibsvmTrainRuntime),
+            //    nameof(ClassNames),
+            //    nameof(ClassWeights),
+            //    nameof(SvmTypes),
+            //    nameof(Kernels),
+            //    nameof(Scales),
+            //    nameof(CalcElevenPointThresholds),
+            //    nameof(ClientGuid),
+            //    nameof(ClientConnectionPoolSize),
+            //    nameof(Server),
+            //    nameof(ServerIp),
+            //    nameof(ServerPort),
+            //    nameof(ServerBacklog),
+            //    nameof(ServerGuid),
+            //    nameof(DataSetDir),
+            //    nameof(DataSetNames),
+            //    nameof(NegativeClassId),
+            //    nameof(PositiveClassId),
+            //    nameof(NegativeClassName),
+            //    nameof(PositiveClassName),
+            //    nameof(Folds), 
+            //    nameof(Repetitions), 
+            //    nameof(OuterCvFolds), 
+            //    nameof(OuterCvFoldsToRun),
+            //    nameof(InnerFolds), 
+            //    nameof(Setup), 
+            //    nameof(ExperimentName), 
+            //    nameof(JobId),
+            //    nameof(JobName),
+            //    nameof(PartitionArrayIndexFirst), 
+            //    nameof(PartitionArrayIndexLast), 
+            //    nameof(WholeArrayLength),
+            //    nameof(WholeArrayStepSize),
+            //    nameof(WholeArrayIndexFirst), 
+            //    nameof(WholeArrayIndexLast),
+            //    nameof(SetupTotalVcpus),
+            //    nameof(SetupInstanceVcpus),
+            //};
+
+            var argNames = CsvHeaderValuesArray;
 
             Args = GetParams(args);
             var argsGiven = Args.Select(a => a.key).ToArray();
@@ -205,34 +255,24 @@ namespace SvmFsBatch
             var argsUnknown = argsGiven.Except(argNames, StringComparer.OrdinalIgnoreCase).ToArray();
             var argsCount = argsGiven.Distinct().Select(a => (key: a, count: Args.Count(b => string.Equals(a, b.key, StringComparison.OrdinalIgnoreCase)))).ToArray();
 
-            Logging.WriteLine($@"{nameof(argsGiven)} = {string.Join(", ", argsGiven)}", ModuleName, MethodName);
-            Logging.WriteLine($@"{nameof(argsMissing)} = {string.Join(", ", argsMissing)}", ModuleName, MethodName);
-            Logging.WriteLine($@"{nameof(argsKnown)} = {string.Join(", ", argsKnown)}", ModuleName, MethodName);
-            Logging.WriteLine($@"{nameof(argsUnknown)} = {string.Join(", ", argsUnknown)}", ModuleName, MethodName);
+            Logging.WriteLine($@"{nameof(argsGiven)} = {string.Join(", ", argsGiven)}", ModuleName, methodName);
+            Logging.WriteLine($@"{nameof(argsMissing)} = {string.Join(", ", argsMissing)}", ModuleName, methodName);
+            Logging.WriteLine($@"{nameof(argsKnown)} = {string.Join(", ", argsKnown)}", ModuleName, methodName);
+            Logging.WriteLine($@"{nameof(argsUnknown)} = {string.Join(", ", argsUnknown)}", ModuleName, methodName);
 
-            if (argsUnknown.Any()) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{MethodName}: Invalid arguments: {string.Join(", ", argsUnknown)}");
-            if (argsCount.Any(a => a.count > 1)) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{MethodName}: Arguments specified more than once: {string.Join(", ", argsCount.Where(a => a.count > 1).ToArray())}");
+            if (argsUnknown.Any()) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{methodName}: Invalid arguments: {string.Join(", ", argsUnknown)}");
+            if (argsCount.Any(a => a.count > 1)) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{methodName}: Arguments specified more than once: {string.Join(", ", argsCount.Where(a => a.count > 1).ToArray())}");
 
             IsWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-            if (!IsWin)
-            {
-                UserHome = @"/home/k1040015";
-                SvmFsBatchHome = $@"/mmfs1/data/scratch/k1040015/{nameof(SvmFsBatch)}";
-                ResultsRootFolder = $@"{SvmFsBatchHome}/results/";
-                LibsvmPredictRuntime = $@"{UserHome}/libsvm/svm-predict";
-                LibsvmTrainRuntime = $@"{UserHome}/libsvm/svm-train";
-                DataSetDir = $@"{UserHome}/DataSet/";
-            }
-            else
-            {
-                UserHome = @"C:\home\k1040015";
-                SvmFsBatchHome = $@"C:\mmfs1\data\scratch\k1040015\{nameof(SvmFsBatch)}";
-                ResultsRootFolder = $@"{SvmFsBatchHome}\results\";
-                LibsvmPredictRuntime = @"C:\libsvm\windows\svm-predict.exe";
-                LibsvmTrainRuntime = @"C:\libsvm\windows\svm-train.exe";
-                DataSetDir = @"E:\DataSet7\merged_files\";
-            }
+       
+
+            if (ArgsKeyExists(nameof(Option0))) Option0 = ArgsValue(nameof(Option0)).asInt ?? -1;
+            if (ArgsKeyExists(nameof(Option1))) Option1 = ArgsValue(nameof(Option1)).asInt ?? -1;
+            if (ArgsKeyExists(nameof(Option2))) Option2 = ArgsValue(nameof(Option2)).asInt ?? -1;
+            if (ArgsKeyExists(nameof(Option3))) Option3 = ArgsValue(nameof(Option3)).asInt ?? -1;
+            if (ArgsKeyExists(nameof(Option4))) Option4 = ArgsValue(nameof(Option4)).asInt ?? -1;
+
 
             if (ArgsKeyExists(nameof(ExperimentName))) ExperimentName = ArgsValue(nameof(ExperimentName)).asStr;
             if (ArgsKeyExists(nameof(JobId))) JobId = ArgsValue(nameof(JobId)).asStr;
@@ -259,13 +299,13 @@ namespace SvmFsBatch
 
 
             if (ArgsKeyExists(nameof(IsWin))) IsWin = ArgsValue(nameof(IsWin)).asBool ?? default;
-            if (ArgsKeyExists(nameof(UserHome))) UserHome = ArgsValue(nameof(UserHome)).asStr;
-            if (ArgsKeyExists(nameof(SvmFsBatchHome))) SvmFsBatchHome = ArgsValue(nameof(SvmFsBatchHome)).asStr;
+            //if (ArgsKeyExists(nameof(UserHome))) UserHome = ArgsValue(nameof(UserHome)).asStr;
+            //if (ArgsKeyExists(nameof(SvmFsBatchHome))) SvmFsBatchHome = ArgsValue(nameof(SvmFsBatchHome)).asStr;
             if (ArgsKeyExists(nameof(ResultsRootFolder))) ResultsRootFolder = ArgsValue(nameof(ResultsRootFolder)).asStr;
             if (ArgsKeyExists(nameof(LibsvmPredictRuntime))) LibsvmPredictRuntime = ArgsValue(nameof(LibsvmPredictRuntime)).asStr;
             if (ArgsKeyExists(nameof(LibsvmTrainRuntime))) LibsvmTrainRuntime = ArgsValue(nameof(LibsvmTrainRuntime)).asStr;
 
-            if (ArgsKeyExists(nameof(Client))) Client = ArgsValue(nameof(Client)).asBool ?? default;
+            //if (ArgsKeyExists(nameof(Client))) Client = ArgsValue(nameof(Client)).asBool ?? default;
             if (ArgsKeyExists(nameof(ClientGuid))) ClientGuid = new Guid(ArgsValue(nameof(ClientGuid)).asStr ?? throw new ArgumentNullException(nameof(args)));
             if (ArgsKeyExists(nameof(ClientConnectionPoolSize))) ClientConnectionPoolSize = ArgsValue(nameof(ClientConnectionPoolSize)).asInt ?? default;
 
@@ -277,7 +317,13 @@ namespace SvmFsBatch
 
 
             if (ArgsKeyExists(nameof(DataSetDir))) DataSetDir = ArgsValue(nameof(DataSetDir)).asStr;
-            if (ArgsKeyExists(nameof(DataSetNames))) DataSetNames = ArgsValue(nameof(DataSetNames)).asStr.Split(new[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries);
+            if (ArgsKeyExists(nameof(BaseLineDataSetDir))) BaseLineDataSetDir = ArgsValue(nameof(BaseLineDataSetDir)).asStr;
+            if (ArgsKeyExists(nameof(DataSetNames))) DataSetNames = ArgsValue(nameof(DataSetNames)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            if (ArgsKeyExists(nameof(BaseLineDataSetNames))) BaseLineDataSetNames = ArgsValue(nameof(BaseLineDataSetNames)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            if (ArgsKeyExists(nameof(BaseLineDataSetColumnIndexes))) BaseLineDataSetColumnIndexes = ArgsValue(nameof(BaseLineDataSetColumnIndexes)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
+            
+            if ((BaseLineDataSetNames?.Length??0) == 0 && (BaseLineDataSetColumnIndexes?.Length??0) != 0) throw new Exception();
 
             if (ArgsKeyExists(nameof(NegativeClassId))) NegativeClassId = ArgsValue(nameof(NegativeClassId)).asInt ?? throw new ArgumentNullException(nameof(args));
             if (ArgsKeyExists(nameof(PositiveClassId))) PositiveClassId = ArgsValue(nameof(PositiveClassId)).asInt ?? throw new ArgumentNullException(nameof(args));
@@ -285,20 +331,20 @@ namespace SvmFsBatch
             if (ArgsKeyExists(nameof(PositiveClassName))) PositiveClassName = ArgsValue(nameof(PositiveClassName)).asStr;
 
             if (ArgsKeyExists(nameof(ScoringClassId))) ScoringClassId = ArgsValue(nameof(ScoringClassId)).asInt ?? throw new ArgumentNullException(nameof(args));
-            if (ArgsKeyExists(nameof(ScoringMetrics))) ScoringMetrics = ArgsValue(nameof(ScoringMetrics)).asStr.Split(new[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries);
+            if (ArgsKeyExists(nameof(ScoringMetrics))) ScoringMetrics = ArgsValue(nameof(ScoringMetrics)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
 
-            if (ArgsKeyExists(nameof(SvmTypes))) SvmTypes = ArgsValue(nameof(SvmTypes)).asStr.Split(new[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries).Select(a => Enum.Parse<Routines.LibsvmSvmType>(a, true)).ToArray();
-            if (ArgsKeyExists(nameof(Kernels))) Kernels = ArgsValue(nameof(Kernels)).asStr.Split(new[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries).Select(a => Enum.Parse<Routines.LibsvmKernelType>(a, true)).ToArray();
-            if (ArgsKeyExists(nameof(Scales))) Scales = ArgsValue(nameof(Scales)).asStr.Split(new[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries).Select(a => Enum.Parse<Scaling.ScaleFunction>(a, true)).ToArray();
+            if (ArgsKeyExists(nameof(SvmTypes))) SvmTypes = ArgsValue(nameof(SvmTypes)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(a => Enum.Parse<Routines.LibsvmSvmType>(a, true)).ToArray();
+            if (ArgsKeyExists(nameof(Kernels))) Kernels = ArgsValue(nameof(Kernels)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(a => Enum.Parse<Routines.LibsvmKernelType>(a, true)).ToArray();
+            if (ArgsKeyExists(nameof(Scales))) Scales = ArgsValue(nameof(Scales)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(a => Enum.Parse<Scaling.ScaleFunction>(a, true)).ToArray();
             if (ArgsKeyExists(nameof(CalcElevenPointThresholds))) CalcElevenPointThresholds = ArgsValue(nameof(CalcElevenPointThresholds)).asBool ?? default;
 
 
             if (ArgsKeyExists(nameof(ClassNames)))
-                ClassNames = ArgsValue(nameof(ClassNames)).asStr.Split(new[] {',', ';'}, StringSplitOptions.RemoveEmptyEntries).Select(a =>
-                {
-                    var x = a.Split(':');
-                    return (ClassId: int.Parse(x[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), ClassName: x[1].Trim());
-                }).ToArray();
+                ClassNames = ArgsValue(nameof(ClassNames)).asStr.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(a =>
+                  {
+                      var x = a.Split(':');
+                      return (ClassId: int.Parse(x[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), ClassName: x[1].Trim());
+                  }).ToArray();
             else
                 ClassNames = new[]
                 {
@@ -308,11 +354,11 @@ namespace SvmFsBatch
 
             // ClassWeights=+1:0.1,-1:0.9;+1:0.1,-1:0.9;
             if (ArgsKeyExists(nameof(ClassWeights)))
-                ClassWeights = ArgsValue(nameof(ClassWeights)).asStr.Split(new[] {';'}, StringSplitOptions.RemoveEmptyEntries).Select(a => a.Split(',').Select(b =>
-                {
-                    var y = b.Split(':');
-                    return (ClassId: int.Parse(y[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), ClassWeight: double.Parse(y[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo));
-                }).ToArray()).ToArray();
+                ClassWeights = ArgsValue(nameof(ClassWeights)).asStr.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(a => a.Split(',').Select(b =>
+                  {
+                      var y = b.Split(':');
+                      return (ClassId: int.Parse(y[0], NumberStyles.Integer, NumberFormatInfo.InvariantInfo), ClassWeight: double.Parse(y[1], NumberStyles.Float, NumberFormatInfo.InvariantInfo));
+                  }).ToArray()).ToArray();
 
             if (ArgsKeyExists(nameof(Folds)))
             {
@@ -326,7 +372,7 @@ namespace SvmFsBatch
                     Repetitions = Folds.Value;
                 }
             }
-            else if (new[] {InnerFolds, OuterCvFolds, OuterCvFoldsToRun, Repetitions}.Distinct().Count() == 1) { Folds = InnerFolds; }
+            else if (new[] { InnerFolds, OuterCvFolds, OuterCvFoldsToRun, Repetitions }.Distinct().Count() == 1) { Folds = InnerFolds; }
 
             if (PartitionArrayIndexLast <= -1) PartitionArrayIndexLast = PartitionArrayIndexFirst + (WholeArrayStepSize - 1);
 
@@ -337,7 +383,7 @@ namespace SvmFsBatch
             //}
 
             var v = CsvValuesArray();
-            Logging.WriteLine(string.Join(" ", CsvHeaderValuesArray.Select((header, i) => $"{header}={v[i]}").ToArray()), ModuleName, MethodName);
+            Logging.WriteLine(string.Join(" ", CsvHeaderValuesArray.Select((header, i) => $"-{header}={v[i]}").ToArray()), ModuleName, methodName);
         }
 
         public string[] CsvValuesArray()
@@ -346,6 +392,77 @@ namespace SvmFsBatch
 
             var ret = new[]
             {
+                $"{Option0}",
+                $"{Option1}",
+                $"{Option2}",
+                $"{Option3}",
+                $"{Option4}",
+
+                $"{Folds}",
+                $"{Repetitions}",
+                $"{OuterCvFolds}",
+                $"{OuterCvFoldsToRun}",
+                $"{InnerFolds}",
+                $"{ExperimentName}",
+                $"{JobId}",
+                $"{JobName}",
+                $"{WholeArrayIndexFirst}",
+                $"{WholeArrayIndexLast}",
+                $"{WholeArrayStepSize}",
+                $"{WholeArrayLength}",
+                $"{PartitionArrayIndexFirst}",
+                $"{PartitionArrayIndexLast}",
+                $"{Setup}",
+                $"{SetupTotalVcpus}",
+                $"{SetupInstanceVcpus}",
+                $"{ScoringClassId}",
+                $"{string.Join(",", ScoringMetrics ?? Array.Empty<string>())}",
+                $"{IsWin}",
+                //$"{UserHome}",
+                //$"{SvmFsBatchHome}",
+                $"{ResultsRootFolder}",
+                $"{LibsvmPredictRuntime}",
+                $"{LibsvmTrainRuntime}",
+                $"{string.Join(",", ClassNames?.Select(a => $"{a.ClassId}:{a.ClassName}").ToArray() ?? Array.Empty<string>())}", // ClassNames=+1:dimorphic;-1:coil;
+                $"{string.Join(";", ClassWeights?.Select(a => string.Join(",", a?.Select(b => $"{b.ClassId}:{b.ClassWeight}").ToArray() ?? Array.Empty<string>())).ToArray() ?? Array.Empty<string>())}", // ClassWeight=+1:0.1,-1:0.9;+1:0.2,-1:0.8
+                $"{string.Join(",", SvmTypes ?? Array.Empty<Routines.LibsvmSvmType>())}",
+                $"{string.Join(",", Kernels ?? Array.Empty<Routines.LibsvmKernelType>())}",
+                $"{string.Join(",", Scales ?? Array.Empty<Scaling.ScaleFunction>())}",
+                $"{(CalcElevenPointThresholds ? 1 : 0)}",
+                $"{ClientGuid:N}",
+                $"{ClientConnectionPoolSize}",
+                $"{(Server ? 1 : 0)}",
+                $"{ServerIp}",
+                $"{ServerPort}",
+                $"{ServerBacklog}",
+                $"{ServerGuid:N}",
+                $"{DataSetDir}",
+                $"{BaseLineDataSetDir}",
+                $"{string.Join(";", DataSetNames ?? Array.Empty<string>())}",
+                $"{string.Join(";", BaseLineDataSetNames ?? Array.Empty<string>())}",
+                $"{string.Join(";", BaseLineDataSetColumnIndexes ?? Array.Empty<int>())}",
+                $"{NegativeClassId}",
+                $"{PositiveClassId}",
+                $"{NegativeClassName}",
+                $"{PositiveClassName}",
+                $"{Folds}",
+                $"{Repetitions}",
+                $"{OuterCvFolds}",
+                $"{OuterCvFoldsToRun}",
+                $"{InnerFolds}",
+                $"{Setup}",
+                $"{ExperimentName}",
+                $"{JobId}",
+                $"{JobName}",
+                $"{PartitionArrayIndexFirst}",
+                $"{PartitionArrayIndexLast}",
+                $"{WholeArrayLength}",
+                $"{WholeArrayStepSize}",
+                $"{WholeArrayIndexFirst}",
+                $"{WholeArrayIndexLast}",
+                $"{SetupTotalVcpus}",
+                $"{SetupInstanceVcpus}",
+
                 $"{Folds}",
                 $"{Repetitions}",
                 $"{OuterCvFolds}",
@@ -364,37 +481,13 @@ namespace SvmFsBatch
                 $"{SetupTotalVcpus}",
                 $"{SetupInstanceVcpus}",
                 $"{ScoringClassId}",
-                $"{string.Join(",", ScoringMetrics ?? Array.Empty<string>())}",
+
                 $"{(IsWin ? 1 : 0)}",
-                $"{UserHome}",
-                $"{SvmFsBatchHome}",
+                //$"{UserHome}",
+                //$"{SvmFsBatchHome}",
                 $"{ResultsRootFolder}",
                 $"{LibsvmPredictRuntime}",
                 $"{LibsvmTrainRuntime}",
-
-                $"{string.Join(",", ClassNames?.Select(a => $"{a.ClassId}:{a.ClassName}").ToArray() ?? Array.Empty<string>())}", // ClassNames=+1:dimorphic;-1:coil;
-
-                $"{string.Join(";", ClassWeights?.Select(a => string.Join(",", a?.Select(b => $"{b.ClassId}:{b.ClassWeight}").ToArray() ?? Array.Empty<string>())).ToArray() ?? Array.Empty<string>())}", // ClassWeight=+1:0.1,-1:0.9;+1:0.2,-1:0.8
-                $"{string.Join(",", SvmTypes ?? Array.Empty<Routines.LibsvmSvmType>())}",
-                $"{string.Join(",", Kernels ?? Array.Empty<Routines.LibsvmKernelType>())}",
-                $"{string.Join(",", Scales ?? Array.Empty<Scaling.ScaleFunction>())}",
-                $"{(CalcElevenPointThresholds ? 1 : 0)}",
-
-                $"{(Client ? 1 : 0)}",
-                $"{ClientGuid:N}",
-                $"{ClientConnectionPoolSize}",
-                $"{(Server ? 1 : 0)}",
-                $"{ServerBacklog}",
-                $"{ServerGuid:N}",
-                $"{ServerIp}",
-                $"{ServerPort}",
-
-                $"{DataSetDir}",
-                $"{string.Join(";", DataSetNames ?? Array.Empty<string>())}",
-                $"{NegativeClassId}",
-                $"{PositiveClassId}",
-                $"{NegativeClassName}",
-                $"{PositiveClassName}"
             };
 
             Logging.LogExit(ModuleName);
@@ -405,7 +498,7 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (Args == null || Args.Length == 0) {Logging.LogExit(ModuleName); return false; }
+            if (Args == null || Args.Length == 0) { Logging.LogExit(ModuleName); return false; }
 
             var ret = Args.Any(a => string.Equals(a.key, key, StringComparison.OrdinalIgnoreCase));
 
@@ -417,11 +510,14 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            if (Args == null || Args.Length == 0) { Logging.LogExit(ModuleName); 
-                return default; }
+            if (Args == null || Args.Length == 0)
+            {
+                Logging.LogExit(ModuleName);
+                return default;
+            }
 
             var ret = Args.FirstOrDefault(a => string.Equals(a.key, key, StringComparison.OrdinalIgnoreCase));
-            
+
             Logging.LogExit(ModuleName);
             return ret;
         }
@@ -434,11 +530,11 @@ namespace SvmFsBatch
 
             if (args == null || args.Length == 0)
             {
-                Logging.LogExit(ModuleName);  
+                Logging.LogExit(ModuleName);
                 return Array.Empty<(string key, string asStr, int? asInt, double? asDouble, bool? asBool)>();
             }
 
-            args = args.SelectMany(a => a.Split(new[] {'='}, StringSplitOptions.RemoveEmptyEntries)).Where(a => !string.IsNullOrWhiteSpace(a)).ToArray();
+            args = args.SelectMany(a => a.Split(new[] { '=' }, StringSplitOptions.RemoveEmptyEntries)).Where(a => !string.IsNullOrWhiteSpace(a)).ToArray();
 
             var name = "";
             var value = "";
@@ -477,14 +573,14 @@ namespace SvmFsBatch
             {
                 var asInt = int.TryParse(a.value, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var asIntOut)
                     ? asIntOut
-                    : (int?) null;
+                    : (int?)null;
                 //var asLong = long.TryParse(a.value, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var asLong_out) ? (long?)asLong_out : (long?)null;
                 var asDouble = double.TryParse(a.value, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out var asDoubleOut)
                     ? asDoubleOut
-                    : (double?) null;
+                    : (double?)null;
                 var asBool = bool.TryParse(a.value, out var asBoolOut)
                     ? asBoolOut
-                    : (bool?) null;
+                    : (bool?)null;
 
                 if (asBool == null)
                 {
@@ -493,10 +589,10 @@ namespace SvmFsBatch
                     else if (asInt == 1 && asDouble == 1) asBool = true;
                 }
 
-                 return (a.key, asStr: a.value, asInt, asDouble, asBool);
+                return (a.key, asStr: a.value, asInt, asDouble, asBool);
             }).ToArray();
 
-            Logging.LogExit(ModuleName); 
+            Logging.LogExit(ModuleName);
             return ret;
         }
     }

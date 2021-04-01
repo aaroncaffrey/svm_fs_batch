@@ -15,7 +15,7 @@ namespace SvmFsBatch
 
 
         public static ProgramArgs ProgramArgs;
-        public static Mpstat Mpstat;
+        //public static Mpstat Mpstat;
 
         public static async Task Main(string[] args)
         {
@@ -141,6 +141,78 @@ namespace SvmFsBatch
             Init.SetGcMode();
             //Init.SetThreadCounts();
 
+
+            // - Folds                                     =   
+            // - Repetitions                               =   1
+            // - OuterCvFolds                              =   5
+            // - OuterCvFoldsToRun                         =   1
+            // - InnerFolds                                =   0
+            // - ExperimentName                            =   test
+            // - JobId                                     =   
+            // - JobName                                   =   
+            // - WholeArrayIndexFirst                      =   0
+            // - WholeArrayIndexLast                       =   0
+            // - WholeArrayStepSize                        =   1
+            // - WholeArrayLength                          =   1
+            // - PartitionArrayIndexFirst                  =   0
+            // - PartitionArrayIndexLast                   =   0
+            // - Setup                                     =   False
+            // - SetupTotalVcpus                           =   -1
+            // - SetupInstanceVcpus                        =   -1
+            // - ScoringClassId                            =   1
+            // - ScoringMetrics                            =   PF1S
+            // - IsWin                                     =   True
+            // - UserHome                                  =   C:\home\k1040015
+            // - SvmFsBatchHome                            =   C:\mmfs1\data\scratch\k1040015\SvmFsBatch
+            // - ResultsRootFolder                         =   C:\mmfs1\data\scratch\k1040015\SvmFsBatch\
+            // - LibsvmPredictRuntime                      =   C:\libsvm\windows\svm-predict.exe
+            // - LibsvmTrainRuntime                        =   C:\libsvm\windows\svm-train.exe
+            // - ClassNames                                =   -1:standard_coil,1:dimorphic_coil
+            // - ClassWeights                              =   
+            // - SvmTypes                                  =   CSvc
+            // - Kernels                                   =   Rbf
+            // - Scales                                    =   Rescale
+            // - CalcElevenPointThresholds                 =   0
+            // - ClientGuid                                =   c0057c5a4c4b409283a1448c42c07b47
+            // - ClientConnectionPoolSize                  =   10
+            // - Server                                    =   1
+            // - ServerIp                                  =   127.0.0.1
+            // - ServerPort                                =   64727
+            // - ServerBacklog                             =   1000
+            // - ServerGuid                                =   d2d95e16d0864b58ba298b9b84e41be5
+            // - DataSetDir                                =   E:\DataSet7\merged_files\
+            // - DataSetNames                              =   [1i.aaindex]
+            // - NegativeClassId                           =   -1
+            // - PositiveClassId                           =   1
+            // - NegativeClassName                         =   standard_coil
+            // - PositiveClassName                         =   dimorphic_coil
+            // - Folds                                     =   
+            // - Repetitions                               =   1
+            // - OuterCvFolds                              =   5
+            // - OuterCvFoldsToRun                         =   1
+            // - InnerFolds                                =   0
+            // - Setup                                     =   False
+            // - ExperimentName                            =   test
+            // - JobId                                     =   
+            // - JobName                                   =   
+            // - PartitionArrayIndexFirst                  =   0
+            // - PartitionArrayIndexLast                   =   0
+            // - WholeArrayLength                          =   1
+            // - WholeArrayStepSize                        =   1
+            // - WholeArrayIndexFirst                      =   0
+            // - WholeArrayIndexLast                       =   0
+            // - SetupTotalVcpus                           =   -1
+            // - SetupInstanceVcpus                        =   -1
+            // - Option0                                   =   0
+            // - Option1                                   =   1
+            // - Option2                                   =   1
+            // - Option3                                   =   1
+            // - Option4                                   =   1
+
+            // new parameters: SvmFsBatch -ExperimentName=Name -DataSetNames=[1i.aaindex] -InnerFolds=5 -OuterCvFolds=5 -Repetitions=1
+            // -opt
+            // -SvmFsBatchHome=C:\mmfs1\data\scratch\k1040015\SvmFsBatch  -DataSetDir=?????? 
+
             //var fake_args = $"-ExperimentName=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
             var fakeArgsList = new List<(string name, string value)>
             {
@@ -152,21 +224,25 @@ namespace SvmFsBatch
                 (nameof(ProgramArgs.PartitionArrayIndexFirst), "0"),
                 (nameof(ProgramArgs.PartitionArrayIndexLast), "0"),
 
-                (nameof(ProgramArgs.Client), "0"),
+                //(nameof(ProgramArgs.Client), "0"),
                 (nameof(ProgramArgs.Server), "1"),
 
                 (nameof(ProgramArgs.DataSetNames), "[1i.aaindex]"),
+                (nameof(ProgramArgs.BaseLineDataSetNames), "[1i.aaindex]"),
+                (nameof(ProgramArgs.BaseLineDataSetColumnIndexes), "1;2;3;4"),
 
-                (nameof(ProgramArgs.InnerFolds), "5"),
+                (nameof(ProgramArgs.InnerFolds), "0"),
                 (nameof(ProgramArgs.OuterCvFolds), "5"),
-                (nameof(ProgramArgs.OuterCvFoldsToRun), "5"),
+                (nameof(ProgramArgs.OuterCvFoldsToRun), "1"),
                 (nameof(ProgramArgs.Repetitions), "1")
             };
 
             var fakeArgs = string.Join(" ", fakeArgsList.Select(a => $"-{a.name}={a.value}").ToArray());
-            //Console.WriteLine(); Console.WriteLine();
+            //Console.WriteLine(); 
+            //Console.WriteLine();
             //Console.WriteLine(string.Join("\r\n", fakeArgsList));
-            //Console.WriteLine(); Console.WriteLine();
+            //Console.WriteLine(); 
+            //Console.WriteLine();
             args = fakeArgs.Split();
 
             ProgramArgs = new ProgramArgs(args);
@@ -213,11 +289,11 @@ namespace SvmFsBatch
             //await cpConnecTask;
 
 
-            if (Program.ProgramArgs.IsUnix)
-            {
-                Mpstat = new Mpstat();
-                await Mpstat.Start(mainCt).ConfigureAwait(false);
-            }
+            //if (Program.ProgramArgs.IsUnix)
+            //{
+            //    Mpstat = new Mpstat();
+            //    await Mpstat.Start(mainCt).ConfigureAwait(false);
+            //}
 
 
             //await DataSet.LoadDataSetAsync(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt).ConfigureAwait(false);
@@ -227,11 +303,33 @@ namespace SvmFsBatch
 
             if ( /*InstanceId == 0 ||*/ ProgramArgs.Server)
             {
-                var DataSet = new DataSet();
-                DataSet.LoadDataSet(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt);
+                DataSet baseLineDataSet = null;
+                //int[] baseLineColumnIndexes = ProgramArgs.BaseLineDataSetColumnIndexes;
+
+                if ((ProgramArgs.BaseLineDataSetNames?.Length ?? 0) > 0)
+                {
+                    baseLineDataSet = new DataSet();
+                    baseLineDataSet.LoadDataSet(ProgramArgs.BaseLineDataSetDir, ProgramArgs.BaseLineDataSetNames, ProgramArgs.ClassNames, mainCt);
+                }
+
+                var dataSet = new DataSet();
+                dataSet.LoadDataSet(ProgramArgs.DataSetDir, ProgramArgs.DataSetNames, ProgramArgs.ClassNames, mainCt);
+
+                if (baseLineDataSet != null)
+                {
+                    if (!baseLineDataSet.ClassSizes.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize)).SequenceEqual(dataSet.ClassSizes.Select(a => (a.ClassId, a.ClassName, a.ClassSize, a.DownSampledClassSize))))
+                    {
+                        throw new Exception();
+                    }
+
+                    var x = dataSet.ValueList.SelectMany(a => a.ClassValueList.Select(b => b.RowColumns[0].RowColumnValue).ToArray()).ToArray();
+                    var y = baseLineDataSet.ValueList.SelectMany(a => a.ClassValueList.Select(b => b.RowColumns[0].RowColumnValue).ToArray()).ToArray();
+
+                    if (!x.SequenceEqual(y)) throw new Exception();
+                }
 
                 //var fss = Task.Run(async () => await fs_server.feature_selection_initialization(
-                var fsServerTask = Task.Run(async () => await FsServer.FeatureSelectionInitializationAsync(DataSet,
+                var fsServerTask = Task.Run(async () => await FsServer.FeatureSelectionInitializationAsync(baseLineDataSet, ProgramArgs.BaseLineDataSetColumnIndexes, dataSet,
                         ProgramArgs.ScoringClassId,
                         ProgramArgs.ScoringMetrics,
                         ProgramArgs.ExperimentName,
@@ -269,11 +367,11 @@ namespace SvmFsBatch
             //    //threads.Add(fsc);
             //}
 
-            if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
-            {
-                var task = Task.Run(async () => await RpcService.ListenForRPC(mainCt, Program.ProgramArgs.ServerPort).ConfigureAwait(false), mainCt);
-                tasks.Add(task);
-            }
+            //if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
+            //{
+            //    var task = Task.Run(async () => await RpcService.ListenForRPC(mainCt, Program.ProgramArgs.ServerPort).ConfigureAwait(false), mainCt);
+            //    tasks.Add(task);
+            //}
 
             if (tasks.Count > 0)
             {
@@ -305,16 +403,31 @@ namespace SvmFsBatch
         }
 
 
-        public static string GetIterationFolder(string resultsRootFolder, string ExperimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
+        public static string GetIterationFolder(string resultsRootFolder, string experimentName, int? iterationIndex = null, int? groupIndex = null, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+            if (ct.IsCancellationRequested)
+            {
+                Logging.LogExit(ModuleName); 
+                return default;
+            }
 
             const bool hr = false;
 
-            if (iterationIndex == null) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, ExperimentName); }
-            if (groupIndex == null) { Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}"); }
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, ExperimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
+            if (iterationIndex == null)
+            {
+                Logging.LogExit(ModuleName); 
+                return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, experimentName);
+            }
+
+            if (groupIndex == null)
+            {
+                Logging.LogExit(ModuleName); 
+                return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, experimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}");
+            }
+
+            Logging.LogExit(ModuleName); 
+            return ct.IsCancellationRequested ? default : Path.Combine(resultsRootFolder, experimentName, $@"it_{iterationIndex + (hr ? 1 : 0)}", $@"gr_{groupIndex + (hr ? 1 : 0)}");
         }
 
 
