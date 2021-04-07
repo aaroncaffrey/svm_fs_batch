@@ -895,7 +895,7 @@ namespace SvmFsBatch
                         ? groups[a.key.IdGroupArrayIndex].GroupKey
                         : DataSetGroupKey.Empty;
 
-                    Logging.LogExit(ModuleName);
+                    
                     return ct.IsCancellationRequested
                         ? default
                         : $"{k1},{a.list.Count},{string.Join(",", gk.CsvValuesArray())},{a.key.IdGroupArrayIndex},{a.key.IdRepetitions},{a.key.IdOuterCvFolds},{a.key.IdOuterCvFoldsToRun},{a.key.IdInnerCvFolds},{a.key.IdExperimentName},{a.key.IdTotalGroups},{a.key.IdSvmType},{a.key.IdSvmKernel},{a.key.IdScaleFunction},{(a.key.IdCalcElevenPointThresholds ? 1 : 0)},{a.key.IdSelectionDirection},{a.key.IdClassWeights},{string.Join(",", fsScore.CsvValuesArray())},{string.Join(",", fsScorePercentile.CsvValuesArray())}";
@@ -1455,7 +1455,7 @@ namespace SvmFsBatch
 
             // make rank_data instances, which track the ranks (performance) of each group over time, to allow for optimisation decisions and detection of variant features
 
-            var idso = new IndexData.IndexDataSearchOptions();//false)
+            //var idso = new IndexDataSearchOptions();//false)
             //{
             //    IdJobUid = true,
             //    IdIterationIndex = true,
@@ -1515,8 +1515,9 @@ namespace SvmFsBatch
                     .Select((a, index) =>
                     {
                         var lastGroup = allIterationIdFlat != null
-                            ? IndexData.FindLastReference(allIterationIdFlat, a.id, idso)
+                            ? IndexData.FindLastReference(allIterationIdFlat, a.id/*, idso*/)
                             : null;
+
                         var lastGroupRs = lastGroup != null
                             ? allIterationIdCmRsFlat?.LastOrDefault(c => c.id == lastGroup) ?? default
                             : default;
@@ -1537,13 +1538,15 @@ namespace SvmFsBatch
                                 : 0
                         };
 
-                        Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (a.id, a.cm, rs);
+                        Logging.LogExit(ModuleName);
+                        return /*ct.IsCancellationRequested ? default :*/ (a.id, a.cm, rs);
                     }).ToArray()
                 : idCmScore.Select((a, index) =>
                 {
                     var lastGroup = allIterationIdFlat != null
-                        ? IndexData.FindLastReference(allIterationIdFlat, a.id, idso)
+                        ? IndexData.FindLastReference(allIterationIdFlat, a.id/*, idso*/)
                         : null;
+
                     var lastGroupRs = lastGroup != null
                         ? allIterationIdCmRsFlat?.LastOrDefault(c => c.id == lastGroup) ?? default
                         : default;
@@ -1564,10 +1567,13 @@ namespace SvmFsBatch
                             : 0
                     };
 
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (a.id, a.cm, rs);
+                    Logging.LogExit(ModuleName); 
+                    return /*ct.IsCancellationRequested ? default :*/ (a.id, a.cm, rs);
                 }).ToArray();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : idCmRs;
+            Logging.LogExit(ModuleName);
+            
+            return ct.IsCancellationRequested ? default : idCmRs;
         }
 
 

@@ -511,12 +511,12 @@ namespace SvmFsBatch
             var loadedDataTasks = asParallel
                 ? cacheFiles.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Select(async cmFn =>
                 {
-                    if (ct.IsCancellationRequested) {   return null; }
+                    //if (ct.IsCancellationRequested) {   return null; }
                     return ct.IsCancellationRequested ? default :await LoadCacheFileAsync(cmFn, indexesWhole, ct).ConfigureAwait(false);
                 }).ToArray()
                 : cacheFiles.Select(async cmFn =>
                 {
-                    if (ct.IsCancellationRequested) {  return null; }
+                    //if (ct.IsCancellationRequested) {  return null; }
                     return ct.IsCancellationRequested ? default :await LoadCacheFileAsync(cmFn, indexesWhole, ct).ConfigureAwait(false);
                 }).ToArray();
 
@@ -572,7 +572,7 @@ namespace SvmFsBatch
                     //        cmList[cmIndex].UnrolledIndexData = id ?? throw new Exception();
                     //    }
 
-                    var idso = new IndexData.IndexDataSearchOptions();//false)
+                    //var idso = new IndexData.IndexDataSearchOptions();//false)
                     //{ 
                     //    IdIterationIndex = true,
                     //    IdJobUid = true,
@@ -588,7 +588,7 @@ namespace SvmFsBatch
                         {
                             if (cmList[cmIndex].id != null)
                             {
-                                var a = IndexData.FindFirstReference(indexesWhole, cmList[cmIndex].id, idso);
+                                var a = IndexData.FindFirstReference(indexesWhole, cmList[cmIndex].id/*, idso*/);
                                 cmList[cmIndex].id = a ?? throw new Exception();
                             }
                         });
@@ -630,7 +630,7 @@ namespace SvmFsBatch
             // find loaded indexes
             var indexesLoaded = 
                 
-                iterationCmLoadedIds == null || iterationCmLoadedIds.Length == 0 ? Array.Empty<IndexData>() 
+                (iterationCmLoadedIds?.Length??0) == 0 ? Array.Empty<IndexData>() 
                 :
                 asParallel ? 
                     indexesWhole.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.Where(a => IndexData.FindFirstReference(iterationCmLoadedIds, a) != null).ToArray() :

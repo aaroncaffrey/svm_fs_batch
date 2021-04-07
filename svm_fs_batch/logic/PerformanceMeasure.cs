@@ -12,12 +12,16 @@ namespace SvmFsBatch
     {
         public const string ModuleName = nameof(PerformanceMeasure);
 
-        public static readonly double[] ElevenPoints = {1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0};
+        public static readonly double[] ElevenPoints = { 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0 };
 
         public static List<ConfusionMatrix> CountPredictionError(Prediction[] predictionList, double? threshold = null, int? thresholdClass = null, bool calculateAuc = true, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) 
+            {
+                Logging.LogExit(ModuleName);
+                return default; 
+            }
 
             //var param_list = new List<(string key, string value)>()
             //{
@@ -84,7 +88,9 @@ namespace SvmFsBatch
                 foreach (var cm in confusionMatrixList)
                     cm.CalculateThesholdMetrics(cm.Metrics, calculateAuc, predictionList, ct);
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :confusionMatrixList;
+            Logging.LogExit(ModuleName);
+            
+            return ct.IsCancellationRequested ? default : confusionMatrixList;
         }
 
 
@@ -114,7 +120,7 @@ namespace SvmFsBatch
         public static async Task<Prediction[]> LoadPredictionFileProbabilityValuesAsync((string test_file, string test_comments_file, string prediction_file, string test_class_sample_id_list_file)[] files, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             // method untested
             const string MethodName = nameof(LoadPredictionFileProbabilityValuesAsync);
@@ -166,17 +172,17 @@ namespace SvmFsBatch
             var testClassSampleIdList = lines.Where(a => a.test_class_sample_id_list_lines != null).SelectMany(a => a.test_class_sample_id_list_lines).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
             if (testClassSampleIdList.Length == 0) testClassSampleIdList = null;
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :LoadPredictionFileProbabilityValuesFromText(testFileLines, testCommentsFileLines, predictionFileLines, testClassSampleIdList, ct: ct);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : LoadPredictionFileProbabilityValuesFromText(testFileLines, testCommentsFileLines, predictionFileLines, testClassSampleIdList, ct: ct);
         }
 
 
         public static async Task<Prediction[]> LoadPredictionFileProbabilityValuesAsync(string testFile, string testCommentsFile, string predictionFile, string testSampleIdListFile = null, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             const string MethodName = nameof(LoadPredictionFileProbabilityValuesAsync);
-            
+
 
             //if (string.IsNullOrWhiteSpace(test_file) || !await io_proxy.Exists(test_file, nameof(performance_measure), nameof(load_prediction_file_regression_values)).ConfigureAwait(false) || new FileInfo(test_file).Length == 0)
             //{
@@ -211,13 +217,13 @@ namespace SvmFsBatch
                 : null;
             var testClassSampleIdList = testSampleIdListLines?.Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToArray();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :LoadPredictionFileProbabilityValuesFromText(testFileLines, testCommentsFileLines, predictionFileLines, testClassSampleIdList, ct: ct);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : LoadPredictionFileProbabilityValuesFromText(testFileLines, testCommentsFileLines, predictionFileLines, testClassSampleIdList, ct: ct);
         }
 
         public static Prediction[] LoadPredictionFileProbabilityValuesFromText(string[] testFileLines, string[] testCommentsFileLines, string[] predictionFileLines, int[] testClassSampleIdList, bool asParallel = false, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             if (testFileLines == null || testFileLines.Length == 0) throw new ArgumentNullException(nameof(testFileLines));
 
@@ -228,9 +234,9 @@ namespace SvmFsBatch
             {
                 var hashIndex = a.IndexOf('#', StringComparison.Ordinal);
 
-                if (hashIndex > -1) {Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :a.Substring(0, hashIndex).Trim(); }
+                if (hashIndex > -1) { return a.Substring(0, hashIndex).Trim(); }
 
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :a.Trim();
+                return a.Trim();
             }).ToArray();
 
 
@@ -239,26 +245,30 @@ namespace SvmFsBatch
             if (testCommentsFileLines != null && testCommentsFileLines.Length > 0) testCommentsFileLines = testCommentsFileLines.Skip(1).ToArray();
 
 
-            var testFileData = testFileLines.Where(a => !string.IsNullOrWhiteSpace(a) && int.TryParse(a.Trim().Split().First(), NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var lineActualClassId)).Select(a => a.Trim().Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries)).ToArray();
+            var testFileData = testFileLines.Where(a => !string.IsNullOrWhiteSpace(a) && int.TryParse(a.Trim().Split().First(), NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var lineActualClassId)).Select(a => a.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).ToArray();
 
 
-            if (testFileLines.Length == 0) { Logging.LogExit(ModuleName);  return null; }
+            if (testFileLines.Length == 0) { Logging.LogExit(ModuleName); return null; }
 
 
-            var predictionFileData = predictionFileLines.Where(a => !string.IsNullOrWhiteSpace(a) && int.TryParse(a.Trim().Split().First(), NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var linePredictedClassId)).Select(a => a.Trim().Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries)).ToArray();
+            var predictionFileData = predictionFileLines.Where(a => !string.IsNullOrWhiteSpace(a) && int.TryParse(a.Trim().Split().First(), NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out var linePredictedClassId)).Select(a => a.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)).ToArray();
 
             //if (prediction_file_lines.Count == 0) { Logging.LogExit(ModuleName);  return null; }
-            if (predictionFileData.Length == 0) { Logging.LogExit(ModuleName);  return null; }
+            if (predictionFileData.Length == 0) { Logging.LogExit(ModuleName); return null; }
 
             var probabilityEstimateClassLabels = new List<int>();
 
             if (predictionFileLines.Where(a => a.Trim().StartsWith(@"labels")).Distinct().Count() > 1) /* should be 0 or 1 for the same model */ throw new Exception(@"Error: more than one set of labels in the same file.");
 
-            if (predictionFileLines.First().Trim().Split().First() == @"labels") probabilityEstimateClassLabels = predictionFileLines.First().Trim().Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList();
+            if (predictionFileLines.First().Trim().Split().First() == @"labels") probabilityEstimateClassLabels = predictionFileLines.First().Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(a => int.Parse(a, NumberStyles.Integer, NumberFormatInfo.InvariantInfo)).ToList();
 
             if (testCommentsFileLines != null && testFileData.Length != testCommentsFileLines.Length) throw new Exception($@"Error: test file and test comments file have different instance length: [ {testFileData.Length} : {testCommentsFileLines.Length} ].");
 
-            if (testFileData.Length != predictionFileData.Length) throw new Exception($@"Error: test file and prediction file have different instance length: [ {testFileData.Length} : {predictionFileData.Length} ].");
+            if (testFileData.Length != predictionFileData.Length)
+            {
+                if (ct.IsCancellationRequested) return default;
+                throw new Exception($@"Error: test file and prediction file have different instance length: [ {testFileData.Length} : {predictionFileData.Length} ].");
+            }
 
             if (testClassSampleIdList != null && testClassSampleIdList.Length > 0 && testClassSampleIdList.Length != testFileData.Length) throw new Exception($@"Error: test sample ids and test file data do not match: [ {testFileData.Length} : {predictionFileData.Length} ].");
 
@@ -297,7 +307,7 @@ namespace SvmFsBatch
                         //test_row_vector = test_file_data[prediction_index].Skip(1/* skip class id column */).ToArray(),
                     };
 
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :prediction;
+                    return prediction;
                 }).ToArray()
                 : Enumerable.Range(0, totalPredictions).Select(predictionIndex =>
                 {
@@ -330,10 +340,11 @@ namespace SvmFsBatch
                         //test_row_vector = test_file_data[prediction_index].Skip(1/* skip class id column */).ToArray(),
                     };
 
-                    Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :prediction;
+                    return prediction;
                 }).ToArray();
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :predictionList;
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default : predictionList;
         }
 
         //public static (List<prediction> prediction_list, List<ConfusionMatrix> CmList) load_prediction_file(List<(string test_file, string test_comments_file, string prediction_file)> files, bool calc_ElevenPoint_thresholds)
@@ -350,7 +361,7 @@ namespace SvmFsBatch
         public static async Task<(Prediction[] prediction_list, ConfusionMatrix[] CmList)> LoadPredictionFileAsync(string testFile, string testCommentsFile, string predictionFile, bool calcElevenPointThresholds, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
             //var param_list = new List<(string key, string value)>()
             //{
             //    (nameof(test_file),test_await io_proxy.ToString()),
@@ -364,14 +375,14 @@ namespace SvmFsBatch
             var predictionList = await LoadPredictionFileProbabilityValuesAsync(testFile, testCommentsFile, predictionFile, ct: ct).ConfigureAwait(false);
             var cmList = LoadPredictionFile(predictionList, calcElevenPointThresholds, ct);
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(predictionList, cmList);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (predictionList, cmList);
         }
 
         //public static (List<prediction> prediction_list, List<ConfusionMatrix> CmList) load_prediction_file(string[] test_file_lines, string[] test_comments_file_lines, string[] prediction_file_lines, bool calc_ElevenPoint_thresholds, int[] test_class_sample_id_list)
         public static (Prediction[] prediction_list, ConfusionMatrix[] CmList) LoadPredictionFile(string[] testFileLines, string[] testCommentsFileLines, string[] predictionFileLines, bool calcElevenPointThresholds, int[] testClassSampleIdList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             //var param_list = new List<(string key, string value)>()
             //{
@@ -386,13 +397,13 @@ namespace SvmFsBatch
             var predictionList = LoadPredictionFileProbabilityValuesFromText(testFileLines, testCommentsFileLines, predictionFileLines, testClassSampleIdList, ct: ct);
             var cmList = LoadPredictionFile(predictionList, calcElevenPointThresholds, ct);
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(predictionList, cmList);
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (predictionList, cmList);
         }
 
         public static ConfusionMatrix[] LoadPredictionFile(Prediction[] predictionList, bool calcElevenPointThresholds, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             if (predictionList == null || predictionList.Length == 0) throw new ArgumentOutOfRangeException(nameof(predictionList));
 
@@ -405,7 +416,7 @@ namespace SvmFsBatch
             //if (program.write_console_log) program.WriteLine($@"{nameof(load_prediction_file)}({string.Join(", ", param_list.Select(a => $"{a.key}=\"{a.value}\"").ToList())});");
 
 
-            var classIdList = predictionList.SelectMany(a => new[] {a.RealClassId, a.PredictedClassId}).Distinct().OrderBy(a => a).ToArray();
+            var classIdList = predictionList.SelectMany(a => new[] { a.RealClassId, a.PredictedClassId }).Distinct().OrderBy(a => a).ToArray();
 
             if (classIdList == null || classIdList.Length == 0) throw new Exception();
 
@@ -421,80 +432,80 @@ namespace SvmFsBatch
             if (classIdList.Length >= 2 && calcElevenPointThresholds)
                 // make confusion matrix performance scores with altered default decision boundary threshold
                 for (var classIdX = 0; classIdX < classIdList.Length; classIdX++)
-                for (var classIdY = 0; classIdY < classIdList.Length; classIdY++)
-                {
-                    if (classIdX >= classIdY) continue;
-
-                    var negativeId = classIdList[classIdX];
-                    var positiveId = classIdList[classIdY];
-
-                    var thresholdPredictionList = ElevenPoints.Select(th => (positive_threshold: th, prediction_list: predictionList.Select(p => new Prediction(p)
+                    for (var classIdY = 0; classIdY < classIdList.Length; classIdY++)
                     {
-                        PredictedClassId = p.ProbabilityEstimates.First(e => e.ClassId == positiveId).ProbabilityEstimate >= th
-                            ? positiveId
-                            : negativeId
-                    }).ToArray())).ToArray();
+                        if (classIdX >= classIdY) continue;
 
-                    var thresholdConfusionMatrixList = thresholdPredictionList.Select(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).Where(a=>a!=default).SelectMany(a=>a).ToArray();
+                        var negativeId = classIdList[classIdX];
+                        var positiveId = classIdList[classIdY];
+
+                        var thresholdPredictionList = ElevenPoints.Select(th => (positive_threshold: th, prediction_list: predictionList.Select(p => new Prediction(p)
+                        {
+                            PredictedClassId = p.ProbabilityEstimates.First(e => e.ClassId == positiveId).ProbabilityEstimate >= th
+                                ? positiveId
+                                : negativeId
+                        }).ToArray())).ToArray();
+
+                        var thresholdConfusionMatrixList = thresholdPredictionList.Select(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).Where(a => a != default).SelectMany(a => a).ToArray();
 
 
-                    for (var i = 0; i < thresholdConfusionMatrixList.Length; i++)
-                    {
-                        var classDefaultCm = defaultConfusionMatrixList.First(a => a.XClassId == thresholdConfusionMatrixList[i].XClassId);
+                        for (var i = 0; i < thresholdConfusionMatrixList.Length; i++)
+                        {
+                            var classDefaultCm = defaultConfusionMatrixList.First(a => a.XClassId == thresholdConfusionMatrixList[i].XClassId);
 
-                        // note: AUC_ROC and AUC_PR don't change when altering the default threshold since the predicted class isn't a factor in their calculation.
+                            // note: AUC_ROC and AUC_PR don't change when altering the default threshold since the predicted class isn't a factor in their calculation.
 
-                        thresholdConfusionMatrixList[i].Metrics.PRocAucApproxAll = classDefaultCm.Metrics.PRocAucApproxAll;
-                        thresholdConfusionMatrixList[i].Metrics.PRocAucApproxElevenPoint = classDefaultCm.Metrics.PRocAucApproxElevenPoint;
-                        thresholdConfusionMatrixList[i].RocXyStrAll = classDefaultCm.RocXyStrAll;
-                        thresholdConfusionMatrixList[i].RocXyStrElevenPoint = classDefaultCm.RocXyStrElevenPoint;
+                            thresholdConfusionMatrixList[i].Metrics.PRocAucApproxAll = classDefaultCm.Metrics.PRocAucApproxAll;
+                            thresholdConfusionMatrixList[i].Metrics.PRocAucApproxElevenPoint = classDefaultCm.Metrics.PRocAucApproxElevenPoint;
+                            thresholdConfusionMatrixList[i].RocXyStrAll = classDefaultCm.RocXyStrAll;
+                            thresholdConfusionMatrixList[i].RocXyStrElevenPoint = classDefaultCm.RocXyStrElevenPoint;
 
-                        thresholdConfusionMatrixList[i].Metrics.PPrAucApproxAll = classDefaultCm.Metrics.PPrAucApproxAll;
-                        thresholdConfusionMatrixList[i].Metrics.PPrAucApproxElevenPoint = classDefaultCm.Metrics.PPrAucApproxElevenPoint;
-                        thresholdConfusionMatrixList[i].PrXyStrAll = classDefaultCm.PrXyStrAll;
-                        thresholdConfusionMatrixList[i].PrXyStrElevenPoint = classDefaultCm.PrXyStrElevenPoint;
-                        thresholdConfusionMatrixList[i].PriXyStrAll = classDefaultCm.PriXyStrAll;
-                        thresholdConfusionMatrixList[i].PriXyStrElevenPoint = classDefaultCm.PriXyStrElevenPoint;
+                            thresholdConfusionMatrixList[i].Metrics.PPrAucApproxAll = classDefaultCm.Metrics.PPrAucApproxAll;
+                            thresholdConfusionMatrixList[i].Metrics.PPrAucApproxElevenPoint = classDefaultCm.Metrics.PPrAucApproxElevenPoint;
+                            thresholdConfusionMatrixList[i].PrXyStrAll = classDefaultCm.PrXyStrAll;
+                            thresholdConfusionMatrixList[i].PrXyStrElevenPoint = classDefaultCm.PrXyStrElevenPoint;
+                            thresholdConfusionMatrixList[i].PriXyStrAll = classDefaultCm.PriXyStrAll;
+                            thresholdConfusionMatrixList[i].PriXyStrElevenPoint = classDefaultCm.PriXyStrElevenPoint;
+                        }
+
+                        confusionMatrixList.AddRange(thresholdConfusionMatrixList);
                     }
 
-                    confusionMatrixList.AddRange(thresholdConfusionMatrixList);
-                }
-
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :confusionMatrixList.ToArray();
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : confusionMatrixList.ToArray();
         }
 
         public static double Brier(Prediction[] predictionList, int positiveId, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-            if (predictionList.Any(a => a.ProbabilityEstimates == null || a.ProbabilityEstimates.Length == 0)) { Logging.LogExit(ModuleName);  return default; }
+            if (predictionList.Any(a => a.ProbabilityEstimates == null || a.ProbabilityEstimates.Length == 0)) { Logging.LogExit(ModuleName); return default; }
 
             predictionList = predictionList.OrderByDescending(a => a.ProbabilityEstimates.First(b => b.ClassId == positiveId).ProbabilityEstimate).ToArray();
 
             // Calc Brier
-            var brierScore = 1 / (double) predictionList.Length * predictionList.Sum(a => Math.Pow(a.ProbabilityEstimates.First(b => b.ClassId == a.PredictedClassId).ProbabilityEstimate - (a.RealClassId == a.PredictedClassId
-                    ? 1
-                    : 0),
-                2));
+            var brierScore = 1 / (double)predictionList.Length * predictionList.Sum(a => Math.Pow(a.ProbabilityEstimates.First(b => b.ClassId == a.PredictedClassId).ProbabilityEstimate - (a.RealClassId == a.PredictedClassId
+                   ? 1
+                   : 0),
+               2));
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :brierScore;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : brierScore;
         }
 
         public static (double roc_auc_approx, double roc_auc_actual, double pr_auc_approx, double pri_auc_approx, double ap, double api, (double x, double y)[] roc_xy, (double x, double y)[] pr_xy, (double x, double y)[] pri_xy) CalculateRocAucPrecisionRecallAuc(Prediction[] predictionList, int positiveId, ThresholdType thresholdType = ThresholdType.AllThresholds, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
-            if (ct.IsCancellationRequested) 
+            if (ct.IsCancellationRequested)
             {
-                Logging.LogExit(ModuleName);  
+                Logging.LogExit(ModuleName);
                 return default;
             }
 
-            if (predictionList == default || predictionList.Any(a => a.ProbabilityEstimates == null || a.ProbabilityEstimates.Length == 0)) 
+            if (predictionList == default || predictionList.Any(a => a.ProbabilityEstimates == null || a.ProbabilityEstimates.Length == 0))
             {
-                Logging.LogExit(ModuleName); 
-                return default; 
+                Logging.LogExit(ModuleName);
+                return default;
             }
 
             // Assume binary classifier - get negative class id
@@ -502,10 +513,10 @@ namespace SvmFsBatch
             var negativeId = classIds.First(classId => classId != positiveId);
 
             // Calc P
-            var p = (double) predictionList.Count(a => a.RealClassId == positiveId);
+            var p = (double)predictionList.Count(a => a.RealClassId == positiveId);
 
             // Calc N
-            var n = (double) predictionList.Count(a => a.RealClassId != positiveId);
+            var n = (double)predictionList.Count(a => a.RealClassId != positiveId);
 
             // Order predictions descending by positive class probability
             predictionList = predictionList.OrderByDescending(a => a.ProbabilityEstimates.FirstOrDefault(b => b.ClassId == positiveId).ProbabilityEstimate).ToArray();
@@ -543,15 +554,15 @@ namespace SvmFsBatch
             // ROC (Not Approximated, and Not reduced to Eleven Points - Incompatible with 11 points)
             var rocAucActual = CalculateRocAuc(predictionList, positiveId, p, n);//, ct);
 
-            Logging.LogExit(ModuleName); 
-            
-            return ct.IsCancellationRequested ? default :(rocAucApprox, rocAucActual, prAucApprox, priAucApprox, ap, api, roc_xy: rocPlotCoords, pr_xy: prPlotCoords, pri_xy: priPlotCoords);
+            Logging.LogExit(ModuleName);
+
+            return ct.IsCancellationRequested ? default : (rocAucApprox, rocAucActual, prAucApprox, priAucApprox, ap, api, roc_xy: rocPlotCoords, pr_xy: prPlotCoords, pri_xy: priPlotCoords);
         }
 
         public static ConfusionMatrix[] GetThesholdConfusionMatrices(Prediction[] predictionList, int positiveId, ThresholdType thresholdType, int negativeId, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             // Get thresholds list (either all thresholds or 11 points)
             double[] thresholds = null;
@@ -569,10 +580,10 @@ namespace SvmFsBatch
             }).ToArray())).ToArray();
 
             // Calc confusion matrices at each threshold
-            var thresholdConfusionMatrixList = thresholdPredictionList.Select(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).Where(a=>a!=default).SelectMany(a=>a).Where(a => a.XClassId == positiveId).ToArray();
+            var thresholdConfusionMatrixList = thresholdPredictionList.Select(a => CountPredictionError(a.prediction_list, a.positive_threshold, positiveId, false, ct: ct)).Where(a => a != default).SelectMany(a => a).Where(a => a.XClassId == positiveId).ToArray();
 
-            Logging.LogExit(ModuleName); 
-            return ct.IsCancellationRequested ? default :thresholdConfusionMatrixList;
+            Logging.LogExit(ModuleName);
+            return ct.IsCancellationRequested ? default : thresholdConfusionMatrixList;
         }
 
         public static double CalculateRocAuc(Prediction[] predictionList, int positiveId, double p, double n)//, CancellationToken ct)
@@ -591,11 +602,11 @@ namespace SvmFsBatch
                 //var n_more_than_current_n = total_neg_for_threshold.Count(b => b.actual_class == negative_id && b.total_neg_at_point > total_n_at_current_threshold);
                 var nMoreThanCurrentN = totalNegForThreshold.Count(b => b.actual_class != positiveId && b.total_neg_at_point > totalNAtCurrentThreshold);
 
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return nMoreThanCurrentN;
             }).Sum();
 
-            Logging.LogExit(ModuleName); 
+            Logging.LogExit(ModuleName);
             return /*ct.IsCancellationRequested ? default :*/rocAucActual;
         }
 
@@ -604,13 +615,13 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested)
             {
-                Logging.LogExit(ModuleName); 
+                Logging.LogExit(ModuleName);
                 return default;
             }
 
             if (thresholdConfusionMatrixList == null || thresholdConfusionMatrixList.Length == 0)
             {
-                Logging.LogExit(ModuleName);  
+                Logging.LogExit(ModuleName);
                 return null;
             }
             var xy1 = thresholdConfusionMatrixList.Select(a => (x: a.Metrics.PFpr, y: a.Metrics.PTpr)).Distinct().ToArray();
@@ -639,7 +650,7 @@ namespace SvmFsBatch
             //todo: check whether 'roc_auc_approx' should be calculated before or after 'OrderBy' y,x statement, or if doesn't matter.
             xy1 = xy1.OrderBy(a => a.y).ThenBy(a => a.x).ToArray();
             Logging.LogExit(ModuleName);
-            return ct.IsCancellationRequested ? default :xy1;
+            return ct.IsCancellationRequested ? default : xy1;
         }
 
         //public static (double x, double y)[] calc_pri_plot(ConfusionMatrix[] threshold_confusion_matrix_list)
@@ -671,16 +682,16 @@ namespace SvmFsBatch
         public static (double x, double y)[] CalculatePrecisionRecallPlot(ConfusionMatrix[] thresholdConfusionMatrixList, bool interpolate, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
-            if (thresholdConfusionMatrixList == null || thresholdConfusionMatrixList.Length == 0) { Logging.LogExit(ModuleName);  return null; }
+            if (thresholdConfusionMatrixList == null || thresholdConfusionMatrixList.Length == 0) { Logging.LogExit(ModuleName); return null; }
 
             var xy1 = thresholdConfusionMatrixList.Select(a =>
             {
                 var maxPpv = thresholdConfusionMatrixList.Where(b => b.Metrics.PTpr >= a.Metrics.PTpr).Max(b => b.Metrics.PPpv);
                 if (double.IsNaN(maxPpv)) maxPpv = a.Metrics.PPpv; // 0;
 
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :(x: a.Metrics.PTpr, y: interpolate
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : (x: a.Metrics.PTpr, y: interpolate
                     ? maxPpv
                     : a.Metrics.PPpv);
             }).ToArray();
@@ -713,13 +724,13 @@ namespace SvmFsBatch
                 xy1 = xy2;
             }
 
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :xy1;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : xy1;
         }
 
         public static double CalculateAveragePrecisionInterpolated(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
 
             var apiResult = thresholdConfusionMatrixList.Select((a, i) =>
@@ -737,15 +748,15 @@ namespace SvmFsBatch
 
                 if (double.IsNaN(api)) api = 0;
 
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :api;
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : api;
             }).Sum();
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :apiResult;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : apiResult;
         }
 
         public static double CalculateAveragePrecision(ConfusionMatrix[] thresholdConfusionMatrixList, CancellationToken ct)
         {
             Logging.LogCall(ModuleName);
-            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
+            if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
 
             var apResult = thresholdConfusionMatrixList.Select((a, i) =>
@@ -758,9 +769,9 @@ namespace SvmFsBatch
 
                 if (double.IsNaN(ap)) ap = 0;
                 //var _api = max_p * delta_tpr;
-                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :ap;
+                Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : ap;
             }).Sum();
-            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default :apResult;
+            Logging.LogExit(ModuleName); return ct.IsCancellationRequested ? default : apResult;
         }
 
         public enum ThresholdType

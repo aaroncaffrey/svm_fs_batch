@@ -317,6 +317,7 @@ namespace SvmFsBatch
 
             if (ct.IsCancellationRequested)
             {
+                Logging.LogEvent($@"Exiting {nameof(GetSyncRequest)}: Cancellation requested.");
                 Logging.LogExit();
                 return default;
             }
@@ -414,11 +415,15 @@ namespace SvmFsBatch
 
                     //Logging.LogEvent($"[{instanceGuid:N}] Exit sync1() {(syncRequest != default ? syncRequest.ToString() : "")}");
 
+                    var syncSelf = syncRequest.sourceGuid == instanceGuid;
+
+                    Logging.LogEvent($@"Exiting {nameof(GetSyncRequest)}: Valid sync request found. Source Guid: [{syncRequest.sourceGuid:N}] ({(syncSelf?"self":"remote")}). Request Code: [{syncRequest.requestCode}].");
                     Logging.LogExit();
                     return (syncRequest.file, syncRequest.data, syncRequest.syn, syncRequest.sourceGuid, syncRequest.requestCode, syncRequest.responseGuid, syncRequest.requestTime, activeInstances);
                 }
 
                 //Logging.LogEvent($"[{instanceGuid:N}] Exit sync1() {(syncRequest != default ? syncRequest.ToString() : "")}");
+                Logging.LogEvent($@"Exiting {nameof(GetSyncRequest)}: No valid sync request found.");
                 Logging.LogExit();
                 return default;
             }
@@ -544,7 +549,7 @@ namespace SvmFsBatch
                 catch (Exception e)
                 {
                     Logging.LogException(e, $"[{instanceGuid:N}]");
-                    Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - couldn't write sync response file.");
+                    Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync failed: Couldn't write sync response file.");
                     Logging.LogExit();
 
                     return default;
@@ -565,7 +570,7 @@ namespace SvmFsBatch
                     if (elapsed1 >= GetSyncResponseSyncTimeout1 || elapsed2 >= GetSyncResponseSyncTimeout2)
                     {
                         del();
-                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync timeout");
+                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync failed: Sync timeout.");
                         Logging.LogExit();
 
                         return default;
@@ -576,7 +581,7 @@ namespace SvmFsBatch
 
                     if (activeInstances == default)
                     {
-                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - active instances couldn't be read");
+                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync failed: Active instances couldn't be read");
                         Logging.LogExit();
 
                         return default;
@@ -590,7 +595,7 @@ namespace SvmFsBatch
                         if (syncTimeNewer || syncCodeMismatch)
                         {
                             del();
-                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(){(syncTimeNewer ? " - newer sync request found" : "")}{(syncCodeMismatch ? " - sync code mismatch" : "")}");
+                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync failed:{(syncTimeNewer ? " Newer sync request found." : "")}{(syncCodeMismatch ? " Sync code mismatch." : "")}");
                             Logging.LogExit();
 
                             return default;
@@ -602,7 +607,7 @@ namespace SvmFsBatch
                     if (activeInstances.Except(syncRequest.syncActiveInstances).Any() || syncRequest.syncActiveInstances.Except(activeInstances).Any())
                     {
                         del();
-                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - instances changed");
+                        Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync failed: Active instances changed.");
                         Logging.LogExit();
 
                         return default;
@@ -615,7 +620,7 @@ namespace SvmFsBatch
                             if (!File.Exists(syncRequest.file))
                             {
                                 // sync request was deleted... probably because a newer request exists?
-                                Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync file missing");
+                                Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync failed: Sync file missing.");
                                 Logging.LogExit();
 
                                 return default;
@@ -624,7 +629,7 @@ namespace SvmFsBatch
                         catch (Exception e)
                         {
                             Logging.LogException(e, $"[{instanceGuid:N}]");
-                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync file couldn't be accessed");
+                            Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync failed: Sync file couldn't be accessed.");
                             Logging.LogExit();
 
                             return default;
@@ -688,10 +693,10 @@ namespace SvmFsBatch
 
                             //syncRequest.syncActiveInstances
 
-                            var isSourceSelf = instanceGuid == syncRequest.sourceGuid;
+                            //var isSourceSelf = instanceGuid == syncRequest.sourceGuid;
 
-                            Logging.LogEvent($"[{instanceGuid:N}] Sync successful with instance [{syncRequest.sourceGuid:N}] ({(isSourceSelf ? "self" : "remote")}). Synchronized instances [{syncRequest.syncActiveInstances.Length}]: " +
-                                             string.Join(", ", syncRequest.syncActiveInstances.Select(a=>$@"[{a}]").ToArray()));
+                            //Logging.LogEvent($"[{instanceGuid:N}] Sync successful with instance [{syncRequest.sourceGuid:N}] ({(isSourceSelf ? "self" : "remote")}). Synchronized instances [{syncRequest.syncActiveInstances.Length}]: " +
+                            //                 string.Join(", ", syncRequest.syncActiveInstances.Select(a=>$@"[{a}]").ToArray()));
 
                             // todo: find out why execution is stuck here. .. e.g.Sync successful with instance 9efd2b26-1c6d-4898-848a-f8db69173e8f .... then nothing else
 
@@ -739,7 +744,12 @@ namespace SvmFsBatch
                         continue;
                     }
 
-                    Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}() - sync ok");
+                    var isSourceSelf = instanceGuid == syncRequest.sourceGuid;
+
+                    Logging.LogEvent($"[{instanceGuid:N}] Exit {nameof(GetSyncResponse)}(): Sync successful: Sync instance: [{syncRequest.sourceGuid:N}] ({(isSourceSelf ? "self" : "remote")}). Synchronized {syncRequest.syncActiveInstances.Length} instances: " +
+                                     string.Join(", ", syncRequest.syncActiveInstances.Select(a => $@"[{a}]").ToArray()));
+
+
                     Logging.LogExit();
                     return (true, syncData);
                 }
@@ -758,7 +768,7 @@ namespace SvmFsBatch
         {
             if (callerCt.IsCancellationRequested)
             {
-                Logging.LogEvent($"[{instanceGuid:N}] Cancellation requested");
+                Logging.LogEvent($"[{instanceGuid:N}] Cancellation requested.");
                 Logging.LogExit();
                 return default;
             }
@@ -773,12 +783,14 @@ namespace SvmFsBatch
             //var methodLinkedCt = methodLinkedCts.Token;
 
 
-            Console.WriteLine();
-            Console.WriteLine();
-            Logging.LogEvent($@"[{instanceGuid:N}] Start of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].");
-            Console.WriteLine();
-            Console.WriteLine();
+            Logging.LogGap(2);
+            Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] Start of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].");
+            Logging.LogGap(2);
 
+
+            // syncResults is the list of job item indexes completed within the cluster
+            var syncResultIds = Array.Empty<int>();
+            var allInnerResultIds = Array.Empty<int>();
 
             // load cache
             //var cacheFiles = await IoProxy.GetFilesAsync(true, ct, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
@@ -788,21 +800,48 @@ namespace SvmFsBatch
             var instanceIterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
             var masterIterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
             var (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, callerCt);
+            var cacheFilesLoaded = new List<string>();
 
             async Task RefreshCache()
             {
                 var cacheFolder = folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/;
-                var cacheFiles = await IoProxy.GetFilesAsync(true, callerCt, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
+                var cacheFiles1 = await IoProxy.GetFilesAsync(true, callerCt, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
 
-                if ((cacheFiles?.Length??0) > 0)
+                do
                 {
-                    var cache = await CacheLoad.LoadCacheFileListAsync(indexesWhole, cacheFiles, true, callerCt).ConfigureAwait(false);
-                    if (cache != default && cache.IdCmSd != default && cache.IdCmSd.Length > 0)
+                    var cacheFiles = cacheFiles1?.ToArray();
+
+                    if ((cacheFiles?.Length ?? 0) > 0 && (cacheFilesLoaded?.Count ?? 0) > 0)
                     {
-                        masterIterationCmLoaded = cache.IdCmSd.Where(a => a.cm != default && a.id != default).ToList();
-                        //masterIterationCmLoaded.AddRange(cache.IdCmSd);
+                        cacheFiles = cacheFiles.Except(cacheFilesLoaded).ToArray();
                     }
-                }
+
+                    if ((cacheFiles?.Length ?? 0) > 0)
+                    {
+                        var cache = await CacheLoad.LoadCacheFileListAsync(indexesWhole, cacheFiles, true, callerCt).ConfigureAwait(false);
+                        if (cache != default && cache.IdCmSd != default && cache.IdCmSd.Length > 0)
+                        {
+                            var cacheData = cache.IdCmSd.Where(a => a.cm != default && a.id != default).ToList();
+                            masterIterationCmLoaded.AddRange(cacheData);
+                            cacheFilesLoaded.AddRange(cache.FilesLoaded);
+
+                            var masterIterationCmLoadedIds = masterIterationCmLoaded.Select(a => a.id.IdJobUid).OrderBy(a => a).Distinct().ToArray();
+                            syncResultIds = syncResultIds.Union(masterIterationCmLoadedIds).ToArray();
+                            //masterIterationCmLoaded.AddRange(cache.IdCmSd);
+                        }
+
+                        var cacheFiles2 = await IoProxy.GetFilesAsync(true, callerCt, cacheFolder, "_cache_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
+
+                        if ((cacheFiles2?.Length ?? 0) > 0 && !cacheFiles1.SequenceEqual(cacheFiles2))
+                        {
+                            Logging.LogEvent("New cache files found.");
+                            cacheFiles1 = cacheFiles2;
+                            continue;
+                        }
+                    }
+
+                    break;
+                } while (true);
 
                 (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(masterIterationCmLoaded, indexesWhole, true, callerCt);
             }
@@ -833,14 +872,34 @@ namespace SvmFsBatch
             */
 
             //todo: why is iteration 0 being repeated?
+            var instanceCacheFileIndex = 0;
 
             async Task SaveInstanceCache()
             {
+                if ((instanceIterationCmLoaded?.Count ?? 0) == 0) return;
+
                 var cacheFolder = folder/*GetIpcCommsFolder(experimentName, iterationIndex)*/;
-                var cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}.csv");
+                var cacheSaveFn = "";
+
+                try
+                {
+                    do
+                    {
+                        cacheSaveFn = Path.Combine(cacheFolder, $"_cache_{iterationIndex}_{instanceGuid:N}_{instanceCacheFileIndex++}.csv");
+                    } while (File.Exists(cacheSaveFn));
+                }
+                catch (Exception e)
+                {
+                    Logging.LogException(e);
+                    throw;
+                }
+
+                
                 var cacheSaveLines = instanceIterationCmLoaded.AsParallel().AsOrdered().Select(a => $@"{a.id?.CsvValuesString() ?? IndexData.Empty.CsvValuesString()},{a.cm.CsvValuesString() ?? ConfusionMatrix.Empty.CsvValuesString()}").ToList();
                 cacheSaveLines.Insert(0, $@"{IndexData.CsvHeaderString},{ConfusionMatrix.CsvHeaderString}");
                 await IoProxy.WriteAllLinesAsync(true, callerCt, cacheSaveFn, cacheSaveLines).ConfigureAwait(false);
+
+                instanceIterationCmLoaded = new List<(IndexData id, ConfusionMatrix cm)>();
             }
 
             async Task<Task> InstanceGuidWriterTask(CancellationToken mainCt)
@@ -977,7 +1036,7 @@ namespace SvmFsBatch
                 {
                     if (indexData == default)
                     {
-                        Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: indexData was default...");
+                        Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] Job: Exiting: indexData was default...");
 
                         return default;
                     }
@@ -988,7 +1047,7 @@ namespace SvmFsBatch
                     {
                         if (workShareInstanceSize - workShareInstanceNumComplete > 1)
                         {
-                            Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: Cancellation requested...");
+                            Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] Job: Exiting: Cancellation requested...");
                             return default;
                         }
                     }
@@ -996,19 +1055,19 @@ namespace SvmFsBatch
                     var mocvi = CrossValidate.MakeOuterCvInputs(baseLineDataSet, baseLineColumnIndexes, dataSet, indexData, ct: loopCt);
                     if (mocvi == default || mocvi.outerCvInputs.Length == 0)
                     {
-                        Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: MakeOuterCvInputs returned default...");
+                        Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] Job: Exiting: MakeOuterCvInputs returned default...");
                         return default;
                     }
 
                     var ret = await CrossValidate.CrossValidatePerformanceAsync(null, CrossValidate.RpcPoint.None, mocvi.outerCvInputs, mocvi.mergedCvInput, indexData, ct: loopCt).ConfigureAwait(false);
                     if (ret == default || ret.Length == 0 || ret.Any(a => a.id == default || a.cm == default))
                     {
-                        Logging.LogEvent($@"[{instanceGuid:N}] Job: Exiting: CrossValidatePerformanceAsync returned default...");
+                        Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] Job: Exiting: CrossValidatePerformanceAsync returned default...");
 
                         return default;
                     }
 
-                    Logging.LogEvent($@"[{instanceGuid:N}] Job: Completed job {workShareInstanceIndex} of {workShareInstanceSize} (IdJobUid=[{indexData.IdJobUid}]; IdGroupArrayIndex=[{indexData.IdGroupArrayIndex}])");
+                    Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] Job: Completed job {workShareInstanceIndex} of {workShareInstanceSize} (IdJobUid=[{indexData.IdJobUid}]; IdGroupArrayIndex=[{indexData.IdGroupArrayIndex}])");
 
                     lock (workShareInstanceNumCompleteLock) workShareInstanceNumComplete++;
 
@@ -1036,7 +1095,8 @@ namespace SvmFsBatch
                 Logging.LogEvent($@"All jobs already cached of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].");
                 Logging.LogGap(2);
             }
-
+            
+            
             var countOuter = 0;
             while (indexesNotLoaded.Any())
             {
@@ -1066,11 +1126,9 @@ namespace SvmFsBatch
 
 
 
-                // syncResults is the list of job item indexes completed within the cluster
-                var syncResultIds = Array.Empty<int>();
-
+                
+                
                 // todo: add another variable to store actual results and save them.
-
 
 
                 var isWorkOutOfSync = false;
@@ -1079,13 +1137,15 @@ namespace SvmFsBatch
                 (Guid instanceGuid, int[] instanceWork)[] workShareList = null;
                 int[] workShareInstance = null;
                 var loopDidRun = false;
+                var loopDidWork = false;
+                var isWorkShareSetAndEmpty = false;
                 var finalSync = false;
                 var countInner = 0;
                 while (!callerCt.IsCancellationRequested && !mainCt.IsCancellationRequested)
                 {
                     Console.WriteLine();
                     Console.WriteLine();
-                    Logging.LogEvent($@"Start work sharing in ServeIpcJobsAsync (outer = [{countOuter}]; inner = [{countInner}]) for iteration [{iterationIndex}] for experiment [{experimentName}].");
+                    Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Start work sharing in ServeIpcJobsAsync (experiment = [{experimentName}], iteration = [{iterationIndex}], outer = [{countOuter}], inner = [{countInner}]).");
                     Console.WriteLine();
                     Console.WriteLine();
                     countInner++;
@@ -1097,12 +1157,15 @@ namespace SvmFsBatch
 
                     if (isFirstIteration)
                     {
-                        try { await Logging.WaitAsync(MainLoopInitDelay, $"[{instanceGuid:N}] Main loop init delay", ct: mainCt).ConfigureAwait(false); }
-                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
+                        try { await Logging.WaitAsync(MainLoopInitDelay, $"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Main loop init delay", ct: mainCt).ConfigureAwait(false); }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}]"); }
                     }
 
                     if (syncRequest != default)
                     {
+                        loopDidRun = false;
+                        loopDidWork = false;
+
                         var syncResponse = await GetSyncResponse(instanceGuid, experimentName, iterationIndex, syncRequest, syncResultIds, mainCt).ConfigureAwait(false);
                         isSyncOk = syncResponse.didSync;
 
@@ -1114,17 +1177,42 @@ namespace SvmFsBatch
                             {
                                 var syncWorkCompleteIds = syncResponse.syncData;
 
-                                Logging.LogEvent($"[{instanceGuid:N}] Sync returned Ids: {string.Join(", ", syncResultIds.Select(a => $"{a}").ToArray())}");
+                                Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Sync returned Ids: {string.Join(", ", syncWorkCompleteIds.Select(a => $"{a}").ToArray())}");
 
-                                syncResultIds = syncResultIds.Union(syncWorkCompleteIds).ToArray();
+                                var syncResultIdsSame = (syncWorkCompleteIds ?? Array.Empty<int>()).OrderBy(a => a).Distinct().SequenceEqual((syncResultIds ?? Array.Empty<int>()).OrderBy(a => a).Distinct());
+
+                                if (!syncResultIdsSame)
+                                {
+                                    var newIndexes = (syncWorkCompleteIds ?? Array.Empty<int>()).Except((syncResultIds ?? Array.Empty<int>())).ToArray();
+                                    var removedIndexes = (syncResultIds ?? Array.Empty<int>()).Except((syncWorkCompleteIds ?? Array.Empty<int>())).ToArray();
+                                    
+                                    Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Synchronized indexes have changed. New indexes [{newIndexes.Length}]: {string.Join(", ", newIndexes)}. Removed indexes [{removedIndexes.Length}]: {string.Join(", ", removedIndexes)}.");
+
+                                    syncResultIds = syncResultIds.Union(syncWorkCompleteIds).ToArray();
+                                }
+                                else
+                                {
+                                    Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Synchronized indexes haven't changed from previous synchronization.");
+                                }
                             }
 
-                            Logging.LogEvent($"[{instanceGuid:N}] Sync merged Ids: {string.Join(", ", syncResultIds.Select(a => $"{a}").ToArray())}");
+                            Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Sync merged Ids: {string.Join(", ", syncResultIds.Select(a => $"{a}").ToArray())}");
+                            
+                            
+                            syncRequest = default;
+                            await RefreshCache().ConfigureAwait(false);
+                            Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Sync request completed... continue...");
+                        }
+                        else
+                        {
+                            Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Sync failed. Continue.");
+                            syncRequest = default;
 
+                            continue;
                         }
 
-                        syncRequest = default;
-                        loopDidRun = false;
+
+                        
                         continue;
                     }
 
@@ -1134,56 +1222,80 @@ namespace SvmFsBatch
                     // except: if all work is already done?...  which would cause a sync-call loop
 
                     // finalSync makes sure a sync is done after all work is complete, this ensures instance cache is saved before continuing... as that is done before sync code.
-                    var isWorkShareSetAndEmpty = workShareInstance != null && workShareInstance.Length == 0; // if null, not set yet (null doesn't mean empty)
+                    isWorkShareSetAndEmpty = workShareInstance != null && workShareInstance.Length == 0; // if null, not set yet (null doesn't mean empty)
                     var requestSync = isFirstIteration || isWorkOutOfSync || !isSyncOk || loopDidRun || (isAllWorkDone && !finalSync);
 
-                    if (isWorkOutOfSync) Logging.LogEvent("Work out of sync, synchronization required...");
-                    if (isFirstIteration) Logging.LogEvent("First iteration, synchronization required...");
-                    if (!isSyncOk) Logging.LogEvent("Last synchronization failed, synchronization required...");
-                    if (loopDidRun) Logging.LogEvent("Work has been done, synchronization required...");
-                    if (isAllWorkDone && (!finalSync || !isSyncOk)) Logging.LogEvent("All work is done, final synchronization required...");
+                    if (isWorkOutOfSync) Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Synchronization required: Work out of sync.");
+                    if (isFirstIteration) Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Synchronization required: First iteration.");
+                    if (!isSyncOk) Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Synchronization required: Last synchronization failed.");
+                    if (loopDidRun&&loopDidWork) Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Synchronization required: New work has been done.");
+                    if (isAllWorkDone && (!finalSync || !isSyncOk)) Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Synchronization required: All work is done, final synchronization.");
                     // problem: if no work is allocated...?
                     // problem: if all allocated work is complete, so need to work steal?
 
                     if (isAllWorkDone) finalSync = true;
                     syncRequest = await GetSyncRequest(instanceGuid, experimentName, iterationIndex, requestSync, syncGuids, mainCt).ConfigureAwait(false);
 
-                    if (syncRequest != default) continue;
+                    if (syncRequest != default)
+                    {
+                        Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Sync request found. Continue to run synchronization.");
+                        continue;
+                    }
+
                     isSyncOk = true;
                     loopDidRun = false;
+                    loopDidWork = false;
                     isWorkOutOfSync = false;
 
                     if (isWorkShareSetAndEmpty && !isAllWorkDone)
                     {
-                        try { await Logging.WaitAsync(MainLoopNoWorkDelay, $"{instanceGuid:N} No work to do for this instance... waiting for retry.", ct: mainCt).ConfigureAwait(false); }
-                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
+                        await RefreshCache().ConfigureAwait(false);
+
+                        try { await Logging.WaitAsync(MainLoopNoWorkDelay, $"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] There is no work for this instance to do, waiting for retry.", ct: mainCt).ConfigureAwait(false); }
+                        catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}]"); }
+
+                        continue;
                     }
 
                     if (isAllWorkDone)
                     {
                         // todo: finished all work, so sync to share/save it with other instances?
-
+                         
                         // todo: or just save to an overall merged cache file?
 
-                        Logging.LogEvent($"[{instanceGuid:N}] Jobs complete...");
+                        Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] All jobs complete.");
                         break;
                     }
 
-                    Logging.LogEvent($"[{instanceGuid:N}] Main loop continuing...");
+                    Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Main loop continuing...");
 
                     var workCompleteIds = indexesLoaded.Select(a => a.IdJobUid).ToArray();
                     var workIncompleteIds = indexesNotLoaded.Select(a => a.IdJobUid).ToArray();
+
+                    if (workIncompleteIds.Length == 0)
+                    { 
+                        // ???
+                    }
+                    // check if workIncompleteIds same sequence as ...
+
                     workShareList = RedistributeWork(workIds, workCompleteIds, workIncompleteIds, syncGuids);
                     workShareInstance = workShareList.FirstOrDefault(a => a.instanceGuid == instanceGuid).instanceWork;
-                    if (workShareInstance.Length == 0) { continue; }
+                    if (workShareInstance.Length == 0) 
+                    {
+                        Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Work share is empty... continue...");
+                        continue; 
+                    }
+
                     var workShareInstanceItems = indexesWhole.AsParallel().AsOrdered().Where(a => workShareInstance.AsParallel().AsOrdered().Any(b => a.IdJobUid == b)).ToArray();
 
                     // if there are items in the todo list which are already done, need re-sync?
-                    var workNotSynced = instanceIterationCmLoaded.Select(a => a.id).Intersect(workShareInstanceItems).ToArray();
-                    if (workNotSynced.Length > 0)
+                    // are all of the sync ids actually loaded?  if not, an instance must be out of sync due to e.g. latency
+
+                    var checkWorkSynced = (workCompleteIds?.OrderBy(a=>a).Distinct().ToArray() ?? Array.Empty<int>()).SequenceEqual(syncResultIds?.OrderBy(a=>a).Distinct().ToArray() ?? Array.Empty<int>());
+                    if (!checkWorkSynced)
                     {
                         isWorkOutOfSync = true;
-                        Logging.LogEvent("Work is out of sync");
+                        Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Work is out of sync... continue to re-sync...");
                         continue;
                     }
 
@@ -1192,8 +1304,8 @@ namespace SvmFsBatch
                     var syncTask = KeepSynchronizedTask(syncGuids, mainCt, loopCts);
                     var etaTask = EtaTask(workShareInstance.Length, mainCt, loopCt);
 
-                    Logging.LogEvent($"[{instanceGuid:N}] Tasks starting...");
-                    Logging.LogEvent($"[{instanceGuid:N}] Work share Ids ({workShareInstance.Length}): {string.Join(", ", workShareInstance.Select(a => $"{a}").ToArray())}");
+                    Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Tasks starting...");
+                    Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Work share Ids ({workShareInstance.Length}): {string.Join(", ", workShareInstance.Select(a => $"{a}").ToArray())}");
 
 
 
@@ -1221,21 +1333,23 @@ namespace SvmFsBatch
                     catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
                     var innerResults = innerResultsTasks.Where(a => a.IsCompletedSuccessfully && a.Result != default && a.Result.Length > 0).SelectMany(a => a.Result).ToArray();
-                    innerResults = innerResults.Where(a => a.cm != default && a.id != default).ToArray();
+                    innerResults = innerResults.Where(a => a != default && a.cm != default && a.id != default).ToArray();
 
                     instanceIterationCmLoaded.AddRange(innerResults);
 
                     var innerResultIds = innerResults.Select(a => a.id.IdJobUid).Distinct().ToArray();
+                    allInnerResultIds = allInnerResultIds.Union(innerResultIds).Distinct().ToArray();
 
                     syncResultIds = syncResultIds.Union(innerResultIds).ToArray();
 
-                    Logging.LogEvent($"[{instanceGuid:N}] Tasks complete...");
-                    Logging.LogEvent($"[{instanceGuid:N}] Inner results: {innerResultIds.Length} items. Ids: {string.Join(", ", innerResultIds.Select(a => $"{a}").ToArray())}");
+                    Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Tasks complete...");
+                    Logging.LogEvent($"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Inner results: {innerResultIds.Length} items. Ids: {string.Join(", ", innerResultIds.Select(a => $"{a}").ToArray())}");
 
 
 
                     loopCts.Cancel();
                     loopDidRun = workShareInstance.Length > 0;
+                    loopDidWork = innerResults.Length > 0;
                     try { await Task.WhenAll(etaTask, syncTask).ConfigureAwait(false); }
                     catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
                     loopCts.Dispose();
@@ -1265,10 +1379,11 @@ namespace SvmFsBatch
             try { await WriteInstance(instanceGuid, experimentName, iterationIndex, true, true, callerCt).ConfigureAwait(false); }
             catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}]"); }
 
-            var instanceJobIdsCompleted = instanceIterationCmLoaded.Select(a => a.id.IdJobUid).OrderBy(a => a).Distinct().ToArray();
+            //var instanceJobIdsCompleted = instanceIterationCmLoaded.Select(a => a.id.IdJobUid).OrderBy(a => a).Distinct().ToArray();
 
             Logging.LogGap(2);
-            Logging.LogEvent($@"End of ServeIpcJobsAsync for iteration [{iterationIndex}] for experiment [{experimentName}].  Jobs completed by this instance [{instanceJobIdsCompleted.Length}]: {string.Join(", ", instanceJobIdsCompleted)}.");
+            Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] End of ServeIpcJobsAsync for experiment [{experimentName}] iteration [{iterationIndex}].");
+            Logging.LogEvent($@"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] Jobs completed by this instance [{allInnerResultIds.Length}]: {string.Join(", ", allInnerResultIds)}.");
             Logging.LogGap(2);
 
 
