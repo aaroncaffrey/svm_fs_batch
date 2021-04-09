@@ -106,7 +106,7 @@ namespace SvmFsBatch
 
         // loop delays
         public TimeSpan TaskWriteInstanceLoopDelay = TimeSpan.FromSeconds(15);
-        public TimeSpan MainLoopInitDelay = TimeSpan.FromSeconds(10);
+        public TimeSpan MainLoopInitDelay = TimeSpan.Zero; // TimeSpan.FromSeconds(10);
         public TimeSpan MainLoopNoWorkDelay = TimeSpan.FromSeconds(10);
         public TimeSpan TaskGetSyncRequestLoopDelay = TimeSpan.FromSeconds(5);
         public TimeSpan TaskEtaLoopDelay = TimeSpan.FromSeconds(15);
@@ -1155,7 +1155,7 @@ namespace SvmFsBatch
                     w++;
                     var isFirstIteration = w == 0;
 
-                    if (isFirstIteration)
+                    if (isFirstIteration && MainLoopInitDelay != TimeSpan.Zero)
                     {
                         try { await Logging.WaitAsync(MainLoopInitDelay, $"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}] Main loop init delay", ct: mainCt).ConfigureAwait(false); }
                         catch (Exception e) { Logging.LogException(e, $"[{instanceGuid:N}] [{experimentName}] [{iterationIndex}] [{countOuter}] [{countInner}]"); }

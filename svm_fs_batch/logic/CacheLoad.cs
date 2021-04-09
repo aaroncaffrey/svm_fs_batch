@@ -588,6 +588,7 @@ namespace SvmFsBatch
                         {
                             if (cmList[cmIndex].id != null)
                             {
+                                // todo: check by the uid index first... to save searching
                                 var a = IndexData.FindFirstReference(indexesWhole, cmList[cmIndex].id/*, idso*/);
                                 cmList[cmIndex].id = a ?? throw new Exception();
                             }

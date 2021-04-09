@@ -438,6 +438,8 @@ namespace SvmFsBatch
 
             if (data1 == null) { Logging.LogExit(ModuleName); return default; }
 
+            if (list.Length > data1.IdJobUid && (list[data1.IdJobUid].id == data1 || CompareReferenceData(data1, list[data1.IdJobUid].id, idso))) return list[data1.IdJobUid];
+
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
             var ret = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2.id, idso));
 
@@ -451,6 +453,8 @@ namespace SvmFsBatch
             Logging.LogCall(ModuleName);
 
             if (data1 == null) { Logging.LogExit(ModuleName); return default; }
+
+            if (list.Length > data1.IdJobUid && (list[data1.IdJobUid].id == data1 || CompareReferenceData(data1, list[data1.IdJobUid].id, idso))) return list[data1.IdJobUid];
 
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
             var ret = list.LastOrDefault(data2 => CompareReferenceData(data1, data2.id, idso));
@@ -470,6 +474,8 @@ namespace SvmFsBatch
                 return null;
             }
 
+            if (list.Length > data1.IdJobUid && (list[data1.IdJobUid] == data1 || CompareReferenceData(data1, list[data1.IdJobUid], idso))) return list[data1.IdJobUid];
+
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
             var ret = list.AsParallel().AsOrdered().FirstOrDefault(data2 => CompareReferenceData(data1, data2, idso));
 
@@ -483,6 +489,8 @@ namespace SvmFsBatch
 
             if (data1 == null) { Logging.LogExit(ModuleName); return null; }
 
+            if (list.Length > data1.IdJobUid && (list[data1.IdJobUid] == data1 || CompareReferenceData(data1, list[data1.IdJobUid], idso))) return list[data1.IdJobUid];
+
             // find proper index_data instance for this newly loaded ConfusionMatrix instance
             var ret = list.LastOrDefault(data2 => CompareReferenceData(data1, data2, idso));
 
@@ -494,7 +502,9 @@ namespace SvmFsBatch
 
         public static bool CompareReferenceData(IndexData data1, IndexData data2, IndexDataSearchOptions idso = null)
         {
-            Logging.LogCall(ModuleName);
+            //Logging.LogCall(ModuleName);
+
+            if (ReferenceEquals(data1, data2)) return true;
 
             var comp = CompareReferenceData2(data1, data2, idso);
 
@@ -506,7 +516,7 @@ namespace SvmFsBatch
 
             if (idso == null || idso.AllTrue())
             {
-                Logging.LogExit(ModuleName);
+                //Logging.LogExit(ModuleName);
                 return comp.AllTrue();
             }
 
@@ -541,7 +551,7 @@ namespace SvmFsBatch
                 (!idso.IdClassFolds || comp.IdClassFolds) &&
                 (!idso.IdDownSampledTrainClassFolds || comp.IdDownSampledTrainClassFolds);
 
-            Logging.LogExit(ModuleName);
+            //Logging.LogExit(ModuleName);
             return ret;
         }
 
