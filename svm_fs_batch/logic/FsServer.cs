@@ -68,7 +68,7 @@ namespace SvmFsBatch
             //groups1 = groups1.Take(100).ToArray();
 
             var experimentDurations = new List<TimeSpan>();
-            
+
             //var esn = 0;
             // Feature select within each group first, to reduce number of columns
             if (option0_findBestGroupFeaturesFirst)
@@ -89,10 +89,10 @@ namespace SvmFsBatch
                 // note: it doesn't make sense to go both backwards (i.e. preselect) and forwards (i.e. no preselect), as the results are unlikely to ever agree... and it would be an arbitrary choice.
 
 
-                
 
 
-                
+
+
 
                 var groups1ReduceOutputTasks = groups1ReduceInput
                     //.AsParallel()
@@ -140,7 +140,7 @@ namespace SvmFsBatch
                             limitIterationNotHigherThanLast,
                             lvl: lvl + 1,
                             ct: ct
-                            //make_outer_cv_confusion_matrices: false
+                        //make_outer_cv_confusion_matrices: false
                         ).ConfigureAwait(false);
                     }).ToArray();
 
@@ -154,7 +154,7 @@ namespace SvmFsBatch
 
                 groups1 = groups1ReduceOutputRegrouped;
 
-                
+
 
                 experimentDurations.Add(DateTime.UtcNow - startTime0);
             }
@@ -214,12 +214,12 @@ namespace SvmFsBatch
             // Column based feature select from the winners
             if (option2_checkIndividualLast || option3_checkIndividualLast)
             {
-                
+
 
                 var bestWinnerColumns = DataSetGroupMethods.Ungroup(winner.BestWinnerGroups, ct: ct);
                 var bestWinnerColumnsInput = DataSetGroupMethods.GetMainGroups(bestWinnerColumns, true, true, true, true, true, true, true, true, true, ct: ct);
 
-                if (option2_checkIndividualLast) 
+                if (option2_checkIndividualLast)
                 {
                     var startTime2 = DateTime.UtcNow;
 
@@ -263,13 +263,13 @@ namespace SvmFsBatch
                         limitIterationNotHigherThanLast,
                         lvl: lvl + 1,
                         ct: ct
-                        //make_outer_cv_confusion_matrices: false
+                    //make_outer_cv_confusion_matrices: false
                     ).ConfigureAwait(false);
 
                     experimentDurations.Add(DateTime.UtcNow - startTime2);
                 }
 
-                if (option3_checkIndividualLast) 
+                if (option3_checkIndividualLast)
                 {
                     var startTime3 = DateTime.UtcNow;
 
@@ -314,7 +314,7 @@ namespace SvmFsBatch
                         limitIterationNotHigherThanLast,
                         lvl: lvl + 1,
                         ct: ct
-                        //make_outer_cv_confusion_matrices: false
+                    //make_outer_cv_confusion_matrices: false
                     ).ConfigureAwait(false);
                     experimentDurations.Add(DateTime.UtcNow - startTime3);
                 }
@@ -443,9 +443,23 @@ namespace SvmFsBatch
                 Log($@"{nameof(jobGroupSeries)}.{nameof(jobGroupSeries.Length)} = {jobGroupSeries?.Length ?? 0}.");
                 if (jobGroupSeries == null || jobGroupSeries.Length == 0) break;
 
+                // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
+                var iterationFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, experimentName, iterationIndex, ct: ct);
 
-                var indexesWhole = CacheLoad.GetFeatureSelectionInstructions(baseLineDataSet, baseLineColumnIndexes, dataSet, groups, jobGroupSeries, experimentName, iterationIndex, groups?.Length ?? 0, /*InstanceId, TotalInstances,*/ repetitions, outerCvFolds, outerCvFoldsToRun, innerFolds, svmTypes, kernels, scales, classWeightSets, calcElevenPointThresholds, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, ct: ct);
 
+                IndexData[] indexesWhole = null;
+
+                if ((indexesWhole?.Length ?? 0) == 0)
+                {
+                    indexesWhole = CacheLoad.GetFeatureSelectionInstructions(baseLineDataSet, baseLineColumnIndexes, dataSet, groups, jobGroupSeries, experimentName, iterationIndex, groups?.Length ?? 0, /*InstanceId, TotalInstances,*/ repetitions, outerCvFolds, outerCvFoldsToRun, innerFolds, svmTypes, kernels, scales, classWeightSets, calcElevenPointThresholds, baseGroupIndexes, groupIndexesToTest, selectedGroups, previousWinnerGroupIndex, selectionExcludedGroups2, previousGroupTests, ct: ct);
+
+                    var indexesWholeFilename = Path.Combine(iterationFolder, $@"work_list_{iterationIndex}.csv");
+
+                    var indexesWholeLines = indexesWhole.Select(a => a.CsvValuesString()).ToList();
+                    indexesWholeLines.Insert(0, IndexData.CsvHeaderString);
+
+                    await IoProxy.WriteAllLinesAsync(true, ct, indexesWholeFilename, indexesWholeLines);
+                }
                 //var indexesWholeLines = indexesWhole.Select(a => a.CsvValuesString()).ToList();
                 //indexesWholeLines.Insert(0, IndexData.CsvHeaderString);
 
@@ -460,8 +474,6 @@ namespace SvmFsBatch
                 // iteration_all_cm is a list of all merged results (i.e. the individual outer-cross-validation partitions merged)
 
 
-                // get folder and file names for this iteration (iteration_folder & iteration_whole_cm_filename are the same for all partitions; iteration_partition_cm_filename is specific to the partition)
-                var iterationFolder = Program.GetIterationFolder(Program.ProgramArgs.ResultsRootFolder, experimentName, iterationIndex, ct: ct);
 
                 //var iteration_whole_cm_filename_full = Path.Combine(iteration_folder, $@"z_{program.GetIterationFilename(IndexDataContainer.IndexesWhole)}_full.cm.csv");
                 //var iteration_whole_cm_filename_summary = Path.Combine(iteration_folder, $@"z_{program.GetIterationFilename(IndexDataContainer.IndexesWhole)}_summary.cm.csv");
@@ -768,7 +780,7 @@ namespace SvmFsBatch
                     var winnersCmFn1 = Path.Combine(iterationFolder, $@"winners_cm_{fn}_full.csv");
                     //var winners_cm_fn2 = Path.Combine(iteration_folder, $@"winners_cm_{fn}_summary.csv");
                     if (await IoProxy.IsFileAvailableAsync(true, ct, winnersCmFn1, false, callerModuleName: ModuleName).ConfigureAwait(false))
-                        // && await io_proxy.IsFileAvailable(true, ct, winners_cm_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
+                    // && await io_proxy.IsFileAvailable(true, ct, winners_cm_fn2, false, _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
                     {
                         Log($@"Already saved for iteration {iterationIndex}. Files: {winnersCmFn1}"); //, {winners_cm_fn2}.");
                     }
@@ -800,8 +812,8 @@ namespace SvmFsBatch
                 },
                 ct);
 
-            try{await Task.WhenAll(task1, task2, task3).ConfigureAwait(false);}
-            catch (Exception e) { Logging.LogException(e);}
+            try { await Task.WhenAll(task1, task2, task3).ConfigureAwait(false); }
+            catch (Exception e) { Logging.LogException(e); }
 
             Logging.LogExit(ModuleName);
         }
@@ -895,13 +907,13 @@ namespace SvmFsBatch
                         ? groups[a.key.IdGroupArrayIndex].GroupKey
                         : DataSetGroupKey.Empty;
 
-                    
+
                     return ct.IsCancellationRequested
                         ? default
                         : $"{k1},{a.list.Count},{string.Join(",", gk.CsvValuesArray())},{a.key.IdGroupArrayIndex},{a.key.IdRepetitions},{a.key.IdOuterCvFolds},{a.key.IdOuterCvFoldsToRun},{a.key.IdInnerCvFolds},{a.key.IdExperimentName},{a.key.IdTotalGroups},{a.key.IdSvmType},{a.key.IdSvmKernel},{a.key.IdScaleFunction},{(a.key.IdCalcElevenPointThresholds ? 1 : 0)},{a.key.IdSelectionDirection},{a.key.IdClassWeights},{string.Join(",", fsScore.CsvValuesArray())},{string.Join(",", fsScorePercentile.CsvValuesArray())}";
                 }).ToArray());
                 await IoProxy.WriteAllLinesAsync(true, ct, rankStatsFn, rankStatsText, callerModuleName: ModuleName, callerMethodName: MethodName).ConfigureAwait(false);
-            },ct);
+            }, ct);
 
             var task4 = Task.Run(async () =>
             {
@@ -910,7 +922,7 @@ namespace SvmFsBatch
                 var iterScores = allData.GroupBy(a => a.id.IdGroupArrayIndex).Select(a => (IdGroupArrayIndex: a.Key, a.ToArray())).ToArray();
                 var iterLines = new List<string>();
                 var iters = allIndexData.Select(a => a.IdIterationIndex).Distinct().OrderBy(a => a).ToArray();
-                iterLines.Add($"{DataSetGroupKey.CsvHeaderString},g,i{iters[0]-1},{string.Join(",", iters.Select(a => $"i{a}").ToArray())}");
+                iterLines.Add($"{DataSetGroupKey.CsvHeaderString},g,i{iters[0] - 1},{string.Join(",", iters.Select(a => $"i{a}").ToArray())}");
                 foreach (var iterScore in iterScores)
                 {
                     var x = new double?[iters.Length];
@@ -1567,12 +1579,12 @@ namespace SvmFsBatch
                             : 0
                     };
 
-                    Logging.LogExit(ModuleName); 
+                    Logging.LogExit(ModuleName);
                     return /*ct.IsCancellationRequested ? default :*/ (a.id, a.cm, rs);
                 }).ToArray();
 
             Logging.LogExit(ModuleName);
-            
+
             return ct.IsCancellationRequested ? default : idCmRs;
         }
 

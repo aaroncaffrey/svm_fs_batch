@@ -212,10 +212,19 @@ namespace SvmFsBatch
                 try
                 {
                     tries++;
-                    if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return null; }
+                    if (ct.IsCancellationRequested) 
+                    {
+                        Logging.LogExit(ModuleName);
+                        return null; 
+                    }
+
                     //if (IoProxy.ExistsDirectory(true, path, ModuleName))
                     //{
-                    try { if (!Directory.Exists(path)) Directory.CreateDirectory(path); } catch (Exception) { }
+                    try 
+                    {
+                        if (!Directory.Exists(path)) Directory.CreateDirectory(path); 
+                    }
+                    catch (Exception) { }
 
                     var files = Directory.GetFiles(path, searchPattern, searchOption);
                     Logging.LogExit(ModuleName);
@@ -236,8 +245,11 @@ namespace SvmFsBatch
                         return null;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
-                    catch (Exception) { }
+                    if (!ct.IsCancellationRequested)
+                    {
+                        try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                        catch (Exception) { }
+                    }
                 }
         }
 

@@ -29,8 +29,9 @@ namespace SvmFsBatch
             
             programArgs.Setup = false;
             //program_args.args.RemoveAll(a => string.Equals(a.key, nameof(program_args.setup), StringComparison.OrdinalIgnoreCase));
-
-            programArgs.ExperimentName += $@"_{DateTime.UtcNow:yyyy_MM_dd_HH_mm_ss_fff}";
+            //
+            //programArgs.ExperimentName += $@"_{DateTime.UtcNow:yyyy_MM_dd_HH_mm_ss_fff}";
+            programArgs.ExperimentName += $@"_{DateTime.UtcNow:yyyyMMddHHmmssfffffff}";
 
             programArgs.SetupTotalVcpus = programArgs.SetupTotalVcpus <= 0
                 ? 1504
@@ -54,8 +55,9 @@ namespace SvmFsBatch
             Logging.WriteLine($@"{programArgs.ExperimentName}: {nameof(setupArrayStep)} = {setupArrayStep}", ModuleName, MethodName);
             Logging.WriteLine();
 
-
-            var pbsScript = await MakePbsScriptAsync(programArgs, programArgs.SetupInstanceVcpus, true, setupArrayStart, setupArrayEnd, setupArrayStep, ct: ct).ConfigureAwait(false);
+            // todo: check if the parameters are all given, given in correct order, and everything makes sense
+            var arrayConcurrentLimit = 0;
+            var pbsScript = await MakePbsScriptAsync(programArgs, programArgs.SetupInstanceVcpus, true, setupArrayStart, setupArrayEnd, setupArrayStep, arrayConcurrentLimit, ct: ct).ConfigureAwait(false);
 
             for (var index = 0; index < pbsScript.pbs_script_lines.Count; index++) Logging.WriteLine($"{index,3}: {pbsScript.pbs_script_lines[index]}", ModuleName, MethodName);
 
@@ -64,13 +66,13 @@ namespace SvmFsBatch
             Logging.LogExit(ModuleName);
         }
 
-        public static async Task<(List<string> pbs_script_lines, string run_line)> MakePbsScriptAsync(ProgramArgs programArgs, int pbsPpn = 1, bool isJobArray = false, int arrayIndexFirst = 0, int arrayIndexLast = 0, int arrayStepSize = 1, bool rerunnable = true, CancellationToken ct = default)
+        public static async Task<(List<string> pbs_script_lines, string run_line)> MakePbsScriptAsync(ProgramArgs programArgs, int pbsPpn = 1, bool isJobArray = false, int arrayIndexFirst = 0, int arrayIndexLast = 0, int arrayStepSize = 1, int arrayConcurrentLimit = 0, bool rerunnable = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName);  return default; }
 
-            const string MethodName = nameof(MakePbsScriptAsync);
+            //const string MethodName = nameof(MakePbsScriptAsync);
 
             if (isJobArray && arrayStepSize == 0) throw new ArgumentOutOfRangeException(nameof(arrayStepSize));
             //-ExperimentName test2 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 5 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 5
@@ -118,26 +120,25 @@ namespace SvmFsBatch
             var pbsNodes = 1;
             if (pbsPpn <= 0) pbsPpn = 64;
 
-            var pbsStdoutFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), isJobArray ? envPbsArray : ""}.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.pbs.stdout";
-            var pbsStderrFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), isJobArray ? envPbsArray : ""}.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.pbs.stderr";
+            var pbsStdoutFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), isJobArray ? envPbsArray : ""}.Where(a => !string.IsNullOrWhiteSpace(a)).ToArray())}.pbs.stdout";
+            var pbsStderrFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), isJobArray ? envPbsArray : ""}.Where(a => !string.IsNullOrWhiteSpace(a)).ToArray())}.pbs.stderr";
 
-            var programStdoutFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), envJobid, envJobname, envJobArrayIndex}.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.program.stdout";
-            var programStderrFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), envJobid, envJobname, envJobArrayIndex}.Where(a => !string.IsNullOrWhiteSpace(a)).ToList())}.program.stderr";
+            var programStdoutFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), envJobid, envJobname, envJobArrayIndex}.Where(a => !string.IsNullOrWhiteSpace(a)).ToArray())}.program.stdout";
+            var programStderrFilename = $@"{string.Join("_", new[] {programArgs.ExperimentName, nameof(SvmFsBatch), envJobid, envJobname, envJobArrayIndex}.Where(a => !string.IsNullOrWhiteSpace(a)).ToArray())}.program.stderr";
 
 
             // 1. pbs directives
-            if (isJobArray) pbsScriptLines.Add($@"#PBS -t {arrayIndexFirst}-{arrayIndexLast}:{arrayStepSize}");
-
-            if (pbsWalltime != null && pbsWalltime.Value.TotalSeconds > 0) pbsScriptLines.Add($@"#PBS -l walltime={Math.Floor(pbsWalltime.Value.TotalHours):00}:{pbsWalltime.Value.Minutes:00}:{pbsWalltime.Value.Seconds:00}");
-            if (pbsNodes > 0) pbsScriptLines.Add($@"#PBS -l nodes={pbsNodes}{(pbsPpn > 0 ? $@":ppn={pbsPpn}" : @"")}");
-            if (!string.IsNullOrWhiteSpace(pbsMem)) pbsScriptLines.Add($@"#PBS -l mem={pbsMem}");
-            pbsScriptLines.Add($@"#PBS -r {(rerunnable ? "y" : "n")}");
-            if (!string.IsNullOrWhiteSpace(pbsJobname)) pbsScriptLines.Add($@"#PBS -N {pbsJobname}");
-            if (!string.IsNullOrWhiteSpace(pbsMailOpt)) pbsScriptLines.Add($@"#PBS -m {pbsMailOpt}");
-            if (!string.IsNullOrWhiteSpace(pbsMailAddr)) pbsScriptLines.Add($@"#PBS -M {pbsMailAddr}");
-            if (!string.IsNullOrWhiteSpace(pbsStdoutFilename)) pbsScriptLines.Add($@"#PBS -o {pbsStdoutFilename}");
-            if (!string.IsNullOrWhiteSpace(pbsStderrFilename)) pbsScriptLines.Add($@"#PBS -e {pbsStderrFilename}");
-            if (!string.IsNullOrWhiteSpace(pbsExecutionDirectory)) pbsScriptLines.Add($@"#PBS -d {pbsExecutionDirectory}");
+            if (isJobArray)                                                pbsScriptLines.Add($@"#PBS -t {arrayIndexFirst}-{arrayIndexLast}" + (arrayStepSize != 1 ? $@":{arrayStepSize}" : "") + (arrayConcurrentLimit != 0 ? $@"%{arrayConcurrentLimit}" : "")); // Notify scheduler that this is submission should be run as an array
+            if (pbsWalltime != null && pbsWalltime.Value.TotalSeconds > 0) pbsScriptLines.Add($@"#PBS -l walltime={Math.Floor(pbsWalltime.Value.TotalHours):00}:{pbsWalltime.Value.Minutes:00}:{pbsWalltime.Value.Seconds:00}"); // TotalHours because anything larger than an hour (e.g. a day, week, year) wouldn't be included if using Hours
+            if (pbsNodes > 0)                                              pbsScriptLines.Add($@"#PBS -l nodes={pbsNodes}{(pbsPpn > 0 ? $@":ppn={pbsPpn}" : @"")}");
+            if (!string.IsNullOrWhiteSpace(pbsMem))                        pbsScriptLines.Add($@"#PBS -l mem={pbsMem}");
+                                                                           pbsScriptLines.Add($@"#PBS -r {(rerunnable ? "y" : "n")}");
+            if (!string.IsNullOrWhiteSpace(pbsJobname))                    pbsScriptLines.Add($@"#PBS -N {pbsJobname}");
+            if (!string.IsNullOrWhiteSpace(pbsMailOpt))                    pbsScriptLines.Add($@"#PBS -m {pbsMailOpt}");
+            if (!string.IsNullOrWhiteSpace(pbsMailAddr))                   pbsScriptLines.Add($@"#PBS -M {pbsMailAddr}");
+            if (!string.IsNullOrWhiteSpace(pbsStdoutFilename))             pbsScriptLines.Add($@"#PBS -o {pbsStdoutFilename}");
+            if (!string.IsNullOrWhiteSpace(pbsStderrFilename))             pbsScriptLines.Add($@"#PBS -e {pbsStderrFilename}");
+            if (!string.IsNullOrWhiteSpace(pbsExecutionDirectory))         pbsScriptLines.Add($@"#PBS -d {pbsExecutionDirectory}");
 
             // 2. program directives
             var pbsProgramArgs = new List<(string key, string value)>();
@@ -163,7 +164,7 @@ namespace SvmFsBatch
                 pbsProgramArgs.Add((nameof(programArgs.WholeArrayStepSize), $@"{arrayStepSize}"));
 
                 var arrayRange = Routines.Range(arrayIndexFirst, arrayIndexLast, arrayStepSize);
-                Logging.WriteLine($@"{nameof(arrayRange)}: {string.Join(@", ", arrayRange)}", ModuleName, MethodName);
+                Logging.WriteLine($@"{nameof(arrayRange)}: {string.Join(@", ", arrayRange)}", ModuleName);
             }
 
             foreach (var programArg in programArgs.Args)

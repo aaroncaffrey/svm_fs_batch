@@ -28,16 +28,28 @@ namespace SvmFsBatch
         {
             Logging.LogCall(ModuleName);
 
-            Logging.LogExit(ModuleName); return step > 0 && last >= first || step < 0 && first >= last
+            
+            
+            var ret = step > 0 && last >= first || step < 0 && first >= last
                 ? (last - first) / step + 1
                 : 0;
+
+            Logging.LogExit(ModuleName);
+
+            return ret;
         }
 
         public static bool IsInRange(int rangeFirst, int rangeLast, int value)
         {
             Logging.LogCall(ModuleName);
 
-            Logging.LogExit(ModuleName); return value >= rangeFirst && value <= rangeLast || value >= rangeLast && value <= rangeFirst;
+            
+            var ret = value >= rangeFirst && value <= rangeLast || value >= rangeLast && value <= rangeFirst;
+
+            Logging.LogExit(ModuleName);
+
+
+            return ret;
         }
 
         public static List<(int from, int to, int step)> FindRanges(List<int> ids)
@@ -77,7 +89,8 @@ namespace SvmFsBatch
                 }
             }
 
-            Logging.LogExit(ModuleName); return ranges;
+            Logging.LogExit(ModuleName);
+            return ranges;
         }
 
         public static string FindRangesStr(List<int> ids)
@@ -86,7 +99,9 @@ namespace SvmFsBatch
 
             var ranges = FindRanges(ids);
 
-            Logging.LogExit(ModuleName); return string.Join("_",
+            Logging.LogExit(ModuleName); 
+            
+            return string.Join("_",
                 ranges.Select(range => $@"{range.from}" + (range.from != range.to
                     ? $@"-{range.to}" + (range.step != -1 && range.step != 0 && range.step != +1
                         ? $@";{range.step}"
@@ -111,7 +126,9 @@ namespace SvmFsBatch
                 stepSum += step;
             }
 
-            Logging.LogExit(ModuleName); return ret;
+            Logging.LogExit(ModuleName); 
+            
+            return ret;
         }
 
         //public static void shuffle<T>(List<T> list, Random random)

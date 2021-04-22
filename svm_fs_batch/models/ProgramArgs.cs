@@ -51,7 +51,7 @@ namespace SvmFsBatch
                 nameof(CalcElevenPointThresholds),
                 nameof(ClientGuid),
                 nameof(ClientConnectionPoolSize),
-                nameof(Server),
+                //nameof(Server),
                 nameof(ServerIp),
                 nameof(ServerPort),
                 nameof(ServerBacklog),
@@ -145,7 +145,7 @@ namespace SvmFsBatch
 
         public string[] ScoringMetrics = { nameof(MetricsBox.PF1S) /*nameof(metrics_box.p_MCC),*/ /*nameof(metrics_box.p_API_All)*/};
 
-        public bool Server = true;
+        //public bool Server = true;
         public int ServerBacklog = 1000;
         public Guid ServerGuid = new Guid("d2d95e16-d086-4b58-ba29-8b9b84e41be5");
 
@@ -309,7 +309,7 @@ namespace SvmFsBatch
             if (ArgsKeyExists(nameof(ClientGuid))) ClientGuid = new Guid(ArgsValue(nameof(ClientGuid)).asStr ?? throw new ArgumentNullException(nameof(args)));
             if (ArgsKeyExists(nameof(ClientConnectionPoolSize))) ClientConnectionPoolSize = ArgsValue(nameof(ClientConnectionPoolSize)).asInt ?? default;
 
-            if (ArgsKeyExists(nameof(Server))) Server = ArgsValue(nameof(Server)).asBool ?? default;
+            //if (ArgsKeyExists(nameof(Server))) Server = ArgsValue(nameof(Server)).asBool ?? default;
             if (ArgsKeyExists(nameof(ServerBacklog))) ServerBacklog = ArgsValue(nameof(ServerBacklog)).asInt ?? throw new ArgumentNullException(nameof(args));
             if (ArgsKeyExists(nameof(ServerGuid))) ServerGuid = new Guid(ArgsValue(nameof(ServerGuid)).asStr ?? throw new ArgumentNullException(nameof(args)));
             if (ArgsKeyExists(nameof(ServerIp))) ServerIp = ArgsValue(nameof(ServerIp)).asStr ?? throw new ArgumentNullException(nameof(args));
@@ -431,7 +431,7 @@ namespace SvmFsBatch
                 $"{(CalcElevenPointThresholds ? 1 : 0)}",
                 $"{ClientGuid:N}",
                 $"{ClientConnectionPoolSize}",
-                $"{(Server ? 1 : 0)}",
+                //$"{(Server ? 1 : 0)}",
                 $"{ServerIp}",
                 $"{ServerPort}",
                 $"{ServerBacklog}",

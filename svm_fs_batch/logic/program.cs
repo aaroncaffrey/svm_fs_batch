@@ -214,6 +214,8 @@ namespace SvmFsBatch
             // -SvmFsBatchHome=C:\mmfs1\data\scratch\k1040015\SvmFsBatch  -DataSetDir=?????? 
 
             //var fake_args = $"-ExperimentName=test -whole_array_index_first=0 -whole_array_index_last=9 -whole_array_step_size=2 -whole_array_length=5 -partition_array_index_first=4 -partition_array_index_last=5";
+            
+            /*
             var fakeArgsList = new List<(string name, string value)>
             {
                 (nameof(ProgramArgs.ExperimentName), "test"),
@@ -225,7 +227,7 @@ namespace SvmFsBatch
                 (nameof(ProgramArgs.PartitionArrayIndexLast), "0"),
 
                 //(nameof(ProgramArgs.Client), "0"),
-                (nameof(ProgramArgs.Server), "1"),
+                //(nameof(ProgramArgs.Server), "1"),
 
                 (nameof(ProgramArgs.DataSetNames), "[1i.aaindex]"),
                 (nameof(ProgramArgs.BaseLineDataSetNames), "[1i.aaindex]"),
@@ -244,8 +246,11 @@ namespace SvmFsBatch
             //Console.WriteLine(); 
             //Console.WriteLine();
             args = fakeArgs.Split();
+            */
+
 
             ProgramArgs = new ProgramArgs(args);
+
 
             if (ProgramArgs.Setup)
             {
@@ -301,8 +306,8 @@ namespace SvmFsBatch
             var tasks = new List<Task>();
             //var threads = new List<Thread>();
 
-            if ( /*InstanceId == 0 ||*/ ProgramArgs.Server)
-            {
+            //if ( /*InstanceId == 0 ||*/ ProgramArgs.Server)
+            //{
                 DataSet baseLineDataSet = null;
                 //int[] baseLineColumnIndexes = ProgramArgs.BaseLineDataSetColumnIndexes;
 
@@ -329,7 +334,11 @@ namespace SvmFsBatch
                 }
 
                 //var fss = Task.Run(async () => await fs_server.feature_selection_initialization(
-                var fsServerTask = Task.Run(async () => await FsServer.FeatureSelectionInitializationAsync(baseLineDataSet, ProgramArgs.BaseLineDataSetColumnIndexes, dataSet,
+                var fsServerTask = Task.Run(async () => await FsServer.FeatureSelectionInitializationAsync(
+                        
+                        baseLineDataSet, 
+                        ProgramArgs.BaseLineDataSetColumnIndexes,
+                        dataSet,
                         ProgramArgs.ScoringClassId,
                         ProgramArgs.ScoringMetrics,
                         ProgramArgs.ExperimentName,
@@ -348,12 +357,14 @@ namespace SvmFsBatch
                         ProgramArgs.ClassWeights,
                         ProgramArgs.CalcElevenPointThresholds,
                         lvl: lvl + 1,
-                        ct: mainCt).ConfigureAwait(false),
+                        ct: mainCt
+                        
+                        ).ConfigureAwait(false),
                     mainCt);
 
                 tasks.Add(fsServerTask);
                 //threads.Add(fss);
-            }
+            //}
 
             //if ( /*InstanceId != 0 ||*/ ProgramArgs.Client)
             //{
@@ -400,6 +411,11 @@ namespace SvmFsBatch
             Logging.LogEvent($"Reached end of {nameof(Program)}.{nameof(Main)}...", ModuleName);
 
             Logging.LogExit(ModuleName, lvl: lvl + 1);
+#if DEBUG
+            Console.ReadLine();
+            Console.ReadLine();
+            Console.ReadLine();
+#endif
         }
 
 
@@ -563,21 +579,21 @@ namespace SvmFsBatch
 
             
 
-            var experimentGroupName = Reduce(string.Join(@"_", indexes.Select(a => a.IdExperimentName).Distinct().ToArray()));
-            var iterationIndex = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdIterationIndex).ToList()));
-            var groupIndex = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdGroupArrayIndex).ToList()));
-            var totalGroups = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdTotalGroups).ToList()));
-            var calcElevenPointThresholds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdCalcElevenPointThresholds
+            var experimentGroupName = /*Reduce*/(string.Join(@"_", indexes.Select(a => a.IdExperimentName).Distinct().ToArray()));
+            var iterationIndex = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdIterationIndex).ToList()));
+            var groupIndex = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdGroupArrayIndex).ToList()));
+            var totalGroups = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdTotalGroups).ToList()));
+            var calcElevenPointThresholds = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdCalcElevenPointThresholds
                 ? 1
                 : 0).ToList()));
-            var repetitions = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdRepetitions).ToList()));
-            var outerCvFolds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFolds).ToList()));
-            var outerCvFoldsToRun = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFoldsToRun).ToList()));
-            var classWeights = string.Join("_", indexes.Where(a => a.IdClassWeights != null).SelectMany(a => a.IdClassWeights).GroupBy(a => a.ClassId).Select(a => $@"{a.Key}_{Reduce(Routines.FindRangesStr(a.Select(b => (int)(b.ClassWeight * 100)).ToList()))}").ToList());
-            var svmType = Reduce(Routines.FindRangesStr(indexes.Select(a => (int)a.IdSvmType).ToList()));
-            var svmKernel = Reduce(Routines.FindRangesStr(indexes.Select(a => (int)a.IdSvmKernel).ToList()));
-            var scaleFunction = Reduce(Routines.FindRangesStr(indexes.Select(a => (int)a.IdScaleFunction).ToList()));
-            var innerCvFolds = Reduce(Routines.FindRangesStr(indexes.Select(a => a.IdInnerCvFolds).ToList()));
+            var repetitions = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdRepetitions).ToList()));
+            var outerCvFolds = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFolds).ToList()));
+            var outerCvFoldsToRun = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdOuterCvFoldsToRun).ToList()));
+            var classWeights = string.Join("_", indexes.Where(a => a.IdClassWeights != null).SelectMany(a => a.IdClassWeights).GroupBy(a => a.ClassId).Select(a => $@"{a.Key}_{/*Reduce*/(Routines.FindRangesStr(a.Select(b => (int)(b.ClassWeight * 100)).ToList()))}").ToList());
+            var svmType = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => (int)a.IdSvmType).ToList()));
+            var svmKernel = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => (int)a.IdSvmKernel).ToList()));
+            var scaleFunction = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => (int)a.IdScaleFunction).ToList()));
+            var innerCvFolds = /*Reduce*/(Routines.FindRangesStr(indexes.Select(a => a.IdInnerCvFolds).ToList()));
 
             var p = new List<(string name, string value)>
             {
@@ -601,6 +617,8 @@ namespace SvmFsBatch
             const string fnChars = @"0123456789[]{}()_+-.;qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
 
             if (!iterFn.All(a => fnChars.Contains(a))) throw new Exception();
+
+            iterFn = DistributeWork.Sha1(iterFn);
 
             Logging.LogExit(ModuleName);
 
