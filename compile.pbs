@@ -1,0 +1,11 @@
+#PBS -l nodes=1:ppn=64
+mkdir /mmfs1/data/scratch/k1040015/SvmFsBatch
+rm -rf ~/SvmFsBatch/SvmFsBatch/obj
+rm -rf ~/SvmFsBatch/SvmFsBatch/bin
+cd ~/SvmFs
+git pull
+cp ~/SvmFs/runtimeconfig.template.json ~/SvmFs/SvmFsLdr/runtimeconfig.template.json
+cp ~/SvmFs/runtimeconfig.template.json ~/SvmFs/SvmFsCtl/runtimeconfig.template.json
+cp ~/SvmFs/runtimeconfig.template.json ~/SvmFs/SvmFsWkr/runtimeconfig.template.json
+cp ~/SvmFs/runtimeconfig.template.json ~/SvmFs/SvmFsLib/runtimeconfig.template.json
+~/.dotnet/dotnet publish --self-contained -r linux-x64 -c Release

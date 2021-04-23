@@ -1,0 +1,10 @@
+C:\Users\Aaron\Desktop\svm_fs_batch\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.csprojAssemblyReference.cache
+C:\Users\Aaron\Desktop\svm_fs_batch\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Aaron\Desktop\svm_fs_batch\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.AssemblyInfoInputs.cache
+C:\Users\Aaron\Desktop\svm_fs_batch\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.AssemblyInfo.cs
+C:\Users\Aaron\Desktop\svm_fs_batch\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.csproj.CoreCompileInputs.cache
+C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.csprojAssemblyReference.cache
+C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.AssemblyInfoInputs.cache
+C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.AssemblyInfo.cs
+C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net5.0\SvmFsLib.csproj.CoreCompileInputs.cache
