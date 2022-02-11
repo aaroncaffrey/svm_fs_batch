@@ -221,7 +221,7 @@ namespace SvmFsLib
         public static IndexData[] GetFeatureSelectionInstructions(DataSet baseLineDataSet, int[] baseLineDataSetColumnIndexes, DataSet dataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, GroupSeriesIndex[] jobGroupSeries, string experimentName, int iterationIndex, int totalGroups,
             //int InstanceId,
             //int TotalInstances,
-            int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales,
+            int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Libsvm.LibsvmSvmType[] svmTypes, Libsvm.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales,
 
             //(int ClassId, string ClassName)[] ClassNames,
             (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, int[] baseGroupIndexes, int[] groupIndexesToTest, int[] selectedGroupIndexes, int? previousWinnerGroupIndex, int[] selectionExcludedGroupIndexes, List<int[]> previousGroupTests, bool asParallel = true, CancellationToken ct = default)
@@ -363,7 +363,7 @@ namespace SvmFsLib
             }
 
             gsi.ColumnIndexes = gsi.GroupIndexes?.SelectMany(groupIndex => groups[groupIndex].columns).Union(new[] {0}).OrderBy(colIndex => colIndex).Distinct().ToArray();
-            gsi.ColumnIndexes = DataSet.RemoveDuplicateColumns(dataSet, gsi.ColumnIndexes, ct: ct);
+            gsi.ColumnIndexes = DataSet.RemoveDuplicateColumns(dataSet: dataSet, queryCols: gsi.ColumnIndexes, ct: ct);
 
             if ((gsi.ColumnIndexes?.Length ?? 0) <= 1)
             {
@@ -392,8 +392,8 @@ namespace SvmFsLib
 
             const string MethodName = nameof(GetUnrolledIndexes);
 
-            if (uip.SvmTypes == null || uip.SvmTypes.Length == 0) uip.SvmTypes = new[] {Routines.LibsvmSvmType.CSvc};
-            if (uip.LibsvmKernelTypes == null || uip.LibsvmKernelTypes.Length == 0) uip.LibsvmKernelTypes = new[] {Routines.LibsvmKernelType.Rbf};
+            if (uip.SvmTypes == null || uip.SvmTypes.Length == 0) uip.SvmTypes = new[] {Libsvm.LibsvmSvmType.CSvc};
+            if (uip.LibsvmKernelTypes == null || uip.LibsvmKernelTypes.Length == 0) uip.LibsvmKernelTypes = new[] {Libsvm.LibsvmKernelType.Rbf};
             if (uip.Scales == null || uip.Scales.Length == 0) uip.Scales = new[] {Scaling.ScaleFunction.Rescale};
 
             if (uip.RepetitionCvSeries == null || uip.RepetitionCvSeries.Length == 0) uip.RepetitionCvSeries = Routines.Range(uip.RepetitionCvSeriesStart, uip.RepetitionCvSeriesEnd, uip.RepetitionCvSeriesStep);
@@ -456,8 +456,8 @@ namespace SvmFsLib
                             //unrolled_InstanceId = unrolled_InstanceId,
 
                             IdBaseLineColumnArrayIndexes = baseLineDataSetColumnIndexes,
-                            IdBaseLineDatasetFileTags= baseLineDataSet.DataSetFileTags,
-                            IdDatasetFileTags=dataSet.DataSetFileTags,
+                            IdBaseLineDatasetFileTags= baseLineDataSet?.DataSetFileTags,
+                            IdDatasetFileTags=dataSet?.DataSetFileTags,
 
                             IdGroupArrayIndex = uip.GroupSeries[zGroupSeriesIndex].GroupArrayIndex,
                             IdSelectionDirection = uip.GroupSeries[zGroupSeriesIndex].SelectionDirection,
@@ -822,7 +822,7 @@ namespace SvmFsLib
             return null;
         }
 
-        public static (IndexData[] indexesLoaded, IndexData[] indexesNotLoaded) UpdateMissing(List<(IndexData id, ConfusionMatrix cm)> iterationCmLoaded, IndexData[] indexesWhole, bool asParallel = true, CancellationToken ct = default)
+        public static (IndexData[] indexesLoaded, IndexData[] indexesNotLoaded) UpdateMissing(IList<(IndexData id, ConfusionMatrix cm)> iterationCmLoaded, IndexData[] indexesWhole, bool asParallel = true, CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             // this method checks 'iteration_cm_all' to see which results are already loaded and which results are missing
@@ -894,10 +894,10 @@ namespace SvmFsLib
 
                     kernels = new[]
                     {
-                        routines.libsvm_kernel_type.linear,
-                        routines.libsvm_kernel_type.polynomial,
-                        routines.libsvm_kernel_type.sigmoid,
-                        routines.libsvm_kernel_type.rbf
+                        Libsvm.Libsvm_kernel_type.linear,
+                        Libsvm.Libsvm_kernel_type.polynomial,
+                        Libsvm.Libsvm_kernel_type.sigmoid,
+                        Libsvm.Libsvm_kernel_type.rbf
                     }
                 };
 

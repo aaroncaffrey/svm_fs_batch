@@ -1,23 +1,10 @@
 {
   "version": 3,
   "targets": {
-    "net5.0": {
-      "SvmFsLdr/1.0.0": {
-        "type": "project",
-        "framework": ".NETCoreApp,Version=v5.0",
-        "dependencies": {
-          "SvmFsLib": "1.0.0"
-        },
-        "compile": {
-          "bin/placeholder/SvmFsLdr.dll": {}
-        },
-        "runtime": {
-          "bin/placeholder/SvmFsLdr.dll": {}
-        }
-      },
+    "net6.0": {
       "SvmFsLib/1.0.0": {
         "type": "project",
-        "framework": ".NETCoreApp,Version=v5.0",
+        "framework": ".NETCoreApp,Version=v6.0",
         "compile": {
           "bin/placeholder/SvmFsLib.dll": {}
         },
@@ -28,11 +15,6 @@
     }
   },
   "libraries": {
-    "SvmFsLdr/1.0.0": {
-      "type": "project",
-      "path": "../SvmFsBatchRun/SvmFsLdr.csproj",
-      "msbuildProject": "../SvmFsBatchRun/SvmFsLdr.csproj"
-    },
     "SvmFsLib/1.0.0": {
       "type": "project",
       "path": "../SvmFsLib/SvmFsLib.csproj",
@@ -40,8 +22,8 @@
     }
   },
   "projectFileDependencyGroups": {
-    "net5.0": [
-      "SvmFsLdr >= 1.0.0"
+    "net6.0": [
+      "SvmFsLib >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -61,18 +43,18 @@
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
-        "net5.0"
+        "net6.0"
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net5.0": {
-          "targetAlias": "net5.0",
+        "net6.0": {
+          "targetAlias": "net6.0",
           "projectReferences": {
-            "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsBatchRun\\SvmFsLdr.csproj": {
-              "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsBatchRun\\SvmFsLdr.csproj"
+            "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
+              "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
             }
           }
         }
@@ -84,8 +66,8 @@
       }
     },
     "frameworks": {
-      "net5.0": {
-        "targetAlias": "net5.0",
+      "net6.0": {
+        "targetAlias": "net6.0",
         "imports": [
           "net461",
           "net462",
@@ -101,7 +83,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.201\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
       }
     }
   }

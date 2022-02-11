@@ -9,6 +9,17 @@ namespace SvmFsLib
     {
         public const string ModuleName = nameof(Init);
 
+        public static void EnvInfo()
+        {
+            ThreadPool.GetMinThreads(out var minWorkerThreads, out var minCompletionPortThreads);
+            ThreadPool.GetMaxThreads(out var maxWorkerThreads, out var maxCompletionPortThreads);
+
+            Logging.WriteLine($@"Environment.CommandLine: {Environment.CommandLine}", ModuleName);
+            Logging.WriteLine($@"Environment.ProcessorCount: {Environment.ProcessorCount}", ModuleName);
+            Logging.WriteLine($@"GetMinThreads: minWorkerThreads = {minWorkerThreads}, minCompletionPortThreads = {minCompletionPortThreads}.", ModuleName);
+            Logging.WriteLine($@"GetMaxThreads: maxWorkerThreads = {maxWorkerThreads}, maxCompletionPortThreads = {maxCompletionPortThreads}.", ModuleName);
+        }
+
         public static void SetThreadCounts()
         {
             Logging.LogCall(ModuleName);

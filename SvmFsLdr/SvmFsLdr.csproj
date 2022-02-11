@@ -2,12 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Platforms>x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SvmFsCtl\SvmFsCtl.csproj" />
     <ProjectReference Include="..\SvmFsLib\SvmFsLib.csproj" />
+    <ProjectReference Include="..\SvmFsWkr\SvmFsWkr.csproj" />
   </ItemGroup>
 
 </Project>

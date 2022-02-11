@@ -53,7 +53,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, "IOException retry delay", ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, "IOException retry delay", ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
                 catch (Exception e)
@@ -65,7 +65,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, "Exception retry delay", ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, "Exception retry delay", ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -119,7 +119,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, "Exception retry delay", ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, "Exception retry delay", ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -149,7 +149,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -180,7 +180,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -247,7 +247,7 @@ namespace SvmFsLib
 
                     if (!ct.IsCancellationRequested)
                     {
-                        try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                        try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                         catch (Exception) { }
                     }
                 }
@@ -279,7 +279,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -310,7 +310,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return null;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -349,7 +349,7 @@ namespace SvmFsLib
                         return null;
                     }
 
-                    try { Logging.Wait(15, 30, ct: ct); }
+                    try { Logging.Wait(10, 20, ct: ct); }
                     catch (Exception) { }
                 }
         }
@@ -378,7 +378,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return null;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -391,7 +391,7 @@ namespace SvmFsLib
             //var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}_{Path.GetFileName(filename)}.tmp");
             var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}.tmp");
             var tempWritten = false;
-
+            
             //const string MethodName = nameof(WriteAllLinesAsync);
             var tries = 0;
             if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Count ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
@@ -418,11 +418,24 @@ namespace SvmFsLib
 
                     try { File.Delete(filename); } catch (Exception) { }
                     File.Move(tempFilename, filename);
+                    tempWritten = false;
                     Logging.LogExit(ModuleName);
                     return true;
                 }
                 catch (Exception e1)
                 {
+                    try
+                    {
+                        if (tempWritten)
+                        {
+                            if (!File.Exists(tempFilename)) { tempWritten = false; }
+                        }
+                    }
+                    catch (Exception e2)
+                    {
+                        Logging.LogException(e2, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Count ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
+                    }
+
                     Logging.LogException(e1, $@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Count ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                     if (tries >= maxTries)
                     {
@@ -435,7 +448,7 @@ namespace SvmFsLib
                         return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -466,7 +479,7 @@ namespace SvmFsLib
                         Logging.LogExit(ModuleName); return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -508,7 +521,7 @@ namespace SvmFsLib
                         return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }
@@ -567,7 +580,7 @@ namespace SvmFsLib
                         return false;
                     }
 
-                    try { await Logging.WaitAsync(15, 30, ct: ct).ConfigureAwait(false); }
+                    try { await Logging.WaitAsync(10, 20, ct: ct).ConfigureAwait(false); }
                     catch (Exception) { }
                 }
         }

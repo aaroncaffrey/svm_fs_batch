@@ -6,6 +6,7 @@ namespace SvmFsLib
 {
     public class IndexData
     {
+        // todo: add class names?  add cache filename?
         public const string ModuleName = nameof(IndexData);
         public static readonly IndexData Empty = new IndexData();
 
@@ -70,8 +71,8 @@ namespace SvmFsLib
         public int IdRepetitions = 5;
         public Scaling.ScaleFunction IdScaleFunction = Scaling.ScaleFunction.Rescale;
         public SvmFsLib.Direction IdSelectionDirection;
-        public Routines.LibsvmKernelType IdSvmKernel = Routines.LibsvmKernelType.Rbf;
-        public Routines.LibsvmSvmType IdSvmType = Routines.LibsvmSvmType.CSvc;
+        public Libsvm.LibsvmKernelType IdSvmKernel = Libsvm.LibsvmKernelType.Rbf;
+        public Libsvm.LibsvmSvmType IdSvmType = Libsvm.LibsvmSvmType.CSvc;
         public int IdTotalGroups = -1;
 
         public IndexData()
@@ -93,7 +94,11 @@ namespace SvmFsLib
         {
             Logging.LogCall(ModuleName);
 
-            if (lines == null || lines.Length < 1 || lines.Length > 2) { Logging.LogExit(ModuleName); return; }
+            if (lines == null || lines.Length < 1 || lines.Length > 2) 
+            {
+                Logging.LogExit(ModuleName);
+                return;
+            }
 
             var lineHeader = lines.Length == 2
                 ? lines.First().Split(',')
@@ -288,8 +293,8 @@ namespace SvmFsLib
             if (hiIdOuterCvFolds > -1) IdOuterCvFolds = xType[hiIdOuterCvFolds].AsInt ?? -1;
             if (hiIdOuterCvFoldsToRun > -1) IdOuterCvFoldsToRun = xType[hiIdOuterCvFoldsToRun].AsInt ?? -1;
             if (hiIdInnerCvFolds > -1) IdInnerCvFolds = xType[hiIdInnerCvFolds].AsInt ?? -1;
-            if (hiIdSvmType > -1) IdSvmType = Enum.Parse<Routines.LibsvmSvmType>(xType[hiIdSvmType].AsStr, true);
-            if (hiIdSvmKernel > -1) IdSvmKernel = Enum.Parse<Routines.LibsvmKernelType>(xType[hiIdSvmKernel].AsStr, true);
+            if (hiIdSvmType > -1) IdSvmType = Enum.Parse<Libsvm.LibsvmSvmType>(xType[hiIdSvmType].AsStr, true);
+            if (hiIdSvmKernel > -1) IdSvmKernel = Enum.Parse<Libsvm.LibsvmKernelType>(xType[hiIdSvmKernel].AsStr, true);
             if (hiIdScaleFunction > -1) IdScaleFunction = Enum.Parse<Scaling.ScaleFunction>(xType[hiIdScaleFunction].AsStr, true);
             if (hiIdCalcElevenPointThresholds > -1) IdCalcElevenPointThresholds = xType[hiIdCalcElevenPointThresholds].AsBool ?? default;
             if (hiIdNumGroups > -1) IdNumGroups = xType[hiIdNumGroups].AsInt ?? -1;

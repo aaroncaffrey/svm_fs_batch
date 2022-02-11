@@ -357,19 +357,7 @@ namespace SvmFsLib
             Logging.LogExit(ModuleName); return Math.Sqrt(values.Sum(x => Math.Pow(x - mean, 2)) / (values.Length - 1));
         }
 
-        public enum LibsvmKernelType
-        {
-            //@default = Rbf,
-            Linear = 0, Polynomial = 1, Rbf = 2,
-            Sigmoid = 3, Precomputed = 4
-        }
-
-        public enum LibsvmSvmType
-        {
-            //@default = CSvc,
-            CSvc = 0, NuSvc = 1, OneClassSvm = 2,
-            EpsilonSvr = 3, NuSvr = 4
-        }
+       
 
 
         //public static double sample_variance(double[] samples)

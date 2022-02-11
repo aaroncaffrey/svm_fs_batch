@@ -112,8 +112,8 @@ namespace SvmFsLib
             }
 
             if (log && !string.IsNullOrWhiteSpace(trainResult.CmdLine)) Logging.WriteLine(trainResult.CmdLine, ModuleName);
-            if (log && !string.IsNullOrWhiteSpace(trainResult.stdout)) trainResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stdout)}: {line}", ModuleName, MethodName));
-            if (log && !string.IsNullOrWhiteSpace(trainResult.stderr)) trainResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stderr)}: {line}", ModuleName, MethodName));
+            if (log && !string.IsNullOrWhiteSpace(trainResult.stdout)) trainResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stdout)}: {line}", ModuleName));
+            if (log && !string.IsNullOrWhiteSpace(trainResult.stderr)) trainResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(trainResult)}.{nameof(trainResult.stderr)}: {line}", ModuleName));
 
 
             // predict
@@ -146,8 +146,8 @@ namespace SvmFsLib
             //var sw_predictDur = sw_train.ElapsedMilliseconds;
 
             if (log && !string.IsNullOrWhiteSpace(predictResult.CmdLine)) Logging.WriteLine(predictResult.CmdLine, ModuleName);
-            if (log && !string.IsNullOrWhiteSpace(predictResult.stdout)) predictResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stdout)}: {line}", ModuleName, MethodName));
-            if (log && !string.IsNullOrWhiteSpace(predictResult.stderr)) predictResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stderr)}: {line}", ModuleName, MethodName));
+            if (log && !string.IsNullOrWhiteSpace(predictResult.stdout)) predictResult.stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stdout)}: {line}", ModuleName));
+            if (log && !string.IsNullOrWhiteSpace(predictResult.stderr)) predictResult.stderr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList().ForEach(line => Logging.WriteLine($@"{nameof(predictResult)}.{nameof(predictResult.stderr)}: {line}", ModuleName));
 
             var predictText = await IoProxy.ReadAllLinesAsync(true, ct, outerCvInput.PredictFn, callerModuleName: ModuleName).ConfigureAwait(false);
             //Logging.WriteLine($@"Loaded {input.predict_fn}");
@@ -282,7 +282,7 @@ namespace SvmFsLib
             var mcvCm = predictionFileData.CmList;
 
             // add any missing details to the confusion-matrix
-            SvmFsLib.UpdateMergedCm(predictionFileData, unrolledIndexData, mergedCvInput, outerCvInputsResult, ct: ct);
+            CacheLoad.UpdateMergedCm(predictionFileData, unrolledIndexData, mergedCvInput, outerCvInputsResult, ct: ct);
 
             // save CM for Group
             if (saveGroupCache)
@@ -356,7 +356,7 @@ namespace SvmFsLib
 
             if (ocvData.Any(a => a == default)) return default;
 
-            var mergedFilenamePrefix = Path.Combine(unrolledIndex.IdGroupFolder, $@"m_{SvmFsLib.GetIterationFilename(new[] { unrolledIndex }, ct)}");
+            var mergedFilenamePrefix = Path.Combine(unrolledIndex.IdGroupFolder, $@"m_{CacheLoad.GetIterationFilename(new[] { unrolledIndex }, ct)}");
 
             var mergedCvInput = new OuterCvInput
             {
@@ -428,7 +428,7 @@ namespace SvmFsLib
 
             var hasBaseLine = baseLineDataSet != null && (baseLineColumnIndexes?.Length ?? 0) > 0;
 
-            var filename = Path.Combine(unrolledIndex.IdGroupFolder, $@"o_{SvmFsLib.GetItemFilename(unrolledIndex, repetitionsIndex, outerCvIndex, ct)}");
+            var filename = Path.Combine(unrolledIndex.IdGroupFolder, $@"o_{CacheLoad.GetItemFilename(unrolledIndex, repetitionsIndex, outerCvIndex, ct)}");
 
             var trainFn = $@"{filename}.train.libsvm";
             var gridFn = $@"{filename}.grid.libsvm";
@@ -622,7 +622,7 @@ namespace SvmFsLib
                     ocvPredictionFileData.CmList[cmIndex].GridPoint = predictionData.GridPoint;
 
                     // add any missing meta details to the confusion-matrix
-                    SvmFsLib.UpdateMergedCmSingle(unrolledIndexData, outerCvInput, ocvPredictionFileData.CmList[cmIndex], ct);
+                    CacheLoad.UpdateMergedCmSingle(unrolledIndexData, outerCvInput, ocvPredictionFileData.CmList[cmIndex], ct);
                 }
 
 

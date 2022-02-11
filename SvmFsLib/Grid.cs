@@ -74,7 +74,7 @@ namespace SvmFsLib
         }
 
 
-        public static async Task<GridPoint> GridParameterSearchAsync(bool asParallel, string libsvmTrainExe, string cacheTrainGridCsv, string trainFile, string trainStdoutFile, string trainStderrFile, (int ClassId, double weight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int repetitions = -1, int repetitionsIndex = -1, int outerCvFolds = -1, int outerCvIndex = -1, int innerCvFolds = 5, bool probabilityEstimates = false, bool shrinkingHeuristics = true, bool quietMode = true, int memoryLimitMb = 1024, TimeSpan? pointMaxTime = null, double? costExpBegin = -5, double? costExpEnd = 15, double? costExpStep = 2, double? gammaExpBegin = 3, double? gammaExpEnd = -15, double? gammaExpStep = -2, double? epsilonExpBegin = null, //8,
+        public static async Task<GridPoint> GridParameterSearchAsync(bool asParallel, string libsvmTrainExe, string cacheTrainGridCsv, string trainFile, string trainStdoutFile, string trainStderrFile, (int ClassId, double weight)[] classWeights = null, Libsvm.LibsvmSvmType svmType = Libsvm.LibsvmSvmType.CSvc, Libsvm.LibsvmKernelType svmKernel = Libsvm.LibsvmKernelType.Rbf, int repetitions = -1, int repetitionsIndex = -1, int outerCvFolds = -1, int outerCvIndex = -1, int innerCvFolds = 5, bool probabilityEstimates = false, bool shrinkingHeuristics = true, bool quietMode = true, int memoryLimitMb = 1024, TimeSpan? pointMaxTime = null, double? costExpBegin = -5, double? costExpEnd = 15, double? costExpStep = 2, double? gammaExpBegin = 3, double? gammaExpEnd = -15, double? gammaExpStep = -2, double? epsilonExpBegin = null, //8,
             double? epsilonExpEnd = null, //-1,
             double? epsilonExpStep = null, //1,
             double? coef0ExpBegin = null, double? coef0ExpEnd = null, double? coef0ExpStep = null, double? degreeExpBegin = null, double? degreeExpEnd = null, double? degreeExpStep = null, CancellationToken ct = default)
@@ -89,7 +89,7 @@ namespace SvmFsLib
 
             if (innerCvFolds <= 1) throw new Exception();
 
-            if (svmKernel == Routines.LibsvmKernelType.Precomputed) throw new Exception();
+            if (svmKernel == Libsvm.LibsvmKernelType.Precomputed) throw new Exception();
 
 
             if (costExpStep == 0)
@@ -139,7 +139,7 @@ namespace SvmFsLib
                 }
 
             // search gamma only if svm_kernel isn't linear
-            if (svmKernel != Routines.LibsvmKernelType.Linear && gammaExpBegin != null && gammaExpEnd != null && gammaExpStep != null)
+            if (svmKernel != Libsvm.LibsvmKernelType.Linear && gammaExpBegin != null && gammaExpEnd != null && gammaExpStep != null)
                 for (var gExp = gammaExpBegin; gExp <= gammaExpEnd && gExp >= gammaExpBegin || gExp >= gammaExpEnd && gExp <= gammaExpBegin; gExp += gammaExpStep)
                 {
                     var gamma = Math.Pow(2.0, gExp.Value);
@@ -148,7 +148,7 @@ namespace SvmFsLib
 
 
             // search epsilon only if svm type is svr
-            if ((svmType == Routines.LibsvmSvmType.EpsilonSvr || svmType == Routines.LibsvmSvmType.NuSvr) && epsilonExpBegin != null && epsilonExpEnd != null && epsilonExpStep != null)
+            if ((svmType == Libsvm.LibsvmSvmType.EpsilonSvr || svmType == Libsvm.LibsvmSvmType.NuSvr) && epsilonExpBegin != null && epsilonExpEnd != null && epsilonExpStep != null)
                 for (var pExp = epsilonExpBegin; pExp <= epsilonExpEnd && pExp >= epsilonExpBegin || pExp >= epsilonExpEnd && pExp <= epsilonExpBegin; pExp += epsilonExpStep)
                 {
                     var epsilon = Math.Pow(2.0, pExp.Value);
@@ -156,7 +156,7 @@ namespace SvmFsLib
                 }
 
             // search for coef0 only for sigmoid and polynomial
-            if ((svmKernel == Routines.LibsvmKernelType.Sigmoid || svmKernel == Routines.LibsvmKernelType.Polynomial) && coef0ExpBegin != null && coef0ExpEnd != null && coef0ExpStep != null)
+            if ((svmKernel == Libsvm.LibsvmKernelType.Sigmoid || svmKernel == Libsvm.LibsvmKernelType.Polynomial) && coef0ExpBegin != null && coef0ExpEnd != null && coef0ExpStep != null)
                 for (var rExp = coef0ExpBegin; rExp <= coef0ExpEnd && rExp >= coef0ExpBegin || rExp >= coef0ExpEnd && rExp <= coef0ExpBegin; rExp += coef0ExpStep)
                 {
                     var coef0 = Math.Pow(2.0, rExp.Value);
@@ -164,7 +164,7 @@ namespace SvmFsLib
                 }
 
             // search for degree only for polynomial
-            if (svmKernel == Routines.LibsvmKernelType.Polynomial && degreeExpBegin != null && degreeExpEnd != null && degreeExpStep != null)
+            if (svmKernel == Libsvm.LibsvmKernelType.Polynomial && degreeExpBegin != null && degreeExpEnd != null && degreeExpStep != null)
                 for (var dExp = degreeExpBegin; dExp <= degreeExpEnd && dExp >= degreeExpBegin || dExp >= degreeExpEnd && dExp <= degreeExpBegin; dExp += degreeExpStep)
                 {
                     var degree = Math.Pow(2.0, dExp.Value);

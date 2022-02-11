@@ -13,7 +13,21 @@ namespace SvmFsLib
     {
         public const string ModuleName = nameof(Libsvm);
 
-        public static async Task<(string CmdLine, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double ClassWeight)[] classWeights = null, Routines.LibsvmSvmType svmType = Routines.LibsvmSvmType.CSvc, Routines.LibsvmKernelType svmKernel = Routines.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
+        public enum LibsvmKernelType
+        {
+            //@default = Rbf,
+            Linear = 0, Polynomial = 1, Rbf = 2,
+            Sigmoid = 3, Precomputed = 4
+        }
+
+        public enum LibsvmSvmType
+        {
+            //@default = CSvc,
+            CSvc = 0, NuSvc = 1, OneClassSvm = 2,
+            EpsilonSvr = 3, NuSvr = 4
+        }
+
+        public static async Task<(string CmdLine, string stdout, string stderr)> TrainAsync(string libsvmTrainExeFile, string trainFile, string modelOutFile, string stdoutFile = null, string stderrFile = null, double? cost = null, double? gamma = null, double? epsilon = null, double? coef0 = null, double? degree = null, (int ClassId, double ClassWeight)[] classWeights = null, Libsvm.LibsvmSvmType svmType = Libsvm.LibsvmSvmType.CSvc, Libsvm.LibsvmKernelType svmKernel = Libsvm.LibsvmKernelType.Rbf, int? innerCvFolds = null, bool probabilityEstimates = false, bool shrinkingHeuristics = true, TimeSpan? processMaxTime = null, bool quietMode = true, int memoryLimitMb = 1024, bool log = true, int maxTries = 1_000_000, bool rethrow = true, string callerModuleName = "", [CallerMemberName] string callerMethodName = "", CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
@@ -81,14 +95,14 @@ namespace SvmFsLib
             if (quietMode) libsvmParams.Add("-q");
             if (memoryLimitMb != 100) libsvmParams.Add($@"-m {memoryLimitMb}");
             if (probabilityEstimates) libsvmParams.Add($@"-b {(probabilityEstimates ? "1" : "0")}");
-            if (svmType != Routines.LibsvmSvmType.CSvc) libsvmParams.Add($@"-s {(int)svmType}");
-            if (svmKernel != Routines.LibsvmKernelType.Rbf) libsvmParams.Add($@"-t {(int)svmKernel}");
+            if (svmType != Libsvm.LibsvmSvmType.CSvc) libsvmParams.Add($@"-s {(int)svmType}");
+            if (svmKernel != Libsvm.LibsvmKernelType.Rbf) libsvmParams.Add($@"-t {(int)svmKernel}");
             if (innerCvFolds != null && innerCvFolds >= 2) libsvmParams.Add($@"-v {innerCvFolds}");
             if (cost != null) libsvmParams.Add($@"-c {cost.Value}");
-            if (gamma != null && svmKernel != Routines.LibsvmKernelType.Linear) libsvmParams.Add($@"-g {gamma.Value}");
-            if (epsilon != null && (svmType == Routines.LibsvmSvmType.EpsilonSvr || svmType == Routines.LibsvmSvmType.NuSvr)) libsvmParams.Add($@"-p {epsilon.Value}");
-            if (coef0 != null && (svmKernel == Routines.LibsvmKernelType.Sigmoid || svmKernel == Routines.LibsvmKernelType.Polynomial)) libsvmParams.Add($@"-r {coef0.Value}");
-            if (degree != null && svmKernel == Routines.LibsvmKernelType.Polynomial) libsvmParams.Add($@"-d {degree.Value}");
+            if (gamma != null && svmKernel != Libsvm.LibsvmKernelType.Linear) libsvmParams.Add($@"-g {gamma.Value}");
+            if (epsilon != null && (svmType == Libsvm.LibsvmSvmType.EpsilonSvr || svmType == Libsvm.LibsvmSvmType.NuSvr)) libsvmParams.Add($@"-p {epsilon.Value}");
+            if (coef0 != null && (svmKernel == Libsvm.LibsvmKernelType.Sigmoid || svmKernel == Libsvm.LibsvmKernelType.Polynomial)) libsvmParams.Add($@"-r {coef0.Value}");
+            if (degree != null && svmKernel == Libsvm.LibsvmKernelType.Polynomial) libsvmParams.Add($@"-d {degree.Value}");
 
             if (classWeights != null && classWeights.Length > 0)
             {
@@ -159,7 +173,7 @@ namespace SvmFsLib
                         try
                         {
                             process.Kill();
-                            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+                            if (!process.HasExited) await process.WaitForExitAsync(ct).ConfigureAwait(false);
                         }
                         catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName); }
 
@@ -305,7 +319,11 @@ namespace SvmFsLib
                     if (!exited)
                     {
                         Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to exit. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
-                        try { process.Kill(); await process.WaitForExitAsync(ct).ConfigureAwait(false); }
+                        try 
+                        { 
+                            process.Kill(); 
+                            if (!process.HasExited) await process.WaitForExitAsync(ct).ConfigureAwait(false); 
+                        }
                         catch (Exception e) { Logging.LogException(e, GetParamsStr(), ModuleName); }
 
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);

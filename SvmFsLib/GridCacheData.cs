@@ -24,12 +24,12 @@ namespace SvmFsLib
             nameof(InnerCvFolds),
             nameof(ProbabilityEstimates),
             nameof(ShrinkingHeuristics),
-            nameof(global::SvmFsLib.GridPoint.GpCost),
-            nameof(global::SvmFsLib.GridPoint.GpGamma),
-            nameof(global::SvmFsLib.GridPoint.GpEpsilon),
-            nameof(global::SvmFsLib.GridPoint.GpCoef0),
-            nameof(global::SvmFsLib.GridPoint.GpDegree),
-            nameof(global::SvmFsLib.GridPoint.GpCvRate)
+            nameof(SvmFsLib.GridPoint.GpCost),
+            nameof(SvmFsLib.GridPoint.GpGamma),
+            nameof(SvmFsLib.GridPoint.GpEpsilon),
+            nameof(SvmFsLib.GridPoint.GpCoef0),
+            nameof(SvmFsLib.GridPoint.GpDegree),
+            nameof(SvmFsLib.GridPoint.GpCvRate)
         };
 
         public static readonly string CsvHeaderString = string.Join(",", CsvHeaderValuesArray);
@@ -44,9 +44,9 @@ namespace SvmFsLib
         public int Repetitions;
         public int RepetitionsIndex;
         public bool ShrinkingHeuristics;
-        public Routines.LibsvmKernelType SvmKernel;
+        public Libsvm.LibsvmKernelType SvmKernel;
 
-        public Routines.LibsvmSvmType SvmType;
+        public Libsvm.LibsvmSvmType SvmType;
 
         public GridCacheData()
         {
@@ -59,8 +59,8 @@ namespace SvmFsLib
 
             var k = -1;
 
-            SvmType = (Routines.LibsvmSvmType) Enum.Parse(typeof(Routines.LibsvmSvmType), line[++k]);
-            SvmKernel = (Routines.LibsvmKernelType) Enum.Parse(typeof(Routines.LibsvmKernelType), line[++k]);
+            SvmType = (Libsvm.LibsvmSvmType) Enum.Parse(typeof(Libsvm.LibsvmSvmType), line[++k]);
+            SvmKernel = (Libsvm.LibsvmKernelType) Enum.Parse(typeof(Libsvm.LibsvmKernelType), line[++k]);
             Repetitions = int.Parse(line[++k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
             RepetitionsIndex = int.Parse(line[++k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
             OuterCvFolds = int.Parse(line[++k], NumberStyles.Integer, NumberFormatInfo.InvariantInfo);

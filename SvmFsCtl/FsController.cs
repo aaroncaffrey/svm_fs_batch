@@ -15,7 +15,33 @@ namespace SvmFsCtl
         //public static readonly string _server_id = program.program_args.server_id;//Guid.NewGuid().ToString();
         //public static readonly string ServerFolder = Path.Combine(Program.ProgramArgs.ResultsRootFolder, "_server", $"{Program.ProgramArgs.ServerGuid:N}");
 
-        public static async Task FeatureSelectionInitializationAsync(DataSet baseLineDataSet, int[] baseLineColumnIndexes, DataSet dataSet, int scoringClassId, string[] scoringMetrics, string experimentName, int instanceId, int totalInstances, int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales, (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, int limitIterationNotHigherThanAll = 14, int limitIterationNotHigherThanLast = 7, bool makeOuterCvConfusionMatrices = false, bool testFinalBestBias = false, ulong lvl = 0, CancellationToken ct = default)
+        public static async Task FeatureSelectionInitializationAsync
+            (
+            //int instanceId,
+            int numInstances, 
+            DataSet baseLineDataSet, 
+            int[] baseLineColumnIndexes, 
+            DataSet dataSet, 
+            int scoringClassId,
+            string[] scoringMetrics, 
+            string experimentName, 
+            //int totalInstances,
+            int repetitions, 
+            int outerCvFolds,
+            int outerCvFoldsToRun,
+            int innerFolds, 
+            Libsvm.LibsvmSvmType[] svmTypes, 
+            Libsvm.LibsvmKernelType[] kernels,
+            Scaling.ScaleFunction[] scales, 
+            (int ClassId, double ClassWeight)[][] classWeightSets,
+            bool calcElevenPointThresholds, 
+            int limitIterationNotHigherThanAll = 14, 
+            int limitIterationNotHigherThanLast = 7, 
+            bool makeOuterCvConfusionMatrices = false,
+            bool testFinalBestBias = false,
+            ulong lvl = 0,
+            CancellationToken ct = default
+            )
         {
             Logging.LogCall(ModuleName);
 
@@ -107,7 +133,7 @@ namespace SvmFsCtl
                         var experimentGroups0 = groups0;
                         var experimentName0 = $"{experimentName}_E{experimentSequenceNumber0}_S{experimentSubequenceNumber0}_G{experimentGroups0.Length}";
 
-                        return await FeatureSelectionWorker(scoringClassId,
+                        return await FeatureSelectionWorker(numInstances, scoringClassId,
                             scoringMetrics,
                             //cp,
                             baseLineDataSet,
@@ -172,7 +198,7 @@ namespace SvmFsCtl
 
             Logging.WriteLine($@"Finding best of {groups1.Length} groups (made of {groups1.Sum(a => a.columns.Length)} columns)", ModuleName);//, MethodName);
 
-            var winner = await FeatureSelectionWorker(scoringClassId,
+            var winner = await FeatureSelectionWorker(numInstances, scoringClassId,
                 scoringMetrics,
                 //cp,
                 baseLineDataSet,
@@ -230,7 +256,7 @@ namespace SvmFsCtl
                     var experimentGroups2 = bestWinnerColumnsInput;
                     var experimentName2 = $"{experimentName}_E{experimentSequenceNumber2}_S{experimentSubequenceNumber2}_G{experimentGroups2.Length}";
 
-                    var bestWinnerColumnsOutputStartBackwards = await FeatureSelectionWorker(scoringClassId,
+                    var bestWinnerColumnsOutputStartBackwards = await FeatureSelectionWorker(numInstances, scoringClassId,
                         scoringMetrics,
                         //cp,
                         baseLineDataSet,
@@ -281,7 +307,7 @@ namespace SvmFsCtl
                     var experimentName3 = $"{experimentName}_E{experimentSequenceNumber3}_S{experimentSubequenceNumber3}_G{experimentGroups3.Length}";
 
 
-                    var bestWinnerColumnsOutputStartForwards = await FeatureSelectionWorker(scoringClassId,
+                    var bestWinnerColumnsOutputStartForwards = await FeatureSelectionWorker(numInstances, scoringClassId,
                         scoringMetrics,
                         //cp,
                         baseLineDataSet,
@@ -355,7 +381,7 @@ namespace SvmFsCtl
 
 
 
-        public static (int instanceId, int[] instanceWork)[] RedistributeWork(int[] work, int[] workComplete, int[] workIncomplete, int numInstances)
+        public static (int instanceId, IndexData[] instanceWork)[] RedistributeWork(IndexData[] work, IndexData[] workComplete, IndexData[] workIncomplete, int numInstances)
         {
             if (numInstances < 1) return default;
 
@@ -363,11 +389,11 @@ namespace SvmFsCtl
             if (workIncomplete == null && work != null && workComplete != null) workIncomplete = work.Except(workComplete).ToArray();
 
             var instanceWorkSizes = GetInstanceWorkSizes(numInstances, workIncomplete.Length);
-            var list = new (int instanceId, int[] instanceWork)[numInstances];
+            var list = new (int instanceId, IndexData[] instanceWork)[numInstances];
             for (var i = 0; i < list.Length; i++)
             {
                 list[i].instanceId = i;
-                list[i].instanceWork = new int[instanceWorkSizes[i]];
+                list[i].instanceWork = new IndexData[instanceWorkSizes[i]];
             }
 
             var instanceWorkIndexes = new int[numInstances];
@@ -436,35 +462,49 @@ namespace SvmFsCtl
             return result;
         }
 
-        public static async Task<((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] BestWinnerGroups, (IndexData id, ConfusionMatrix cm, RankScore rs) BestWinnerData, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> winners)> FeatureSelectionWorker(
-            int scoringClassId, string[] scoringMetrics, /*ConnectionPool cp,*/ DataSet baseLineDataSet, int[] baseLineColumnIndexes, DataSet dataSet, (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, bool preselectAllGroups, // preselect all groups
+        public static async Task<((DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] BestWinnerGroups, (IndexData id, ConfusionMatrix cm, RankScore rs) BestWinnerData, List<(IndexData id, ConfusionMatrix cm, RankScore rs)> winners)> 
+            
+            FeatureSelectionWorker
+            (
+            int numInstances,
+            int scoringClassId,
+            string[] scoringMetrics, 
+            DataSet baseLineDataSet,
+            int[] baseLineColumnIndexes, 
+            DataSet dataSet, 
+            (DataSetGroupKey GroupKey, DataSetGroupKey[] GroupColumnHeaders, int[] columns)[] groups, 
+            bool preselectAllGroups, // preselect all groups
             int[] baseGroupIndexes, //always include these groups
-            string experimentDescription, string experimentName, /*int experimentSequenceNumber, int experimentSubequenceNumber,*/
-            //int InstanceId,
-            //int TotalInstances,
-            int repetitions, int outerCvFolds, int outerCvFoldsToRun, int innerFolds, Routines.LibsvmSvmType[] svmTypes, Routines.LibsvmKernelType[] kernels, Scaling.ScaleFunction[] scales,
-            //(int ClassId, string ClassName)[] ClassNames,
-            (int ClassId, double ClassWeight)[][] classWeightSets, bool calcElevenPointThresholds, double minScoreIncrease = 0.005, int maxIterations = 100, int limitIterationNotHigherThanAll = 14, int limitIterationNotHigherThanLast = 7,
-            //bool make_outer_cv_confusion_matrices = false,
-            bool asParallel = true, ulong lvl = 0, CancellationToken ct = default)
+            string experimentDescription, 
+            string experimentName,            
+            int repetitions,
+            int outerCvFolds,
+            int outerCvFoldsToRun,
+            int innerFolds, 
+            Libsvm.LibsvmSvmType[] svmTypes,
+            Libsvm.LibsvmKernelType[] kernels, 
+            Scaling.ScaleFunction[] scales,
+            (int ClassId, double ClassWeight)[][] classWeightSets, 
+            bool calcElevenPointThresholds, 
+            double minScoreIncrease = 0.005,
+            int maxIterations = 100, 
+            int limitIterationNotHigherThanAll = 14, 
+            int limitIterationNotHigherThanLast = 7,
+            bool asParallel = true,
+            ulong lvl = 0,
+            CancellationToken ct = default
+            )
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
             var instanceGuid = Guid.NewGuid();
 
-            // todo: check whether loading/saving full cache in this method... duplicated work or missing work...
-
-            //experimentName = $"{experimentName}_E{experimentSequenceNumber}_S{experimentSubequenceNumber}_G{groups.Length}";
-
-
+            
             const string methodName = nameof(FeatureSelectionWorker);
             const bool overwriteCache = false;
 
-            //while (io_proxy.ExistsFile(true, Path.Combine(_server_folder, $@"exit.csv"), _CallerModuleName: ModuleName, _CallerMethodName: MethodName))
-            //{
-            //    io_proxy.DeleteFile(true, ct, Path.Combine(_server_folder, $@"exit.csv"), _CallerModuleName: ModuleName, _CallerMethodName: MethodName);
-            //}
+     
 
 
             baseGroupIndexes = baseGroupIndexes?.OrderBy(a => a).Distinct().ToArray();
@@ -569,20 +609,59 @@ namespace SvmFsCtl
                 var iterationWholeResults = await LoadIterationCache(indexesWhole, iterationFolder, callerCt: ct).ConfigureAwait(false);
                 var (indexesLoaded, indexesNotLoaded) = CacheLoad.UpdateMissing(iterationWholeResults, indexesWhole, true, ct:ct);
 
-                // todo: 2. redistribute work into segments
-                var workDistribution = RedistributeWork(indexesWhole, indexesLoaded, indexesNotLoaded, numInstances);
+                
+                if (indexesNotLoaded.Any())
+                {
+                    // log missing indexes
+                    Logging.LogEvent($"Missing work ({indexesNotLoaded.Length} items): {string.Join(", ", indexesNotLoaded?.Select(a => $"{a.IdGroupArrayIndex}:{a.IdJobUid}").ToArray() ?? Array.Empty<string>())}");
 
-                // todo 3. request array job
+                    // redistribute all remaining work into segments
+                    var workDistribution = RedistributeWork(indexesWhole, indexesLoaded, indexesNotLoaded, numInstances);
+
+                    // log redistribution
+                    foreach (var wd in workDistribution)
+                    {
+                        Logging.LogEvent($@"Work redistributed - instance {wd.instanceId}/{workDistribution.Length}: {string.Join(", ", wd.instanceWork?.Select(a => $"{a.IdGroupArrayIndex}:{a.IdJobUid}").ToArray() ?? Array.Empty<string>())}");
+                    }
+
+                    // write work segment files
+                    var loadFolder = Path.Combine(CacheLoad.GetIterationFolder(SvmFsCtl.ProgramArgs.ResultsRootFolder, experimentName), "work_queue");
+                    
+                    try { Directory.Delete(loadFolder, true); } catch (Exception) { }
+
+                    var workFiles = new List<string>();
+
+                    foreach (var wd in workDistribution)
+                    {
+                        if (wd.instanceWork.Length == 0) continue;
+                        
+                        var lines = new List<string>();
+                        lines.Add(IndexData.CsvHeaderString);
+                        lines.AddRange(wd.instanceWork.Select(a => a.CsvValuesString()).ToArray());
+
+                        // write new queues
+                        var wfn = Path.Combine(loadFolder, $@"work_{wd.instanceId}.txt");
+                        await IoProxy.WriteAllLinesAsync(true, ct, wfn, lines);
+
+                        workFiles.Add(wfn);
+                    }
+
+                    // write a file which contains a list of work list files
+                    await IoProxy.WriteAllLinesAsync(true, ct, Path.Combine(loadFolder, $@"work.txt"), workFiles);
+
+                    // todo: notify SvmFsLdr to run msub for SvmFsWkr
+
+                    // ???
+                    // ???
 
 
+                    // exit to free up node whilst waiting for results
+                    Logging.LogEvent("Controller exiting to free up node...");
+                    Environment.Exit(0);
+                    return default;
+                }
 
-                //var dw = new DistributeWork();
-                //var iterationWholeResults = await dw.ServeIpcJobsAsync(instanceGuid, experimentName, iterationIndex, baseLineDataSet, baseLineColumnIndexes, dataSet, /*cp,*/ indexesWhole, lvl: lvl + 1, callerCt: ct).ConfigureAwait(false);
-
-
-
-
-              
+               
 
                 var iterationWholeResultsFixedWithRanks = CalculateRanks(scoringClassId, scoringMetrics, iterationWholeResults, iterationIndex, allIterationIdCmRs, bestWinnerIdCmRs, lastWinnerIdCmRs, ct);
 
@@ -794,7 +873,7 @@ namespace SvmFsCtl
                 Logging.WriteLine($"{experimentName}, iteration: {iterationIndex}, {msg}.");
             }
 
-            var fn = SvmFsCtl.GetIterationFilename(indexesWhole, ct);
+            var fn = CacheLoad.GetIterationFilename(indexesWhole, ct);
 
 
             var task1 = Task.Run(async () =>

@@ -423,7 +423,8 @@ namespace SvmFsLib
 
        
 
-        public static int[] RemoveDuplicateColumns(DataSet dataSet, int[] queryCols, bool asParallel = false, CancellationToken ct = default)
+                
+        public static int[] RemoveDuplicateColumns(DataSet dataSet, int[] queryCols, bool removeWhenEmptyForSingleClass = false, bool asParallel = false,  CancellationToken ct = default)
         {
             Logging.LogCall(ModuleName);
 
@@ -527,7 +528,6 @@ namespace SvmFsLib
                     continue;
                 }
 
-                const bool removeWhenEmptyForSingleClass = false;
 
                 if (removeWhenEmptyForSingleClass)
                 {

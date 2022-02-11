@@ -1,0 +1,36 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v6.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v6.0": {
+      "SvmFsWkr/1.0.0": {
+        "dependencies": {
+          "SvmFsLib": "1.0.0"
+        },
+        "runtime": {
+          "SvmFsWkr.dll": {}
+        }
+      },
+      "SvmFsLib/1.0.0": {
+        "runtime": {
+          "SvmFsLib.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "SvmFsWkr/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "SvmFsLib/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

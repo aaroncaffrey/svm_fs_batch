@@ -16,7 +16,7 @@
         public int InnerCvSeriesStart = 5;
         public int InnerCvSeriesStep = 1;
 
-        public Routines.LibsvmKernelType[] LibsvmKernelTypes;
+        public Libsvm.LibsvmKernelType[] LibsvmKernelTypes;
 
         public int[] OuterCvSeries;
         public int OuterCvSeriesEnd = 5;
@@ -36,7 +36,7 @@
 
         public Scaling.ScaleFunction[] Scales; // = new scaling.scale_function[] { scaling.scale_function.rescale };
 
-        public Routines.LibsvmSvmType[] SvmTypes; // = new routines.libsvm_svm_type[] { routines.libsvm_svm_type.c_svc };
+        public Libsvm.LibsvmSvmType[] SvmTypes; // = new Libsvm.Libsvm_svm_type[] { Libsvm.Libsvm_svm_type.c_svc };
 
         public UnrolledIndexesParameters()
         {

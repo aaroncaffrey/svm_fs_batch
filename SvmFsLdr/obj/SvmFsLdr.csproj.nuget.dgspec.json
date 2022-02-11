@@ -4,29 +4,29 @@
     "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj": {
+    "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
-        "projectName": "SvmFsLdr",
-        "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
+        "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj",
+        "projectName": "SvmFsCtl",
+        "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj",
         "packagesPath": "C:\\Users\\Aaron\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\obj\\",
+        "outputPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Aaron\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net5.0"
+          "net6.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net5.0": {
-            "targetAlias": "net5.0",
+          "net6.0": {
+            "targetAlias": "net6.0",
             "projectReferences": {
               "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
                 "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
@@ -41,8 +41,8 @@
         }
       },
       "frameworks": {
-        "net5.0": {
-          "targetAlias": "net5.0",
+        "net6.0": {
+          "targetAlias": "net6.0",
           "imports": [
             "net461",
             "net462",
@@ -58,7 +58,71 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.201\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
+        "projectName": "SvmFsLdr",
+        "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
+        "packagesPath": "C:\\Users\\Aaron\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Aaron\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {
+              "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {
+                "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj"
+              },
+              "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
+                "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
+              },
+              "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj": {
+                "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
         }
       }
     },
@@ -76,15 +140,15 @@
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net5.0"
+          "net6.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net5.0": {
-            "targetAlias": "net5.0",
+          "net6.0": {
+            "targetAlias": "net6.0",
             "projectReferences": {}
           }
         },
@@ -95,8 +159,8 @@
         }
       },
       "frameworks": {
-        "net5.0": {
-          "targetAlias": "net5.0",
+        "net6.0": {
+          "targetAlias": "net6.0",
           "imports": [
             "net461",
             "net462",
@@ -112,7 +176,65 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.201\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj",
+        "projectName": "SvmFsWkr",
+        "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj",
+        "packagesPath": "C:\\Users\\Aaron\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Aaron\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {
+              "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
+                "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
         }
       }
     }
