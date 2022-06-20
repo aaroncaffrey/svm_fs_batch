@@ -229,7 +229,7 @@ namespace SvmFsWkr
 
             foreach (var indexData in indexDataList)
             {
-                if (!datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, indexData.IdDatasetFileTags)))
+                if ((indexData.IdDatasetFileTags?.Length ?? 0) > 0 && !datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, indexData.IdDatasetFileTags)))
                 {
                     Logging.LogEvent($"Loading dataset: {string.Join(",", indexData.IdDatasetFileTags ?? Array.Empty<string>())}");
 
@@ -238,7 +238,7 @@ namespace SvmFsWkr
                     datasets.Add((indexData.IdDatasetFileTags, dataSet));
                 }
 
-                if (!datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, indexData.IdBaseLineDatasetFileTags)))
+                if ((indexData.IdBaseLineDatasetFileTags?.Length ?? 0) > 0 && !datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, indexData.IdBaseLineDatasetFileTags)))
                 {
                     Logging.LogEvent($"Loading baseline dataset: {string.Join(",", indexData.IdBaseLineDatasetFileTags ?? Array.Empty<string>())}");
                     
