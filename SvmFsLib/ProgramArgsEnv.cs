@@ -50,8 +50,8 @@ namespace SvmFsLib
         public static string JobId = "";
         public static string JobName = "";
         public static Libsvm.LibsvmKernelType[] Kernels = { Libsvm.LibsvmKernelType.Rbf };
-        public static string LibsvmPredictRuntime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\libsvm\windows\svm-predict.exe" : $@"/home/k1040015/libsvm/svm-predict";
-        public static string LibsvmTrainRuntime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\libsvm\windows\svm-train.exe" : $@"/home/k1040015/libsvm/svm-train";
+        public static string LibsvmPredictRuntime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\phd\libsvm\windows\svm-predict.exe" : $@"/home/k1040015/libsvm/svm-predict";
+        public static string LibsvmTrainRuntime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\phd\libsvm\windows\svm-train.exe" : $@"/home/k1040015/libsvm/svm-train";
         public static int NegativeClassId = -1;
         public static string NegativeClassName = @"standard_coil";
         public static int OuterCvFolds = 5;

@@ -30,12 +30,14 @@ namespace SvmFsLdr
             var mainCts = new CancellationTokenSource();
             var mainCt = mainCts.Token;
 
+            
             Init.EnvInfo();
             Init.CloseNotifications(mainCt);
             Init.CheckX64();
             Init.SetGcMode();
 
             ProgramArgs = new ProgramArgs(args);
+            CheckArgs();
 
             if (string.IsNullOrWhiteSpace(ProgramArgs.ResultsRootFolder))
             {
@@ -47,7 +49,29 @@ namespace SvmFsLdr
             await Task.WhenAll(ldrTask).ConfigureAwait(false);
         }
 
-     
+
+        public static void CheckArgs()
+        {
+            if (!File.Exists(ProgramArgs.LibsvmTrainRuntime))
+            {
+                throw new ArgumentOutOfRangeException(nameof(ProgramArgs.LibsvmTrainRuntime));
+            }
+
+            if (!File.Exists(ProgramArgs.LibsvmPredictRuntime))
+            {
+                throw new ArgumentOutOfRangeException(nameof(ProgramArgs.LibsvmPredictRuntime));
+            }
+
+            if (!Directory.Exists(ProgramArgs.DataSetDir))
+            {
+                throw new ArgumentOutOfRangeException(nameof(ProgramArgs.DataSetDir));
+            }
+
+            if (!string.IsNullOrEmpty(ProgramArgs.BaseLineDataSetDir) && !Directory.Exists(ProgramArgs.BaseLineDataSetDir))
+            {
+                throw new ArgumentOutOfRangeException(nameof(ProgramArgs.BaseLineDataSetDir));
+            }
+        }
 
         public static async Task LoaderMsub(CancellationToken ct = default)
         {
