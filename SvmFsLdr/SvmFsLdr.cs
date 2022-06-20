@@ -21,6 +21,10 @@ namespace SvmFsLdr
 
         public static async Task Main(string[] args)
         {
+#if DEBUG
+            System.Diagnostics.Debugger.Launch();
+#endif
+
             // listen for work, run msub for array with new work.
 
             var mainCts = new CancellationTokenSource();
@@ -38,12 +42,14 @@ namespace SvmFsLdr
                 throw new Exception($@"Must specify argument: {nameof(ProgramArgs.ResultsRootFolder)}.");
             }
 
-            var ldrTask = Task.Run(async () => await Loader(mainCt).ConfigureAwait(false));
+            var ldrTask = Task.Run(async () => await LoaderMsub(mainCt).ConfigureAwait(false));
 
             await Task.WhenAll(ldrTask).ConfigureAwait(false);
         }
 
-        public static async Task Loader(CancellationToken ct = default)
+     
+
+        public static async Task LoaderMsub(CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested)
             {
@@ -51,67 +57,180 @@ namespace SvmFsLdr
                 return;
             }
 
+            var loader_iteration = 0;
 
             while (true)
             {
+                Logging.LogEvent($@"loader_iteration = {loader_iteration}", ModuleName);
                 if (ct.IsCancellationRequested)
                 {
                     Logging.LogEvent("Cancellation requested.");
                     return;
                 }
 
+                loader_iteration++;
+                var loader_iteration_guid = Guid.NewGuid();
+
                 // 1. run controller - controller will find work position by itself
-                var controllerExitNotifyFn = Path.Combine(ProgramArgs.ResultsRootFolder, "pbs", $@"{Guid.NewGuid():N}");
+                var controllerExitNotifyFn = Path.Combine(ProgramArgs.ResultsRootFolder, $@"pbs_ctl_exit_{loader_iteration}_{loader_iteration_guid:N}.csv");
 
                 // generate pbs script (script will write file 'controllerExitNotifyFn' once controller has exited)
-                var controllerPbsScript = await MakePbsScriptAsync(controllerExitNotifyFn, nameof(SvmFsCtl), ProgramArgs, 64, isJobArray: false, ct: ct).ConfigureAwait(false);
+                var ctlPbsProgramArgs = new ProgramArgs(SvmFsLdr.ProgramArgs);
 
-                // submit pbs script
-                var controllerJobId = await Msub(controllerPbsScript.pbsFn, ct: ct).ConfigureAwait(false);
+                //ctlPbsProgramArgs.WorkListInputFile = "";
+                //ctlPbsProgramArgs.WorkListOutputFile = Path.Combine(ProgramArgs.ResultsRootFolder, $@"svm_wkr_input_{loader_iteration}_{loader_iteration_guid:N}.csv");
 
+                var controllerPbsScript = await MakePbsScriptAsync(controllerExitNotifyFn, nameof(SvmFsCtl), ctlPbsProgramArgs, pbsPpn: 64, isJobArray: false, ct: ct).ConfigureAwait(false);
+
+
+                if (string.Equals(SvmFsLdr.ProgramArgs.LaunchMethod, "PBS", StringComparison.OrdinalIgnoreCase))
+                {
+                    // submit pbs script to run controller instance
+                    var controllerJobId = await Msub(controllerPbsScript.pbsFn, ct: ct).ConfigureAwait(false);
+
+                    var controllerExitStatus = await WaitForFile(controllerExitNotifyFn, timeout: TimeSpan.FromDays(2), delete: true, ct: ct).ConfigureAwait(false);
+
+                    await Task.WhenAll(controllerPbsScript.exitCodeFilenames.Select(async a => await WaitForFile(a, true, TimeSpan.FromDays(2), ct).ConfigureAwait(false)).ToArray()).ConfigureAwait(false);
+
+                    // check success - exit status code file should exist and be set to "0"
+                    if (!controllerExitStatus.found)
+                    {
+                        Logging.LogEvent($@"Controller: Exit status file not found: {controllerExitNotifyFn}");
+                        continue;
+                    }
+
+                    if ((controllerExitStatus.lines?.Length ?? 0) == 0)
+                    {
+                        Logging.LogEvent($@"Controller: Exit status file found but empty: {controllerExitNotifyFn}");
+                        continue;
+                    }
+
+                    if (controllerExitStatus.lines.First().Trim() != "0")
+                    {
+                        Logging.LogEvent($@"Controller: Exit status file exit code not zero: {controllerExitNotifyFn}");
+                        continue;
+                    }
+                }
+                else if (string.Equals(SvmFsLdr.ProgramArgs.LaunchMethod, "INVOKE_METHOD", StringComparison.OrdinalIgnoreCase))
+                {
+                    await SvmFsCtl.SvmFsCtl.Main2(0, ctlPbsProgramArgs);
+                }
+                else if (string.Equals(SvmFsLdr.ProgramArgs.LaunchMethod, "INVOKE_EXE", StringComparison.OrdinalIgnoreCase))
+                {
+                    var programRuntime = GetRuntimePath(nameof(SvmFsCtl));
+
+                    var psi = new ProcessStartInfo()
+                    {
+                        FileName = programRuntime,
+                        //Arguments = (array ? $@"-t {array_start}-{array_end}:{array_step} " : "") + pbs_script_filename,
+                        Arguments = controllerPbsScript.parameterLine,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = false,
+                        RedirectStandardError = false,
+                        RedirectStandardInput = false,
+                    };
+
+                    using var process = Process.Start(psi);
+
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync(cancellationToken: ct);
+                    }
+                }
+                else
+                {
+                    throw new ArgumentOutOfRangeException(nameof(SvmFsLdr.ProgramArgs.LaunchMethod));
+                }
                 // 2. controller will now:
                 // (2.1) computes list of work to be done,
                 // (2.2) write the work list to files (which are lists of indexdata jobs),
                 // (2.3) write an exit notification file and exits
+                
+                
+                var workQueueFolder = Path.Combine(CacheLoad.GetIterationFolder(ProgramArgs.ResultsRootFolder, ProgramArgs.ExperimentName), "work_queue");
+                var expectedWorkFileListFilename = Path.Combine(workQueueFolder, $@"work.csv");
 
-                var controllerExitStatus = await WaitForFile(controllerExitNotifyFn, timeout: TimeSpan.FromDays(2), delete: true, ct: ct).ConfigureAwait(false);
+                // wait for work list file and read it
+                var controllerOutputWorkFileList = await WaitForFile(expectedWorkFileListFilename, timeout: TimeSpan.FromDays(2), delete: true, ct: ct).ConfigureAwait(false);
 
-                // check success - exit status code file should exist and be set to "0"
-                if (!controllerExitStatus.found)
+
+                if ((controllerOutputWorkFileList.lines?.Length ?? 0) <= 1)
                 {
-                    Logging.LogEvent($@"Controller: Exit status file not found: {controllerExitNotifyFn}");
-                    continue;
-                }
-
-                if ((controllerExitStatus.lines?.Length ?? 0 ) == 0)
-                {
-                    Logging.LogEvent($@"Controller: Exit status file found but empty: {controllerExitNotifyFn}");
-                    continue;
-                }
-
-                if (controllerExitStatus.lines.First().Trim() != "0")
-                {
-                    Logging.LogEvent($@"Controller: Exit status file exit code not zero: {controllerExitNotifyFn}");
-                    continue;
-                }
-
-                if ((controllerExitStatus.files?.Length ?? 0) == 0)
-                {
+                    // it is '<= 1' because the first line in the file is the experiment name, not a filename
                     Logging.LogEvent($"Controller: Work queue list file was found, but queue is empty. Exiting.", ModuleName);
                     return;
                 }
 
                 // 5. if controller exited without error, and there is work to do, then submit array job to hpc scheduler...
+                var subExperimentName = controllerOutputWorkFileList.lines?[0];
 
-                var workFilesFn = "";
-                var workFiles = await IoProxy.ReadAllLinesAsync(true, ct, workFilesFn);
+                // submit pbs script for workers array 
+                // these know what work to do by ... how? need to check!
+                var wkrPbsProgramArgs = new ProgramArgs(SvmFsLdr.ProgramArgs);
 
-                var wkrPbs = await MakePbsScriptAsync(controllerExitNotifyFn, nameof(SvmFsWkr), ProgramArgs, 0, isJobArray: true, 0, controllerExitStatus.files.Length - 1, ct: ct);
-                var wkrJobId = await Msub(wkrPbs.pbsFn, ct).ConfigureAwait(false);
+                //wkrPbsProgramArgs.WorkListInputFile = ctlPbsProgramArgs.WorkListOutputFile;
+                //wkrPbsProgramArgs.WorkListOutputFile = ""; // todo: check if a value is needed here?
 
-                // 6. wait for all of the submitted work to complete...
-                var exitFiles = Enumerable.Range(0, controllerExitStatus.files.Length).Select(a => $"{controllerExitNotifyFn}_{a}").ToArray();
-                await Task.WhenAll(exitFiles.Select(async a => await WaitForFile(a, true, TimeSpan.FromDays(2), ct).ConfigureAwait(false)).ToArray()).ConfigureAwait(false);
+                var wkrExitNotifyFn = Path.Combine(ProgramArgs.ResultsRootFolder, $@"pbs_wkr_exit_{loader_iteration}_{loader_iteration_guid:N}.csv");
+                var wkrPbs = await MakePbsScriptAsync(wkrExitNotifyFn, nameof(SvmFsWkr), wkrPbsProgramArgs, 0, isJobArray: true, 0, controllerOutputWorkFileList.lines.Length - 1, ct: ct);
+
+                if (string.Equals(SvmFsLdr.ProgramArgs.LaunchMethod, "PBS", StringComparison.OrdinalIgnoreCase))
+                {
+                    var wkrJobId = await Msub(wkrPbs.pbsFn, ct).ConfigureAwait(false);
+
+                    // 6. wait for all of the submitted work to complete...
+                    await Task.WhenAll(wkrPbs.exitCodeFilenames.Select(async a => await WaitForFile(a, true, TimeSpan.FromDays(2), ct).ConfigureAwait(false)).ToArray()).ConfigureAwait(false);
+                }
+                else if (string.Equals(SvmFsLdr.ProgramArgs.LaunchMethod, "INVOKE_METHOD", StringComparison.OrdinalIgnoreCase))
+                {
+                    for (var i = 0; i <= controllerOutputWorkFileList.lines.Length - 1; i++)
+                    {
+                        wkrPbsProgramArgs.InstanceId = i;
+                        wkrPbsProgramArgs.NodeArrayIndex = i;
+                        wkrPbsProgramArgs.TotalNodes = controllerOutputWorkFileList.lines.Length;
+                        wkrPbsProgramArgs.ExperimentName = subExperimentName;
+
+                        await SvmFsWkr.SvmFsWkr.Main2(wkrPbsProgramArgs);
+                    }
+                }
+                else if (string.Equals(SvmFsLdr.ProgramArgs.LaunchMethod, "INVOKE_EXE", StringComparison.OrdinalIgnoreCase))
+                {
+                    for (var i = 0; i <= controllerOutputWorkFileList.lines.Length - 1; i++)
+                    {
+                        wkrPbsProgramArgs.InstanceId = i;
+                        wkrPbsProgramArgs.NodeArrayIndex = i;
+                        wkrPbsProgramArgs.TotalNodes = controllerOutputWorkFileList.lines.Length;
+                        wkrPbsProgramArgs.ExperimentName = subExperimentName;
+
+                        var programRuntime = GetRuntimePath(nameof(SvmFsWkr));
+
+                        var psi = new ProcessStartInfo()
+                        {
+                            FileName = programRuntime,
+                            //Arguments = (array ? $@"-t {array_start}-{array_end}:{array_step} " : "") + pbs_script_filename,
+                            Arguments = wkrPbs.parameterLine,
+                            UseShellExecute = false,
+                            RedirectStandardOutput = false,
+                            RedirectStandardError = false,
+                            RedirectStandardInput = false,
+                        };
+
+                        using var process = Process.Start(psi);
+
+                        if (process != null)
+                        {
+                            await process.WaitForExitAsync(cancellationToken: ct);
+
+                            //var exitCode = process.ExitCode;
+                            //await IoProxy.WriteAllLinesAsync(false, ct, wkrExitNotifyFn, new[] { exitCode.ToString() }, maxTries: 50).ConfigureAwait(false);
+                        }
+                    }
+                }
+                else
+                {
+                    throw new ArgumentOutOfRangeException(nameof(SvmFsLdr.ProgramArgs.LaunchMethod));
+                }
+
 
                 // 7. delay to not bottleneck login node
                 try { await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false); } catch (Exception) { }
@@ -122,6 +241,7 @@ namespace SvmFsLdr
         public static async Task<(bool found, string[] lines)> WaitForFile(string fn, bool delete, TimeSpan timeout, CancellationToken ct = default)
         {
             // this method waits until a specific file exists before returning the contents of the file
+            // it is on a timer rather than waiting for file change notifications, because it is using network storage, it isn't certain that notifications will be received
 
             if (ct.IsCancellationRequested)
             {
@@ -201,7 +321,7 @@ namespace SvmFsLdr
                 return default;
             }
 
-            var loadFolder = Path.Combine(CacheLoad.GetIterationFolder(ProgramArgs.ResultsRootFolder, ProgramArgs.ExperimentName), "work_queue");
+            var workQueueFolder = Path.Combine(CacheLoad.GetIterationFolder(ProgramArgs.ResultsRootFolder, ProgramArgs.ExperimentName), "work_queue");
             
 
             var workFiles = await IoProxy.GetFilesAsync(true, ct, $@"", "work_*.csv", SearchOption.TopDirectoryOnly).ConfigureAwait(false);
@@ -350,7 +470,24 @@ namespace SvmFsLdr
             return jobId;
         }
 
-        public static async Task<(string pbsFn, List<string> pbs_script_lines, string run_line)> MakePbsScriptAsync
+        public static string GetRuntimePath(string programName)
+        {
+            var programRuntime = "";
+            if (string.Equals(programName, nameof(SvmFsLdr), StringComparison.OrdinalIgnoreCase)) programRuntime = ProgramArgs.PathSvmFsLdr;
+            else if (string.Equals(programName, nameof(SvmFsCtl), StringComparison.OrdinalIgnoreCase)) programRuntime = ProgramArgs.PathSvmFsCtl;
+            else if (string.Equals(programName, nameof(SvmFsWkr), StringComparison.OrdinalIgnoreCase)) programRuntime = ProgramArgs.PathSvmFsWkr;
+            else throw new ArgumentOutOfRangeException(nameof(programName));
+
+
+            if (string.IsNullOrWhiteSpace(programRuntime))
+            {
+                throw new Exception($@"{nameof(programRuntime)} is empty.");
+            }
+
+            return programRuntime;
+        }
+
+        public static async Task<(string pbsFn, List<string> pbsScriptLines, string runLine, string parameterLine, string[] exitCodeFilenames)> MakePbsScriptAsync
            (
                string exitNotifyFn,
                string programName,
@@ -393,40 +530,55 @@ namespace SvmFsLdr
             if (isJobArray && arrayStepSize == 0) throw new ArgumentOutOfRangeException(nameof(arrayStepSize));
             //-ExperimentName test2 -job_id _ -job_name _ -instance_array_index_start 0 -array_instances 1 -array_start 0 -array_end 6929 -array_step 6930 -inner_folds 5 -outer_cv_folds 5 -outer_cv_folds_to_run 1 -repetitions 5
 
-
-            var pbsScriptLines = new List<string>();
-
-            //var runLocation = Assembly.GetExecutingAssembly().Location;
-
-            var programRuntime = "";
-            if (string.Equals(programName, nameof(SvmFsLdr), StringComparison.OrdinalIgnoreCase)) programRuntime = ProgramArgs.PathSvmFsLdr;
-            else if (string.Equals(programName, nameof(SvmFsCtl), StringComparison.OrdinalIgnoreCase)) programRuntime = ProgramArgs.PathSvmFsCtl;
-            else if (string.Equals(programName, nameof(SvmFsWkr), StringComparison.OrdinalIgnoreCase)) programRuntime = ProgramArgs.PathSvmFsWkr;
-            else throw new ArgumentOutOfRangeException(nameof(programName));
-
-            
-            if (string.IsNullOrWhiteSpace(programRuntime)) 
-            {
-                throw new Exception($@"{nameof(programRuntime)} is empty."); 
-            }
-
-
-            //var isWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-                                                                                               
-
             var envPbsArray = @"%J_%I";
             var envJobid = @"${PBS_JOBID}${MOAB_JOBID}";
             var envJobname = @"${PBS_JOBNAME}${MOAB_JOBNAME}";
             var envJobArrayIndex = @"${PBS_ARRAYID}${MOAB_JOBARRAYINDEX}";
             //var envJobArrayLength = @"${MOAB_JOBARRAYRANGE}";
 
+            // after program has exited, write the exit code to a text file
 
-            //var pbs_args = new program_args();
+            //var WorkListOutputFile = programArgs.WorkListOutputFile;
+
+            string[] exitCodeFilenames = { exitNotifyFn };
+
+            if (isJobArray)
+            {
+                if (!string.IsNullOrEmpty(exitNotifyFn) && !Path.GetFileNameWithoutExtension(exitNotifyFn).EndsWith($"_{envJobArrayIndex}"))
+                {
+                    var d = Path.GetDirectoryName(exitNotifyFn);
+                    var f = Path.GetFileNameWithoutExtension(exitNotifyFn) + $"_{envJobArrayIndex}";
+                    var e = Path.GetExtension(exitNotifyFn);
+
+                    exitNotifyFn = !string.IsNullOrEmpty(d) ? Path.Combine(d, f + e) : f + e;
+
+                    var arrayRange = Routines.Range(arrayIndexFirst, arrayIndexLast, arrayStepSize);
+
+                    // todo: not checked if these filenames are correct
+                    exitCodeFilenames = arrayRange.Select(a => $"{exitNotifyFn}_{a}").ToArray();
+                }
+
+                //if (!string.IsNullOrEmpty(WorkListOutputFile) && !Path.GetFileNameWithoutExtension(WorkListOutputFile).EndsWith($"_{envJobArrayIndex}"))
+                //{
+                //    var d = Path.GetDirectoryName(WorkListOutputFile);
+                //    var f = Path.GetFileNameWithoutExtension(WorkListOutputFile) + $"_{envJobArrayIndex}";
+                //    var e = Path.GetExtension(WorkListOutputFile);
+                //
+                //    WorkListOutputFile = !string.IsNullOrEmpty(d) ? Path.Combine(d, f + e) : f + e;
+                //}
+            }
+
+            var pbsScriptLines = new List<string>();
+
+            //var runLocation = Assembly.GetExecutingAssembly().Location;
+
+            var programRuntime = GetRuntimePath(programName);
 
 
             TimeSpan? pbsWalltime = TimeSpan.FromHours(240);
 
-            var pbsExecutionDirectory = string.Join(Path.DirectorySeparatorChar, programArgs.ResultsRootFolder, "pbs", programArgs.ExperimentName);
+            //var pbsExecutionDirectory = string.Join(Path.DirectorySeparatorChar, programArgs.ResultsRootFolder, "pbs", programArgs.ExperimentName);
+            var pbsExecutionDirectory = Path.Combine(programArgs.ResultsRootFolder, "pbs", programArgs.ExperimentName);
 
             var pbsJobname = $@"{programArgs.ExperimentName}_{Path.GetFileNameWithoutExtension(programRuntime)}";
             var pbsMailAddr = "";
@@ -460,8 +612,10 @@ namespace SvmFsLdr
             // 2. program directives
             var pbsProgramArgs = new List<(string key, string value)>();
 
-            // experiment name
-            pbsProgramArgs.Add((nameof(programArgs.ExperimentName), programArgs.ExperimentName));
+            // experiment name, i/o files, etc.
+            if (!string.IsNullOrWhiteSpace(programArgs.ExperimentName)) pbsProgramArgs.Add((nameof(programArgs.ExperimentName), programArgs.ExperimentName));
+            //if (!string.IsNullOrWhiteSpace(programArgs.WorkListInputFile)) pbsProgramArgs.Add((nameof(programArgs.WorkListInputFile), programArgs.WorkListInputFile));
+            //if (!string.IsNullOrWhiteSpace(WorkListOutputFile)) pbsProgramArgs.Add((nameof(WorkListOutputFile), programArgs.WorkListOutputFile));
 
             // job id, job name
             pbsProgramArgs.Add((nameof(programArgs.JobId), envJobid));
@@ -469,8 +623,8 @@ namespace SvmFsLdr
 
             if (isJobArray)
             {
-                // first index for the hpc instance job to start from
-                pbsProgramArgs.Add((nameof(programArgs.NodeIndex), envJobArrayIndex));
+                // first array index for the hpc instance job to start from  -- array index can be any value, and is separate from instance index 
+                pbsProgramArgs.Add((nameof(programArgs.NodeArrayIndex), envJobArrayIndex));
 
                 // total number of jobs in the array
                 //pbsProgramArgs.Add((nameof(programArgs.TotalNodes), envJobArrayLength));
@@ -496,36 +650,34 @@ namespace SvmFsLdr
 
             foreach (var programArg in programArgs.Args)
             {
-                var keyExists = pbsProgramArgs.All(pbsProgramArg => !string.Equals(pbsProgramArg.key, programArg.key, StringComparison.OrdinalIgnoreCase));
+                var keyExists = pbsProgramArgs.Any(pbsProgramArg => string.Equals(pbsProgramArg.key, programArg.key, StringComparison.OrdinalIgnoreCase));
 
                 if (!keyExists) pbsProgramArgs.Add((programArg.key, $@"{programArg.asStr}"));
             }
 
-            if (!string.IsNullOrEmpty(programStdoutFilename)) pbsProgramArgs.Add((@"1>", programStdoutFilename));
-            if (!string.IsNullOrEmpty(programStderrFilename)) pbsProgramArgs.Add((@"2>", programStderrFilename));
 
-            var runLine = $@"{programRuntime} {string.Join(" ", pbsProgramArgs.Select(a => string.Join(@" ", new[] { $@"-{a.key}", a.value }.Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())).Where(b => !string.IsNullOrWhiteSpace(b)).ToArray())}";
+
+            //var runLine = $@"{programRuntime} {string.Join(" ", pbsProgramArgs.Where(a => !string.IsNullOrWhiteSpace(a.key)).Select(a => string.Join(@" ", new[] { $@"-{a.key}", a.value }.Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())).Where(b => !string.IsNullOrWhiteSpace(b)).ToArray())}";
+            var parameterLine = $@"{string.Join(" ", pbsProgramArgs.Where(a => !string.IsNullOrWhiteSpace(a.key)).Select(a => string.Join(@" ", new[] { $@"-{a.key}", a.value }.Where(c => !string.IsNullOrWhiteSpace(c)).ToArray())).Where(b => !string.IsNullOrWhiteSpace(b)).ToArray())}";
+            
+            var runLine = $@"{programRuntime} {parameterLine}";
+            
+            if (!string.IsNullOrEmpty(programStdoutFilename)) runLine = string.Join(" ", new[] { runLine, @"1>", programStdoutFilename });
+            if (!string.IsNullOrEmpty(programStderrFilename)) runLine = string.Join(" ", new[] { runLine, @"2>", programStderrFilename });
+            // todo: &>
 
             if (!string.IsNullOrWhiteSpace(pbsExecutionDirectory)) pbsScriptLines.Add($@"cd {pbsExecutionDirectory}");
             pbsScriptLines.Add($@"module load GCCcore");
             pbsScriptLines.Add(runLine);
 
-            // after program has exited, write the exit code to a text file
+        
+
+
             if (!string.IsNullOrEmpty(exitNotifyFn))
             {
-                if (isJobArray && !Path.GetFileNameWithoutExtension(exitNotifyFn).Contains(envJobArrayIndex))
-                {
-                    var d = Path.GetDirectoryName(exitNotifyFn);
-                    var f = Path.GetFileNameWithoutExtension(exitNotifyFn) + $"_{envJobArrayIndex}";
-                    var e = Path.GetExtension(exitNotifyFn);
-
-                    exitNotifyFn = !string.IsNullOrEmpty(d) ? Path.Combine(d, f + e) : f + e;
-                }
-
                 // print program exit code to exitNotifyFn (i.e. filename: "_array_index")
                 pbsScriptLines.Add($@"echo $? > {exitNotifyFn}");
             }
-
 
             var pbsFn = Path.Combine(pbsExecutionDirectory, $@"{pbsJobname}.pbs");
 
@@ -534,7 +686,7 @@ namespace SvmFsLdr
 
             Logging.LogExit(ModuleName);
 
-            return ct.IsCancellationRequested ? default : (pbsFn, pbsScriptLines, runLine);
+            return ct.IsCancellationRequested ? default : (pbsFn, pbsScriptLines, runLine, parameterLine, exitCodeFilenames);
         }
 
     }

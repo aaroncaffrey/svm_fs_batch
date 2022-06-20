@@ -238,6 +238,15 @@ namespace SvmFsCtl
             ).ConfigureAwait(false);
             experimentDurations.Add(DateTime.UtcNow - startTime1);
 
+            if (winner == default)
+            {
+                // todo: some problem happened
+                if (!string.Equals(SvmFsCtl.ProgramArgs.LaunchMethod,"PBS",StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+
             // Column based feature select from the winners
             if (option2_checkIndividualLast || option3_checkIndividualLast)
             {
@@ -625,11 +634,11 @@ namespace SvmFsCtl
                     }
 
                     // write work segment files
-                    var loadFolder = Path.Combine(CacheLoad.GetIterationFolder(SvmFsCtl.ProgramArgs.ResultsRootFolder, experimentName), "work_queue");
-                    
-                    try { Directory.Delete(loadFolder, true); } catch (Exception) { }
+                    var workQueueFolder = Path.Combine(CacheLoad.GetIterationFolder(SvmFsCtl.ProgramArgs.ResultsRootFolder, SvmFsCtl.ProgramArgs.ExperimentName), "work_queue");
 
-                    var workFiles = new List<string>();
+                    try { Directory.Delete(workQueueFolder, true); } catch (Exception) { }
+
+                    var workFiles = new List<string>() { experimentName }; // first line is the name of the experiment
 
                     foreach (var wd in workDistribution)
                     {
@@ -640,24 +649,28 @@ namespace SvmFsCtl
                         lines.AddRange(wd.instanceWork.Select(a => a.CsvValuesString()).ToArray());
 
                         // write new queues
-                        var wfn = Path.Combine(loadFolder, $@"work_{wd.instanceId}.txt");
+                        var wfn = Path.Combine(workQueueFolder, $@"work_{wd.instanceId}.csv");
                         await IoProxy.WriteAllLinesAsync(true, ct, wfn, lines);
 
                         workFiles.Add(wfn);
                     }
 
                     // write a file which contains a list of work list files
-                    await IoProxy.WriteAllLinesAsync(true, ct, Path.Combine(loadFolder, $@"work.txt"), workFiles);
+                    await IoProxy.WriteAllLinesAsync(true, ct, Path.Combine(workQueueFolder, $@"work.csv"), workFiles);
 
                     // todo: notify SvmFsLdr to run msub for SvmFsWkr
+                    // ...SvmFsLdr should be waiting for the exit notification, and then will read the work list file
 
                     // ???
                     // ???
 
 
                     // exit to free up node whilst waiting for results
-                    Logging.LogEvent("Controller exiting to free up node...");
-                    Environment.Exit(0);
+                    if (string.Equals(SvmFsCtl.ProgramArgs.LaunchMethod, "PBS", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Logging.LogEvent("Controller exiting to free up node...");
+                        Environment.Exit(0);
+                    }
                     return default;
                 }
 

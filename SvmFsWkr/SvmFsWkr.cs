@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using SvmFsLib;
@@ -17,6 +18,31 @@ namespace SvmFsWkr
 
         public static async Task Main(string[] args)
         {
+#if DEBUG
+            System.Diagnostics.Debugger.Launch();
+#endif
+
+            // Parse command line parameters
+            ProgramArgs = new ProgramArgs(args);
+
+            await Main2(ProgramArgs).ConfigureAwait(false);
+
+            ulong lvl = 0;
+            Logging.LogEvent($"Reached end of {nameof(SvmFsWkr)}.{nameof(Main)}.", ModuleName);
+            Logging.LogExit(ModuleName, lvl: lvl + 1);
+        }
+
+        public static async Task Main2(ProgramArgs programArgs)
+        {
+
+            if (programArgs != null)
+            {
+                SvmFsWkr.ProgramArgs = programArgs;
+            }
+            
+            
+            Logging.LogEvent($@"programArgs.InstanceId: {ProgramArgs.InstanceId}, programArgs.NodeArrayIndex: {ProgramArgs.NodeArrayIndex}, programArgs.TotalNodes: {ProgramArgs.TotalNodes}", ModuleName);
+
             var mainCts = new CancellationTokenSource();
             var mainCt = mainCts.Token;
 
@@ -25,9 +51,6 @@ namespace SvmFsWkr
             Init.CloseNotifications(mainCt);
             Init.CheckX64();
             Init.SetGcMode();
-
-            // Parse command line parameters
-            ProgramArgs = new ProgramArgs(args);
 
             // Check all required parameters were specified
             var instanceId = ProgramArgs.InstanceId;
@@ -59,23 +82,24 @@ namespace SvmFsWkr
             if (instanceId == -1) throw new ArgumentOutOfRangeException(nameof(instanceId));
             //if (iterationIndex == -1) throw new ArgumentOutOfRangeException(nameof(iterationIndex));
 
-            //var loadFolder = Path.Combine(CacheLoad.GetIterationFolder(resultsRootFolder, experimentName, iterationIndex), "work");
-            var loadFolder = Path.Combine(CacheLoad.GetIterationFolder(resultsRootFolder, experimentName), "work_queue");
+            //var workQueueFolder = Path.Combine(CacheLoad.GetIterationFolder(resultsRootFolder, experimentName, iterationIndex), "work");
+            var workQueueFolder = Path.Combine(CacheLoad.GetIterationFolder(resultsRootFolder, SvmFsWkr.ProgramArgs.ExperimentName), "work_queue");
 
-            //var loadFilename = Path.Combine(loadFolder, $"work_{iterationIndex}_{instanceId}.csv");
-            var loadFilename = Path.Combine(loadFolder, $"work_{instanceId}.csv");
+            //var loadFilename = Path.Combine(workQueueFolder, $"work_{iterationIndex}_{instanceId}.csv");
+            var workQueueInstanceFilename = Path.Combine(workQueueFolder, $"work_{instanceId}.csv"); // either work_{instanceId}, or read work.csv -> lines[instanceid] -> filename to read ...
 
-            var lines = await IoProxy.ReadAllLinesAsync(true, default, loadFilename, 50);
+            var lines = await IoProxy.ReadAllLinesAsync(true, default, workQueueInstanceFilename, 50);
+            // skip first line because it is the sub experiment name
+            var subExperimentName = lines.FirstOrDefault();
             var indexDataList = lines.Skip(1).Select(a => new IndexData(new[] { lines[0], a })).ToArray();
 
             
             if (indexDataList.Any(a => /*a.IdIterationIndex != iterationIndex ||*/ a.IdExperimentName != experimentName)) throw new Exception($"Wrong {nameof(experimentName)} value.");
             if (indexDataList.Select(a => a.IdIterationIndex).Distinct().Count() != 1) throw new Exception($"Wrong IdIterationIndex value.");
 
-            Logging.LogEvent($@"Loaded {indexDataList.Length} work items from ""{loadFilename}"".");
+            Logging.LogEvent($@"Loaded {indexDataList.Length} work items from ""{workQueueInstanceFilename}"" for sub experiment ""{subExperimentName}"".");
 
             return indexDataList;
-            // todo: load index data list from file... how?
         }
 
         public static async Task<List<(IndexData id, ConfusionMatrix cm)>> LoadCache(int instanceId, /*int iterationIndex,*/ string resultsRootFolder, string experimentName, IndexData[] indexDataList, CancellationToken ct = default)

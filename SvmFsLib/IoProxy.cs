@@ -292,6 +292,12 @@ namespace SvmFsLib
             const string MethodName = nameof(ReadAllLinesAsync);
             var tries = 0;
             if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
+
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
+            }
+
             while (true)
                 try
                 {
@@ -322,6 +328,11 @@ namespace SvmFsLib
             {
                 Logging.LogExit(ModuleName);
                 return default;
+            }
+
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
             }
 
             const string MethodName = nameof(ReadAllLinesAsync);
@@ -359,6 +370,11 @@ namespace SvmFsLib
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
+            }
+
             const string MethodName = nameof(ReadAllTextAsync);
             var tries = 0;
             if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName, MethodName);
@@ -387,6 +403,11 @@ namespace SvmFsLib
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
+            }
 
             //var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}_{Path.GetFileName(filename)}.tmp");
             var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}.tmp");
@@ -458,6 +479,11 @@ namespace SvmFsLib
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
 
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
+            }
+
             //const string MethodName = nameof(AppendAllLinesAsync);
             var tries = 0;
             if (log) Logging.WriteLine($@"{callerModuleName}.{callerMethodName} -> ( ""{filename}"" , {lines?.Length ?? 0} ). {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
@@ -491,6 +517,11 @@ namespace SvmFsLib
             {
                 Logging.LogExit(ModuleName);
                 return default;
+            }
+
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
             }
 
             const string MethodName = nameof(AppendAllTextAsync);
@@ -530,6 +561,11 @@ namespace SvmFsLib
         {
             Logging.LogCall(ModuleName);
             if (ct.IsCancellationRequested) { Logging.LogExit(ModuleName); return default; }
+
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
+            }
 
             //var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}_{Path.GetFileName(filename)}.tmp");
             var tempFilename = Path.Combine(Path.GetDirectoryName(filename), $"tmp_{Guid.NewGuid():N}.tmp");

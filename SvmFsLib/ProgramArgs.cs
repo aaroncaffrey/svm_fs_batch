@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
 
 namespace SvmFsLib
 {
@@ -13,8 +10,11 @@ namespace SvmFsLib
         public const string ModuleName = nameof(ProgramArgs);
 
         public static string[] CsvHeaderValuesArray =
-        {
-            nameof(NodeIndex),
+        { 
+            nameof(LaunchMethod),
+            //nameof(WorkListInputFile),
+            //nameof(WorkListOutputFile),
+            nameof(NodeArrayIndex),
             nameof(TotalNodes),
             nameof(ProcessorsPerNode),
 
@@ -67,82 +67,82 @@ namespace SvmFsLib
 
         public (string key, string asStr, int? asInt, double? asDouble, bool? asBool)[] Args;
 
-        public int TotalNodes = 10;
-        public int ProcessorsPerNode = 64;
-        public int NodeIndex = -1;
+        public string LaunchMethod = ProgramArgsEnv.LaunchMethod;
+
+        //public string WorkListInputFile = ProgramArgsEnv.WorkListInputFile;
+        //public string WorkListOutputFile = ProgramArgsEnv.WorkListOutputFile;
+
+        public int TotalNodes = ProgramArgsEnv.TotalNodes;
+        public int ProcessorsPerNode = ProgramArgsEnv.ProcessorsPerNode;
+        public int NodeArrayIndex = ProgramArgsEnv.NodeIndex; // The Array Index (array size can be different from total nodes, in which case, each node is assigned work indexes of X..X+(step-1))
+        public int InstanceId = ProgramArgsEnv.InstanceId; // the Instance Index
 
 
-        public int IterationIndex = -1;
-        public int InstanceId = -1;
+        public int IterationIndex = ProgramArgsEnv.IterationIndex;
+        
 
-        public int Option0 = 0;
-        public int Option1 = 1;
-        public int Option2 = 1;
-        public int Option3 = 1;
-        public int Option4 = 1;
+        public int Option0 = ProgramArgsEnv.Option0;
+        public int Option1 = ProgramArgsEnv.Option1;
+        public int Option2 = ProgramArgsEnv.Option2;
+        public int Option3 = ProgramArgsEnv.Option3;
+        public int Option4 = ProgramArgsEnv.Option4;
 
-        public bool CalcElevenPointThresholds;
+        public bool CalcElevenPointThresholds = ProgramArgsEnv.CalcElevenPointThresholds;
 
         //public string ProtocolKey = "232e91fb28044ef483a65ff45a6b0f95";
 
-        public (int ClassId, string ClassName)[] ClassNames;
-        public (int ClassId, double ClassWeight)[][] ClassWeights;
+        public (int ClassId, string ClassName)[] ClassNames = ProgramArgsEnv.ClassNames;
+        public (int ClassId, double ClassWeight)[][] ClassWeights = ProgramArgsEnv.ClassWeights;
 
         //public bool Client;
         //public int ClientConnectionPoolSize = 10;
         //public Guid ClientGuid = Guid.NewGuid();
 
-#if DEBUG
-        public static string PathSvmFsLdr = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\bin\x64\Debug\net5.0\SvmFsLdr" : $@"/home/k1040015/SvmFs/SvmFsLdr/bin/x64/Debug/net5.0/SvmFsLdr";
-        public static string PathSvmFsCtl = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\bin\x64\Debug\net5.0\SvmFsCtl" : $@"/home/k1040015/SvmFs/SvmFsCtl/bin/x64/Debug/net5.0/SvmFsCtl";
-        public static string PathSvmFsWkr = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\bin\x64\Debug\net5.0\SvmFsWkr" : $@"/home/k1040015/SvmFs/SvmFsWkr/bin/x64/Debug/net5.0/SvmFsWkr";
-#else
-        public static string PathSvmFsLdr = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\bin\x64\Release\net5.0\SvmFsLdr" : $@"/home/k1040015/SvmFs/SvmFsLdr/bin/x64/Release/net5.0/SvmFsLdr";
-        public static string PathSvmFsCtl = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\bin\x64\Release\net5.0\SvmFsCtl" : $@"/home/k1040015/SvmFs/SvmFsCtl/bin/x64/Release/net5.0/SvmFsCtl";
-        public static string PathSvmFsWkr = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\bin\x64\Release\net5.0\SvmFsWkr" : $@"/home/k1040015/SvmFs/SvmFsWkr/bin/x64/Release/net5.0/SvmFsWkr";
-        
-#endif
 
-        public string DataSetDir = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"E:\DataSet7\merged_files\" : $@"/home/k1040015/DataSet/";
-        public string BaseLineDataSetDir = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"E:\DataSet7\merged_files\" : $@"/home/k1040015/DataSet/";
-        public string[] DataSetNames;
-        public string[] BaseLineDataSetNames;
-        public int[] BaseLineDataSetColumnIndexes;
+        public string PathSvmFsLdr = ProgramArgsEnv.PathSvmFsLdr;
+        public string PathSvmFsCtl = ProgramArgsEnv.PathSvmFsCtl;
+        public string PathSvmFsWkr = ProgramArgsEnv.PathSvmFsWkr;
+
+        public string DataSetDir = ProgramArgsEnv.DataSetDir;
+        public string BaseLineDataSetDir = ProgramArgsEnv.BaseLineDataSetDir;
+        public string[] DataSetNames = ProgramArgsEnv.DataSetNames;
+        public string[] BaseLineDataSetNames = ProgramArgsEnv.BaseLineDataSetNames;
+        public int[] BaseLineDataSetColumnIndexes = ProgramArgsEnv.BaseLineDataSetColumnIndexes;
 
         //public bool run_local = false;
-        public string ExperimentName = "";
+        public string ExperimentName = ProgramArgsEnv.ExperimentName;
 
         // note: use 'folds' to set repetitions, outer_cv_folds and inner_folds to the same value
-        public int? Folds;
-        public int InnerFolds = 5;
+        public int? Folds = ProgramArgsEnv.Folds;
+        public int InnerFolds = ProgramArgsEnv.InnerFolds;
         //public bool IsUnix = !RuntimeInformation.IsOSPlatform(OSPlatform.Windows); //RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
         //public bool IsWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-        public string JobId = "";
-        public string JobName = "";
-        public Libsvm.LibsvmKernelType[] Kernels = { Libsvm.LibsvmKernelType.Rbf };
-        public string LibsvmPredictRuntime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\libsvm\windows\svm-predict.exe" : $@"/home/k1040015/libsvm/svm-predict";
-        public string LibsvmTrainRuntime = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\libsvm\windows\svm-train.exe" : $@"/home/k1040015/libsvm/svm-train";
+        public string JobId = ProgramArgsEnv.JobId;
+        public string JobName = ProgramArgsEnv.JobName;
+        public Libsvm.LibsvmKernelType[] Kernels = ProgramArgsEnv.Kernels;
+        public string LibsvmPredictRuntime = ProgramArgsEnv.LibsvmPredictRuntime;
+        public string LibsvmTrainRuntime = ProgramArgsEnv.LibsvmTrainRuntime;
 
-        public int NegativeClassId = -1;
-        public string NegativeClassName = @"standard_coil";
-        public int OuterCvFolds = 5;
-        public int OuterCvFoldsToRun = 5;
+        public int NegativeClassId = ProgramArgsEnv.NegativeClassId;
+        public string NegativeClassName = ProgramArgsEnv.NegativeClassName;
+        public int OuterCvFolds = ProgramArgsEnv.OuterCvFolds;
+        public int OuterCvFoldsToRun = ProgramArgsEnv.OuterCvFoldsToRun;
 
         // partition array parameters (pbs only provides partition_array_index_first, whole_array_step_size is given by the script, and partition_array_index_last is calculated from it, if not provided)
         //public int PartitionArrayIndexFirst = -1; // start index for current instance
         //public int PartitionArrayIndexLast = -1; // last index for current instance
-        public int PositiveClassId = +1;
-        public string PositiveClassName = @"dimorphic_coil";
+        public int PositiveClassId = ProgramArgsEnv.PositiveClassId;
+        public string PositiveClassName = ProgramArgsEnv.PositiveClassName;
 
-        public int Repetitions = 1;
-        public string ResultsRootFolder = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $@"C:\mmfs1\data\scratch\k1040015\SvmFs" : $@"/mmfs1/data/scratch/k1040015/SvmFs"; // root for all experiments - must concat experiment name to it
-        public Scaling.ScaleFunction[] Scales = { Scaling.ScaleFunction.Rescale };
+        public int Repetitions = ProgramArgsEnv.Repetitions;
+        public string ResultsRootFolder = ProgramArgsEnv.ResultsRootFolder;
+        public Scaling.ScaleFunction[] Scales = ProgramArgsEnv.Scales;
 
-        public int ScoringClassId = +1;
+        public int ScoringClassId = ProgramArgsEnv.ScoringClassId;
 
-        public string[] ScoringMetrics = { nameof(MetricsBox.PF1S) /*nameof(metrics_box.p_MCC),*/ /*nameof(metrics_box.p_API_All)*/};
+        public string[] ScoringMetrics = ProgramArgsEnv.ScoringMetrics;
 
         //public bool Server = true;
         //public int ServerBacklog = 1000;
@@ -157,7 +157,7 @@ namespace SvmFsLib
         //public int SetupTotalVcpus = -1;
         //public string SvmFsBatchHome=RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\mmfs1\data\scratch\k1040015\{nameof(SvmFsBatch)}" : @"/mmfs1/data/scratch/k1040015/{nameof(SvmFsBatch)}";
 
-        public Libsvm.LibsvmSvmType[] SvmTypes = { Libsvm.LibsvmSvmType.CSvc };
+        public Libsvm.LibsvmSvmType[] SvmTypes = ProgramArgsEnv.SvmTypes;
         //public string UserHome = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"C:\home\k1040015" : @"/home/k1040015";
 
 
@@ -170,6 +170,55 @@ namespace SvmFsLib
         public ProgramArgs()
         {
 
+        }
+
+        public ProgramArgs(ProgramArgs programArgs)
+        {
+            LaunchMethod = programArgs.LaunchMethod;
+            ClassWeights = programArgs.ClassWeights?.Select(a => a?.ToArray()).ToArray();
+            ClassNames = programArgs.ClassNames?.ToArray();
+            CalcElevenPointThresholds = programArgs.CalcElevenPointThresholds;
+            InnerFolds = programArgs.InnerFolds;
+            NegativeClassId = programArgs.NegativeClassId;
+            OuterCvFolds = programArgs.OuterCvFolds;
+            OuterCvFoldsToRun = programArgs.OuterCvFoldsToRun;
+            PositiveClassId = programArgs.PositiveClassId;
+            Repetitions = programArgs.Repetitions;
+            ScoringClassId = programArgs.ScoringClassId;
+            Folds = programArgs.Folds;
+            BaseLineDataSetColumnIndexes = programArgs.BaseLineDataSetColumnIndexes?.ToArray();
+            Kernels = programArgs.Kernels?.ToArray();
+            SvmTypes = programArgs.SvmTypes?.ToArray();
+            Args = programArgs.Args?.ToArray();
+            InstanceId = programArgs.InstanceId;
+            IterationIndex = programArgs.IterationIndex;
+            NodeArrayIndex = programArgs.NodeArrayIndex;
+            Option0 = programArgs.Option0;
+            Option1 = programArgs.Option1;
+            Option2 = programArgs.Option2;
+            Option3 = programArgs.Option3;
+            Option4 = programArgs.Option4;
+            ProcessorsPerNode = programArgs.ProcessorsPerNode;
+            TotalNodes = programArgs.TotalNodes;
+            //WorkListInputFile = programArgs.WorkListInputFile;
+            //WorkListOutputFile = programArgs.WorkListOutputFile;
+            Scales = programArgs.Scales?.ToArray();
+            PathSvmFsCtl = programArgs.PathSvmFsCtl;
+            PathSvmFsLdr = programArgs.PathSvmFsLdr;
+            PathSvmFsWkr = programArgs.PathSvmFsWkr;
+            BaseLineDataSetDir = programArgs.BaseLineDataSetDir;
+            DataSetDir = programArgs.DataSetDir;
+            ExperimentName = programArgs.ExperimentName;
+            JobId = programArgs.JobId;
+            JobName = programArgs.JobName;
+            LibsvmPredictRuntime = programArgs.LibsvmPredictRuntime;
+            LibsvmTrainRuntime = programArgs.LibsvmTrainRuntime;
+            NegativeClassName = programArgs.NegativeClassName;
+            PositiveClassName = programArgs.PositiveClassName;
+            ResultsRootFolder = programArgs.ResultsRootFolder;
+            BaseLineDataSetNames = programArgs.BaseLineDataSetNames?.ToArray();
+            DataSetNames = programArgs.DataSetNames?.ToArray();
+            ScoringMetrics = programArgs.ScoringMetrics?.ToArray();
         }
 
         public ProgramArgs(string[] args)
@@ -196,9 +245,15 @@ namespace SvmFsLib
             if (argsUnknown.Any()) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{methodName}: Invalid arguments: {string.Join(", ", argsUnknown)}");
             if (argsCount.Any(a => a.count > 1)) throw new ArgumentOutOfRangeException(nameof(args), $@"{ModuleName}.{methodName}: Arguments specified more than once: {string.Join(", ", argsCount.Where(a => a.count > 1).ToArray())}");
 
+            
+
+            if (ArgsKeyExists(nameof(LaunchMethod))) LaunchMethod = ArgsValue(nameof(LaunchMethod)).asStr;
+
+            //if (ArgsKeyExists(nameof(WorkListInputFile))) WorkListInputFile = ArgsValue(nameof(WorkListInputFile)).asStr;
+            //if (ArgsKeyExists(nameof(WorkListOutputFile))) WorkListOutputFile = ArgsValue(nameof(WorkListOutputFile)).asStr;
 
 
-            if (ArgsKeyExists(nameof(NodeIndex))) NodeIndex = ArgsValue(nameof(NodeIndex)).asInt ?? -1;
+            if (ArgsKeyExists(nameof(NodeArrayIndex))) NodeArrayIndex = ArgsValue(nameof(NodeArrayIndex)).asInt ?? -1;
             if (ArgsKeyExists(nameof(TotalNodes))) TotalNodes = ArgsValue(nameof(TotalNodes)).asInt ?? -1;
             if (ArgsKeyExists(nameof(ProcessorsPerNode))) ProcessorsPerNode = ArgsValue(nameof(ProcessorsPerNode)).asInt ?? -1;
 
@@ -319,7 +374,13 @@ namespace SvmFsLib
 
             var ret = new (string key, string value)[]
             {
-                 (nameof(NodeIndex),$"{NodeIndex}"),
+                
+                 (nameof(LaunchMethod),$"{LaunchMethod}"),
+
+                 //(nameof(WorkListInputFile),$"{WorkListInputFile}"),
+                 //(nameof(WorkListOutputFile),$"{WorkListOutputFile}"),
+
+                (nameof(NodeArrayIndex),$"{NodeArrayIndex}"),
                  (nameof(TotalNodes),$"{TotalNodes}"),
                  (nameof(ProcessorsPerNode),$"{ProcessorsPerNode}"),
 

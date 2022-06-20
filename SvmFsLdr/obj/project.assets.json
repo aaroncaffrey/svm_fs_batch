@@ -70,11 +70,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
+      "projectUniqueName": "C:\\phd\\phd_work\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
       "projectName": "SvmFsLdr",
-      "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
+      "projectPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsLdr\\SvmFsLdr.csproj",
       "packagesPath": "C:\\Users\\Aaron\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLdr\\obj\\",
+      "outputPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsLdr\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Aaron\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -91,14 +91,14 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "projectReferences": {
-            "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {
-              "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj"
+            "C:\\phd\\phd_work\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {
+              "projectPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj"
             },
-            "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
-              "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
+            "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
+              "projectPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
             },
-            "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj": {
-              "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj"
+            "C:\\phd\\phd_work\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj": {
+              "projectPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsWkr\\SvmFsWkr.csproj"
             }
           }
         }
@@ -127,7 +127,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.301\\RuntimeIdentifierGraph.json"
       }
     }
   }

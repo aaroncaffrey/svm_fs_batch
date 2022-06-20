@@ -1,0 +1,64 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v6.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v6.0": {
+      "SvmFsLdr/1.0.0": {
+        "dependencies": {
+          "SvmFsCtl": "1.0.0",
+          "SvmFsLib": "1.0.0",
+          "SvmFsWkr": "1.0.0"
+        },
+        "runtime": {
+          "SvmFsLdr.dll": {}
+        }
+      },
+      "SvmFsCtl/1.0.0": {
+        "dependencies": {
+          "SvmFsLib": "1.0.0"
+        },
+        "runtime": {
+          "SvmFsCtl.dll": {}
+        }
+      },
+      "SvmFsLib/1.0.0": {
+        "runtime": {
+          "SvmFsLib.dll": {}
+        }
+      },
+      "SvmFsWkr/1.0.0": {
+        "dependencies": {
+          "SvmFsLib": "1.0.0"
+        },
+        "runtime": {
+          "SvmFsWkr.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "SvmFsLdr/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "SvmFsCtl/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "SvmFsLib/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "SvmFsWkr/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

@@ -30,7 +30,8 @@ namespace SvmFsLib
         {
             if (string.IsNullOrEmpty(query)) return default;
 
-            var crypt = new System.Security.Cryptography.SHA1Managed();//.SHA256Managed();
+            using var crypt = System.Security.Cryptography.SHA1.Create();
+            
             var hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(query));
 
             var sb = new StringBuilder();

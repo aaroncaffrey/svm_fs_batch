@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SvmFsLib;
 
+
 namespace SvmFsCtl
 {
     public static class SvmFsCtl
@@ -14,9 +15,23 @@ namespace SvmFsCtl
 
         public static async Task Main(string[] args)
         {
+#if DEBUG
+            System.Diagnostics.Debugger.Launch();
+#endif
+
             ulong lvl = 0;
             Logging.LogCall(ModuleName, lvl: lvl + 1);
 
+            ProgramArgs = new ProgramArgs(args);
+
+            await Main2(lvl, ProgramArgs).ConfigureAwait(false);
+            Logging.LogEvent($"Reached end of {nameof(SvmFsCtl)}.{nameof(Main)}.", ModuleName);
+            Logging.LogExit(ModuleName, lvl: lvl + 1);
+        }
+
+        public static async Task Main2(ulong lvl, ProgramArgs programArgs)
+        {
+            if (programArgs != null) {SvmFsCtl.ProgramArgs = programArgs;}
 
             var mainCts = new CancellationTokenSource();
             var mainCt = mainCts.Token;
@@ -26,14 +41,9 @@ namespace SvmFsCtl
             Init.CheckX64();
             Init.SetGcMode();
 
-            ProgramArgs = new ProgramArgs(args);
-
             var ctlTask = Task.Run(async () => await Controller(lvl, mainCt).ConfigureAwait(false));
 
             await Task.WhenAll(ctlTask).ConfigureAwait(false);
-
-            Logging.LogEvent($"Reached end of {nameof(SvmFsCtl)}.{nameof(Main)}.", ModuleName);
-            Logging.LogExit(ModuleName, lvl: lvl + 1);
         }
 
         public static async Task Controller(ulong lvl = 0, CancellationToken ct = default)

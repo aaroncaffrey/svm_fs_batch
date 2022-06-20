@@ -43,7 +43,9 @@ namespace SvmFsLib
 
             Logging.WriteLine("", ModuleName, MethodName);
 
-            Logging.LogExit(ModuleName); return asParallel
+            Logging.LogExit(ModuleName); 
+            
+            return asParallel
                 ? groups.AsParallel().AsOrdered()/*.WithCancellation(ct)*/.SelectMany(a => a.GroupColumnHeaders).ToArray()
                 : groups.SelectMany(a => a.GroupColumnHeaders).ToArray();
         }

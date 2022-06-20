@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {}
+    "C:\\phd\\phd_work\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {
+    "C:\\phd\\phd_work\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj",
+        "projectUniqueName": "C:\\phd\\phd_work\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj",
         "projectName": "SvmFsCtl",
-        "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj",
+        "projectPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsCtl\\SvmFsCtl.csproj",
         "packagesPath": "C:\\Users\\Aaron\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsCtl\\obj\\",
+        "outputPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsCtl\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Aaron\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -28,8 +28,8 @@
           "net6.0": {
             "targetAlias": "net6.0",
             "projectReferences": {
-              "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
-                "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
+              "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
+                "projectPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\SvmFsLib.csproj"
               }
             }
           }
@@ -58,18 +58,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.301\\RuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
+    "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\SvmFsLib.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj",
+        "projectUniqueName": "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\SvmFsLib.csproj",
         "projectName": "SvmFsLib",
-        "projectPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\SvmFsLib.csproj",
+        "projectPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\SvmFsLib.csproj",
         "packagesPath": "C:\\Users\\Aaron\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Aaron\\Desktop\\SvmFs\\SvmFsLib\\obj\\",
+        "outputPath": "C:\\phd\\phd_work\\SvmFs\\SvmFsLib\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Aaron\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -112,7 +112,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.100\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.301\\RuntimeIdentifierGraph.json"
         }
       }
     }
