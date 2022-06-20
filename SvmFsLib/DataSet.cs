@@ -1173,7 +1173,8 @@ namespace SvmFsLib
                 Logging.WriteLine($@"{nameof(cl.commentCsvFilenames)}: {string.Join(", ", cl.commentCsvFilenames)}", ModuleName, MethodName);
             }
 
-            Logging.LogExit(ModuleName); return dataFilenames;
+            Logging.LogExit(ModuleName);
+            return dataFilenames;
         }
 
         public void CheckDataFiles(List<(int ClassId, string ClassName, List<(string FileTag, int ClassId, string ClassName, string filename)> valuesCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> headerCsvFilenames, List<(string FileTag, int ClassId, string ClassName, string filename)> commentCsvFilenames)> dataFilenames)

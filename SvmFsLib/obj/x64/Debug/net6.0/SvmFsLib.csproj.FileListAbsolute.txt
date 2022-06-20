@@ -10,14 +10,14 @@ C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.csproj.CoreC
 C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.dll
 C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\ref\SvmFsLib.dll
 C:\Users\Aaron\Desktop\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.pdb
+C:\phd\phd_work\SvmFs\SvmFsLib\bin\x64\Debug\net6.0\SvmFsLib.deps.json
+C:\phd\phd_work\SvmFs\SvmFsLib\bin\x64\Debug\net6.0\SvmFsLib.dll
+C:\phd\phd_work\SvmFs\SvmFsLib\bin\x64\Debug\net6.0\SvmFsLib.pdb
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.csproj.AssemblyReference.cache
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.GeneratedMSBuildEditorConfig.editorconfig
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.AssemblyInfoInputs.cache
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.AssemblyInfo.cs
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.csproj.CoreCompileInputs.cache
-C:\phd\phd_work\SvmFs\SvmFsLib\bin\x64\Debug\net6.0\SvmFsLib.deps.json
-C:\phd\phd_work\SvmFs\SvmFsLib\bin\x64\Debug\net6.0\SvmFsLib.dll
-C:\phd\phd_work\SvmFs\SvmFsLib\bin\x64\Debug\net6.0\SvmFsLib.pdb
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.dll
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\refint\SvmFsLib.dll
 C:\phd\phd_work\SvmFs\SvmFsLib\obj\x64\Debug\net6.0\SvmFsLib.pdb

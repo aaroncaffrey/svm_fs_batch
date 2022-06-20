@@ -3,11 +3,6 @@ C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.GeneratedMSB
 C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.AssemblyInfoInputs.cache
 C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.AssemblyInfo.cs
 C:\Users\Aaron\Desktop\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.csproj.CoreCompileInputs.cache
-C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.csproj.AssemblyReference.cache
-C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.GeneratedMSBuildEditorConfig.editorconfig
-C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.AssemblyInfoInputs.cache
-C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.AssemblyInfo.cs
-C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.csproj.CoreCompileInputs.cache
 C:\phd\phd_work\SvmFs\SvmFsLdr\bin\x64\Debug\net6.0\SvmFsCtl.deps.json
 C:\phd\phd_work\SvmFs\SvmFsLdr\bin\x64\Debug\net6.0\SvmFsCtl.runtimeconfig.json
 C:\phd\phd_work\SvmFs\SvmFsLdr\bin\x64\Debug\net6.0\SvmFsCtl.exe
@@ -25,6 +20,11 @@ C:\phd\phd_work\SvmFs\SvmFsLdr\bin\x64\Debug\net6.0\SvmFsWkr.dll
 C:\phd\phd_work\SvmFs\SvmFsLdr\bin\x64\Debug\net6.0\SvmFsCtl.pdb
 C:\phd\phd_work\SvmFs\SvmFsLdr\bin\x64\Debug\net6.0\SvmFsLib.pdb
 C:\phd\phd_work\SvmFs\SvmFsLdr\bin\x64\Debug\net6.0\SvmFsWkr.pdb
+C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.csproj.AssemblyReference.cache
+C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.GeneratedMSBuildEditorConfig.editorconfig
+C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.AssemblyInfoInputs.cache
+C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.AssemblyInfo.cs
+C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.csproj.CoreCompileInputs.cache
 C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.csproj.CopyComplete
 C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\SvmFsLdr.dll
 C:\phd\phd_work\SvmFs\SvmFsLdr\obj\x64\Debug\net6.0\refint\SvmFsLdr.dll

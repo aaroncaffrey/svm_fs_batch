@@ -227,25 +227,30 @@ namespace SvmFsWkr
 
             var datasets = new List<(string[] datasetFileTags, DataSet dataSet)>();
 
-            foreach (var x in indexDataList)
+            foreach (var indexData in indexDataList)
             {
-                if (!datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, x.IdDatasetFileTags)))
+                if (!datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, indexData.IdDatasetFileTags)))
                 {
-                    Logging.LogEvent($"Loading dataset: {string.Join(",", x.IdDatasetFileTags ?? Array.Empty<string>())}");
+                    Logging.LogEvent($"Loading dataset: {string.Join(",", indexData.IdDatasetFileTags ?? Array.Empty<string>())}");
 
                     var dataSet = new DataSet();
-                    dataSet.LoadDataSet(dataSetDir, x.IdDatasetFileTags, classNames, ct);
-                    datasets.Add((x.IdDatasetFileTags, dataSet));
+                    dataSet.LoadDataSet(dataSetDir, indexData.IdDatasetFileTags, classNames, ct);
+                    datasets.Add((indexData.IdDatasetFileTags, dataSet));
                 }
 
-                if (!datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, x.IdBaseLineDatasetFileTags)))
+                if (!datasets.Any(a => Enumerable.SequenceEqual(a.datasetFileTags, indexData.IdBaseLineDatasetFileTags)))
                 {
-                    Logging.LogEvent($"Loading baseline dataset: {string.Join(",", x.IdBaseLineDatasetFileTags ?? Array.Empty<string>())}");
+                    Logging.LogEvent($"Loading baseline dataset: {string.Join(",", indexData.IdBaseLineDatasetFileTags ?? Array.Empty<string>())}");
                     
                     var baseLineDataSet = new DataSet();
-                    baseLineDataSet.LoadDataSet(baseLineDataSetDir, x.IdBaseLineDatasetFileTags, classNames, ct);
-                    datasets.Add((x.IdBaseLineDatasetFileTags, baseLineDataSet));
+                    baseLineDataSet.LoadDataSet(baseLineDataSetDir, indexData.IdBaseLineDatasetFileTags, classNames, ct);
+                    datasets.Add((indexData.IdBaseLineDatasetFileTags, baseLineDataSet));
                 }
+            }
+
+            if ((indexDataList?.Length??0) > 0 && (datasets == null || datasets.Count == 0))
+            {
+                throw new ArgumentNullException(nameof(datasets));
             }
 
             return datasets;
