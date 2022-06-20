@@ -167,7 +167,7 @@ namespace SvmFsWkr
             }
 
 
-            var datasets = LoadDatasets(dataSetDir, baseLineDataSetDir, classNames, indexesLoaded, ct);
+            var datasets = LoadDatasets(dataSetDir, baseLineDataSetDir, classNames, indexesNotLoaded, ct);
 
             var innerResultsTasks = asParallel
                        ? indexesNotLoaded.AsParallel().AsOrdered().Select(async (indexData, x) => await ProcessJob(instanceId, /*iterationIndex,*/ resultsRootFolder, experimentName, libsvmTrainRuntime, libsvmPredictRuntime, save, indexData, datasets, ct).ConfigureAwait(false)).ToArray()
@@ -248,7 +248,7 @@ namespace SvmFsWkr
                 }
             }
 
-            if ((indexDataList?.Length??0) > 0 && (datasets == null || datasets.Count == 0))
+            if ((indexDataList?.Length ?? 0) > 0 && (datasets?.Count ?? 0) == 0)
             {
                 throw new ArgumentNullException(nameof(datasets));
             }
