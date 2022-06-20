@@ -162,7 +162,7 @@ namespace SvmFsLdr
                 }
 
                 // 5. if controller exited without error, and there is work to do, then submit array job to hpc scheduler...
-                var subExperimentName = controllerOutputWorkFileList.lines?[0];
+                //var subExperimentName = controllerOutputWorkFileList.lines?[0];
 
                 // submit pbs script for workers array 
                 // these know what work to do by ... how? need to check!
@@ -188,7 +188,7 @@ namespace SvmFsLdr
                         wkrPbsProgramArgs.InstanceId = i;
                         wkrPbsProgramArgs.NodeArrayIndex = i;
                         wkrPbsProgramArgs.TotalNodes = controllerOutputWorkFileList.lines.Length;
-                        wkrPbsProgramArgs.ExperimentName = subExperimentName;
+                        //wkrPbsProgramArgs.ExperimentName = subExperimentName;
 
                         await SvmFsWkr.SvmFsWkr.Main2(wkrPbsProgramArgs);
                     }
@@ -200,7 +200,7 @@ namespace SvmFsLdr
                         wkrPbsProgramArgs.InstanceId = i;
                         wkrPbsProgramArgs.NodeArrayIndex = i;
                         wkrPbsProgramArgs.TotalNodes = controllerOutputWorkFileList.lines.Length;
-                        wkrPbsProgramArgs.ExperimentName = subExperimentName;
+                        //wkrPbsProgramArgs.ExperimentName = subExperimentName;
 
                         var programRuntime = GetRuntimePath(nameof(SvmFsWkr));
 

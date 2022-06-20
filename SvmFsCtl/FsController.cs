@@ -638,7 +638,7 @@ namespace SvmFsCtl
 
                     try { Directory.Delete(workQueueFolder, true); } catch (Exception) { }
 
-                    var workFiles = new List<string>() { experimentName }; // first line is the name of the experiment
+                    var workFiles = new List<string>();// { experimentName }; // first line is the name of the experiment
 
                     foreach (var wd in workDistribution)
                     {

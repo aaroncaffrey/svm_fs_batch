@@ -89,15 +89,15 @@ namespace SvmFsWkr
             var workQueueInstanceFilename = Path.Combine(workQueueFolder, $"work_{instanceId}.csv"); // either work_{instanceId}, or read work.csv -> lines[instanceid] -> filename to read ...
 
             var lines = await IoProxy.ReadAllLinesAsync(true, default, workQueueInstanceFilename, 50);
-            // skip first line because it is the sub experiment name
-            var subExperimentName = lines.FirstOrDefault();
+            // skip first line because it is the csv header
             var indexDataList = lines.Skip(1).Select(a => new IndexData(new[] { lines[0], a })).ToArray();
 
             
-            if (indexDataList.Any(a => /*a.IdIterationIndex != iterationIndex ||*/ a.IdExperimentName != experimentName)) throw new Exception($"Wrong {nameof(experimentName)} value.");
+            //if (indexDataList.Any(a => a.IdIterationIndex != iterationIndex || a.IdExperimentName != experimentName)) throw new Exception($"Wrong {nameof(experimentName)} value.");
+            if (indexDataList.Any(a => !a.IdExperimentName.StartsWith(ProgramArgs.ExperimentName))) throw new Exception($"Wrong {nameof(experimentName)} value.");
             if (indexDataList.Select(a => a.IdIterationIndex).Distinct().Count() != 1) throw new Exception($"Wrong IdIterationIndex value.");
 
-            Logging.LogEvent($@"Loaded {indexDataList.Length} work items from ""{workQueueInstanceFilename}"" for sub experiment ""{subExperimentName}"".");
+            Logging.LogEvent($@"Loaded {indexDataList.Length} work items from ""{workQueueInstanceFilename}"".");
 
             return indexDataList;
         }
