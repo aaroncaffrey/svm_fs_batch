@@ -97,6 +97,11 @@ namespace SvmFsLib
 
                     var rescale = x / y + z;
 
+                    if (double.IsInfinity(rescale))
+                    {
+                        Console.WriteLine();
+                    }
+
                     Logging.LogExit(ModuleName); return rescale;
 
                 case ScaleFunction.Normalisation:

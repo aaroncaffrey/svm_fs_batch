@@ -153,7 +153,7 @@ namespace SvmFsLib
 
                     if (process == null)
                     {
-                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
+                        Logging.WriteLine($@"[ ""{start.FileName}"" {start.Arguments} ] -- failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
                     }
@@ -194,7 +194,7 @@ namespace SvmFsLib
                         return ct.IsCancellationRequested ? default : (cmdLine, stdoutResult, stderrResult);
                     }
 
-                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
+                    Logging.WriteLine($@"[ ""{start.FileName}"" {start.Arguments} ] -- {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                     if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName);
                     if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName);
                     await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
@@ -301,7 +301,7 @@ namespace SvmFsLib
                     using var process = Process.Start(start);
                     if (process == null)
                     {
-                        Logging.WriteLine($@"""{start.FileName}"" failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
+                        Logging.WriteLine($@"[ ""{start.FileName}"" {start.Arguments} ] -- failed to run. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                         await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
                         continue;
                     }
@@ -343,7 +343,7 @@ namespace SvmFsLib
                         return ct.IsCancellationRequested ? default : (cmdLine, stdoutResult, stderrResult);
                     }
 
-                    Logging.WriteLine($@"""{start.FileName}"" {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
+                    Logging.WriteLine($@"[ ""{start.FileName}"" {start.Arguments} ] -- {process.Id} failed to run. {nameof(exitCode)} = {exitCode}. {nameof(tries)} = {tries}/{maxTries}.", ModuleName);
                     if (!string.IsNullOrWhiteSpace(stdoutResult)) Logging.WriteLine($"@{nameof(stdoutResult)} = {stdoutResult}", ModuleName);
                     if (!string.IsNullOrWhiteSpace(stderrResult)) Logging.WriteLine($"@{nameof(stderrResult)} = {stderrResult}", ModuleName);
                     await Logging.WaitAsync(25, 50, ct: ct).ConfigureAwait(false);
